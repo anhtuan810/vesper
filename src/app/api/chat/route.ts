@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
 import { buildSystemPrompt, buildOnboardingPrompt } from "@/lib/claude";
+import { extractProfileUpdate } from "@/lib/profile-extractor";
 
 const anthropic = new Anthropic();
 
@@ -335,6 +336,13 @@ export async function POST(req: NextRequest) {
       role: "assistant",
       content: displayText,
     });
+
+    // --- Extract profile insights (fire-and-forget, non-blocking) ---
+    if (message && displayText && !isNewUser) {
+      extractProfileUpdate(userId, message, displayText, profile).catch((err) =>
+        console.error("Profile extraction background error:", err)
+      );
+    }
 
     return NextResponse.json({
       message: displayText || "Done.",
