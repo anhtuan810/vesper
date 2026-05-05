@@ -5,7 +5,9 @@ const anthropic = new Anthropic();
 
 export async function POST(req: NextRequest) {
   try {
-    const { mutations, startVal, endVal, periodLabel } = await req.json();
+    const text = await req.text();
+    if (!text) return NextResponse.json({ summary: null });
+    const { mutations, startVal, endVal, periodLabel } = JSON.parse(text);
 
     if (!mutations || mutations.length === 0) {
       return NextResponse.json({ summary: null });
