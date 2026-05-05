@@ -1,48 +1,8 @@
 import type { Asset, UserProfile, Message, Mutation } from "./supabase";
 
-export function buildSystemPrompt(
-  assets: Asset[],
-  recentMessages: Message[],
-  profile: UserProfile,
-  recentMutations: Mutation[],
-  userName?: string
-): string {
-  const total = assets.reduce((sum, a) => {
-    const netValue = a.type === "real_estate" && a.mortgage_balance
-      ? a.value - a.mortgage_balance
-      : a.value;
-    return sum + netValue;
-  }, 0);
-
-  const byType = assets.reduce((acc, a) => {
-    acc[a.type] = (acc[a.type] || 0) + a.value;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const countries = [...new Set(assets.map(a => a.country).filter(Boolean))];
-
-  const assetList = assets.map(a => {
-    const parts = [`${a.name} (${a.type}): EUR${a.value.toLocaleString()}`];
-    if (a.symbol) parts.push(`symbol:${a.symbol}`);
-    if (a.units) parts.push(`units:${a.units}`);
-    if (a.country) parts.push(`country:${a.country}`);
-    if (a.mortgage_balance) parts.push(`mortgage:EUR${a.mortgage_balance.toLocaleString()}`);
-    return `- ${parts.join(", ")}`;
-  }).join("\n");
-
-  return `You are Vesper, a smart and concise portfolio assistant.
-
-${userName ? `User: ${userName}` : ""}
-
-CURRENT PORTFOLIO (${assets.length} positions, net worth EUR${total.toLocaleString()}):
-${assetList}
-
-Allocation: ${Object.entries(byType).map(([t, v]) => `${t}: ${((v / total) * 100).toFixed(0)}%`).join(", ")}
-Countries: ${countries.join(", ") || "not specified"}
-
-${Object.keys(profile).length > 0 ? `USER PROFILE:\n${JSON.stringify(profile, null, 2)}` : ""}
-
-${recentMutations.length > 0 ? `RECENT CHANGES:\n${recentMutations.slice(0, 5).map(m => `- ${m.occurred_at || m.recorded_at}: ${m.action} ${m.asset_name}`).join("\n")}` : ""}
+// Static instructions never change — kept separate so they stay cached
+// even when the user's portfolio data changes between messages.
+export const STATIC_SYSTEM = `You are Vesper, a smart and concise portfolio assistant.
 
 TONE:
 - Professional, composed, and concise. Like a trusted private banker.
@@ -98,6 +58,48 @@ You ONLY discuss portfolio, investments, assets, financial goals, and personal f
 Off-topic requests get: "I'm your portfolio assistant - I can only help with your investments and financial goals. What would you like to know about your portfolio?"
 
 Never mention JSON, technical details, or internal mechanics.`;
+
+export function buildDynamicContext(
+  assets: Asset[],
+  profile: UserProfile,
+  recentMutations: Mutation[],
+  userName?: string
+): string {
+  const total = assets.reduce((sum, a) => {
+    const netValue = a.type === "real_estate" && a.mortgage_balance
+      ? a.value - a.mortgage_balance : a.value;
+    return sum + netValue;
+  }, 0);
+
+  const byType = assets.reduce((acc, a) => {
+    acc[a.type] = (acc[a.type] || 0) + a.value;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const countries = [...new Set(assets.map(a => a.country).filter(Boolean))];
+
+  const assetList = assets.map(a => {
+    const parts = [`${a.name} (${a.type}): EUR${a.value.toLocaleString()}`];
+    if (a.symbol) parts.push(`symbol:${a.symbol}`);
+    if (a.units) parts.push(`units:${a.units}`);
+    if (a.country) parts.push(`country:${a.country}`);
+    if (a.mortgage_balance) parts.push(`mortgage:EUR${a.mortgage_balance.toLocaleString()}`);
+    return `- ${parts.join(", ")}`;
+  }).join("\n");
+
+  return [
+    userName ? `User: ${userName}` : "",
+    `CURRENT PORTFOLIO (${assets.length} positions, net worth EUR${total.toLocaleString()}):`,
+    assetList,
+    "",
+    `Allocation: ${Object.entries(byType).map(([t, v]) => `${t}: ${((v / total) * 100).toFixed(0)}%`).join(", ")}`,
+    `Countries: ${countries.join(", ") || "not specified"}`,
+    "",
+    Object.keys(profile).length > 0 ? `USER PROFILE:\n${JSON.stringify(profile, null, 2)}` : "",
+    recentMutations.length > 0
+      ? `RECENT CHANGES:\n${recentMutations.slice(0, 5).map(m => `- ${m.occurred_at || m.recorded_at}: ${m.action} ${m.asset_name}`).join("\n")}`
+      : "",
+  ].filter(Boolean).join("\n");
 }
 
 export function buildOnboardingPrompt(): string {

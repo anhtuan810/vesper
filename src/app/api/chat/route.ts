@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
-import { buildSystemPrompt, buildOnboardingPrompt } from "@/lib/claude";
+import { STATIC_SYSTEM, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { validateEnv } from "@/lib/env";
 import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
@@ -70,15 +70,12 @@ export async function POST(req: NextRequest) {
     const isNewUser = currentAssets.length === 0;
 
     // --- Build system prompt ---
-    const systemPrompt = isNewUser
-      ? buildOnboardingPrompt()
-      : buildSystemPrompt(
-          currentAssets,
-          recentMessages || [],
-          profile,
-          recentMutations || [],
-          userName
-        );
+    const systemBlocks: Anthropic.Messages.TextBlockParam[] = isNewUser
+      ? [{ type: "text", text: buildOnboardingPrompt(), cache_control: { type: "ephemeral" } }]
+      : [
+          { type: "text", text: STATIC_SYSTEM, cache_control: { type: "ephemeral" } },
+          { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], userName) },
+        ];
 
     // --- Build conversation history (last 6 messages) ---
     const history = (recentMessages || [])
@@ -129,7 +126,7 @@ export async function POST(req: NextRequest) {
         response = await anthropic.messages.create({
           model: "claude-sonnet-4-6",
           max_tokens: 2000,
-          system: systemPrompt,
+          system: systemBlocks,
           messages: [
             ...history,
             { role: "user", content: userContent },
@@ -359,7 +356,7 @@ export async function POST(req: NextRequest) {
     });
 
     // --- Extract profile insights (fire-and-forget, non-blocking) ---
-    if (message && displayText && !isNewUser) {
+    if (message && displayText && !isNewUser && !changesMatch) {
       extractProfileUpdate(userId, message, displayText, profile).catch((err) =>
         console.error("Profile extraction background error:", err)
       );

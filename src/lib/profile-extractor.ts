@@ -14,7 +14,7 @@ export async function extractProfileUpdate(
     const supabase = createServerSupabase();
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 500,
       system: `You analyze conversations between a user and their portfolio assistant to extract lasting facts about the user.
 
