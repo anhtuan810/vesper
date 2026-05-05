@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import { fmt, formatDate, getMonthKey, getMonthLabel, ACTION_STYLE, type DashboardMutation } from "@/lib/utils";
 
 interface DiaryTabProps {
@@ -8,13 +9,345 @@ interface DiaryTabProps {
   setDiaryFilter: (filter: string) => void;
 }
 
+type PeriodKey = "all" | "week" | "month" | "3months" | "year" | "custom";
+
+const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
+  { key: "all", label: "All time" },
+  { key: "week", label: "This week" },
+  { key: "month", label: "This month" },
+  { key: "3months", label: "Last 3M" },
+  { key: "year", label: "This year" },
+  { key: "custom", label: "Custom" },
+];
+
+function getMonthOptions(mutations: DashboardMutation[]) {
+  const dates = mutations
+    .map((m) => m.occurred_at || m.recorded_at)
+    .filter(Boolean)
+    .map((d) => new Date(d!));
+
+  const earliest = dates.length > 0
+    ? new Date(Math.min(...dates.map((d) => d.getTime())))
+    : new Date();
+
+  const options: { label: string; value: string }[] = [];
+  const now = new Date();
+  let d = new Date(now.getFullYear(), now.getMonth(), 1);
+  const stop = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+
+  while (d >= stop) {
+    options.push({
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
+    });
+    d = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+  }
+
+  return options;
+}
+
+function isInPeriod(m: DashboardMutation, period: PeriodKey, customFrom: string, customTo: string): boolean {
+  if (period === "all") return true;
+  const dateStr = m.occurred_at || m.recorded_at;
+  if (!dateStr) return true;
+  const date = new Date(dateStr);
+  const now = new Date();
+
+  switch (period) {
+    case "week": return date >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    case "month": return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    case "3months": return date >= new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    case "year": return date.getFullYear() === now.getFullYear();
+    case "custom": {
+      if (customFrom && date < new Date(customFrom + "-01")) return false;
+      if (customTo) {
+        const to = new Date(customTo + "-01");
+        to.setMonth(to.getMonth() + 1);
+        if (date >= to) return false;
+      }
+      return true;
+    }
+  }
+}
+
+function getPeriodLabel(period: PeriodKey, customFrom: string, customTo: string): string {
+  const now = new Date();
+  const fmt = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-GB", opts);
+  switch (period) {
+    case "week": return "past 7 days";
+    case "month": return fmt(now, { month: "long", year: "numeric" });
+    case "3months": {
+      const from = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      return `${fmt(from, { month: "short" })} – ${fmt(now, { month: "short", year: "numeric" })}`;
+    }
+    case "year": return String(now.getFullYear());
+    case "custom": {
+      const f = customFrom ? fmt(new Date(customFrom + "-01"), { month: "short", year: "numeric" }) : "";
+      const t = customTo ? fmt(new Date(customTo + "-01"), { month: "short", year: "numeric" }) : "";
+      return f === t ? f : `${f} – ${t}`;
+    }
+    default: return "";
+  }
+}
+
+// ── Period highlight card with SVG area chart ──────────────────────────────────
+function PeriodHighlight({ mutations, period, customFrom, customTo }: {
+  mutations: DashboardMutation[];
+  period: PeriodKey;
+  customFrom: string;
+  customTo: string;
+}) {
+  // ── All hooks first (before any early return) ──
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const summaryKey = useMemo(() => mutations.map((m) => m.id).join(","), [mutations]);
+
+  // Pre-compute chart data — safe even when empty
+  const withTotal = useMemo(() =>
+    mutations
+      .filter((m) => m.portfolio_total != null && m.portfolio_total > 0)
+      .sort((a, b) => {
+        const da = a.occurred_at || a.recorded_at;
+        const db = b.occurred_at || b.recorded_at;
+        return da < db ? -1 : da > db ? 1 : 0;
+      }),
+    [mutations]
+  );
+
+  const byDay = useMemo(() => {
+    const map = new Map<string, { date: string; value: number; actions: string[] }>();
+    for (const m of withTotal) {
+      const day = m.occurred_at || m.recorded_at.split("T")[0];
+      if (!map.has(day)) map.set(day, { date: day, value: 0, actions: [] });
+      const entry = map.get(day)!;
+      entry.value = m.portfolio_total!;
+      if (!entry.actions.includes(m.action)) entry.actions.push(m.action);
+    }
+    return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [withTotal]);
+
+  const startVal = byDay[0]?.value ?? 0;
+  const endVal = byDay[byDay.length - 1]?.value ?? 0;
+  const periodLabel = getPeriodLabel(period, customFrom, customTo);
+
+  useEffect(() => {
+    if (withTotal.length === 0) return;
+    const controller = new AbortController();
+    setSummary(null);
+    setSummaryLoading(true);
+
+    fetch("/api/diary-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        mutations: mutations.map((m) => ({
+          action: m.action,
+          asset_name: m.asset_name,
+          before_value: m.before_value,
+          after_value: m.after_value,
+          occurred_at: m.occurred_at,
+          personal_context: m.personal_context,
+        })),
+        startVal,
+        endVal,
+        periodLabel,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (!controller.signal.aborted) { setSummary(d.summary || null); setSummaryLoading(false); } })
+      .catch(() => { if (!controller.signal.aborted) setSummaryLoading(false); });
+
+    return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryKey]);
+
+  // ── Early return after all hooks ──
+  if (withTotal.length === 0) return null;
+
+  const pts = byDay;
+  const change = endVal - startVal;
+  const changePct = startVal > 0 ? (change / startVal) * 100 : 0;
+  const positive = change >= 0;
+
+  // SVG dimensions
+  const W = 560;
+  const H = 72;
+  const PAD_X = 0;
+  const PAD_Y = 8;
+  const allVals = pts.map((p) => p.value);
+  const minVal = Math.min(...allVals);
+  const maxVal = Math.max(...allVals);
+  const range = Math.max(maxVal - minVal, maxVal * 0.0001);
+
+  const toX = (i: number) =>
+    pts.length === 1 ? W / 2 : PAD_X + (i / (pts.length - 1)) * (W - PAD_X * 2);
+  const toY = (v: number) =>
+    PAD_Y + H - ((v - minVal) / range) * H;
+
+  const svgPts = pts.map((p, i) => ({ x: toX(i), y: toY(p.value), ...p }));
+  const polylineStr = svgPts.map((p) => `${p.x},${p.y}`).join(" ");
+  const areaStr = `${svgPts[0].x},${H + PAD_Y * 2} ` + polylineStr + ` ${svgPts[svgPts.length - 1].x},${H + PAD_Y * 2}`;
+
+  const dotColor = (actions: string[]) => {
+    if (actions.includes("remove")) return "#DC2626";
+    if (actions.includes("add")) return "#059669";
+    return "#2563EB";
+  };
+
+  const adds = mutations.filter((m) => m.action === "add").length;
+  const edits = mutations.filter((m) => m.action === "edit").length;
+  const removes = mutations.filter((m) => m.action === "remove").length;
+
+  return (
+    <div className="bg-white rounded-2xl border border-black/5 p-5 mb-6 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="text-[10px] font-semibold text-gray-300 uppercase tracking-wider mb-1">
+            Portfolio during {periodLabel}
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-extrabold tracking-tight text-[#0F0E0C]">{fmt(endVal)}</span>
+            <span className={`text-sm font-semibold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+              {positive ? "+" : ""}{fmt(change)}
+            </span>
+            <span className={`text-xs font-medium ${positive ? "text-emerald-500" : "text-red-500"}`}>
+              ({positive ? "+" : ""}{changePct.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-gray-300 mb-0.5">Started at</div>
+          <div className="text-sm font-semibold text-gray-400">{fmt(startVal)}</div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="relative -mx-5">
+        <svg
+          viewBox={`0 0 ${W} ${H + PAD_Y * 2}`}
+          preserveAspectRatio="none"
+          className="w-full"
+          style={{ height: 88, display: "block" }}
+        >
+          <defs>
+            <linearGradient id="highlight-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={positive ? "#2563EB" : "#DC2626"} stopOpacity="0.12" />
+              <stop offset="100%" stopColor={positive ? "#2563EB" : "#DC2626"} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {/* Subtle mid gridline */}
+          <line
+            x1={0} y1={(H + PAD_Y * 2) / 2}
+            x2={W} y2={(H + PAD_Y * 2) / 2}
+            stroke="#F0EEE9" strokeWidth="1"
+          />
+          {/* Area */}
+          <polygon points={areaStr} fill="url(#highlight-grad)" />
+          {/* Line */}
+          <polyline
+            points={polylineStr}
+            fill="none"
+            stroke={positive ? "#2563EB" : "#DC2626"}
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Dots — only render when few enough points to be readable */}
+          {pts.length <= 30 && svgPts.map((p, i) => (
+            <circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r={pts.length <= 10 ? 3 : 2.5}
+              fill={dotColor(p.actions)}
+              stroke="white"
+              strokeWidth="1.5"
+            />
+          ))}
+        </svg>
+        {/* Date labels */}
+        <div className="flex justify-between px-5 mt-1">
+          <span className="text-[10px] text-gray-300">{formatDate(pts[0].date)}</span>
+          {pts.length > 1 && (
+            <span className="text-[10px] text-gray-300">{formatDate(pts[pts.length - 1].date)}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Activity summary */}
+      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-black/[0.04]">
+        {adds > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-[11px] text-gray-400">{adds} added</span>
+          </div>
+        )}
+        {edits > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#2563EB]" />
+            <span className="text-[11px] text-gray-400">{edits} updated</span>
+          </div>
+        )}
+        {removes > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="text-[11px] text-gray-400">{removes} removed</span>
+          </div>
+        )}
+        <div className="ml-auto text-[11px] text-gray-300">{pts.length} data point{pts.length !== 1 ? "s" : ""}</div>
+      </div>
+
+      {/* AI narrative summary */}
+      {(summaryLoading || summary) && (
+        <div className="mt-4 pt-4 border-t border-black/[0.04]">
+          <div className="flex items-start gap-2.5">
+            <div className="w-5 h-5 rounded-md bg-[#2563EB] flex items-center justify-center shrink-0 mt-0.5">
+              <span className="text-white text-[10px] font-bold">V</span>
+            </div>
+            {summaryLoading ? (
+              <div className="flex-1 space-y-1.5 pt-0.5">
+                <div className="h-2.5 rounded-full bg-[#F0EEE9] animate-pulse w-[60%]" />
+                <div className="h-2.5 rounded-full bg-[#F0EEE9] animate-pulse w-[50%]" />
+                <div className="h-2.5 rounded-full bg-[#F0EEE9] animate-pulse w-[40%]" />
+              </div>
+            ) : (
+              <ul className="flex-1 space-y-1">
+                {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i) => (
+                  <li key={i} className="text-[12px] text-gray-500 leading-snug">
+                    {line.replace(/^•\s*/, "• ")}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabProps) {
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [period, setPeriod] = useState<PeriodKey>("all");
+  const [customFrom, setCustomFrom] = useState(thisMonth);
+  const [customTo, setCustomTo] = useState(thisMonth);
+
   const hasContent = (m: DashboardMutation) =>
     m.before_value != null || m.after_value != null || !!m.personal_context;
 
-  const filteredMutations = mutations
+  // Period-only filter — used for highlight card (shows full picture for the period)
+  const periodMutations = mutations
     .filter(hasContent)
-    .filter(m => diaryFilter === "all" || m.action === diaryFilter);
+    .filter((m) => isInPeriod(m, period, customFrom, customTo));
+
+  // Period + action filter — used for timeline
+  const filteredMutations = periodMutations
+    .filter((m) => diaryFilter === "all" || m.action === diaryFilter);
 
   const grouped = filteredMutations.reduce((acc, m) => {
     const key = getMonthKey(m.occurred_at || m.recorded_at);
@@ -34,54 +367,102 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
     });
   }
 
+  const monthOptions = getMonthOptions(mutations);
+
+  const ACTION_META = [
+    { action: "add",    label: "Added",   color: "#059669", bg: "#ECFDF5", border: "#6EE7B7" },
+    { action: "edit",   label: "Updated", color: "#2563EB", bg: "#EFF6FF", border: "#93C5FD" },
+    { action: "remove", label: "Removed", color: "#DC2626", bg: "#FEF2F2", border: "#FCA5A5" },
+  ];
+
   return (
     <>
-      {/* Diary stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: "Added", action: "add", color: "#059669" },
-          { label: "Updated", action: "edit", color: "#2563EB" },
-          { label: "Removed", action: "remove", color: "#DC2626" },
-        ].map(({ label, action, color }) => (
-          <div key={action} className="bg-white rounded-xl p-4 border border-black/5">
-            <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">{label}</div>
-            <div className="text-2xl font-extrabold tracking-tight" style={{ color }}>
-              {mutations.filter(m => m.action === action).length}
-            </div>
+      {/* Graph — top, shown when a period is selected */}
+      {period !== "all" && (
+        <PeriodHighlight
+          mutations={periodMutations}
+          period={period}
+          customFrom={customFrom}
+          customTo={customTo}
+        />
+      )}
+
+      {/* Period filter */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+        {PERIOD_OPTIONS.map(({ key, label }) => {
+          const active = period === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-all"
+              style={{
+                background: active ? "#0F0E0C" : "#fff",
+                color: active ? "#fff" : "#9CA3AF",
+                borderColor: active ? "#0F0E0C" : "rgba(0,0,0,0.07)",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+        {period === "custom" && (
+          <div className="flex items-center gap-1.5 ml-1">
+            <select
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="text-xs text-gray-600 bg-white border border-black/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+            >
+              {monthOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-300">to</span>
+            <select
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="text-xs text-gray-600 bg-white border border-black/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+            >
+              {monthOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </div>
-        ))}
+        )}
       </div>
 
-      {/* Filters */}
+      {/* Clickable action cards */}
       <div className="flex gap-2 mb-6">
-        {[
-          { key: "all", label: "All" },
-          { key: "add", label: "Added" },
-          { key: "edit", label: "Updated" },
-          { key: "remove", label: "Removed" },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setDiaryFilter(key)}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg border transition"
-            style={{
-              background: diaryFilter === key ? "#0F0E0C" : "transparent",
-              color: diaryFilter === key ? "#fff" : "#9CA3AF",
-              borderColor: diaryFilter === key ? "#0F0E0C" : "rgba(0,0,0,0.06)",
-            }}
-          >
-            {label}
-          </button>
-        ))}
+        {ACTION_META.map(({ action, label, color, bg, border }) => {
+          const count = periodMutations.filter((m) => m.action === action).length;
+          const active = diaryFilter === action;
+          return (
+            <button
+              key={action}
+              onClick={() => setDiaryFilter(active ? "all" : action)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-left transition-all"
+              style={{
+                background: active ? bg : "#fff",
+                borderColor: active ? border : "rgba(0,0,0,0.06)",
+                boxShadow: active ? `0 0 0 1px ${border}` : "none",
+              }}
+            >
+              <span className="text-xs font-semibold" style={{ color: active ? color : "#9CA3AF" }}>
+                {count}
+              </span>
+              <span className="text-xs" style={{ color: active ? color : "#9CA3AF" }}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Empty state */}
       {filteredMutations.length === 0 && (
         <div className="text-center pt-16">
-          <div className="text-sm text-gray-400 mb-2">No entries yet</div>
-          <p className="text-xs text-gray-300">
-            Your diary fills up as you add and modify positions through the assistant.
-          </p>
+          <div className="text-sm text-gray-400 mb-2">No entries for this period</div>
+          <p className="text-xs text-gray-300">Try a different time range or filter.</p>
         </div>
       )}
 
@@ -132,8 +513,10 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
                         {m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null && (
                           <span>
                             {fmt(m.before_value)} → {fmt(m.after_value)}
-                            <span className="ml-1.5 font-medium"
-                              style={{ color: valueChange! >= 0 ? "#059669" : "#DC2626" }}>
+                            <span
+                              className="ml-1.5 font-medium"
+                              style={{ color: valueChange! >= 0 ? "#059669" : "#DC2626" }}
+                            >
                               {valueChange! >= 0 ? "+" : ""}{fmt(valueChange!)}
                             </span>
                           </span>

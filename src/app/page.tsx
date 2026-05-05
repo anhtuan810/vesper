@@ -23,9 +23,19 @@ export default function Dashboard() {
   const signOut = useSignOut();
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
-  const [tab, setTab] = useState<"portfolio" | "diary" | "profile">("portfolio");
+  const [tab, setTabState] = useState<"portfolio" | "diary" | "profile">(() => {
+    try {
+      const saved = localStorage.getItem("vesper_tab");
+      return (saved as "portfolio" | "diary" | "profile") || "portfolio";
+    } catch { return "portfolio"; }
+  });
   const [mutations, setMutations] = useState<DashboardMutation[]>([]);
   const [diaryFilter, setDiaryFilter] = useState<string>("all");
+
+  const setTab = (t: "portfolio" | "diary" | "profile") => {
+    setTabState(t);
+    try { localStorage.setItem("vesper_tab", t); } catch {}
+  };
 
   const fetchMutations = useCallback(async () => {
     if (!user?.id) return;
