@@ -141,7 +141,7 @@ export default function ChatPopup({
     setThinking(true);
     setMessages((prev) => [...prev, { from: "user", text: displayText }]);
 
-    const payload: { userId: string; message: string; imageData?: { base64: string; mediaType: string } } = { userId, message: text };
+    const payload: { message: string; imageData?: { base64: string; mediaType: string } } = { message: text };
     if (imageData) {
       payload.imageData = imageData;
     }

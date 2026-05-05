@@ -25,10 +25,20 @@ export default function Dashboard() {
   const [hasNew, setHasNew] = useState(false);
   const [tab, setTabState] = useState<"portfolio" | "diary" | "profile">(() => {
     try {
+      if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("welcome")) {
+        localStorage.removeItem("vesper_tab");
+        return "portfolio";
+      }
       const saved = localStorage.getItem("vesper_tab");
       return (saved as "portfolio" | "diary" | "profile") || "portfolio";
     } catch { return "portfolio"; }
   });
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("welcome")) {
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
   const [mutations, setMutations] = useState<DashboardMutation[]>([]);
   const [diaryFilter, setDiaryFilter] = useState<string>("all");
 
@@ -63,11 +73,7 @@ export default function Dashboard() {
   // Backfill zero-value assets when diary tab is opened (runs once per session)
   useEffect(() => {
     if (tab !== "diary" || !user?.id) return;
-    fetch("/api/backfill", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id }),
-    }).then(async (res) => {
+    fetch("/api/backfill", { method: "POST" }).then(async (res) => {
       const { updated } = await res.json();
       if (updated > 0) {
         refetchAssets();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createServerSupabase } from "@/lib/supabase";
+import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { STATIC_SYSTEM, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { validateEnv } from "@/lib/env";
@@ -12,7 +12,11 @@ const anthropic = new Anthropic();
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, userId, imageData } = await req.json();
+    const user = await getAuthUser(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = user.id;
+
+    const { message, imageData } = await req.json();
 
     if (!message && !imageData) {
       return NextResponse.json({ error: "No message provided" }, { status: 400 });

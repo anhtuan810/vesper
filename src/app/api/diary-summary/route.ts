@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getAuthUser } from "@/lib/supabase";
 
 const anthropic = new Anthropic();
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const text = await req.text();
     if (!text) return NextResponse.json({ summary: null });
     const { mutations, startVal, endVal, periodLabel } = JSON.parse(text);
