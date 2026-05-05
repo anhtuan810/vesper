@@ -8,7 +8,7 @@ export async function extractProfileUpdate(
   userId: string,
   userMessage: string,
   assistantResponse: string,
-  currentProfile: Record<string, any>
+  currentProfile: Record<string, unknown>
 ): Promise<void> {
   try {
     const supabase = createServerSupabase();

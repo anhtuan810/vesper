@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateEnv } from "@/lib/env";
+
+validateEnv();
 
 export async function GET(req: NextRequest) {
   const symbol = req.nextUrl.searchParams.get("symbol");

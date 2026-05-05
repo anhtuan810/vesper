@@ -19,6 +19,8 @@ export function createServerSupabase() {
 }
 
 // Types
+export type LiveAsset = Asset & { livePrice?: number; livePrev?: number };
+
 export interface Asset {
   id: string;
   user_id: string;

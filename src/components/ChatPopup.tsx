@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { FormatText } from "@/components/FormatText";
 
 interface ChatMessage {
   from: "user" | "assistant";
@@ -23,55 +24,6 @@ const SUGGESTIONS = [
   "What is my largest position?",
   "What if markets drop 20%?",
 ];
-
-// Format assistant text: handle **bold**, line breaks, and bullet points
-function FormatText({ text }: { text: string }) {
-  const lines = text.split("\n");
-
-  return (
-    <>
-      {lines.map((line, i) => {
-        // Handle bullet points
-        const isBullet = line.trim().startsWith("- ") || line.trim().startsWith("• ");
-        const bulletContent = isBullet ? line.trim().replace(/^[-•]\s*/, "") : null;
-
-        // Process inline formatting (bold)
-        const formatInline = (str: string) => {
-          const parts = str.split(/(\*\*.*?\*\*)/g);
-          return parts.map((part, j) => {
-            if (part.startsWith("**") && part.endsWith("**")) {
-              return (
-                <span key={j} style={{ fontWeight: 600, color: "#0F0E0C" }}>
-                  {part.slice(2, -2)}
-                </span>
-              );
-            }
-            return <span key={j}>{part}</span>;
-          });
-        };
-
-        if (isBullet && bulletContent) {
-          return (
-            <div key={i} style={{ display: "flex", gap: 6, paddingLeft: 2, marginTop: i > 0 ? 3 : 0 }}>
-              <span style={{ color: "#9CA3AF", flexShrink: 0 }}>·</span>
-              <span>{formatInline(bulletContent)}</span>
-            </div>
-          );
-        }
-
-        if (line.trim() === "") {
-          return <div key={i} style={{ height: 8 }} />;
-        }
-
-        return (
-          <div key={i} style={{ marginTop: i > 0 && lines[i - 1]?.trim() !== "" ? 2 : 0 }}>
-            {formatInline(line)}
-          </div>
-        );
-      })}
-    </>
-  );
-}
 
 export default function ChatPopup({
   userId, isOpen, hasNew, onToggle, onPortfolioUpdate, onNewMessage, onOpen,
@@ -176,7 +128,7 @@ export default function ChatPopup({
     setThinking(true);
     setMessages((prev) => [...prev, { from: "user", text: displayText }]);
 
-    const payload: any = { userId, message: text };
+    const payload: { userId: string; message: string; imageData?: { base64: string; mediaType: string } } = { userId, message: text };
     if (imageData) {
       payload.imageData = imageData;
     }

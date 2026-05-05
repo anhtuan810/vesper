@@ -3,6 +3,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
 import { buildSystemPrompt, buildOnboardingPrompt } from "@/lib/claude";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
+import { validateEnv } from "@/lib/env";
+
+validateEnv();
 
 const anthropic = new Anthropic();
 
@@ -225,7 +228,7 @@ export async function POST(req: NextRequest) {
               );
 
               if (existing) {
-                const updateData: Record<string, any> = {};
+                const updateData: Record<string, unknown> = {};
                 if (change.value !== undefined) updateData.value = change.value;
                 if (change.type !== undefined) updateData.type = change.type;
                 if (change.currency !== undefined) updateData.currency = change.currency;
