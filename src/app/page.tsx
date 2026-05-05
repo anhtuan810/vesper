@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { user, loading: userLoading } = useUser();
   const profile = useProfile(user?.id);
   const {
-    assets, loading: assetsLoading, refreshing, lastUpdated,
+    assets, loading: assetsLoading, error: assetsError, refreshing, lastUpdated,
     refreshPrices, refetchAssets,
   } = useAssets(user?.id);
   const signOut = useSignOut();
@@ -60,11 +60,12 @@ export default function Dashboard() {
 
   const fetchMutations = useCallback(async () => {
     if (!user?.id) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("mutations")
       .select("*")
       .eq("user_id", user.id)
       .order("occurred_at", { ascending: false, nullsFirst: false });
+    if (error) { console.error("Failed to load diary:", error.message); return; }
     setMutations(data || []);
   }, [user?.id]);
 
@@ -85,8 +86,49 @@ export default function Dashboard() {
 
   if (userLoading || assetsLoading) {
     return (
+      <div className="min-h-screen bg-[#F8F7F4]">
+        <div className="h-14 bg-white border-b border-black/5" />
+        <div className="max-w-2xl mx-auto px-4 pt-6 space-y-3">
+          <div className="bg-white rounded-2xl border border-black/5 p-8 animate-pulse">
+            <div className="flex gap-8">
+              <div className="w-28 h-28 rounded-full bg-[#F0EEE9] shrink-0" />
+              <div className="flex-1 space-y-3 pt-1">
+                <div className="h-2.5 w-16 bg-[#F0EEE9] rounded-full" />
+                <div className="h-10 w-40 bg-[#F0EEE9] rounded-lg" />
+                <div className="space-y-2 pt-2">
+                  <div className="h-2 bg-[#F0EEE9] rounded-full" />
+                  <div className="h-2 w-4/5 bg-[#F0EEE9] rounded-full" />
+                  <div className="h-2 w-3/5 bg-[#F0EEE9] rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-black/5 p-5 animate-pulse flex justify-between items-center">
+              <div className="space-y-2">
+                <div className="h-2.5 w-24 bg-[#F0EEE9] rounded-full" />
+                <div className="h-4 w-16 bg-[#F0EEE9] rounded-full" />
+              </div>
+              <div className="h-3 w-12 bg-[#F0EEE9] rounded-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (assetsError) {
+    return (
       <div className="min-h-screen bg-[#F8F7F4] flex items-center justify-center">
-        <div className="text-[#9CA3AF] text-sm">Loading…</div>
+        <div className="text-center">
+          <div className="text-sm text-gray-400 mb-2">Failed to load your portfolio.</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs text-[#2563EB] hover:underline"
+          >
+            Reload
+          </button>
+        </div>
       </div>
     );
   }

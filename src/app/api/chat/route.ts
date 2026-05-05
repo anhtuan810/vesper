@@ -10,6 +10,12 @@ validateEnv();
 
 const anthropic = new Anthropic();
 
+const TAG_RE = /<(changes|update|context|goal)>[\s\S]*?<\/\1>/g;
+function stripTags(text: string) { return text.replace(TAG_RE, "").trim(); }
+function extractTag(text: string, tag: string) {
+  return text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))?.[1] ?? null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
@@ -38,10 +44,14 @@ export async function POST(req: NextRequest) {
       .eq("user_id", userId)
       .gte("created_at", today.toISOString());
 
-    if (messageCount && messageCount >= 50) {
+    const DAILY_LIMIT = 50;
+    const used = messageCount ?? 0;
+
+    if (used >= DAILY_LIMIT) {
       return NextResponse.json({
         message: "You've reached today's message limit (50). Come back tomorrow!",
         assets: null,
+        remaining: 0,
       });
     }
 
@@ -87,12 +97,7 @@ export async function POST(req: NextRequest) {
       .slice(-6)
       .map((m) => ({
         role: m.role as "user" | "assistant",
-        content: m.content
-          .replace(/<changes>[\s\S]*?<\/changes>/g, "")
-          .replace(/<update>[\s\S]*?<\/update>/g, "")
-          .replace(/<context>[\s\S]*?<\/context>/g, "")
-          .replace(/<goal>[\s\S]*?<\/goal>/g, "")
-          .trim(),
+        content: stripTags(m.content),
       }))
       .filter((m) => m.content.length > 0);
 
@@ -155,23 +160,18 @@ export async function POST(req: NextRequest) {
     console.log("CLAUDE RAW:", raw.substring(0, 500));
 
     // --- Parse response ---
-    const changesMatch = raw.match(/<changes>([\s\S]*?)<\/changes>/);
-    const contextMatch = raw.match(/<context>([\s\S]*?)<\/context>/);
-    const goalMatch = raw.match(/<goal>([\s\S]*?)<\/goal>/);
-    const displayText = raw
-      .replace(/<changes>[\s\S]*?<\/changes>/g, "")
-      .replace(/<update>[\s\S]*?<\/update>/g, "")
-      .replace(/<context>[\s\S]*?<\/context>/g, "")
-      .replace(/<goal>[\s\S]*?<\/goal>/g, "")
-      .trim();
+    const changesRaw = extractTag(raw, "changes");
+    const contextRaw = extractTag(raw, "context");
+    const goalRaw = extractTag(raw, "goal");
+    const displayText = stripTags(raw);
 
     let portfolioChanged = false;
 
     // --- Handle portfolio changes ---
-    if (changesMatch) {
-      console.log("CHANGES FOUND:", changesMatch[1].trim());
+    if (changesRaw) {
+      console.log("CHANGES FOUND:", changesRaw.trim());
       try {
-        const changes = JSON.parse(changesMatch[1].trim());
+        const changes = JSON.parse(changesRaw.trim());
         console.log("PARSED CHANGES:", changes.length, "operations");
 
         if (Array.isArray(changes) && changes.length > 0) {
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
                   asset_type: change.type || "other",
                   symbol: change.symbol || null,
                   after_value: resolvedValue,
-                  personal_context: contextMatch?.[1]?.trim() || null,
+                  personal_context: contextRaw?.trim() || null,
                   portfolio_total: currentTotal + resolvedValue,
                   occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
                 });
@@ -281,7 +281,7 @@ export async function POST(req: NextRequest) {
                     symbol: existing.symbol || null,
                     before_value: existing.value,
                     after_value: change.value || existing.value,
-                    personal_context: contextMatch?.[1]?.trim() || null,
+                    personal_context: contextRaw?.trim() || null,
                     portfolio_total: currentTotal,
                     occurred_at: new Date().toISOString().split("T")[0],
                   });
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest) {
                     asset_type: existing.type,
                     symbol: existing.symbol || null,
                     before_value: existing.value,
-                    personal_context: contextMatch?.[1]?.trim() || null,
+                    personal_context: contextRaw?.trim() || null,
                     portfolio_total: currentTotal - existing.value,
                     occurred_at: new Date().toISOString().split("T")[0],
                   });
@@ -345,9 +345,9 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Handle goal ---
-    if (goalMatch) {
+    if (goalRaw) {
       try {
-        const goal = JSON.parse(goalMatch[1].trim());
+        const goal = JSON.parse(goalRaw.trim());
         await supabase.from("goals").insert({
           user_id: userId,
           title: goal.title,
@@ -366,7 +366,7 @@ export async function POST(req: NextRequest) {
     });
 
     // --- Extract profile insights (fire-and-forget, non-blocking) ---
-    if (message && displayText && !isNewUser && !changesMatch) {
+    if (message && displayText && !isNewUser && !changesRaw) {
       extractProfileUpdate(userId, message, displayText, profile).catch((err) =>
         console.error("Profile extraction background error:", err)
       );
@@ -375,6 +375,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: displayText || "Done.",
       assets: updatedAssets,
+      remaining: DAILY_LIMIT - used - 1,
     });
   } catch (err) {
     console.error("Chat API error:", err);

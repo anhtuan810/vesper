@@ -41,6 +41,7 @@ export default function ChatPopup({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageData, setImageData] = useState<{ base64: string; mediaType: string } | null>(null);
   const [size, setSize] = useState({ width: 400, height: 560 });
@@ -156,11 +157,19 @@ export default function ChatPopup({
 
       const data = await res.json();
       setThinking(false);
-      setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
 
-      if (data.assets) {
-        onPortfolioUpdate();
+      if (!res.ok) {
+        const errText = res.status === 401
+          ? "Session expired. Please refresh the page."
+          : data.message || "Something went wrong. Please try again.";
+        setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
+        setLoading(false);
+        return;
       }
+
+      setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
+      if (typeof data.remaining === "number") setRemaining(data.remaining);
+      if (data.assets) onPortfolioUpdate();
       onNewMessage();
     } catch {
       setThinking(false);
@@ -325,8 +334,29 @@ export default function ChatPopup({
         </div>
       )}
 
+      {/* Quick suggestions — compact strip shown after conversation starts */}
+      {messages.length > 0 && !loading && (
+        <div className="px-4 pt-2 pb-1 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => { setInput(s); inputRef.current?.focus(); }}
+              className="shrink-0 text-[11px] text-gray-400 px-2.5 py-1 rounded-lg border border-black/[0.06] bg-[#F8F7F4] hover:bg-[#ECEAE4] transition-colors whitespace-nowrap"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
-      <div className="px-4 py-3 border-t border-black/5 flex gap-2 items-center">
+      <div className="px-4 py-3 border-t border-black/5 flex gap-2 items-center" style={{ position: "relative" }}>
+        {remaining !== null && remaining <= 10 && (
+          <div className="absolute -top-5 right-4 text-[10px] text-amber-500">
+            {remaining === 0 ? "Limit reached" : `${remaining} messages left today`}
+          </div>
+        )}
         <input
           ref={inputRef}
           value={input}

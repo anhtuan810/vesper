@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
+import { normalizePrice } from "@/lib/prices";
 
 interface PriceData {
   symbol: string;
@@ -54,17 +55,19 @@ export function useAssets(userId: string | undefined) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const supabase = createBrowserSupabase();
 
   const fetchAssets = useCallback(async () => {
     if (!userId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("assets")
       .select("*")
       .eq("user_id", userId)
       .order("value", { ascending: false });
+    if (error) { setError(true); setLoading(false); return; }
     setAssets(data || []);
     setLoading(false);
   }, [userId]);
@@ -97,14 +100,14 @@ export function useAssets(userId: string | undefined) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAssets(); }, [fetchAssets]);
 
+  const symbolKey = assets.map((a) => a.symbol ?? "").join(",");
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (assets.length > 0) fetchPrices(); }, [assets.length, fetchPrices]);
+  useEffect(() => { if (assets.length > 0) fetchPrices(); }, [symbolKey, fetchPrices]);
 
   const liveAssets: LiveAsset[] = assets.map((a) => {
     if (a.symbol && a.units && prices[a.symbol]) {
       const p = prices[a.symbol];
-      let price = p.price;
-      if (p.currency === "GBp") price = price / 100;
+      const price = normalizePrice(p.price, p.currency);
       return { ...a, value: Math.round(price * a.units), livePrice: price, livePrev: p.previousClose };
     }
     return a;
@@ -114,6 +117,7 @@ export function useAssets(userId: string | undefined) {
     assets: liveAssets,
     rawAssets: assets,
     loading,
+    error,
     refreshing,
     lastUpdated,
     refreshPrices: fetchPrices,

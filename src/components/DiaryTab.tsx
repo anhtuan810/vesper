@@ -232,6 +232,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   useEffect(() => {
     if (withTotal.length === 0) return;
     const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
     setSummary(null);
     setSummaryLoading(true);
 
@@ -254,10 +255,10 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
       }),
     })
       .then((r) => r.json())
-      .then((d) => { if (!controller.signal.aborted) { setSummary(d.summary || null); setSummaryLoading(false); } })
-      .catch(() => { if (!controller.signal.aborted) setSummaryLoading(false); });
+      .then((d) => { clearTimeout(timeout); if (!controller.signal.aborted) { setSummary(d.summary || null); setSummaryLoading(false); } })
+      .catch(() => { clearTimeout(timeout); if (!controller.signal.aborted) setSummaryLoading(false); });
 
-    return () => controller.abort();
+    return () => { controller.abort(); clearTimeout(timeout); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryKey]);
 
