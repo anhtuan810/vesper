@@ -9,7 +9,12 @@ interface DiaryTabProps {
 }
 
 export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabProps) {
-  const filteredMutations = diaryFilter === "all" ? mutations : mutations.filter(m => m.action === diaryFilter);
+  const hasContent = (m: DashboardMutation) =>
+    m.before_value != null || m.after_value != null || !!m.personal_context;
+
+  const filteredMutations = mutations
+    .filter(hasContent)
+    .filter(m => diaryFilter === "all" || m.action === diaryFilter);
 
   const grouped = filteredMutations.reduce((acc, m) => {
     const key = getMonthKey(m.occurred_at || m.recorded_at);
@@ -19,6 +24,15 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
   }, {} as Record<string, DashboardMutation[]>);
 
   const monthKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+  for (const key of monthKeys) {
+    grouped[key].sort((a, b) => {
+      const dayA = a.occurred_at ?? a.recorded_at;
+      const dayB = b.occurred_at ?? b.recorded_at;
+      if (dayA !== dayB) return dayB.localeCompare(dayA);
+      return b.recorded_at.localeCompare(a.recorded_at);
+    });
+  }
 
   return (
     <>
@@ -90,6 +104,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
               const date = m.occurred_at || m.recorded_at;
               const valueChange = m.action === "edit" && m.before_value != null && m.after_value != null
                 ? m.after_value - m.before_value : null;
+              const hasValueChange = valueChange !== null && valueChange !== 0;
 
               return (
                 <div
@@ -114,15 +129,13 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
                         {m.action === "add" && m.after_value != null && (
                           <span>{fmt(m.after_value)}</span>
                         )}
-                        {m.action === "edit" && m.before_value != null && m.after_value != null && (
+                        {m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null && (
                           <span>
                             {fmt(m.before_value)} → {fmt(m.after_value)}
-                            {valueChange !== null && (
-                              <span className="ml-1.5 font-medium"
-                                style={{ color: valueChange >= 0 ? "#059669" : "#DC2626" }}>
-                                {valueChange >= 0 ? "+" : ""}{fmt(valueChange)}
-                              </span>
-                            )}
+                            <span className="ml-1.5 font-medium"
+                              style={{ color: valueChange! >= 0 ? "#059669" : "#DC2626" }}>
+                              {valueChange! >= 0 ? "+" : ""}{fmt(valueChange!)}
+                            </span>
                           </span>
                         )}
                         {m.action === "remove" && m.before_value != null && (

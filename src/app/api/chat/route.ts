@@ -4,6 +4,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { buildSystemPrompt, buildOnboardingPrompt } from "@/lib/claude";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { validateEnv } from "@/lib/env";
+import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
 
 validateEnv();
 
@@ -185,15 +186,29 @@ export async function POST(req: NextRequest) {
             const name = change.name;
 
             if (action === "add") {
+              // Auto-fill value from historical price when value is 0 but we have symbol + units
+              let resolvedValue: number = change.value || 0;
+              let resolvedBuyPrice: number | null = change.buy_price || null;
+              if (resolvedValue === 0 && change.symbol && change.units) {
+                console.log("AUTO-FILL: fetching price for", change.symbol, "on", change.buy_date || "today");
+                const priceData = await fetchHistoricalPrice(change.symbol, change.buy_date || null);
+                if (priceData) {
+                  const p = normalizePrice(priceData.price, priceData.currency);
+                  resolvedValue = Math.round(p * change.units);
+                  if (!resolvedBuyPrice) resolvedBuyPrice = Math.round(p * 100) / 100;
+                  console.log("AUTO-FILL: resolved value =", resolvedValue);
+                }
+              }
+
               const insertData = {
                 name: name,
                 type: change.type || "other",
-                value: change.value || 0,
+                value: resolvedValue,
                 currency: change.currency || "EUR",
                 country: change.country || null,
                 symbol: change.symbol || null,
                 units: change.units || null,
-                buy_price: change.buy_price || null,
+                buy_price: resolvedBuyPrice,
                 buy_date: change.buy_date || null,
                 buy_price_source: change.buy_price_source || null,
                 mortgage_balance: change.mortgage_balance || null,
@@ -206,18 +221,19 @@ export async function POST(req: NextRequest) {
               };
 
               console.log("ADDING:", name);
-              const { error } = await supabase.from("assets").insert(insertData);
+              const { data: inserted, error } = await supabase.from("assets").insert(insertData).select("id").single();
               if (error) {
                 console.error("ADD ERROR:", error);
               } else {
                 portfolioChanged = true;
                 await supabase.from("mutations").insert({
                   user_id: userId,
+                  asset_id: inserted?.id || null,
                   asset_name: name,
                   action: "add",
-                  after_value: change.value || 0,
+                  after_value: resolvedValue,
                   personal_context: contextMatch?.[1]?.trim() || null,
-                  portfolio_total: currentTotal + (change.value || 0),
+                  portfolio_total: currentTotal + resolvedValue,
                   occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
                 });
               }

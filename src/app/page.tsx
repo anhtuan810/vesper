@@ -39,6 +39,23 @@ export default function Dashboard() {
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
+  // Backfill zero-value assets when diary tab is opened (runs once per session)
+  useEffect(() => {
+    if (tab !== "diary" || !user?.id) return;
+    fetch("/api/backfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id }),
+    }).then(async (res) => {
+      const { updated } = await res.json();
+      if (updated > 0) {
+        refetchAssets();
+        fetchMutations();
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, user?.id]);
+
   if (userLoading || assetsLoading) {
     return (
       <div className="min-h-screen bg-[#F8F7F4] flex items-center justify-center">
