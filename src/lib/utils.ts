@@ -27,6 +27,8 @@ export interface DashboardMutation {
   portfolio_total: number | null;
   occurred_at: string | null;
   recorded_at: string;
+  asset_type: string | null;
+  symbol: string | null;
 }
 
 export function fmt(n: number): string {

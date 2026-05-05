@@ -6,7 +6,7 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { DiaryTab } from "@/components/DiaryTab";
 import { ProfileTab } from "@/components/ProfileTab";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getWarnings, type DashboardMutation } from "@/lib/utils";
 import type { LiveAsset } from "@/lib/supabase";
@@ -31,6 +31,17 @@ export default function Dashboard() {
   });
   const [mutations, setMutations] = useState<DashboardMutation[]>([]);
   const [diaryFilter, setDiaryFilter] = useState<string>("all");
+
+  const enrichedMutations = useMemo(() =>
+    mutations.map(m => {
+      // Prefer values stored directly in the DB (survive asset deletion)
+      if (m.asset_type || m.symbol) return m;
+      // Fall back to matching current assets by name (for older rows without DB columns)
+      const asset = assets.find(a => a.name.toLowerCase() === m.asset_name?.toLowerCase());
+      return { ...m, asset_type: asset?.type ?? null, symbol: asset?.symbol ?? null };
+    }),
+    [mutations, assets]
+  );
 
   const setTab = (t: "portfolio" | "diary" | "profile") => {
     setTabState(t);
@@ -139,12 +150,12 @@ export default function Dashboard() {
               totalDebt={totalDebt}
               topAsset={topAsset as LiveAsset}
               warnings={warnings}
-              mutations={mutations}
+              mutations={enrichedMutations}
               setTab={setTab}
             />
           ) : tab === "diary" ? (
             <DiaryTab
-              mutations={mutations}
+              mutations={enrichedMutations}
               diaryFilter={diaryFilter}
               setDiaryFilter={setDiaryFilter}
             />

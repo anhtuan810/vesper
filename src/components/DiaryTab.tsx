@@ -1,7 +1,105 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { fmt, formatDate, getMonthKey, getMonthLabel, ACTION_STYLE, type DashboardMutation } from "@/lib/utils";
+import { fmt, formatDate, getMonthKey, getMonthLabel, ACTION_STYLE, TYPE_COLOR, type DashboardMutation } from "@/lib/utils";
+
+// ── Asset icon ─────────────────────────────────────────────────────────────────
+const TYPE_ICON: Record<string, React.ReactNode> = {
+  real_estate: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M3 12L12 4L21 12V21H15V15H9V21H3V12Z" />
+    </svg>
+  ),
+  gold: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <rect x="3" y="9" width="18" height="7" rx="1.5" />
+      <path d="M7 9V7M12 9V6M17 9V7" />
+    </svg>
+  ),
+  bonds: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8H16M8 12H16M8 16H12" />
+    </svg>
+  ),
+  cash: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <rect x="2" y="7" width="20" height="11" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 10V14M18 10V14" />
+    </svg>
+  ),
+  pension: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M12 4C7.5 4 3.5 7.5 3 12H21C20.5 7.5 16.5 4 12 4Z" />
+      <path d="M12 12V18C12 19.1 12.9 20 14 20C15.1 20 16 19.1 16 18" />
+    </svg>
+  ),
+  crypto: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9 8.5H13C14.1 8.5 15 9.4 15 10.5C15 11.6 14.1 12.5 13 12.5H9V8.5Z" />
+      <path d="M9 12.5H13.5C14.6 12.5 15.5 13.4 15.5 14.5C15.5 15.6 14.6 16.5 13.5 16.5H9V12.5Z" />
+      <path d="M11 8.5V7M11 17V18M13 8.5V7M13 17V18" />
+    </svg>
+  ),
+  stocks: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <polyline points="4,17 9,11 14,14 20,7" />
+      <path d="M4 20H20" />
+    </svg>
+  ),
+  etf: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <rect x="3" y="13" width="4" height="8" rx="1" />
+      <rect x="10" y="8" width="4" height="13" rx="1" />
+      <rect x="17" y="4" width="4" height="17" rx="1" />
+    </svg>
+  ),
+  other: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  ),
+};
+
+function AssetIcon({ type, symbol }: { type: string | null; symbol: string | null }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const assetType = type || "other";
+  const color = TYPE_COLOR[assetType] || TYPE_COLOR.other;
+
+  // Use logo for market-traded assets that have a ticker
+  const useLogoTypes = ["stocks", "etf", "crypto"];
+  const logoSymbol = symbol
+    ? symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase()
+    : null;
+
+  if (logoSymbol && useLogoTypes.includes(assetType) && !imgFailed) {
+    return (
+      <div className="w-8 h-8 rounded-lg border border-black/5 bg-white overflow-hidden shrink-0 flex items-center justify-center">
+        <img
+          src={`https://assets.parqet.com/logos/symbol/${logoSymbol}?format=png`}
+          alt={logoSymbol}
+          className="w-full h-full object-contain"
+          onError={() => setImgFailed(true)}
+        />
+      </div>
+    );
+  }
+
+  const icon = TYPE_ICON[assetType] || TYPE_ICON.other;
+  return (
+    <div
+      className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center"
+      style={{ background: `${color}15`, color }}
+    >
+      {icon}
+    </div>
+  );
+}
 
 interface DiaryTabProps {
   mutations: DashboardMutation[];
@@ -490,63 +588,66 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
               return (
                 <div
                   key={m.id}
-                  className="bg-white rounded-xl border border-black/5 px-5 py-4 hover:border-black/10 transition"
+                  className="bg-white rounded-xl border border-black/5 px-4 py-4 hover:border-black/10 transition"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded"
-                          style={{ color: style.color, background: style.bg }}
-                        >
-                          {style.label}
-                        </span>
-                        <span className="text-sm font-semibold text-[#0F0E0C] truncate">
-                          {m.asset_name}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs text-gray-400">
-                        {m.action === "add" && m.after_value != null && (
-                          <span>{fmt(m.after_value)}</span>
-                        )}
-                        {m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null && (
-                          <span>
-                            {fmt(m.before_value)} → {fmt(m.after_value)}
-                            <span
-                              className="ml-1.5 font-medium"
-                              style={{ color: valueChange! >= 0 ? "#059669" : "#DC2626" }}
-                            >
-                              {valueChange! >= 0 ? "+" : ""}{fmt(valueChange!)}
-                            </span>
+                  <div className="flex items-start gap-3">
+                    <AssetIcon type={m.asset_type} symbol={m.symbol} />
+                    <div className="flex-1 min-w-0 flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded"
+                            style={{ color: style.color, background: style.bg }}
+                          >
+                            {style.label}
                           </span>
+                          <span className="text-sm font-semibold text-[#0F0E0C] truncate">
+                            {m.asset_name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          {m.action === "add" && m.after_value != null && (
+                            <span>{fmt(m.after_value)}</span>
+                          )}
+                          {m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null && (
+                            <span>
+                              {fmt(m.before_value)} → {fmt(m.after_value)}
+                              <span
+                                className="ml-1.5 font-medium"
+                                style={{ color: valueChange! >= 0 ? "#059669" : "#DC2626" }}
+                              >
+                                {valueChange! >= 0 ? "+" : ""}{fmt(valueChange!)}
+                              </span>
+                            </span>
+                          )}
+                          {m.action === "remove" && m.before_value != null && (
+                            <span>{fmt(m.before_value)}</span>
+                          )}
+                        </div>
+
+                        {m.personal_context && (
+                          <div className="text-xs text-gray-400 mt-2 leading-relaxed italic">
+                            &ldquo;{m.personal_context}&rdquo;
+                          </div>
                         )}
-                        {m.action === "remove" && m.before_value != null && (
-                          <span>{fmt(m.before_value)}</span>
+                        {m.market_context && (
+                          <div className="text-[10px] text-gray-300 mt-1.5 leading-relaxed">
+                            {m.market_context}
+                          </div>
                         )}
                       </div>
 
-                      {m.personal_context && (
-                        <div className="text-xs text-gray-400 mt-2 leading-relaxed italic">
-                          &ldquo;{m.personal_context}&rdquo;
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-medium text-gray-400">
+                          {formatDate(date)}
                         </div>
-                      )}
-                      {m.market_context && (
-                        <div className="text-[10px] text-gray-300 mt-1.5 leading-relaxed">
-                          {m.market_context}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="text-xs font-medium text-gray-400">
-                        {formatDate(date)}
+                        {m.portfolio_total != null && (
+                          <div className="text-[10px] text-gray-300 mt-1">
+                            Total: {fmt(m.portfolio_total)}
+                          </div>
+                        )}
                       </div>
-                      {m.portfolio_total != null && (
-                        <div className="text-[10px] text-gray-300 mt-1">
-                          Total: {fmt(m.portfolio_total)}
-                        </div>
-                      )}
                     </div>
                   </div>
 
