@@ -25,10 +25,19 @@ const SUGGESTIONS = [
   "What if markets drop 20%?",
 ];
 
+const STORAGE_KEY = "vesper_chat_history";
+
 export default function ChatPopup({
   userId, isOpen, hasNew, onToggle, onPortfolioUpdate, onNewMessage, onOpen,
 }: ChatPopupProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      return stored ? (JSON.parse(stored) as ChatMessage[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [thinking, setThinking] = useState(false);
@@ -39,6 +48,10 @@ export default function ChatPopup({
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch { /* quota exceeded */ }
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

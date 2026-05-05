@@ -27,8 +27,8 @@ export function PortfolioTab({
   return (
     <>
       {/* Hero: Net worth + Donut + Allocation */}
-      <div className="bg-white rounded-2xl border border-black/5 p-8 mb-4">
-        <div className="flex items-start gap-10">
+      <div className="bg-white rounded-2xl border border-black/5 p-5 sm:p-8 mb-4">
+        <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-10">
           <div className="shrink-0">
             <DonutChart data={sorted} total={grossTotal} netTotal={netTotal} />
           </div>
@@ -106,7 +106,7 @@ export function PortfolioTab({
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {[
           { label: "Positions", value: assets.length },
           { label: "Countries", value: countries.length || "—" },
@@ -166,84 +166,94 @@ export function PortfolioTab({
 
       {/* Positions table */}
       <div className="bg-white rounded-2xl border border-black/5 overflow-hidden">
-        <div className="px-6 py-3 border-b border-black/5 flex justify-between items-center">
+        <div className="px-4 sm:px-6 py-3 border-b border-black/5 flex justify-between items-center">
           <div className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider">Positions</div>
           <div className="text-[11px] text-gray-300">{assets.length} holdings</div>
         </div>
-        <div>
-          <div className="grid grid-cols-[2fr_90px_70px_100px_80px] px-6 py-2 border-b border-black/[0.03]">
-            {["Name", "Type", "Ctry", "Value", "Day"].map((h, i) => (
-              <div key={h} className={`text-[10px] font-semibold text-gray-300 uppercase tracking-wider ${i >= 3 ? "text-right" : ""}`}>
-                {h}
-              </div>
-            ))}
-          </div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[480px]">
+            <div className="grid grid-cols-[2fr_80px_60px_100px_76px] px-4 sm:px-6 py-2 border-b border-black/[0.03]">
+              {["Name", "Type", "Ctry", "Value", "Day"].map((h, i) => (
+                <div key={h} className={`text-[10px] font-semibold text-gray-300 uppercase tracking-wider ${i >= 3 ? "text-right" : ""}`}>
+                  {h}
+                </div>
+              ))}
+            </div>
 
-          {[...assets].sort((a, b) => b.value - a.value).map((asset) => {
-            const isLive = !!asset.livePrice;
-            const chg = pctChange(asset.livePrice, asset.livePrev);
-            const up = chg !== null && chg >= 0;
-            const equity = asset.type === "real_estate" && asset.mortgage_balance
-              ? asset.value - asset.mortgage_balance : asset.value;
-            const positionPct = (asset.value / grossTotal) * 100;
+            {[...assets].sort((a, b) => b.value - a.value).map((asset) => {
+              const isLive = !!asset.livePrice;
+              const chg = pctChange(asset.livePrice, asset.livePrev);
+              const up = chg !== null && chg >= 0;
+              const equity = asset.type === "real_estate" && asset.mortgage_balance
+                ? asset.value - asset.mortgage_balance : asset.value;
+              const positionPct = (asset.value / grossTotal) * 100;
 
-            return (
-              <div
-                key={asset.id}
-                className="grid grid-cols-[2fr_90px_70px_100px_80px] px-6 py-3.5 hover:bg-[#FAFAF8] transition-colors border-b border-black/[0.02] last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 relative"
-                    style={{ background: `${TYPE_COLOR[asset.type]}10` }}
-                  >
-                    <div className="w-2 h-2 rounded-sm" style={{ background: TYPE_COLOR[asset.type] }} />
+              return (
+                <div
+                  key={asset.id}
+                  className="grid grid-cols-[2fr_80px_60px_100px_76px] px-4 sm:px-6 py-3.5 hover:bg-[#FAFAF8] transition-colors border-b border-black/[0.02] last:border-0"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 relative"
+                      style={{ background: `${TYPE_COLOR[asset.type]}10` }}
+                    >
+                      <div className="w-2 h-2 rounded-sm" style={{ background: TYPE_COLOR[asset.type] }} />
+                      {isLive && (
+                        <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-white" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-[#0F0E0C] tracking-tight truncate">{asset.name}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {asset.symbol && (
+                          <span className="text-[10px] font-mono text-gray-400">{asset.symbol}</span>
+                        )}
+                        {asset.units && (
+                          <span className="text-[11px] font-semibold text-gray-500">
+                            {asset.units.toLocaleString()} <span className="font-normal text-gray-400">units</span>
+                          </span>
+                        )}
+                        {asset.type === "real_estate" && asset.mortgage_balance && (
+                          <span className="text-[10px] text-gray-300">equity {fmt(equity)}</span>
+                        )}
+                        {!asset.symbol && !asset.mortgage_balance && !asset.units && (
+                          <span className="text-[10px] text-gray-200">manual</span>
+                        )}
+                        <span className="text-[10px] text-gray-300">{positionPct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="self-center">
+                    <span className="text-[10px] font-semibold rounded px-1.5 py-0.5"
+                      style={{ color: TYPE_COLOR[asset.type], background: `${TYPE_COLOR[asset.type]}10` }}>
+                      {TYPE_LABEL[asset.type]}
+                    </span>
+                  </div>
+                  <div className="text-xs font-medium text-gray-400 self-center">{asset.country || "—"}</div>
+                  <div className="text-right self-center">
+                    <div className="text-sm font-bold text-[#0F0E0C] tracking-tight">{fmt(asset.value)}</div>
                     {isLive && (
-                      <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-white" />
+                      <div className="text-[10px] text-gray-300 font-mono mt-0.5">
+                        @{asset.livePrice! >= 1000
+                          ? asset.livePrice!.toLocaleString("en", { maximumFractionDigits: 0 })
+                          : asset.livePrice!.toFixed(2)}
+                      </div>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-[#0F0E0C] tracking-tight truncate">{asset.name}</div>
-                    <div className="text-[10px] text-gray-300 mt-0.5 truncate">
-                      {asset.symbol && <span className="font-mono">{asset.symbol}</span>}
-                      {asset.units && <span> · {asset.units} units</span>}
-                      {asset.type === "real_estate" && asset.mortgage_balance && (
-                        <span> · equity {fmt(equity)}</span>
-                      )}
-                      {!asset.symbol && !asset.mortgage_balance && <span className="text-gray-200">manual</span>}
-                      <span className="text-gray-200"> · {positionPct.toFixed(1)}%</span>
-                    </div>
+                  <div className="text-right self-center">
+                    {isLive && chg !== null ? (
+                      <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold rounded px-1.5 py-0.5 ${up ? "text-emerald-600 bg-emerald-50" : "text-red-600 bg-red-50"}`}>
+                        {up ? "▲" : "▼"} {Math.abs(chg).toFixed(2)}%
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-gray-200">—</span>
+                    )}
                   </div>
                 </div>
-                <div className="self-center">
-                  <span className="text-[10px] font-semibold rounded px-1.5 py-0.5"
-                    style={{ color: TYPE_COLOR[asset.type], background: `${TYPE_COLOR[asset.type]}10` }}>
-                    {TYPE_LABEL[asset.type]}
-                  </span>
-                </div>
-                <div className="text-xs font-medium text-gray-400 self-center">{asset.country || "—"}</div>
-                <div className="text-right self-center">
-                  <div className="text-sm font-bold text-[#0F0E0C] tracking-tight">{fmt(asset.value)}</div>
-                  {isLive && (
-                    <div className="text-[10px] text-gray-300 font-mono mt-0.5">
-                      @{asset.livePrice! >= 1000
-                        ? asset.livePrice!.toLocaleString("en", { maximumFractionDigits: 0 })
-                        : asset.livePrice!.toFixed(2)}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right self-center">
-                  {isLive && chg !== null ? (
-                    <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold rounded px-1.5 py-0.5 ${up ? "text-emerald-600 bg-emerald-50" : "text-red-600 bg-red-50"}`}>
-                      {up ? "▲" : "▼"} {Math.abs(chg).toFixed(2)}%
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-gray-200">—</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </>

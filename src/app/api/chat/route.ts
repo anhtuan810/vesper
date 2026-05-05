@@ -224,7 +224,8 @@ export async function POST(req: NextRequest) {
 
             } else if (action === "edit") {
               const existing = currentAssets.find(
-                (a) => a.name.toLowerCase() === name.toLowerCase()
+                (a) => a.name.toLowerCase() === name.toLowerCase() ||
+                       (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
               );
 
               if (existing) {
@@ -270,7 +271,8 @@ export async function POST(req: NextRequest) {
 
             } else if (action === "remove") {
               const existing = currentAssets.find(
-                (a) => a.name.toLowerCase() === name.toLowerCase()
+                (a) => a.name.toLowerCase() === name.toLowerCase() ||
+                       (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
               );
 
               if (existing) {

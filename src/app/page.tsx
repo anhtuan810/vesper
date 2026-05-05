@@ -6,10 +6,12 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { DiaryTab } from "@/components/DiaryTab";
 import { ProfileTab } from "@/components/ProfileTab";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getWarnings, type DashboardMutation } from "@/lib/utils";
 import type { LiveAsset } from "@/lib/supabase";
+
+const supabase = createBrowserSupabase();
 
 export default function Dashboard() {
   const { user, loading: userLoading } = useUser();
@@ -25,20 +27,17 @@ export default function Dashboard() {
   const [mutations, setMutations] = useState<DashboardMutation[]>([]);
   const [diaryFilter, setDiaryFilter] = useState<string>("all");
 
-  const supabase = createBrowserSupabase();
-
-  useEffect(() => {
+  const fetchMutations = useCallback(async () => {
     if (!user?.id) return;
-    async function fetchMutations() {
-      const { data } = await supabase
-        .from("mutations")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("occurred_at", { ascending: false, nullsFirst: false });
-      setMutations(data || []);
-    }
-    fetchMutations();
-  }, [user?.id, assets]);
+    const { data } = await supabase
+      .from("mutations")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("occurred_at", { ascending: false, nullsFirst: false });
+    setMutations(data || []);
+  }, [user?.id]);
+
+  useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
   if (userLoading || assetsLoading) {
     return (
@@ -85,12 +84,23 @@ export default function Dashboard() {
           signOut={signOut}
         />
 
-        <div className="max-w-[960px] mx-auto px-8 pt-10 pb-36">
-          {assets.length === 0 ? (
-            <div className="text-center pt-20">
+        <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-36">
+          {assets.length === 0 && tab === "portfolio" ? (
+            <div className="flex flex-col items-center pt-24 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-[#2563EB]/10 flex items-center justify-center text-[#2563EB] text-2xl font-bold mb-6">
+                V
+              </div>
+              <div className="text-[48px] font-extrabold tracking-tighter text-[#0F0E0C] leading-none mb-3">€0</div>
               <div className="text-sm text-gray-400 mb-2">No positions yet</div>
-              <div className="text-6xl font-extrabold tracking-tighter text-[#0F0E0C] leading-none mb-6">€0</div>
-              <p className="text-gray-400 mb-8 text-sm">Use the assistant to add your first assets.</p>
+              <p className="text-gray-300 text-xs max-w-xs leading-relaxed mb-8">
+                Tell the assistant what you own — stocks, real estate, cash — and it will build your portfolio automatically.
+              </p>
+              <button
+                onClick={() => setChatOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-[#2563EB] text-white text-sm font-semibold hover:bg-[#1D4ED8] transition-colors"
+              >
+                Add your first asset →
+              </button>
             </div>
           ) : tab === "portfolio" ? (
             <PortfolioTab
@@ -126,6 +136,7 @@ export default function Dashboard() {
           onToggle={() => setChatOpen(!chatOpen)}
           onPortfolioUpdate={() => {
             refetchAssets();
+            fetchMutations();
             if (!chatOpen) setHasNew(true);
           }}
           onNewMessage={() => {
