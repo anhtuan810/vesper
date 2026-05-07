@@ -17,12 +17,12 @@ interface PortfolioTabProps {
   topAsset: LiveAsset | undefined;
   warnings: string[];
   mutations: DashboardMutation[];
-  setTab: (tab: "portfolio" | "diary" | "profile") => void;
+  onViewDiary: () => void;
 }
 
 export function PortfolioTab({
   assets, sorted, byType, grossTotal, netTotal, totalDebt,
-  topAsset, warnings, mutations, setTab,
+  topAsset, warnings, mutations, onViewDiary,
 }: PortfolioTabProps) {
   const countries = [...new Set(assets.map((a) => a.country).filter(Boolean))];
   const allocationItems = sorted.map(([type, val]) => ({
@@ -121,7 +121,7 @@ export function PortfolioTab({
               Recent activity
             </div>
             <button
-              onClick={() => setTab("diary")}
+              onClick={onViewDiary}
               className="font-mono text-accent hover:opacity-80 transition-opacity"
               style={{ fontSize: 11, letterSpacing: "0.04em" }}
             >

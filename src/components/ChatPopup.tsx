@@ -30,14 +30,14 @@ const STORAGE_KEY = "vesper_chat_history";
 export default function ChatPopup({
   userId, isOpen, hasNew, onToggle, onPortfolioUpdate, onNewMessage, onOpen,
 }: ChatPopupProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  useEffect(() => {
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY);
-      return stored ? (JSON.parse(stored) as ChatMessage[]) : [];
-    } catch {
-      return [];
-    }
-  });
+      if (stored) setMessages(JSON.parse(stored) as ChatMessage[]);
+    } catch {}
+  }, []);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [thinking, setThinking] = useState(false);

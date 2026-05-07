@@ -1,11 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useUser, useAssets, useProfile, useSignOut } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
-import { DiaryTab } from "@/components/DiaryTab";
-import { ProfileTab } from "@/components/ProfileTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getWarnings, type DashboardMutation } from "@/lib/utils";
@@ -14,6 +13,7 @@ import type { LiveAsset } from "@/lib/supabase";
 const supabase = createBrowserSupabase();
 
 export default function Dashboard() {
+  const router = useRouter();
   const { user, loading: userLoading } = useUser();
   const profile = useProfile(user?.id);
   const {
@@ -23,40 +23,22 @@ export default function Dashboard() {
   const signOut = useSignOut();
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
-  const [tab, setTabState] = useState<"portfolio" | "diary" | "profile">(() => {
-    try {
-      if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("welcome")) {
-        localStorage.removeItem("vesper_tab");
-        return "portfolio";
-      }
-      const saved = localStorage.getItem("vesper_tab");
-      return (saved as "portfolio" | "diary" | "profile") || "portfolio";
-    } catch { return "portfolio"; }
-  });
+  const [mutations, setMutations] = useState<DashboardMutation[]>([]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("welcome")) {
       window.history.replaceState({}, "", "/");
     }
   }, []);
-  const [mutations, setMutations] = useState<DashboardMutation[]>([]);
-  const [diaryFilter, setDiaryFilter] = useState<string>("all");
 
   const enrichedMutations = useMemo(() =>
     mutations.map(m => {
-      // Prefer values stored directly in the DB (survive asset deletion)
       if (m.asset_type || m.symbol) return m;
-      // Fall back to matching current assets by name (for older rows without DB columns)
       const asset = assets.find(a => a.name.toLowerCase() === m.asset_name?.toLowerCase());
       return { ...m, asset_type: asset?.type ?? null, symbol: asset?.symbol ?? null };
     }),
     [mutations, assets]
   );
-
-  const setTab = (t: "portfolio" | "diary" | "profile") => {
-    setTabState(t);
-    try { localStorage.setItem("vesper_tab", t); } catch {}
-  };
 
   const fetchMutations = useCallback(async () => {
     if (!user?.id) return;
@@ -71,18 +53,9 @@ export default function Dashboard() {
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
-  // Backfill zero-value assets when diary tab is opened (runs once per session)
-  useEffect(() => {
-    if (tab !== "diary" || !user?.id) return;
-    fetch("/api/backfill", { method: "POST" }).then(async (res) => {
-      const { updated } = await res.json();
-      if (updated > 0) {
-        refetchAssets();
-        fetchMutations();
-      }
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, user?.id]);
+  const setTab = (t: "portfolio" | "diary" | "profile") => {
+    if (t !== "portfolio") router.push("/" + t);
+  };
 
   if (userLoading || assetsLoading) {
     return (
@@ -152,80 +125,70 @@ export default function Dashboard() {
   const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
 
   return (
-    <>
-      <div className="min-h-screen bg-bg">
-        <NavBar
-          tab={tab}
-          setTab={setTab}
-          mutationCount={mutations.length}
-          liveCount={liveCount}
-          totalSymbols={totalSymbols}
-          lastUpdated={lastUpdated}
-          refreshing={refreshing}
-          refreshPrices={refreshPrices}
-          avatarUrl={profile?.avatar_url}
-          signOut={signOut}
-        />
+    <div className="min-h-screen bg-bg">
+      <NavBar
+        tab="portfolio"
+        setTab={setTab}
+        mutationCount={mutations.length}
+        liveCount={liveCount}
+        totalSymbols={totalSymbols}
+        lastUpdated={lastUpdated}
+        refreshing={refreshing}
+        refreshPrices={refreshPrices}
+        avatarUrl={profile?.avatar_url}
+        signOut={signOut}
+      />
 
-        <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-36">
-          {assets.length === 0 && tab === "portfolio" ? (
-            <div className="flex flex-col items-center pt-24 text-center">
-              <div
-                className="flex items-center justify-center mb-6 font-serif text-accent"
-                style={{
-                  width: 56, height: 56, borderRadius: 14,
-                  background: "var(--accent-soft)",
-                  border: "1px solid rgba(212,165,116,0.18)",
-                  fontSize: 22, fontVariationSettings: "'opsz' 144",
-                }}
-              >
-                V
-              </div>
-              <div
-                className="font-serif font-light text-fg leading-none mb-3"
-                style={{ fontSize: 48, letterSpacing: "-0.035em", fontVariationSettings: "'opsz' 144" }}
-              >
-                €0
-              </div>
-              <div className="text-sm text-dim mb-2">No positions yet</div>
-              <p className="text-faint text-xs max-w-xs leading-relaxed mb-8">
-                Tell the assistant what you own — stocks, real estate, cash — and it will build your portfolio automatically.
-              </p>
-              <button
-                onClick={() => setChatOpen(true)}
-                className="font-mono text-bg bg-accent hover:opacity-90 transition-opacity"
-                style={{ fontSize: 12, padding: "10px 20px", borderRadius: 12, letterSpacing: "0.06em" }}
-              >
-                Add your first asset →
-              </button>
+      <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-36">
+        {assets.length === 0 ? (
+          <div className="flex flex-col items-center pt-24 text-center">
+            <div
+              className="flex items-center justify-center mb-6 font-serif text-accent"
+              style={{
+                width: 56, height: 56, borderRadius: 14,
+                background: "var(--accent-soft)",
+                border: "1px solid rgba(212,165,116,0.18)",
+                fontSize: 22, fontVariationSettings: "'opsz' 144",
+              }}
+            >
+              V
             </div>
-          ) : tab === "portfolio" ? (
-            <PortfolioTab
-              assets={assets as LiveAsset[]}
-              sorted={sorted}
-              byType={byType}
-              grossTotal={grossTotal}
-              netTotal={netTotal}
-              totalDebt={totalDebt}
-              topAsset={topAsset as LiveAsset}
-              warnings={warnings}
-              mutations={enrichedMutations}
-              setTab={setTab}
-            />
-          ) : tab === "diary" ? (
-            <DiaryTab
-              mutations={enrichedMutations}
-              diaryFilter={diaryFilter}
-              setDiaryFilter={setDiaryFilter}
-            />
-          ) : (
-            <ProfileTab
-              profile={profile}
-              mutationCount={mutations.length}
-            />
-          )}
-        </div>
+            <div
+              className="font-serif font-light text-fg leading-none mb-3"
+              style={{ fontSize: 48, letterSpacing: "-0.035em", fontVariationSettings: "'opsz' 144" }}
+            >
+              €0
+            </div>
+            <div className="text-sm text-dim mb-2">No positions yet</div>
+            <p className="text-faint text-xs max-w-xs leading-relaxed mb-8">
+              Tell the assistant what you own — stocks, real estate, cash — and it will build your portfolio automatically.
+            </p>
+            <button
+              onClick={() => setChatOpen(true)}
+              className="font-mono text-bg bg-accent hover:opacity-90 transition-opacity"
+              style={{ fontSize: 12, padding: "10px 20px", borderRadius: 12, letterSpacing: "0.06em" }}
+            >
+              Add your first asset →
+            </button>
+          </div>
+        ) : (
+          <PortfolioTab
+            assets={assets as LiveAsset[]}
+            sorted={sorted}
+            byType={byType}
+            grossTotal={grossTotal}
+            netTotal={netTotal}
+            totalDebt={totalDebt}
+            topAsset={topAsset as LiveAsset}
+            warnings={warnings}
+            mutations={enrichedMutations}
+            onViewDiary={() => router.push("/diary")}
+          />
+        )}
+      </div>
 
+      {/* ChatPopup is desktop-only; mobile users access chat via /chat route */}
+      <div className="hidden md:block">
         <ChatPopup
           userId={user?.id}
           isOpen={chatOpen}
@@ -242,6 +205,6 @@ export default function Dashboard() {
           onOpen={() => setHasNew(false)}
         />
       </div>
-    </>
+    </div>
   );
 }
