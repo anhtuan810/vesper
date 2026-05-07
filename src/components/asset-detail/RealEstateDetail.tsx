@@ -191,7 +191,6 @@ export function RealEstateDetail({ asset }: Props) {
                 className="font-mono"
                 style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.04em" }}
               >
-                {/* TODO: wire Edit panel */}
                 EDIT
               </span>
             </div>
@@ -303,7 +302,6 @@ export function RealEstateDetail({ asset }: Props) {
               cursor: "pointer",
             }}
           >
-            {/* TODO: wire Edit panel */}
             Edit
           </button>
           <button

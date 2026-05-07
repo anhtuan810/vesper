@@ -63,8 +63,6 @@ export async function POST(req: NextRequest) {
       const value = Math.round(p * asset.units);
       if (value === 0) return;
 
-      console.log(`BACKFILL [${isEdit ? "edit" : "add"}]: ${asset.name} on ${date} → €${value}`);
-
       await supabase.from("mutations").update({ after_value: value }).eq("id", mutation.id);
 
       // For add mutations: also fix asset value if still 0
@@ -83,7 +81,6 @@ export async function POST(req: NextRequest) {
       ...zeroDeltaOnes.map((m) => backfillMutation(m, true)),
     ]);
 
-    console.log(`BACKFILL complete: updated ${updated} mutations`);
     return NextResponse.json({ updated });
   } catch (err) {
     console.error("Backfill error:", err);

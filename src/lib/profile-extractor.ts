@@ -68,11 +68,8 @@ What lasting facts about this user (if any) can be extracted from this exchange?
 
     // Skip if nothing extracted
     if (!extracted || Object.keys(extracted).length === 0) {
-      console.log("PROFILE: nothing new to extract");
       return;
     }
-
-    console.log("PROFILE EXTRACTED:", JSON.stringify(extracted));
 
     // Merge with existing profile — never overwrite, only add/refine
     const mergedProfile = { ...currentProfile };
@@ -98,9 +95,7 @@ What lasting facts about this user (if any) can be extracted from this exchange?
       .eq("id", userId);
 
     if (error) {
-      console.error("PROFILE SAVE ERROR:", error);
-    } else {
-      console.log("PROFILE UPDATED for user:", userId);
+      console.error("Profile save error:", error);
     }
   } catch (err) {
     // Profile extraction is non-critical — never let it crash the main flow

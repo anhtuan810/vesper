@@ -158,8 +158,6 @@ export async function POST(req: NextRequest) {
       .map((block) => (block.type === "text" ? block.text : ""))
       .join("");
 
-    console.log("CLAUDE RAW:", raw.substring(0, 500));
-
     // --- Parse response ---
     const changesRaw = extractTag(raw, "changes");
     const contextRaw = extractTag(raw, "context");
@@ -170,10 +168,8 @@ export async function POST(req: NextRequest) {
 
     // --- Handle portfolio changes ---
     if (changesRaw) {
-      console.log("CHANGES FOUND:", changesRaw.trim());
       try {
         const changes = JSON.parse(changesRaw.trim());
-        console.log("PARSED CHANGES:", changes.length, "operations");
 
         if (Array.isArray(changes) && changes.length > 0) {
           const currentTotal = currentAssets.reduce((sum, a) => {
@@ -208,7 +204,6 @@ export async function POST(req: NextRequest) {
               if (resolvedPrices[i]) {
                 if (resolvedValue === 0) resolvedValue = resolvedPrices[i]!.value;
                 if (!resolvedBuyPrice) resolvedBuyPrice = resolvedPrices[i]!.buyPrice;
-                console.log("AUTO-FILL: resolved value =", resolvedValue);
               }
 
               // Geocode address for real_estate assets that include one
@@ -244,7 +239,6 @@ export async function POST(req: NextRequest) {
                 user_id: userId,
               };
 
-              console.log("ADDING:", name);
               const { data: inserted, error } = await supabase.from("assets").insert(insertData).select("id").single();
               if (error) {
                 console.error("ADD ERROR:", error);
@@ -297,7 +291,6 @@ export async function POST(req: NextRequest) {
                   }
                 }
 
-                console.log("EDITING:", name, updateData);
                 const { error } = await supabase
                   .from("assets")
                   .update(updateData)
@@ -321,8 +314,6 @@ export async function POST(req: NextRequest) {
                     occurred_at: new Date().toISOString().split("T")[0],
                   });
                 }
-              } else {
-                console.log("EDIT: asset not found:", name);
               }
 
             } else if (action === "remove") {
@@ -332,7 +323,6 @@ export async function POST(req: NextRequest) {
               );
 
               if (existing) {
-                console.log("REMOVING:", name);
                 const { error } = await supabase
                   .from("assets")
                   .delete()
@@ -355,8 +345,6 @@ export async function POST(req: NextRequest) {
                     occurred_at: new Date().toISOString().split("T")[0],
                   });
                 }
-              } else {
-                console.log("REMOVE: asset not found:", name);
               }
             }
           }
@@ -364,8 +352,6 @@ export async function POST(req: NextRequest) {
       } catch (parseErr) {
         console.error("Changes parse failed:", parseErr);
       }
-    } else {
-      console.log("NO CHANGES IN RESPONSE");
     }
 
     // --- Fetch updated assets if changed ---
@@ -376,7 +362,6 @@ export async function POST(req: NextRequest) {
         .select("*")
         .eq("user_id", userId);
       updatedAssets = newAssets;
-      console.log("PORTFOLIO UPDATED:", updatedAssets?.length, "assets");
     }
 
     // --- Handle goal ---
@@ -389,7 +374,6 @@ export async function POST(req: NextRequest) {
           target_value: goal.target_value || null,
           target_date: goal.target_date || null,
         });
-        console.log("GOAL SAVED:", goal.title);
       } catch {}
     }
 

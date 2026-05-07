@@ -29,6 +29,13 @@ export function fmt(n: number): string {
   return `€${Math.round(n)}`;
 }
 
+export function fmtAmount(n: number, currency: string): string {
+  const sym = currencySymbol(currency);
+  if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1000) return `${sym}${Math.round(n).toLocaleString("en")}`;
+  return `${sym}${Math.round(n)}`;
+}
+
 export function pctChange(price?: number, prev?: number): number | null {
   if (!price || !prev) return null;
   return ((price - prev) / prev) * 100;

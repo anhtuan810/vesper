@@ -1,4 +1,4 @@
-import type { Asset, UserProfile, Message, Mutation } from "./supabase";
+import type { Asset, UserProfile, Mutation } from "./supabase";
 
 // Static instructions never change — kept separate so they stay cached
 // even when the user's portfolio data changes between messages.

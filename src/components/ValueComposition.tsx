@@ -1,18 +1,11 @@
 "use client";
 
-import { currencySymbol } from "@/lib/utils";
+import { fmtAmount } from "@/lib/utils";
 
 interface Props {
   propertyValue: number;
   mortgageBalance: number;
   currency: string;
-}
-
-function fmt(n: number, currency: string): string {
-  const sym = currencySymbol(currency);
-  if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1000) return `${sym}${Math.round(n).toLocaleString("en")}`;
-  return `${sym}${Math.round(n)}`;
 }
 
 export function ValueComposition({ propertyValue, mortgageBalance, currency }: Props) {
@@ -69,7 +62,7 @@ export function ValueComposition({ propertyValue, mortgageBalance, currency }: P
             <span style={{ fontSize: 12, color: "var(--text)" }}>Equity</span>
           </div>
           <span className="font-mono" style={{ fontSize: 11, color: "var(--text)" }}>
-            {fmt(equity, currency)}
+            {fmtAmount(equity, currency)}
           </span>
         </div>
 
@@ -81,7 +74,7 @@ export function ValueComposition({ propertyValue, mortgageBalance, currency }: P
             <span style={{ fontSize: 12, color: "var(--text)" }}>Mortgage owed</span>
           </div>
           <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
-            {fmt(mortgageBalance, currency)}
+            {fmtAmount(mortgageBalance, currency)}
           </span>
         </div>
 
@@ -95,7 +88,7 @@ export function ValueComposition({ propertyValue, mortgageBalance, currency }: P
         >
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Property value</span>
           <span className="font-mono" style={{ fontSize: 11, color: "var(--text)" }}>
-            {fmt(propertyValue, currency)}
+            {fmtAmount(propertyValue, currency)}
           </span>
         </div>
       </div>

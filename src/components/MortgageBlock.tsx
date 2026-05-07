@@ -2,16 +2,11 @@
 
 import { useMemo } from "react";
 import { projectMortgage, formatTimeRemaining, formatPayoffDate } from "@/lib/mortgage";
-import { currencySymbol } from "@/lib/utils";
+import { fmtAmount } from "@/lib/utils";
 import type { RealEstateAsset } from "@/lib/supabase";
 
 interface Props {
   asset: RealEstateAsset;
-}
-
-function fmtCurrency(n: number, currency: string): string {
-  const sym = currencySymbol(currency);
-  return `${sym}${Math.round(n).toLocaleString("en")}`;
 }
 
 function buildPayoffPath(
@@ -115,9 +110,9 @@ export function MortgageBlock({ asset }: Props) {
       {/* 2×2 stat grid */}
       <div className="grid grid-cols-2 gap-2 px-4">
         {[
-          { label: "Balance", value: balance != null ? fmtCurrency(balance, currency) : "—" },
+          { label: "Balance", value: balance != null ? fmtAmount(balance, currency) : "—" },
           { label: "Rate", value: rate != null ? `${rate.toFixed(2)}%` : "—" },
-          { label: "Monthly", value: payment != null ? fmtCurrency(payment, currency) : "—" },
+          { label: "Monthly", value: payment != null ? fmtAmount(payment, currency) : "—" },
           { label: "Type", value: typeLabel, serif: true },
         ].map(({ label, value, serif }) => (
           <div
@@ -257,11 +252,11 @@ export function MortgageBlock({ asset }: Props) {
             {[
               {
                 label: "Paid to date",
-                value: fmtCurrency(projection.principalPaid, currency),
+                value: fmtAmount(projection.principalPaid, currency),
               },
               {
                 label: "Interest paid",
-                value: fmtCurrency(projection.totalInterestPaid, currency),
+                value: fmtAmount(projection.totalInterestPaid, currency),
               },
               {
                 label: "Time remaining",

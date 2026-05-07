@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import { AllocationBar } from "@/components/AllocationBar";
 import { PositionRow } from "@/components/PositionRow";
-import { fmt, formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE } from "@/lib/utils";
+import { formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE } from "@/lib/utils";
 import { useSparklines } from "@/lib/hooks";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { getMilestoneProgress, fmtRemaining } from "@/lib/projection";

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { streetViewUrl, streetViewUrlForAsset } from "@/lib/maps";
 import type { RealEstateAsset } from "@/lib/supabase";
+import type { StyleSpecification } from "maplibre-gl";
 import mapStyleJson from "@/styles/map-dark.json";
 
 interface Props {
@@ -44,8 +45,6 @@ function StreetViewOverlay({ asset }: { asset: RealEstateAsset }) {
 export function PropertyMap({ asset }: Props) {
   const router = useRouter();
   const supabase = createBrowserSupabase();
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const hasUploadedRef = useRef(false);
   const [effectivePhotoUrl, setEffectivePhotoUrl] = useState(asset.photo_url ?? null);
   // Prevents re-caching loop when a cached URL turns out to be un-servable
   const photoFailedRef = useRef(false);
@@ -233,8 +232,7 @@ function MapLibreMap({ asset, skipCaching, onCached, photoHint }: MapLibreMapPro
 
       const map = new ml.Map({
         container: containerRef.current,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        style: mapStyleJson as any,
+        style: mapStyleJson as unknown as StyleSpecification,
         center: [asset.longitude!, asset.latitude!],
         zoom: 15,
         interactive: false,
