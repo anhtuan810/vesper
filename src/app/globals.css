@@ -1,20 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0A0A0B;
+  --surface: #14141A;
+  --surface-elev: #1C1C24;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --text: #F5F4EE;
+  --text-dim: #8A8A93;
+  --text-faint: #54545E;
+  --accent: #D4A574;
+  --accent-soft: rgba(212, 165, 116, 0.12);
+  --positive: #6BAA75;
+  --negative: #C97A6E;
+  --serif: var(--font-fraunces), Georgia, serif;
+  --sans: var(--font-plus-jakarta-sans), system-ui, sans-serif;
+  --mono: var(--font-geist-mono), "SF Mono", monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elev: var(--surface-elev);
+  --color-fg: var(--text);
+  --color-dim: var(--text-dim);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --font-serif: var(--serif);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
 }
 
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
 }
