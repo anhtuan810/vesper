@@ -11,9 +11,9 @@ export const TYPE_LABEL: Record<string, string> = {
 };
 
 export const ACTION_STYLE: Record<string, { label: string; color: string; bg: string }> = {
-  add: { label: "Add", color: "#059669", bg: "#ECFDF5" },
-  edit: { label: "Edit", color: "#2563EB", bg: "#EFF6FF" },
-  remove: { label: "Del", color: "#DC2626", bg: "#FEF2F2" },
+  add: { label: "ADD", color: "#6BAA75", bg: "rgba(107,170,117,0.12)" },
+  edit: { label: "EDIT", color: "#D4A574", bg: "rgba(212,165,116,0.12)" },
+  remove: { label: "DEL", color: "#C97A6E", bg: "rgba(201,122,110,0.12)" },
 };
 
 export interface DashboardMutation {

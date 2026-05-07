@@ -7,7 +7,7 @@ function formatInline(str: string) {
   return parts.map((part, j) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <span key={j} style={{ fontWeight: 600, color: "#0F0E0C" }}>
+        <span key={j} style={{ fontWeight: 600, color: "var(--text)" }}>
           {part.slice(2, -2)}
         </span>
       );
@@ -16,32 +16,112 @@ function formatInline(str: string) {
   });
 }
 
+function ChangesBlock({ content }: { content: string }) {
+  const rows = content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: 12,
+        background: "var(--accent-soft)",
+        border: "1px solid rgba(212,165,116,0.18)",
+        borderRadius: 12,
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 9,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          color: "var(--accent)",
+          marginBottom: 8,
+        }}
+      >
+        Changes
+      </div>
+      {rows.map((row, i) => {
+        const [name, ...rest] = row.split("·");
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              padding: "3px 0",
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+            }}
+          >
+            <span style={{ color: "var(--text)" }}>{name?.trim()}</span>
+            {rest.length > 0 && (
+              <span style={{ color: "var(--positive)" }}>{rest.join("·").trim()}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function FormatText({ text }: FormatTextProps) {
-  const lines = text.split("\n");
+  // Split out <changes>...</changes> blocks
+  const segments = text.split(/(<changes>[\s\S]*?<\/changes>)/g);
 
   return (
     <>
-      {lines.map((line, i) => {
-        const isBullet = line.trim().startsWith("- ") || line.trim().startsWith("• ");
-        const bulletContent = isBullet ? line.trim().replace(/^[-•]\s*/, "") : null;
-
-        if (isBullet && bulletContent) {
-          return (
-            <div key={i} style={{ display: "flex", gap: 6, paddingLeft: 2, marginTop: i > 0 ? 3 : 0 }}>
-              <span style={{ color: "#9CA3AF", flexShrink: 0 }}>·</span>
-              <span>{formatInline(bulletContent)}</span>
-            </div>
-          );
+      {segments.map((seg, idx) => {
+        if (seg.startsWith("<changes>") && seg.endsWith("</changes>")) {
+          const inner = seg.slice("<changes>".length, -"</changes>".length).trim();
+          return <ChangesBlock key={idx} content={inner} />;
         }
 
-        if (line.trim() === "") {
-          return <div key={i} style={{ height: 8 }} />;
-        }
-
+        const lines = seg.split("\n");
         return (
-          <div key={i} style={{ marginTop: i > 0 && lines[i - 1]?.trim() !== "" ? 2 : 0 }}>
-            {formatInline(line)}
-          </div>
+          <span key={idx}>
+            {lines.map((line, i) => {
+              const isBullet =
+                line.trim().startsWith("- ") || line.trim().startsWith("• ");
+              const bulletContent = isBullet
+                ? line.trim().replace(/^[-•]\s*/, "")
+                : null;
+
+              if (isBullet && bulletContent) {
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      gap: 6,
+                      paddingLeft: 2,
+                      marginTop: i > 0 ? 3 : 0,
+                    }}
+                  >
+                    <span style={{ color: "var(--text-faint)", flexShrink: 0 }}>·</span>
+                    <span>{formatInline(bulletContent)}</span>
+                  </div>
+                );
+              }
+
+              if (line.trim() === "") {
+                return <div key={i} style={{ height: 8 }} />;
+              }
+
+              return (
+                <div
+                  key={i}
+                  style={{ marginTop: i > 0 && lines[i - 1]?.trim() !== "" ? 2 : 0 }}
+                >
+                  {formatInline(line)}
+                </div>
+              );
+            })}
+          </span>
         );
       })}
     </>

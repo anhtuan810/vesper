@@ -71,7 +71,6 @@ function AssetIcon({ type, symbol }: { type: string | null; symbol: string | nul
   const assetType = type || "other";
   const color = TYPE_COLOR[assetType] || TYPE_COLOR.other;
 
-  // Use logo for market-traded assets that have a ticker
   const useLogoTypes = ["stocks", "etf", "crypto"];
   const logoSymbol = symbol
     ? symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase()
@@ -79,7 +78,7 @@ function AssetIcon({ type, symbol }: { type: string | null; symbol: string | nul
 
   if (logoSymbol && useLogoTypes.includes(assetType) && !imgFailed) {
     return (
-      <div className="w-6 h-6 rounded-md border border-black/5 bg-white overflow-hidden shrink-0 flex items-center justify-center">
+      <div className="w-6 h-6 rounded-md bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
         <img
           src={`https://assets.parqet.com/logos/symbol/${logoSymbol}?format=png`}
           alt={logoSymbol}
@@ -94,7 +93,7 @@ function AssetIcon({ type, symbol }: { type: string | null; symbol: string | nul
   return (
     <div
       className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center"
-      style={{ background: `${color}15`, color }}
+      style={{ background: `${color}18`, color }}
     >
       {icon}
     </div>
@@ -170,18 +169,18 @@ function isInPeriod(m: DashboardMutation, period: PeriodKey, customFrom: string,
 
 function getPeriodLabel(period: PeriodKey, customFrom: string, customTo: string): string {
   const now = new Date();
-  const fmt = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-GB", opts);
+  const fmtDate = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-GB", opts);
   switch (period) {
     case "week": return "past 7 days";
-    case "month": return fmt(now, { month: "long", year: "numeric" });
+    case "month": return fmtDate(now, { month: "long", year: "numeric" });
     case "3months": {
       const from = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-      return `${fmt(from, { month: "short" })} – ${fmt(now, { month: "short", year: "numeric" })}`;
+      return `${fmtDate(from, { month: "short" })} – ${fmtDate(now, { month: "short", year: "numeric" })}`;
     }
     case "year": return String(now.getFullYear());
     case "custom": {
-      const f = customFrom ? fmt(new Date(customFrom + "-01"), { month: "short", year: "numeric" }) : "";
-      const t = customTo ? fmt(new Date(customTo + "-01"), { month: "short", year: "numeric" }) : "";
+      const f = customFrom ? fmtDate(new Date(customFrom + "-01"), { month: "short", year: "numeric" }) : "";
+      const t = customTo ? fmtDate(new Date(customTo + "-01"), { month: "short", year: "numeric" }) : "";
       return f === t ? f : `${f} – ${t}`;
     }
     default: return "";
@@ -195,13 +194,11 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   customFrom: string;
   customTo: string;
 }) {
-  // ── All hooks first (before any early return) ──
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   const summaryKey = useMemo(() => mutations.map((m) => m.id).join(","), [mutations]);
 
-  // Pre-compute chart data — safe even when empty
   const withTotal = useMemo(() =>
     mutations
       .filter((m) => m.portfolio_total != null && m.portfolio_total > 0)
@@ -262,7 +259,6 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryKey]);
 
-  // ── Early return after all hooks ──
   if (withTotal.length === 0) return null;
 
   const pts = byDay;
@@ -270,7 +266,6 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   const changePct = startVal > 0 ? (change / startVal) * 100 : 0;
   const positive = change >= 0;
 
-  // SVG dimensions
   const W = 560;
   const H = 72;
   const PAD_X = 0;
@@ -289,10 +284,13 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   const polylineStr = svgPts.map((p) => `${p.x},${p.y}`).join(" ");
   const areaStr = `${svgPts[0].x},${H + PAD_Y * 2} ` + polylineStr + ` ${svgPts[svgPts.length - 1].x},${H + PAD_Y * 2}`;
 
+  const lineColor = positive ? "var(--accent)" : "var(--negative)";
+  const gradientId = `dg-${positive ? "pos" : "neg"}`;
+
   const dotColor = (actions: string[]) => {
-    if (actions.includes("remove")) return "#DC2626";
-    if (actions.includes("add")) return "#059669";
-    return "#2563EB";
+    if (actions.includes("remove")) return "var(--negative)";
+    if (actions.includes("add")) return "var(--positive)";
+    return "var(--accent)";
   };
 
   const adds = mutations.filter((m) => m.action === "add").length;
@@ -300,26 +298,40 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   const removes = mutations.filter((m) => m.action === "remove").length;
 
   return (
-    <div className="bg-white rounded-2xl border border-black/5 p-5 mb-6 overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-border p-5 mb-6 overflow-hidden">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <div className="text-[10px] font-semibold text-gray-300 uppercase tracking-wider mb-1">
+          <div
+            className="font-mono text-faint uppercase mb-1"
+            style={{ fontSize: 10, letterSpacing: "0.16em" }}
+          >
             Portfolio during {periodLabel}
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold tracking-tight text-[#0F0E0C]">{fmt(endVal)}</span>
-            <span className={`text-sm font-semibold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+            <span
+              className="font-serif text-fg"
+              style={{ fontSize: 24, fontWeight: 400, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 144" }}
+            >
+              {fmt(endVal)}
+            </span>
+            <span
+              className="font-mono"
+              style={{ fontSize: 13, fontWeight: 500, color: positive ? "var(--positive)" : "var(--negative)" }}
+            >
               {positive ? "+" : ""}{fmt(change)}
             </span>
-            <span className={`text-xs font-medium ${positive ? "text-emerald-500" : "text-red-500"}`}>
+            <span
+              className="font-mono"
+              style={{ fontSize: 12, color: positive ? "var(--positive)" : "var(--negative)" }}
+            >
               ({positive ? "+" : ""}{changePct.toFixed(1)}%)
             </span>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] text-gray-300 mb-0.5">Started at</div>
-          <div className="text-sm font-semibold text-gray-400">{fmt(startVal)}</div>
+          <div className="font-mono text-faint mb-0.5" style={{ fontSize: 10 }}>Started at</div>
+          <div className="font-mono text-dim" style={{ fontSize: 13, fontWeight: 500 }}>{fmt(startVal)}</div>
         </div>
       </div>
 
@@ -332,29 +344,25 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
           style={{ height: 88, display: "block" }}
         >
           <defs>
-            <linearGradient id="highlight-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={positive ? "#2563EB" : "#DC2626"} stopOpacity="0.12" />
-              <stop offset="100%" stopColor={positive ? "#2563EB" : "#DC2626"} stopOpacity="0" />
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={lineColor} stopOpacity="0.15" />
+              <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
             </linearGradient>
           </defs>
-          {/* Subtle mid gridline */}
           <line
             x1={0} y1={(H + PAD_Y * 2) / 2}
             x2={W} y2={(H + PAD_Y * 2) / 2}
-            stroke="#F0EEE9" strokeWidth="1"
+            stroke="var(--border)" strokeWidth="1"
           />
-          {/* Area */}
-          <polygon points={areaStr} fill="url(#highlight-grad)" />
-          {/* Line */}
+          <polygon points={areaStr} fill={`url(#${gradientId})`} />
           <polyline
             points={polylineStr}
             fill="none"
-            stroke={positive ? "#2563EB" : "#DC2626"}
+            stroke={lineColor}
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Dots — only render when few enough points to be readable */}
           {pts.length <= 30 && svgPts.map((p, i) => (
             <circle
               key={i}
@@ -362,60 +370,68 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
               cy={p.y}
               r={pts.length <= 10 ? 3 : 2.5}
               fill={dotColor(p.actions)}
-              stroke="white"
+              stroke="var(--surface)"
               strokeWidth="1.5"
             />
           ))}
         </svg>
-        {/* Date labels */}
         <div className="flex justify-between px-5 mt-1">
-          <span className="text-[10px] text-gray-300">{formatDate(pts[0].date)}</span>
+          <span className="font-mono text-faint" style={{ fontSize: 10 }}>{formatDate(pts[0].date)}</span>
           {pts.length > 1 && (
-            <span className="text-[10px] text-gray-300">{formatDate(pts[pts.length - 1].date)}</span>
+            <span className="font-mono text-faint" style={{ fontSize: 10 }}>{formatDate(pts[pts.length - 1].date)}</span>
           )}
         </div>
       </div>
 
       {/* Activity summary */}
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-black/[0.04]">
+      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border">
         {adds > 0 && (
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-[11px] text-gray-400">{adds} added</span>
+            <div className="w-2 h-2 rounded-full bg-positive" />
+            <span className="font-mono text-dim" style={{ fontSize: 11 }}>{adds} added</span>
           </div>
         )}
         {edits > 0 && (
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-[#2563EB]" />
-            <span className="text-[11px] text-gray-400">{edits} updated</span>
+            <div className="w-2 h-2 rounded-full bg-accent" />
+            <span className="font-mono text-dim" style={{ fontSize: 11 }}>{edits} updated</span>
           </div>
         )}
         {removes > 0 && (
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-red-500" />
-            <span className="text-[11px] text-gray-400">{removes} removed</span>
+            <div className="w-2 h-2 rounded-full bg-negative" />
+            <span className="font-mono text-dim" style={{ fontSize: 11 }}>{removes} removed</span>
           </div>
         )}
-        <div className="ml-auto text-[11px] text-gray-300">{pts.length} data point{pts.length !== 1 ? "s" : ""}</div>
+        <div className="ml-auto font-mono text-faint" style={{ fontSize: 11 }}>
+          {pts.length} data point{pts.length !== 1 ? "s" : ""}
+        </div>
       </div>
 
-      {/* AI narrative summary */}
+      {/* AI narrative */}
       {(summaryLoading || summary) && (
-        <div className="mt-4 pt-4 border-t border-black/[0.04]">
+        <div className="mt-4 pt-4 border-t border-border">
           <div className="flex items-start gap-2.5">
-            <div className="w-5 h-5 rounded-md bg-[#2563EB] flex items-center justify-center shrink-0 mt-0.5">
-              <span className="text-white text-[10px] font-bold">V</span>
+            <div
+              className="flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                width: 20, height: 20, borderRadius: 6,
+                background: "var(--accent-soft)",
+                border: "1px solid rgba(212,165,116,0.18)",
+              }}
+            >
+              <span className="font-mono text-accent" style={{ fontSize: 9, fontWeight: 600 }}>V</span>
             </div>
             {summaryLoading ? (
               <div className="flex-1 space-y-1.5 pt-0.5">
-                <div className="h-2.5 rounded-full bg-[#F0EEE9] animate-pulse w-[60%]" />
-                <div className="h-2.5 rounded-full bg-[#F0EEE9] animate-pulse w-[50%]" />
-                <div className="h-2.5 rounded-full bg-[#F0EEE9] animate-pulse w-[40%]" />
+                <div className="h-2.5 rounded-full bg-surface-elev animate-pulse w-[60%]" />
+                <div className="h-2.5 rounded-full bg-surface-elev animate-pulse w-[50%]" />
+                <div className="h-2.5 rounded-full bg-surface-elev animate-pulse w-[40%]" />
               </div>
             ) : (
               <ul className="flex-1 space-y-1">
                 {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i) => (
-                  <li key={i} className="text-[12px] text-gray-500 leading-snug">
+                  <li key={i} className="text-dim leading-snug" style={{ fontSize: 12 }}>
                     {line.replace(/^•\s*/, "• ")}
                   </li>
                 ))}
@@ -439,12 +455,10 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
   const hasContent = (m: DashboardMutation) =>
     m.before_value != null || m.after_value != null || !!m.personal_context;
 
-  // Period-only filter — used for highlight card (shows full picture for the period)
   const periodMutations = mutations
     .filter(hasContent)
     .filter((m) => isInPeriod(m, period, customFrom, customTo));
 
-  // Period + action filter — used for timeline
   const filteredMutations = periodMutations
     .filter((m) => diaryFilter === "all" || m.action === diaryFilter);
 
@@ -469,14 +483,14 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
   const monthOptions = getMonthOptions(mutations);
 
   const ACTION_META = [
-    { action: "add",    label: "Added",   color: "#059669", bg: "#ECFDF5", border: "#6EE7B7" },
-    { action: "edit",   label: "Updated", color: "#2563EB", bg: "#EFF6FF", border: "#93C5FD" },
-    { action: "remove", label: "Removed", color: "#DC2626", bg: "#FEF2F2", border: "#FCA5A5" },
+    { action: "add",    label: "Added",   color: "#6BAA75", bg: "rgba(107,170,117,0.12)", border: "rgba(107,170,117,0.25)" },
+    { action: "edit",   label: "Updated", color: "#D4A574", bg: "rgba(212,165,116,0.12)", border: "rgba(212,165,116,0.25)" },
+    { action: "remove", label: "Removed", color: "#C97A6E", bg: "rgba(201,122,110,0.12)", border: "rgba(201,122,110,0.25)" },
   ];
 
   return (
     <>
-      {/* Graph — top, shown when a period is selected */}
+      {/* Period highlight chart */}
       {period !== "all" && (
         <PeriodHighlight
           mutations={periodMutations}
@@ -494,11 +508,14 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
             <button
               key={key}
               onClick={() => setPeriod(key)}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-all"
+              className="font-mono transition-all"
               style={{
-                background: active ? "#0F0E0C" : "#fff",
-                color: active ? "#fff" : "#9CA3AF",
-                borderColor: active ? "#0F0E0C" : "rgba(0,0,0,0.07)",
+                fontSize: 11,
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
+                background: active ? "var(--surface-elev)" : "transparent",
+                color: active ? "var(--text)" : "var(--text-faint)",
               }}
             >
               {label}
@@ -510,17 +527,19 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
             <select
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="text-xs text-gray-600 bg-white border border-black/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+              className="font-mono text-dim bg-surface border border-border rounded-lg outline-none cursor-pointer"
+              style={{ fontSize: 11, padding: "5px 8px" }}
             >
               {monthOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-            <span className="text-xs text-gray-300">to</span>
+            <span className="font-mono text-faint" style={{ fontSize: 11 }}>to</span>
             <select
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="text-xs text-gray-600 bg-white border border-black/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+              className="font-mono text-dim bg-surface border border-border rounded-lg outline-none cursor-pointer"
+              style={{ fontSize: 11, padding: "5px 8px" }}
             >
               {monthOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -530,7 +549,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
         )}
       </div>
 
-      {/* Clickable action cards */}
+      {/* Action filter cards */}
       <div className="flex gap-2 mb-6">
         {ACTION_META.map(({ action, label, color, bg, border }) => {
           const count = periodMutations.filter((m) => m.action === action).length;
@@ -539,17 +558,19 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
             <button
               key={action}
               onClick={() => setDiaryFilter(active ? "all" : action)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-left transition-all"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-left"
               style={{
-                background: active ? bg : "#fff",
-                borderColor: active ? border : "rgba(0,0,0,0.06)",
-                boxShadow: active ? `0 0 0 1px ${border}` : "none",
+                background: active ? bg : "transparent",
+                borderColor: active ? border : "var(--border)",
               }}
             >
-              <span className="text-xs font-semibold" style={{ color: active ? color : "#9CA3AF" }}>
+              <span
+                className="font-mono"
+                style={{ fontSize: 12, fontWeight: 600, color: active ? color : "var(--text-faint)" }}
+              >
                 {count}
               </span>
-              <span className="text-xs" style={{ color: active ? color : "#9CA3AF" }}>
+              <span style={{ fontSize: 12, color: active ? color : "var(--text-faint)" }}>
                 {label}
               </span>
             </button>
@@ -560,25 +581,26 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
       {/* Empty state */}
       {filteredMutations.length === 0 && (
         <div className="text-center pt-16">
-          <div className="text-sm text-gray-400 mb-2">No entries for this period</div>
-          <p className="text-xs text-gray-300">Try a different time range or filter.</p>
+          <div className="text-sm text-dim mb-2">No entries for this period</div>
+          <p className="text-faint text-xs">Try a different time range or filter.</p>
         </div>
       )}
 
       {/* Timeline */}
       {monthKeys.map((monthKey) => (
         <div key={monthKey} className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {getMonthLabel(monthKey)}
-            </div>
-            <div className="flex-1 h-px bg-black/5" />
-            <div className="text-[10px] text-gray-300">
+          {/* Month header — italic serif */}
+          <div
+            className="font-serif text-dim italic mb-3"
+            style={{ fontSize: 13, fontVariationSettings: "'opsz' 144" }}
+          >
+            {getMonthLabel(monthKey)}
+            <span className="font-mono not-italic text-faint ml-3" style={{ fontSize: 10 }}>
               {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
-            </div>
+            </span>
           </div>
 
-          <div className="space-y-2">
+          <div>
             {grouped[monthKey].map((m) => {
               const style = ACTION_STYLE[m.action] || ACTION_STYLE.edit;
               const date = m.occurred_at || m.recorded_at;
@@ -586,40 +608,73 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
                 ? m.after_value - m.before_value : null;
               const hasValueChange = valueChange !== null && valueChange !== 0;
 
+              let valueText: string | null = null;
+              if (m.action === "add" && m.after_value != null) {
+                valueText = fmt(m.after_value);
+              } else if (m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null) {
+                valueText = `${fmt(m.before_value)} → ${fmt(m.after_value)}`;
+              } else if (m.action === "remove" && m.before_value != null) {
+                valueText = fmt(m.before_value);
+              }
+
               return (
                 <div
                   key={m.id}
-                  className="bg-white rounded-lg border border-black/5 px-3 py-2.5 hover:border-black/10 transition"
+                  className="py-3.5 border-b border-border last:border-0"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <AssetIcon type={m.asset_type} symbol={m.symbol} />
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                  {/* Top row: action tag + asset icon + date */}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
                       <span
-                        className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
-                        style={{ color: style.color, background: style.bg }}
+                        className="font-mono uppercase"
+                        style={{
+                          fontSize: 9, fontWeight: 500,
+                          padding: "2px 7px", borderRadius: 4,
+                          letterSpacing: "0.1em",
+                          color: style.color, background: style.bg,
+                        }}
                       >
                         {style.label}
                       </span>
-                      <span className="text-sm font-semibold text-[#0F0E0C] truncate">
-                        {m.asset_name}
-                      </span>
-                      <span className="text-xs text-gray-500 shrink-0">
-                        {m.action === "add" && m.after_value != null && fmt(m.after_value)}
-                        {m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null && (
-                          <>
-                            {fmt(m.before_value)} → {fmt(m.after_value)}
-                            <span className="ml-1 font-medium" style={{ color: valueChange! >= 0 ? "#059669" : "#DC2626" }}>
-                              {valueChange! >= 0 ? "+" : ""}{fmt(valueChange!)}
-                            </span>
-                          </>
-                        )}
-                        {m.action === "remove" && m.before_value != null && fmt(m.before_value)}
-                      </span>
+                      <AssetIcon type={m.asset_type} symbol={m.symbol} />
                     </div>
-                    <div className="text-xs text-gray-300 shrink-0">{formatDate(date)}</div>
+                    <span
+                      className="font-mono text-faint uppercase"
+                      style={{ fontSize: 10, letterSpacing: "0.12em" }}
+                    >
+                      {formatDate(date)}
+                    </span>
                   </div>
+
+                  {/* Asset name — serif */}
+                  <div
+                    className="font-serif text-fg leading-snug"
+                    style={{ fontSize: 17, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
+                  >
+                    {m.asset_name}
+                  </div>
+
+                  {/* Value */}
+                  {valueText && (
+                    <div className="font-mono text-dim mt-1" style={{ fontSize: 12 }}>
+                      {valueText}
+                      {hasValueChange && valueChange !== null && (
+                        <span
+                          className="ml-2 font-medium"
+                          style={{ color: valueChange >= 0 ? "var(--positive)" : "var(--negative)" }}
+                        >
+                          {valueChange >= 0 ? "+" : ""}{fmt(valueChange)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Context — italic with left border */}
                   {m.personal_context && (
-                    <div className="text-[11px] text-gray-400 mt-1.5 ml-[42px] italic truncate">
+                    <div
+                      className="text-dim italic leading-[1.55] mt-2 border-l-2 border-border-strong pl-2.5"
+                      style={{ fontSize: 12 }}
+                    >
                       {m.personal_context}
                     </div>
                   )}
