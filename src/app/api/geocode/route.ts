@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "address required" }, { status: 400 });
   }
 
-  const result = await geocodeAddress(address);
+  const country = request.nextUrl.searchParams.get("country")?.trim() || undefined;
+  const result = await geocodeAddress(address, country);
   if (!result) {
     return NextResponse.json({ error: "address not found" }, { status: 404 });
   }

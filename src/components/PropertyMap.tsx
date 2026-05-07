@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { streetViewUrlForAsset } from "@/lib/maps";
+import { streetViewUrl, streetViewUrlForAsset } from "@/lib/maps";
 import type { RealEstateAsset } from "@/lib/supabase";
 import mapStyleJson from "@/styles/map-dark.json";
 
@@ -14,8 +14,8 @@ interface Props {
 const BUCKET = "property-photos";
 
 function StreetViewOverlay({ asset }: { asset: RealEstateAsset }) {
-  const url = streetViewUrlForAsset(asset.latitude, asset.longitude, asset.address);
-  if (!url) return null;
+  if (!asset.latitude || !asset.longitude) return null;
+  const url = streetViewUrl(asset.latitude, asset.longitude);
   return (
     <a
       href={url}
@@ -47,6 +47,8 @@ export function PropertyMap({ asset }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const hasUploadedRef = useRef(false);
   const [effectivePhotoUrl, setEffectivePhotoUrl] = useState(asset.photo_url ?? null);
+  // Prevents re-caching loop when a cached URL turns out to be un-servable
+  const photoFailedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const containerStyle: React.CSSProperties = {
@@ -85,9 +87,15 @@ export function PropertyMap({ asset }: Props) {
       occurred_at: new Date().toISOString(),
     });
 
+    photoFailedRef.current = false;
     setEffectivePhotoUrl(publicUrl);
     router.refresh();
   }, [asset, supabase, router]);
+
+  const handleImgError = useCallback(() => {
+    photoFailedRef.current = true;
+    setEffectivePhotoUrl(null);
+  }, []);
 
   // Photo hint overlay (top-left)
   const photoHint = (
@@ -128,6 +136,7 @@ export function PropertyMap({ asset }: Props) {
             <img
               src={effectivePhotoUrl}
               alt=""
+              onError={handleImgError}
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           </a>
@@ -135,6 +144,7 @@ export function PropertyMap({ asset }: Props) {
           <img
             src={effectivePhotoUrl}
             alt=""
+            onError={handleImgError}
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         )}
@@ -144,7 +154,7 @@ export function PropertyMap({ asset }: Props) {
     );
   }
 
-  // No lat/lng: empty placeholder
+  // No lat/lng: empty placeholder with "Add address" CTA
   if (!asset.latitude || !asset.longitude) {
     return (
       <div
@@ -154,21 +164,43 @@ export function PropertyMap({ asset }: Props) {
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "column",
-          gap: 8,
+          gap: 12,
         }}
       >
-        <div className="font-mono text-faint" style={{ fontSize: 11, letterSpacing: "0.08em" }}>
-          Add address to see your property
+        <div
+          className="font-mono"
+          style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em" }}
+        >
+          No address on file
         </div>
+        <button
+          onClick={() => router.push("/chat")}
+          style={{
+            background: "none",
+            border: "1px solid var(--border-strong)",
+            borderRadius: 8,
+            padding: "5px 14px",
+            cursor: "pointer",
+          }}
+        >
+          <span
+            className="font-mono"
+            style={{ fontSize: 9, color: "var(--accent)", letterSpacing: "0.12em", textTransform: "uppercase" }}
+          >
+            Add address
+          </span>
+        </button>
         {photoHint}
+        <StreetViewOverlay asset={asset} />
       </div>
     );
   }
 
-  // Render MapLibre map (will cache after first render)
+  // Render MapLibre map (will cache after first render unless a previous cached URL failed)
   return (
     <MapLibreMap
       asset={asset}
+      skipCaching={photoFailedRef.current}
       onCached={(url) => { setEffectivePhotoUrl(url); router.refresh(); }}
       photoHint={photoHint}
     />
@@ -177,11 +209,12 @@ export function PropertyMap({ asset }: Props) {
 
 interface MapLibreMapProps {
   asset: RealEstateAsset;
+  skipCaching: boolean;
   onCached: (url: string) => void;
   photoHint: React.ReactNode;
 }
 
-function MapLibreMap({ asset, onCached, photoHint }: MapLibreMapProps) {
+function MapLibreMap({ asset, skipCaching, onCached, photoHint }: MapLibreMapProps) {
   const supabase = createBrowserSupabase();
   const containerRef = useRef<HTMLDivElement>(null);
   const hasUploadedRef = useRef(false);
@@ -224,7 +257,7 @@ function MapLibreMap({ asset, onCached, photoHint }: MapLibreMapProps) {
 
       // After map has finished rendering all tiles, capture and cache
       map.once("idle", async () => {
-        if (hasUploadedRef.current) return;
+        if (hasUploadedRef.current || skipCaching) return;
         hasUploadedRef.current = true;
 
         try {

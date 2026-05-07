@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
               let resolvedLat: number | null = null;
               let resolvedLng: number | null = null;
               if ((change.type || "other") === "real_estate" && change.address) {
-                const geo = await geocodeAddress(change.address);
+                const geo = await geocodeAddress(change.address, change.country || null);
                 if (geo) { resolvedLat = geo.latitude; resolvedLng = geo.longitude; }
               }
 
@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
 
                 // Geocode address when it's being set or changed on a real_estate asset
                 if (change.address && (existing.type === "real_estate" || change.type === "real_estate")) {
-                  const geo = await geocodeAddress(change.address);
+                  const geo = await geocodeAddress(change.address, change.country || existing.country || null);
                   if (geo) {
                     updateData.latitude = geo.latitude;
                     updateData.longitude = geo.longitude;

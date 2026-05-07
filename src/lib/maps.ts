@@ -1,5 +1,5 @@
 export function streetViewUrl(lat: number, lng: number): string {
-  return `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`;
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
 }
 
 export function streetViewUrlFromAddress(address: string): string {
