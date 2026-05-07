@@ -4,16 +4,16 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { streetViewUrlForAsset } from "@/lib/maps";
-import type { Asset } from "@/lib/supabase";
+import type { RealEstateAsset } from "@/lib/supabase";
 import mapStyleJson from "@/styles/map-dark.json";
 
 interface Props {
-  asset: Asset;
+  asset: RealEstateAsset;
 }
 
 const BUCKET = "property-photos";
 
-function StreetViewOverlay({ asset }: { asset: Asset }) {
+function StreetViewOverlay({ asset }: { asset: RealEstateAsset }) {
   const url = streetViewUrlForAsset(asset.latitude, asset.longitude, asset.address);
   if (!url) return null;
   return (
@@ -176,7 +176,7 @@ export function PropertyMap({ asset }: Props) {
 }
 
 interface MapLibreMapProps {
-  asset: Asset;
+  asset: RealEstateAsset;
   onCached: (url: string) => void;
   photoHint: React.ReactNode;
 }

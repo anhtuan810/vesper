@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
@@ -109,14 +109,17 @@ export function useAssets(userId: string | undefined) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (assets.length > 0) fetchPrices(); }, [symbolKey, fetchPrices]);
 
-  const liveAssets: LiveAsset[] = assets.map((a) => {
-    if (a.symbol && a.units && prices[a.symbol]) {
-      const p = prices[a.symbol];
-      const price = normalizePrice(p.price, p.currency);
-      return { ...a, value: Math.round(price * a.units), livePrice: price, livePrev: p.previousClose };
-    }
-    return a;
-  });
+  const liveAssets = useMemo<LiveAsset[]>(
+    () => assets.map((a) => {
+      if (a.symbol && a.units && prices[a.symbol]) {
+        const p = prices[a.symbol];
+        const price = normalizePrice(p.price, p.currency);
+        return { ...a, value: Math.round(price * a.units), livePrice: price, livePrev: p.previousClose };
+      }
+      return a;
+    }),
+    [assets, prices]
+  );
 
   return {
     assets: liveAssets,
@@ -154,6 +157,39 @@ export function usePriceHistory(symbol: string | null | undefined, range: string
   return { closes, loading };
 }
 
+export function useSparklines(symbols: string[], range: string): Record<string, number[]> {
+  const [sparklines, setSparklines] = useState<Record<string, number[]>>({});
+  const symbolKey = useMemo(() => [...new Set(symbols)].sort().join(","), [symbols]);
+
+  useEffect(() => {
+    const unique = [...new Set(symbols)].filter(Boolean);
+    if (unique.length === 0) return;
+    let cancelled = false;
+
+    fetch("/api/prices/history/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbols: unique, range }),
+    })
+      .then((r) => r.json())
+      .then(({ data }) => {
+        if (cancelled) return;
+        const result: Record<string, number[]> = {};
+        for (const [sym, points] of Object.entries(data as Record<string, PricePoint[]>)) {
+          result[sym] = points.map((p) => p.close);
+        }
+        setSparklines(result);
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  // symbolKey is the stable dep for the symbols array
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbolKey, range]);
+
+  return sparklines;
+}
+
 export function useLivePrice(symbol: string | undefined) {
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [livePrev, setLivePrev] = useState<number | null>(null);
@@ -179,8 +215,8 @@ export function useLivePrice(symbol: string | undefined) {
 export function useSignOut() {
   const supabase = createBrowserSupabase();
 
-  return async () => {
+  return useCallback(async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
-  };
+  }, [supabase]);
 }

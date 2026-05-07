@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { fmt, formatDate, getMonthKey, getMonthLabel, ACTION_STYLE, TYPE_COLOR, type DashboardMutation } from "@/lib/utils";
+import { fmt, formatDate, getMonthKey, getMonthLabel, ACTION_STYLE, TYPE_COLOR } from "@/lib/utils";
+import type { Mutation } from "@/lib/supabase";
 import { PriceDisplay } from "@/components/PriceDisplay";
 
 // ── Asset icon ─────────────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ function AssetIcon({ type, symbol }: { type: string | null; symbol: string | nul
 }
 
 interface DiaryTabProps {
-  mutations: DashboardMutation[];
+  mutations: Mutation[];
   diaryFilter: string;
   setDiaryFilter: (filter: string) => void;
 }
@@ -131,7 +132,7 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
   { key: "custom", label: "Custom" },
 ];
 
-function getMonthOptions(mutations: DashboardMutation[]) {
+function getMonthOptions(mutations: Mutation[]) {
   const dates = mutations
     .map((m) => m.occurred_at || m.recorded_at)
     .filter(Boolean)
@@ -157,7 +158,7 @@ function getMonthOptions(mutations: DashboardMutation[]) {
   return options;
 }
 
-function isInPeriod(m: DashboardMutation, period: PeriodKey, customFrom: string, customTo: string): boolean {
+function isInPeriod(m: Mutation, period: PeriodKey, customFrom: string, customTo: string): boolean {
   if (period === "all") return true;
   const dateStr = m.occurred_at || m.recorded_at;
   if (!dateStr) return true;
@@ -203,7 +204,7 @@ function getPeriodLabel(period: PeriodKey, customFrom: string, customTo: string)
 
 // ── Period highlight card with SVG area chart ──────────────────────────────────
 function PeriodHighlight({ mutations, period, customFrom, customTo }: {
-  mutations: DashboardMutation[];
+  mutations: Mutation[];
   period: PeriodKey;
   customFrom: string;
   customTo: string;
@@ -466,7 +467,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
   const [customFrom, setCustomFrom] = useState(thisMonth);
   const [customTo, setCustomTo] = useState(thisMonth);
 
-  const hasContent = (m: DashboardMutation) =>
+  const hasContent = (m: Mutation) =>
     m.before_value != null || m.after_value != null || !!m.personal_context;
 
   const periodMutations = mutations
@@ -481,7 +482,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
     if (!acc[key]) acc[key] = [];
     acc[key].push(m);
     return acc;
-  }, {} as Record<string, DashboardMutation[]>);
+  }, {} as Record<string, Mutation[]>);
 
   const monthKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 

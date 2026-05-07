@@ -14,21 +14,6 @@ export const ACTION_STYLE: Record<string, { label: string; color: string; bg: st
   remove: { label: "DEL", color: "#C97A6E", bg: "rgba(201,122,110,0.12)" },
 };
 
-export interface DashboardMutation {
-  id: string;
-  asset_name: string;
-  action: string;
-  before_value: number | null;
-  after_value: number | null;
-  personal_context: string | null;
-  market_context: string | null;
-  portfolio_total: number | null;
-  occurred_at: string | null;
-  recorded_at: string;
-  asset_type: string | null;
-  symbol: string | null;
-}
-
 const CURRENCY_SYMBOL: Record<string, string> = {
   EUR: "€", USD: "$", GBP: "£", CHF: "Fr",
   JPY: "¥", CAD: "CA$", AUD: "A$", HKD: "HK$",
@@ -50,8 +35,9 @@ export function pctChange(price?: number, prev?: number): number | null {
 }
 
 export function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export function getMonthKey(dateStr: string): string {
@@ -61,7 +47,7 @@ export function getMonthKey(dateStr: string): string {
 
 export function getMonthLabel(key: string): string {
   const [year, month] = key.split("-");
-  const d = new Date(parseInt(year), parseInt(month) - 1);
+  const d = new Date(+year, +month - 1);
   return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 

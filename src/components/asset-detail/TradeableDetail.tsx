@@ -6,12 +6,12 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { useLivePrice } from "@/lib/hooks";
 import { PriceChart } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
-import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL } from "@/lib/utils";
+import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL, currencySymbol } from "@/lib/utils";
 import { PriceDisplay } from "@/components/PriceDisplay";
-import type { Asset, Mutation } from "@/lib/supabase";
+import type { TradeableAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
-  asset: Asset;
+  asset: TradeableAsset;
 }
 
 
@@ -21,7 +21,7 @@ function fmtPrice(n: number): string {
     : n.toFixed(2);
 }
 
-function monogram(asset: Asset): string {
+function monogram(asset: TradeableAsset): string {
   if (asset.symbol) {
     return asset.symbol.replace(/-[A-Z]+$/i, "").slice(0, 4).toUpperCase();
   }
@@ -38,11 +38,11 @@ export function TradeableDetail({ asset }: Props) {
     const { data } = await supabase
       .from("mutations")
       .select("*")
-      .eq("asset_name", asset.name)
+      .eq("asset_id", asset.id)
       .order("occurred_at", { ascending: false, nullsFirst: false })
       .limit(10);
     setMutations(data ?? []);
-  }, [asset.name]);
+  }, [asset.id]);
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
@@ -61,6 +61,8 @@ export function TradeableDetail({ asset }: Props) {
     livePrice != null && asset.buy_price && asset.buy_price > 0
       ? ((livePrice - asset.buy_price) / asset.buy_price) * 100
       : null;
+
+  const sym = currencySymbol(asset.currency);
 
   const subLine = [
     asset.type !== "crypto" && asset.country ? asset.country : null,
@@ -135,7 +137,7 @@ export function TradeableDetail({ asset }: Props) {
                 </span>
                 {dailyAbs !== null && (
                   <span className="text-dim" style={{ fontSize: 12 }}>
-                    {dailyAbs >= 0 ? "+" : ""}€{Math.abs(dailyAbs).toLocaleString("en", { maximumFractionDigits: 0 })} today
+                    {dailyAbs >= 0 ? "+" : ""}{currencySymbol(asset.currency)}{Math.abs(dailyAbs).toLocaleString("en", { maximumFractionDigits: 0 })} today
                   </span>
                 )}
               </>
@@ -240,8 +242,8 @@ export function TradeableDetail({ asset }: Props) {
                         style={{ fontSize: 17, fontWeight: 400, lineHeight: 1.3, marginBottom: 4 }}
                       >
                         {m.action === "add" && m.before_value != null
-                          ? `+€${Math.round(m.after_value - m.before_value).toLocaleString()}`
-                          : `€${Math.round(m.after_value).toLocaleString()}`}
+                          ? `+${sym}${Math.round(m.after_value - m.before_value).toLocaleString()}`
+                          : `${sym}${Math.round(m.after_value).toLocaleString()}`}
                       </div>
                     )}
                     {m.personal_context && (
@@ -275,13 +277,14 @@ export function TradeableDetail({ asset }: Props) {
           >
             Edit
           </button>
-          {/* TODO: wire Discuss to open chat with this asset as context */}
           <button
+            onClick={() => router.push("/chat")}
             className="flex-1 font-mono text-center"
             style={{
               padding: "11px 0", borderRadius: 12,
               fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
               background: "var(--accent)", color: "var(--bg)",
+              border: "none", cursor: "pointer",
             }}
           >
             Discuss

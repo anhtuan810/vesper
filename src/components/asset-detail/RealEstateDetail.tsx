@@ -8,11 +8,11 @@ import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { streetViewUrlForAsset } from "@/lib/maps";
-import { ACTION_STYLE, formatDate } from "@/lib/utils";
-import type { Asset, Mutation } from "@/lib/supabase";
+import { ACTION_STYLE, currencySymbol, formatDate } from "@/lib/utils";
+import type { RealEstateAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
-  asset: Asset;
+  asset: RealEstateAsset;
 }
 
 function FutureSlot({ title, description }: { title: string; description: string }) {
@@ -231,9 +231,10 @@ export function RealEstateDetail({ asset }: Props) {
 
         {mutations.length > 0 ? (
           <div style={{ padding: "0 22px", borderTop: "1px solid var(--border)" }}>
-            {mutations.slice(0, 10).map((m) => {
+            {mutations.map((m) => {
               const style = ACTION_STYLE[m.action] ?? ACTION_STYLE.edit;
               const dateStr = m.occurred_at ?? m.recorded_at;
+              const sym = currencySymbol(asset.currency);
               return (
                 <div
                   key={m.id}
@@ -265,8 +266,8 @@ export function RealEstateDetail({ asset }: Props) {
                       style={{ fontSize: 14, fontWeight: 400, lineHeight: 1.3, margin: "3px 0 2px" }}
                     >
                       {m.action === "add" && m.before_value != null
-                        ? `+€${Math.round(m.after_value - m.before_value).toLocaleString()}`
-                        : `€${Math.round(m.after_value).toLocaleString()}`}
+                        ? `+${sym}${Math.round(m.after_value - m.before_value).toLocaleString()}`
+                        : `${sym}${Math.round(m.after_value).toLocaleString()}`}
                     </div>
                   )}
                   {m.personal_context && (
@@ -324,7 +325,7 @@ export function RealEstateDetail({ asset }: Props) {
   );
 }
 
-function AddressContent({ asset, metaParts }: { asset: Asset; metaParts: string[] }) {
+function AddressContent({ asset, metaParts }: { asset: RealEstateAsset; metaParts: string[] }) {
   const streetAddress = asset.address
     ? asset.address.split(",")[0]?.trim()
     : asset.name;

@@ -7,8 +7,8 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { getWarnings, type DashboardMutation } from "@/lib/utils";
-import type { LiveAsset } from "@/lib/supabase";
+import { getWarnings } from "@/lib/utils";
+import type { LiveAsset, Mutation } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
 
@@ -23,7 +23,7 @@ export default function Dashboard() {
   const signOut = useSignOut();
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
-  const [mutations, setMutations] = useState<DashboardMutation[]>([]);
+  const [mutations, setMutations] = useState<Mutation[]>([]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("welcome")) {
@@ -113,8 +113,9 @@ export default function Dashboard() {
   }
 
   const netTotal = assets.reduce((sum, a) => {
-    const net = a.type === "real_estate" && a.mortgage_balance
-      ? a.value - a.mortgage_balance : a.value;
+    const net = a.type === "real_estate"
+      ? a.value - (a.mortgage_balance ?? 0)
+      : a.value;
     return sum + net;
   }, 0);
   const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
@@ -125,7 +126,8 @@ export default function Dashboard() {
   const sorted = Object.entries(byType).sort((a, b) => b[1] - a[1]);
   const liveCount = assets.filter((a) => a.livePrice).length;
   const totalSymbols = assets.filter((a) => a.symbol).length;
-  const totalDebt = assets.reduce((sum, a) => sum + (a.mortgage_balance || 0), 0);
+  const totalDebt = assets.reduce((sum, a) =>
+    sum + (a.type === "real_estate" ? (a.mortgage_balance ?? 0) : 0), 0);
   const topAsset = [...assets].sort((a, b) => b.value - a.value)[0];
   const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
 

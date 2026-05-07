@@ -6,7 +6,7 @@ import { useUser, useAssets, useProfile, useSignOut } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { DiaryTab } from "@/components/DiaryTab";
 import { createBrowserSupabase } from "@/lib/supabase";
-import type { DashboardMutation } from "@/lib/utils";
+import type { Mutation } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
 
@@ -16,7 +16,7 @@ export default function DiaryPage() {
   const profile = useProfile(user?.id);
   const signOut = useSignOut();
   const { assets } = useAssets(user?.id);
-  const [mutations, setMutations] = useState<DashboardMutation[]>([]);
+  const [mutations, setMutations] = useState<Mutation[]>([]);
   const [diaryFilter, setDiaryFilter] = useState("all");
   const [backfillDone, setBackfillDone] = useState(false);
 

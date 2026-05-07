@@ -3,10 +3,10 @@
 import { useMemo } from "react";
 import { projectMortgage, formatTimeRemaining, formatPayoffDate } from "@/lib/mortgage";
 import { currencySymbol } from "@/lib/utils";
-import type { Asset } from "@/lib/supabase";
+import type { RealEstateAsset } from "@/lib/supabase";
 
 interface Props {
-  asset: Asset;
+  asset: RealEstateAsset;
 }
 
 function fmtCurrency(n: number, currency: string): string {

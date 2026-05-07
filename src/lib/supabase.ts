@@ -30,37 +30,63 @@ export function createServerSupabase() {
   );
 }
 
-// Types
-export type LiveAsset = Asset & { livePrice?: number; livePrev?: number };
+// ── Asset types ────────────────────────────────────────────────────────────────
 
-export interface Asset {
+interface BaseAsset {
   id: string;
   user_id: string;
   name: string;
-  type: "stocks" | "etf" | "crypto" | "bonds" | "gold" | "real_estate" | "cash" | "pension" | "other";
   value: number;
   currency: string;
   country?: string;
+  // Shared tradeable fields — also present on bonds when listed
   symbol?: string;
   units?: number;
   buy_price?: number;
   buy_date?: string;
   buy_price_source?: "user" | "market";
-  mortgage_balance?: number;
-  mortgage_rate?: number;
-  monthly_payment?: number;
-  mortgage_type?: "annuity" | "linear" | "interest_only";
-  mortgage_start_date?: string;
-  mortgage_end_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TradeableAsset extends BaseAsset {
+  type: "stocks" | "etf" | "crypto" | "gold";
+}
+
+export interface RealEstateAsset extends BaseAsset {
+  type: "real_estate";
   address?: string;
   latitude?: number;
   longitude?: number;
   photo_url?: string;
   property_type?: string;
   size_sqm?: number;
-  created_at: string;
-  updated_at: string;
+  mortgage_balance?: number;
+  mortgage_rate?: number;
+  monthly_payment?: number;
+  mortgage_type?: "annuity" | "linear" | "interest_only";
+  mortgage_start_date?: string;
+  mortgage_end_date?: string;
 }
+
+export interface BondsAsset extends BaseAsset {
+  type: "bonds";
+  coupon_rate?: number;
+  maturity_date?: string;
+  issuer?: string;
+  isin?: string;
+}
+
+export interface StaticAsset extends BaseAsset {
+  type: "cash" | "pension" | "other";
+  mortgage_rate?: number; // repurposed as interest_rate for cash/pension
+}
+
+export type Asset = TradeableAsset | RealEstateAsset | BondsAsset | StaticAsset;
+
+export type LiveAsset = Asset & { livePrice?: number; livePrev?: number };
+
+// ── Other types ────────────────────────────────────────────────────────────────
 
 export interface UserProfile {
   goals?: string;
@@ -83,14 +109,16 @@ export interface Message {
 export interface Mutation {
   id: string;
   user_id: string;
-  asset_id?: string;
-  asset_name?: string;
+  asset_id: string | null;
+  asset_name: string | null;
+  asset_type: string | null;
+  symbol: string | null;
   action: "add" | "edit" | "remove";
-  before_value?: number;
-  after_value?: number;
-  personal_context?: string;
-  market_context?: string;
-  portfolio_total?: number;
-  occurred_at?: string;
+  before_value: number | null;
+  after_value: number | null;
+  personal_context: string | null;
+  market_context: string | null;
+  portfolio_total: number | null;
+  occurred_at: string | null;
   recorded_at: string;
 }

@@ -20,28 +20,41 @@ function formatAmount(n: number, compact: boolean): { main: string; suf: string 
 }
 
 /**
- * Renders a price with a correctly positioned dimmed currency prefix.
- * Inherits font-family, font-size, and color from the parent element.
- * Use `compact` for abbreviated display (e.g. "491.8k"), full precision otherwise.
+ * Renders a price with a superscript-style currency symbol.
+ *
+ * Layout: inline-flex so the gap between symbol and number is controlled by
+ * `columnGap` (em-relative) rather than `marginRight`. This makes the gap
+ * immune to the parent's negative `letter-spacing`, which previously caused
+ * the € to visually collide with the first digit at large font sizes.
+ *
+ * The suffix ("k", "M") stays inline inside the number span so it remains
+ * baseline-aligned — matching the current compact display appearance.
  */
 export function PriceDisplay({ amount, currency = "EUR", compact = false }: PriceDisplayProps) {
   const sym = currencySymbol(currency);
   const { main, suf } = formatAmount(amount, compact);
 
   return (
-    <>
+    <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.12em" }}>
       <span
-        className="text-dim inline-block"
-        style={{ fontSize: "0.56em", verticalAlign: "top", lineHeight: "1.55", marginRight: 3 }}
+        className="text-dim"
+        style={{
+          fontSize: "0.55em",
+          lineHeight: 1,
+          // Nudge the symbol down so its cap height aligns with the adjacent number's cap height.
+          paddingTop: "0.07em",
+        }}
       >
         {sym}
       </span>
-      {main}
-      {suf && (
-        <span className="text-dim" style={{ fontSize: "0.65em" }}>
-          {suf}
-        </span>
-      )}
-    </>
+      <span style={{ lineHeight: "inherit" }}>
+        {main}
+        {suf && (
+          <span className="text-dim" style={{ fontSize: "0.64em" }}>
+            {suf}
+          </span>
+        )}
+      </span>
+    </span>
   );
 }

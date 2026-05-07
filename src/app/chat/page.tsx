@@ -1,48 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/hooks";
 import { FormatText } from "@/components/FormatText";
-
-interface ChatMessage {
-  from: "user" | "assistant";
-  text: string;
-}
-
-const SUGGESTIONS = [
-  "How diversified am I?",
-  "Add €10k in S&P 500 ETF",
-  "What is my largest position?",
-  "What if markets drop 20%?",
-];
-
-// Shares session storage with the desktop ChatPopup so history persists across both surfaces
-const STORAGE_KEY = "vesper_chat_history";
+import { useChatSession, CHAT_SUGGESTIONS } from "@/lib/use-chat-session";
 
 export default function ChatPage() {
   const router = useRouter();
   const { user } = useUser();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const {
+    messages, input, setInput, loading, thinking, remaining,
+    imagePreview, imageData, canSend, send, clearImage, handlePaste,
+  } = useChatSession({ userId: user?.id });
 
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) setMessages(JSON.parse(stored) as ChatMessage[]);
-    } catch {}
-  }, []);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [thinking, setThinking] = useState(false);
-  const [remaining, setRemaining] = useState<number | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageData, setImageData] = useState<{ base64: string; mediaType: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch {}
-  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,77 +24,6 @@ export default function ChatPage() {
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
-
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (!file || file.size > 5 * 1024 * 1024) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          setImageData({ base64: result.split(",")[1], mediaType: item.type });
-          setImagePreview(result);
-        };
-        reader.readAsDataURL(file);
-        break;
-      }
-    }
-  }, []);
-
-  function clearImage() {
-    setImagePreview(null);
-    setImageData(null);
-  }
-
-  async function send() {
-    const text = input.trim();
-    if ((!text && !imageData) || loading || !user?.id) return;
-
-    const displayText = text || "Screenshot uploaded";
-    setInput("");
-    setLoading(true);
-    setThinking(true);
-    setMessages((prev) => [...prev, { from: "user", text: displayText }]);
-
-    const payload: { message: string; imageData?: { base64: string; mediaType: string } } = { message: text };
-    if (imageData) payload.imageData = imageData;
-    clearImage();
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      setThinking(false);
-
-      if (!res.ok) {
-        const errText = res.status === 401
-          ? "Session expired. Please refresh the page."
-          : data.message || "Something went wrong. Please try again.";
-        setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
-        setLoading(false);
-        return;
-      }
-
-      setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
-      if (typeof data.remaining === "number") setRemaining(data.remaining);
-    } catch {
-      setThinking(false);
-      setMessages((prev) => [
-        ...prev,
-        { from: "assistant", text: "Connection issue. Please try again." },
-      ]);
-    }
-    setLoading(false);
-  }
-
-  const canSend = !loading && !!(input.trim() || imageData);
 
   return (
     <>
@@ -177,7 +79,7 @@ export default function ChatPage() {
               <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>
                 Ask about your portfolio, or paste a screenshot of your broker app.
               </div>
-              {SUGGESTIONS.map((s) => (
+              {CHAT_SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   className="block w-full text-left mb-1.5 transition-colors"
@@ -263,7 +165,7 @@ export default function ChatPage() {
         {/* Suggestion chips after conversation starts */}
         {messages.length > 0 && !loading && (
           <div className="px-4 pt-2 pb-1 flex gap-1.5 overflow-x-auto shrink-0" style={{ scrollbarWidth: "none" }}>
-            {SUGGESTIONS.map((s) => (
+            {CHAT_SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => { setInput(s); inputRef.current?.focus(); }}

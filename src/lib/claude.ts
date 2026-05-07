@@ -43,6 +43,12 @@ Field names for add (include all that apply):
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only)
 
+For real_estate assets, also include when mentioned:
+  address (full street address as a single string, e.g. "Burg. Hoffmanplein 12, Eindhoven"),
+  property_type (apartment|house|office|land|other),
+  size_sqm (floor area in m²)
+The system geocodes the address automatically — do NOT ask the user for coordinates.
+
 Field names for edit: name (to match), plus any fields being changed.
 Field names for remove: just name.
 
@@ -66,8 +72,9 @@ export function buildDynamicContext(
   userName?: string
 ): string {
   const total = assets.reduce((sum, a) => {
-    const netValue = a.type === "real_estate" && a.mortgage_balance
-      ? a.value - a.mortgage_balance : a.value;
+    const netValue = a.type === "real_estate"
+      ? a.value - (a.mortgage_balance ?? 0)
+      : a.value;
     return sum + netValue;
   }, 0);
 
@@ -83,7 +90,7 @@ export function buildDynamicContext(
     if (a.symbol) parts.push(`symbol:${a.symbol}`);
     if (a.units) parts.push(`units:${a.units}`);
     if (a.country) parts.push(`country:${a.country}`);
-    if (a.mortgage_balance) parts.push(`mortgage:EUR${a.mortgage_balance.toLocaleString()}`);
+    if (a.type === "real_estate" && a.mortgage_balance) parts.push(`mortgage:EUR${a.mortgage_balance.toLocaleString()}`);
     return `- ${parts.join(", ")}`;
   }).join("\n");
 

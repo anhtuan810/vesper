@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import { AllocationBar } from "@/components/AllocationBar";
 import { PositionRow } from "@/components/PositionRow";
-import { fmt, formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE, type DashboardMutation } from "@/lib/utils";
+import { fmt, formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE } from "@/lib/utils";
+import { useSparklines } from "@/lib/hooks";
+import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { getMilestoneProgress, fmtRemaining } from "@/lib/projection";
-import type { LiveAsset } from "@/lib/supabase";
 
 interface PortfolioTabProps {
   assets: LiveAsset[];
@@ -16,7 +18,7 @@ interface PortfolioTabProps {
   totalDebt: number;
   topAsset: LiveAsset | undefined;
   warnings: string[];
-  mutations: DashboardMutation[];
+  mutations: Mutation[];
   onViewDiary: () => void;
 }
 
@@ -24,6 +26,12 @@ export function PortfolioTab({
   assets, sorted, byType, grossTotal, netTotal, totalDebt,
   topAsset, warnings, mutations, onViewDiary,
 }: PortfolioTabProps) {
+  const symbols = useMemo(
+    () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
+    [assets]
+  );
+  const sparklines = useSparklines(symbols, "1W");
+
   const countries = [...new Set(assets.map((a) => a.country).filter(Boolean))];
   const allocationItems = sorted.map(([type, val]) => ({
     label: TYPE_LABEL[type] ?? type,
@@ -179,7 +187,11 @@ export function PortfolioTab({
           {[...assets]
             .sort((a, b) => b.value - a.value)
             .map((asset) => (
-              <PositionRow key={asset.id} asset={asset} />
+              <PositionRow
+                key={asset.id}
+                asset={asset}
+                closes={asset.symbol ? sparklines[asset.symbol] : []}
+              />
             ))}
         </div>
       </div>

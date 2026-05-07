@@ -30,8 +30,9 @@ function subLine(asset: LiveAsset): string {
   return parts.join(" · ");
 }
 
-export function PositionRow({ asset }: { asset: LiveAsset }) {
-  const { closes } = usePriceHistory(asset.symbol, "1W");
+export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; closes?: number[] }) {
+  const { closes: fetchedCloses } = usePriceHistory(closesProp != null ? null : asset.symbol, "1W");
+  const closes = closesProp ?? fetchedCloses;
   const chg = pctChange(asset.livePrice, asset.livePrev);
   const up = chg !== null && chg >= 0;
   const sub = subLine(asset);

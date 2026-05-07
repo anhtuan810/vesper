@@ -3,9 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { TradeableDetail } from "@/components/asset-detail/TradeableDetail";
 import { RealEstateDetail } from "@/components/asset-detail/RealEstateDetail";
-import type { Asset } from "@/lib/supabase";
-
-const TRADEABLE_TYPES: Asset["type"][] = ["stocks", "etf", "crypto", "gold"];
+import { StaticDetail } from "@/components/asset-detail/StaticDetail";
+import type { TradeableAsset, RealEstateAsset, StaticAsset, BondsAsset } from "@/lib/supabase";
 
 export default async function AssetPage({
   params,
@@ -40,27 +39,23 @@ export default async function AssetPage({
 
   if (!asset) notFound();
 
-  if (TRADEABLE_TYPES.includes(asset.type)) {
-    return <TradeableDetail asset={asset as Asset} />;
+  const { type } = asset;
+
+  if (type === "stocks" || type === "etf" || type === "crypto" || type === "gold") {
+    return <TradeableDetail asset={asset as TradeableAsset} />;
   }
 
-  if (asset.type === "real_estate") {
-    return <RealEstateDetail asset={asset as Asset} />;
+  if (type === "real_estate") {
+    return <RealEstateDetail asset={asset as RealEstateAsset} />;
   }
 
-  return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
-      <div className="text-center max-w-xs">
-        <div
-          className="font-serif text-fg mb-2"
-          style={{ fontSize: 20, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
-        >
-          {asset.name}
-        </div>
-        <div className="font-mono text-faint" style={{ fontSize: 12 }}>
-          Detail page coming in a later phase.
-        </div>
-      </div>
-    </div>
-  );
+  if (type === "bonds") {
+    return <StaticDetail asset={asset as BondsAsset} />;
+  }
+
+  if (type === "cash" || type === "pension" || type === "other") {
+    return <StaticDetail asset={asset as StaticAsset} />;
+  }
+
+  return null;
 }

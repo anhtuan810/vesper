@@ -5,6 +5,7 @@ import { STATIC_SYSTEM, buildDynamicContext, buildOnboardingPrompt } from "@/lib
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { validateEnv } from "@/lib/env";
 import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
+import { geocodeAddress } from "@/lib/geocode";
 
 validateEnv();
 
@@ -182,23 +183,40 @@ export async function POST(req: NextRequest) {
             return sum + net;
           }, 0);
 
-          for (const change of changes) {
+          // Pre-resolve historical prices for all "add" ops that need auto-fill, in parallel
+          const resolvedPrices = await Promise.all(
+            changes.map(async (change) => {
+              if (change.action === "add" && (change.value || 0) === 0 && change.symbol && change.units) {
+                const priceData = await fetchHistoricalPrice(change.symbol, change.buy_date || null);
+                if (priceData) {
+                  const p = normalizePrice(priceData.price, priceData.currency);
+                  return { value: Math.round(p * change.units), buyPrice: Math.round(p * 100) / 100 };
+                }
+              }
+              return null;
+            })
+          );
+
+          for (let i = 0; i < changes.length; i++) {
+            const change = changes[i];
             const action = change.action;
             const name = change.name;
 
             if (action === "add") {
-              // Auto-fill value from historical price when value is 0 but we have symbol + units
               let resolvedValue: number = change.value || 0;
               let resolvedBuyPrice: number | null = change.buy_price || null;
-              if (resolvedValue === 0 && change.symbol && change.units) {
-                console.log("AUTO-FILL: fetching price for", change.symbol, "on", change.buy_date || "today");
-                const priceData = await fetchHistoricalPrice(change.symbol, change.buy_date || null);
-                if (priceData) {
-                  const p = normalizePrice(priceData.price, priceData.currency);
-                  resolvedValue = Math.round(p * change.units);
-                  if (!resolvedBuyPrice) resolvedBuyPrice = Math.round(p * 100) / 100;
-                  console.log("AUTO-FILL: resolved value =", resolvedValue);
-                }
+              if (resolvedPrices[i]) {
+                if (resolvedValue === 0) resolvedValue = resolvedPrices[i]!.value;
+                if (!resolvedBuyPrice) resolvedBuyPrice = resolvedPrices[i]!.buyPrice;
+                console.log("AUTO-FILL: resolved value =", resolvedValue);
+              }
+
+              // Geocode address for real_estate assets that include one
+              let resolvedLat: number | null = null;
+              let resolvedLng: number | null = null;
+              if ((change.type || "other") === "real_estate" && change.address) {
+                const geo = await geocodeAddress(change.address);
+                if (geo) { resolvedLat = geo.latitude; resolvedLng = geo.longitude; }
               }
 
               const insertData = {
@@ -218,6 +236,11 @@ export async function POST(req: NextRequest) {
                 mortgage_type: change.mortgage_type || null,
                 mortgage_start_date: change.mortgage_start_date || null,
                 mortgage_end_date: change.mortgage_end_date || null,
+                address: change.address || null,
+                property_type: change.property_type || null,
+                size_sqm: change.size_sqm || null,
+                latitude: resolvedLat,
+                longitude: resolvedLng,
                 user_id: userId,
               };
 
@@ -261,6 +284,18 @@ export async function POST(req: NextRequest) {
                 if (change.mortgage_rate !== undefined) updateData.mortgage_rate = change.mortgage_rate;
                 if (change.monthly_payment !== undefined) updateData.monthly_payment = change.monthly_payment;
                 if (change.mortgage_type !== undefined) updateData.mortgage_type = change.mortgage_type;
+                if (change.address !== undefined) updateData.address = change.address;
+                if (change.property_type !== undefined) updateData.property_type = change.property_type;
+                if (change.size_sqm !== undefined) updateData.size_sqm = change.size_sqm;
+
+                // Geocode address when it's being set or changed on a real_estate asset
+                if (change.address && (existing.type === "real_estate" || change.type === "real_estate")) {
+                  const geo = await geocodeAddress(change.address);
+                  if (geo) {
+                    updateData.latitude = geo.latitude;
+                    updateData.longitude = geo.longitude;
+                  }
+                }
 
                 console.log("EDITING:", name, updateData);
                 const { error } = await supabase
