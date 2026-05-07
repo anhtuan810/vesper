@@ -5,6 +5,11 @@ import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
 
+export interface PricePoint {
+  timestamp: number;
+  close: number;
+}
+
 interface PriceData {
   symbol: string;
   price: number;
@@ -124,6 +129,51 @@ export function useAssets(userId: string | undefined) {
     refetchAssets: fetchAssets,
     setAssets,
   };
+}
+
+export function usePriceHistory(symbol: string | null | undefined, range: string) {
+  const [closes, setCloses] = useState<number[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!symbol) { setCloses([]); return; }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/prices/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`)
+      .then((r) => r.json())
+      .then(({ data }) => {
+        if (!cancelled) {
+          setCloses((data as PricePoint[] | undefined)?.map((p) => p.close) ?? []);
+        }
+      })
+      .catch(() => { if (!cancelled) setCloses([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol, range]);
+
+  return { closes, loading };
+}
+
+export function useLivePrice(symbol: string | undefined) {
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [livePrev, setLivePrev] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    fetch(`/api/prices?symbol=${encodeURIComponent(symbol)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && !data.error) {
+          setLivePrice(normalizePrice(data.price, data.currency));
+          setLivePrev(data.previousClose ?? null);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [symbol]);
+
+  return { livePrice, livePrev };
 }
 
 export function useSignOut() {

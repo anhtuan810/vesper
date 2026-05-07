@@ -46,9 +46,14 @@ export default function DiaryPage() {
 
   const enrichedMutations = useMemo(() =>
     mutations.map(m => {
-      if (m.asset_type || m.symbol) return m;
+      if (m.asset_type && m.symbol) return m;
       const asset = assets.find(a => a.name.toLowerCase() === m.asset_name?.toLowerCase());
-      return { ...m, asset_type: asset?.type ?? null, symbol: asset?.symbol ?? null };
+      if (!asset) return m;
+      return {
+        ...m,
+        asset_type: m.asset_type ?? asset.type ?? null,
+        symbol: m.symbol ?? asset.symbol ?? null,
+      };
     }),
     [mutations, assets]
   );

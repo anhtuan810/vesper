@@ -14,3 +14,15 @@ export const tokens = {
 } as const;
 
 export type TokenKey = keyof typeof tokens;
+
+export const TYPE_COLOR_TOKENS = {
+  stocks:      "#D4A574",
+  etf:         "#A89B7C",
+  crypto:      "#9B7E5F",
+  bonds:       "#8A8A93",
+  gold:        "#D4A574",
+  real_estate: "#7A9E8B",
+  cash:        "#54545E",
+  pension:     "#7A9E8B",
+  other:       "#54545E",
+} as const;

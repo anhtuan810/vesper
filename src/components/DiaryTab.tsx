@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { fmt, formatDate, getMonthKey, getMonthLabel, ACTION_STYLE, TYPE_COLOR, type DashboardMutation } from "@/lib/utils";
+import { PriceDisplay } from "@/components/PriceDisplay";
 
 // ── Asset icon ─────────────────────────────────────────────────────────────────
 const TYPE_ICON: Record<string, React.ReactNode> = {
@@ -85,6 +86,19 @@ function AssetIcon({ type, symbol }: { type: string | null; symbol: string | nul
           className="w-full h-full object-contain"
           onError={() => setImgFailed(true)}
         />
+      </div>
+    );
+  }
+
+  // When we have a symbol but the logo failed, show the ticker as a monogram
+  // instead of the generic crypto/stock SVG (which looks like BTC for all crypto)
+  if (logoSymbol && imgFailed) {
+    return (
+      <div
+        className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center font-mono font-medium"
+        style={{ background: `${color}18`, color, fontSize: 7, letterSpacing: "0.02em" }}
+      >
+        {logoSymbol.slice(0, 4)}
       </div>
     );
   }
@@ -313,7 +327,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
               className="font-serif text-fg"
               style={{ fontSize: 24, fontWeight: 400, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 144" }}
             >
-              {fmt(endVal)}
+              <PriceDisplay amount={endVal} compact />
             </span>
             <span
               className="font-mono"

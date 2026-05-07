@@ -1,0 +1,294 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { createBrowserSupabase } from "@/lib/supabase";
+import { useLivePrice } from "@/lib/hooks";
+import { PriceChart } from "@/components/PriceChart";
+import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
+import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL } from "@/lib/utils";
+import { PriceDisplay } from "@/components/PriceDisplay";
+import type { Asset, Mutation } from "@/lib/supabase";
+
+interface Props {
+  asset: Asset;
+}
+
+
+function fmtPrice(n: number): string {
+  return n >= 1000
+    ? n.toLocaleString("en", { maximumFractionDigits: 0 })
+    : n.toFixed(2);
+}
+
+function monogram(asset: Asset): string {
+  if (asset.symbol) {
+    return asset.symbol.replace(/-[A-Z]+$/i, "").slice(0, 4).toUpperCase();
+  }
+  return asset.name.slice(0, 3).toUpperCase();
+}
+
+export function TradeableDetail({ asset }: Props) {
+  const router = useRouter();
+  const { livePrice, livePrev } = useLivePrice(asset.symbol);
+  const [mutations, setMutations] = useState<Mutation[]>([]);
+  const supabase = createBrowserSupabase();
+
+  const fetchMutations = useCallback(async () => {
+    const { data } = await supabase
+      .from("mutations")
+      .select("*")
+      .eq("asset_name", asset.name)
+      .order("occurred_at", { ascending: false, nullsFirst: false })
+      .limit(10);
+    setMutations(data ?? []);
+  }, [asset.name]);
+
+  useEffect(() => { fetchMutations(); }, [fetchMutations]);
+
+  const currentValue = livePrice != null && asset.units
+    ? Math.round(livePrice * asset.units)
+    : asset.value;
+
+  const dailyChg = pctChange(livePrice ?? undefined, livePrev ?? undefined);
+  const dailyAbs =
+    livePrice != null && livePrev != null && asset.units
+      ? (livePrice - livePrev) * asset.units
+      : null;
+  const up = dailyChg != null && dailyChg >= 0;
+
+  const totalReturn =
+    livePrice != null && asset.buy_price && asset.buy_price > 0
+      ? ((livePrice - asset.buy_price) / asset.buy_price) * 100
+      : null;
+
+  const subLine = [
+    asset.type !== "crypto" && asset.country ? asset.country : null,
+    TYPE_LABEL[asset.type] ?? asset.type,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="min-h-screen bg-bg">
+      <div className="max-w-[600px] mx-auto px-4 sm:px-6 pt-4 pb-32">
+
+        {/* Back */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 font-mono text-dim mb-2"
+          style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", paddingBottom: 8 }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Back
+        </button>
+
+        {/* Header */}
+        <div style={{ paddingBottom: 16 }}>
+          <div className="flex items-center gap-3.5 mb-4">
+            <div
+              className="bg-surface border border-border flex items-center justify-center shrink-0 font-mono font-medium text-dim"
+              style={{ width: 50, height: 50, borderRadius: 14, fontSize: 13 }}
+            >
+              {monogram(asset)}
+            </div>
+            <div>
+              <div
+                className="font-serif text-fg"
+                style={{ fontSize: 22, fontWeight: 400, lineHeight: 1.2, fontVariationSettings: "'opsz' 144" }}
+              >
+                {asset.name}
+              </div>
+              <div
+                className="font-mono text-dim mt-0.5"
+                style={{ fontSize: 10, letterSpacing: "0.05em" }}
+              >
+                {subLine}
+              </div>
+            </div>
+          </div>
+
+          {/* Price hero */}
+          <div
+            className="font-serif font-light text-fg"
+            style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}
+          >
+            <PriceDisplay amount={currentValue} currency={asset.currency} />
+          </div>
+
+          {/* Change pill */}
+          <div className="flex items-center gap-2.5 mt-3.5">
+            {dailyChg !== null ? (
+              <>
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: 11, fontWeight: 500,
+                    padding: "4px 8px", borderRadius: 6,
+                    background: up ? "rgba(107,170,117,0.12)" : "rgba(201,122,110,0.12)",
+                    color: up ? "var(--positive)" : "var(--negative)",
+                  }}
+                >
+                  {up ? "+" : ""}{dailyChg.toFixed(2)}%
+                </span>
+                {dailyAbs !== null && (
+                  <span className="text-dim" style={{ fontSize: 12 }}>
+                    {dailyAbs >= 0 ? "+" : ""}€{Math.abs(dailyAbs).toLocaleString("en", { maximumFractionDigits: 0 })} today
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="font-mono text-faint" style={{ fontSize: 11 }}>No live data</span>
+            )}
+          </div>
+        </div>
+
+        {/* Chart */}
+        {asset.symbol && <PriceChart symbol={asset.symbol} defaultRange="3M" />}
+
+        {/* Metric grid */}
+        <div className="grid grid-cols-2 gap-2 py-4">
+          {[
+            {
+              label: "Units",
+              value: asset.units != null ? asset.units.toLocaleString("en") : "—",
+            },
+            {
+              label: "Avg buy price",
+              value: asset.buy_price != null ? `€${fmtPrice(asset.buy_price)}` : "—",
+            },
+            {
+              label: "Live price",
+              value: livePrice != null ? `€${fmtPrice(livePrice)}` : "—",
+            },
+            {
+              label: "Total return",
+              value: totalReturn != null ? `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(1)}%` : "—",
+              color:
+                totalReturn == null ? undefined
+                : totalReturn >= 0 ? "var(--positive)"
+                : "var(--negative)",
+            },
+          ].map(({ label, value, color }) => (
+            <div
+              key={label}
+              className="border border-border rounded-xl"
+              style={{ background: "var(--surface)", padding: "12px 14px" }}
+            >
+              <div
+                className="font-mono text-faint uppercase mb-2"
+                style={{ fontSize: 9, letterSpacing: "0.16em" }}
+              >
+                {label}
+              </div>
+              <div
+                className="font-mono"
+                style={{ fontSize: 14, fontWeight: 500, color: color ?? "var(--text)" }}
+              >
+                {value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Crypto volatility */}
+        <CryptoVolatilityBlock asset={asset} />
+
+        {/* Recent activity */}
+        {mutations.length > 0 && (
+          <>
+            <div
+              className="font-serif text-fg"
+              style={{ fontSize: 16, fontWeight: 400, margin: "18px 0 12px" }}
+            >
+              Recent activity
+            </div>
+            <div style={{ borderTop: "1px solid var(--border)" }}>
+              {mutations.slice(0, 5).map((m) => {
+                const style = ACTION_STYLE[m.action] ?? ACTION_STYLE.edit;
+                const dateStr = m.occurred_at ?? m.recorded_at;
+                return (
+                  <div
+                    key={m.id}
+                    className="border-b border-border last:border-0"
+                    style={{ padding: "14px 0" }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: 9, fontWeight: 500,
+                          padding: "2px 8px", borderRadius: 4,
+                          letterSpacing: "0.1em", textTransform: "uppercase",
+                          color: style.color, background: style.bg,
+                        }}
+                      >
+                        {style.label}
+                      </span>
+                      <span
+                        className="font-mono text-faint"
+                        style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}
+                      >
+                        {dateStr ? formatDate(dateStr) : "—"}
+                      </span>
+                    </div>
+                    {m.after_value != null && (
+                      <div
+                        className="font-serif text-fg"
+                        style={{ fontSize: 17, fontWeight: 400, lineHeight: 1.3, marginBottom: 4 }}
+                      >
+                        {m.action === "add" && m.before_value != null
+                          ? `+€${Math.round(m.after_value - m.before_value).toLocaleString()}`
+                          : `€${Math.round(m.after_value).toLocaleString()}`}
+                      </div>
+                    )}
+                    {m.personal_context && (
+                      <div
+                        className="text-dim italic"
+                        style={{
+                          fontSize: 12, lineHeight: 1.55,
+                          borderLeft: "2px solid var(--border-strong)",
+                          paddingLeft: 10,
+                        }}
+                      >
+                        &quot;{m.personal_context}&quot;
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* CTAs */}
+        <div className="flex gap-2 pt-4 pb-2">
+          <button
+            className="flex-1 font-mono text-center border border-border"
+            style={{
+              padding: "11px 0", borderRadius: 12,
+              fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
+              background: "var(--surface)", color: "var(--text)",
+            }}
+          >
+            Edit
+          </button>
+          {/* TODO: wire Discuss to open chat with this asset as context */}
+          <button
+            className="flex-1 font-mono text-center"
+            style={{
+              padding: "11px 0", borderRadius: 12,
+              fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
+              background: "var(--accent)", color: "var(--bg)",
+            }}
+          >
+            Discuss
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}

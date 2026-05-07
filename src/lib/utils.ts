@@ -1,8 +1,6 @@
-export const TYPE_COLOR: Record<string, string> = {
-  stocks: "#2563EB", etf: "#0891B2", crypto: "#7C3AED",
-  bonds: "#059669", gold: "#D97706", real_estate: "#DC2626",
-  cash: "#475569", pension: "#6366F1", other: "#78716C",
-};
+import { TYPE_COLOR_TOKENS } from "@/lib/tokens";
+
+export const TYPE_COLOR: Record<string, string> = TYPE_COLOR_TOKENS;
 
 export const TYPE_LABEL: Record<string, string> = {
   stocks: "Stocks", etf: "ETF", crypto: "Crypto", bonds: "Bonds",
@@ -29,6 +27,15 @@ export interface DashboardMutation {
   recorded_at: string;
   asset_type: string | null;
   symbol: string | null;
+}
+
+const CURRENCY_SYMBOL: Record<string, string> = {
+  EUR: "€", USD: "$", GBP: "£", CHF: "Fr",
+  JPY: "¥", CAD: "CA$", AUD: "A$", HKD: "HK$",
+};
+
+export function currencySymbol(code: string): string {
+  return CURRENCY_SYMBOL[code?.toUpperCase()] ?? code;
 }
 
 export function fmt(n: number): string {
