@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vesper — Real Estate Detail · Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A0B;
+    --surface: #14141A;
+    --surface-elev: #1C1C24;
+    --border: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.10);
+    --text: #F5F4EE;
+    --text-dim: #8A8A93;
+    --text-faint: #54545E;
+    --accent: #D4A574;
+    --accent-soft: rgba(212,165,116,0.12);
+    --positive: #6BAA75;
+    --negative: #C97A6E;
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --mono: 'Geist Mono', 'SF Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #1a1a1c; }
+  body {
+    font-family: var(--sans);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 56px 24px 96px;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(212,165,116,0.05), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(107,170,117,0.03), transparent 50%);
+  }
+
+  .page-wrap { max-width: 1400px; margin: 0 auto; }
+  .page-header { margin-bottom: 64px; }
+  .page-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .page-eyebrow::before { content: ''; display: block; width: 24px; height: 1px; background: var(--accent); }
+  .page-title { font-family: var(--serif); font-weight: 300; font-size: clamp(40px, 5vw, 64px); letter-spacing: -0.025em; line-height: 1.05; margin-bottom: 20px; font-variation-settings: 'opsz' 144; }
+  .page-title em { font-style: italic; color: var(--accent); font-weight: 300; }
+  .page-subtitle { font-size: 16px; color: var(--text-dim); max-width: 640px; line-height: 1.6; }
+
+  .section { margin: 96px 0 0; }
+  .section-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text-dim);
+    margin-bottom: 32px; display: flex; align-items: center; gap: 14px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ---------- Phone frames ---------- */
+  .phones-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 60px;
+    align-items: start;
+    justify-items: center;
+  }
+  @media (max-width: 880px) { .phones-grid { grid-template-columns: 1fr; gap: 80px; } }
+
+  .phone-stack { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 340px; }
+  .phone {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 9 / 19.5;
+    background: var(--bg);
+    border-radius: 42px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 2px #2a2a30,
+      0 0 0 3px #0a0a0c,
+      0 0 0 7px #1f1f24,
+      0 32px 80px rgba(0,0,0,0.6),
+      0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+  }
+  .phone::before {
+    content: ''; position: absolute;
+    top: 14px; left: 50%; transform: translateX(-50%);
+    width: 90px; height: 24px; background: #000;
+    border-radius: 16px; z-index: 10;
+  }
+  .phone-caption {
+    text-align: center;
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .phone-caption strong { color: var(--accent); font-weight: 500; }
+
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 28px 12px;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+  }
+  .statusbar svg { display: block; opacity: 0.95; }
+
+  .app { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .app-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .app-content::-webkit-scrollbar { display: none; }
+
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; justify-content: space-between; align-items: center; padding: 6px 22px 14px; }
+  .back-link {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+  }
+
+  /* ---------- Photo hero (dark map placeholder) ---------- */
+  .photo-hero {
+    position: relative;
+    width: 100%; aspect-ratio: 16 / 11;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .photo-hero svg.map { display: block; width: 100%; height: 100%; }
+  .photo-streetview {
+    position: absolute; bottom: 12px; right: 12px;
+    background: rgba(10,10,11,0.82);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 6px 11px 6px 9px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text); letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .photo-source {
+    position: absolute; top: 12px; left: 12px;
+    font-family: var(--mono); font-size: 8px;
+    color: rgba(245,244,238,0.5); letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(10,10,11,0.6);
+    padding: 4px 8px; border-radius: 6px;
+    backdrop-filter: blur(6px);
+  }
+
+  /* ---------- Address line ---------- */
+  .address-block { padding: 20px 22px 4px; }
+  .address-line {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  }
+  .address-text {
+    font-family: var(--serif); font-size: 18px; font-weight: 400;
+    line-height: 1.3; font-variation-settings: 'opsz' 144;
+  }
+  .address-meta {
+    font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+    margin-top: 4px; letter-spacing: 0.05em;
+  }
+  .address-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); flex-shrink: 0; margin-top: 2px;
+  }
+
+  /* ---------- Equity hero ---------- */
+  .hero { padding: 16px 22px 4px; }
+  .hero-label {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+  .hero-amount {
+    font-family: var(--serif); font-weight: 300;
+    font-size: 42px; letter-spacing: -0.035em; line-height: 1;
+    font-variation-settings: 'opsz' 144;
+  }
+  .hero-amount .currency { color: var(--text-dim); font-size: 24px; vertical-align: top; margin-right: 4px; line-height: 1.2; }
+  .hero-change { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  .change-pill {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    padding: 4px 8px; border-radius: 6px;
+  }
+  .change-pill.up { background: rgba(107,170,117,0.12); color: var(--positive); }
+  .change-pill.down { background: rgba(201,122,110,0.12); color: var(--negative); }
+  .hero-change-label { font-size: 12px; color: var(--text-dim); }
+
+  /* ---------- Equity breakdown ---------- */
+  .equity-breakdown {
+    margin: 22px 22px 4px;
+    padding: 14px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .breakdown-label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px;
+  }
+  .breakdown-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px; }
+  .breakdown-seg-equity { height: 100%; background: var(--accent); }
+  .breakdown-seg-mortgage { height: 100%; background: rgba(255,255,255,0.08); }
+  .breakdown-rows { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; }
+  .breakdown-row { display: flex; justify-content: space-between; align-items: center; }
+  .breakdown-row-l { display: flex; align-items: center; gap: 9px; }
+  .breakdown-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .breakdown-name { font-size: 12px; color: var(--text); }
+  .breakdown-val { font-family: var(--mono); font-size: 11px; }
+
+  /* ---------- Section header ---------- */
+  .section-block { padding: 28px 22px 4px; }
+  .section-block-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .section-block-title { font-family: var(--serif); font-size: 18px; font-weight: 400; font-variation-settings: 'opsz' 144; }
+  .section-block-action { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
+
+  /* ---------- Mortgage stat grid ---------- */
+  .mortgage-stat-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .mortgage-stat {
+    padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .mortgage-stat-label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px;
+  }
+  .mortgage-stat-value { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+  .mortgage-stat-value.serif { font-family: var(--serif); font-size: 16px; font-weight: 400; }
+
+  /* ---------- Payoff chart ---------- */
+  .payoff-chart {
+    margin: 16px 22px 0; padding: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .payoff-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .payoff-label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text-faint);
+  }
+  .payoff-eta { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
+  .payoff-svg { display: block; width: 100%; height: 70px; margin: 6px 0; }
+  .payoff-stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px 18px; margin-top: 12px;
+    padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .payoff-stat-label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text-faint); margin-bottom: 4px;
+  }
+  .payoff-stat-value { font-family: var(--mono); font-size: 12px; }
+  .payoff-stat-value.accent { color: var(--accent); }
+
+  /* ---------- Future slots ---------- */
+  .future-slot {
+    margin: 12px 22px 0; padding: 14px 16px;
+    background: var(--surface); border: 1px dashed var(--border-strong);
+    border-radius: 14px;
+    opacity: 0.65;
+  }
+  .future-slot-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .future-slot-title { font-family: var(--serif); font-size: 14px; font-weight: 400; }
+  .future-tag {
+    font-family: var(--mono); font-size: 8px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 3px 7px; border: 1px solid var(--border-strong);
+    border-radius: 4px;
+  }
+  .future-slot-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ---------- Activity ---------- */
+  .activity-list { padding: 0 22px; }
+  .activity-entry { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .activity-entry:last-child { border-bottom: none; }
+  .activity-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .activity-date {
+    font-family: var(--mono); font-size: 10px; color: var(--text-faint);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .activity-action {
+    font-family: var(--mono); font-size: 9px;
+    padding: 2px 8px; border-radius: 4px;
+    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
+  }
+  .activity-action.add { background: rgba(107,170,117,0.12); color: var(--positive); }
+  .activity-action.edit { background: rgba(212,165,116,0.12); color: var(--accent); }
+  .activity-asset { font-family: var(--serif); font-size: 14px; font-weight: 400; line-height: 1.3; margin: 3px 0 2px; }
+  .activity-value { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+  .activity-context {
+    font-size: 11px; color: var(--text-dim);
+    font-style: italic; line-height: 1.5;
+    border-left: 2px solid var(--border-strong);
+    padding-left: 9px;
+  }
+
+  /* ---------- Action buttons ---------- */
+  .detail-actions { display: flex; gap: 8px; padding: 22px 22px 28px; }
+  .detail-btn {
+    flex: 1; padding: 11px 0; border-radius: 12px;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    text-align: center;
+  }
+  .detail-btn.primary { background: var(--accent); color: var(--bg); }
+  .detail-btn.secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+
+  /* ---------- Notes ---------- */
+  .anatomy {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px;
+    columns: 2; column-gap: 40px; column-rule: 1px solid var(--border);
+  }
+  @media (max-width: 800px) { .anatomy { columns: 1; } }
+  .note { break-inside: avoid; margin-bottom: 24px; }
+  .note h4 {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 8px;
+  }
+  .note p { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+  .note p strong { color: var(--text); font-weight: 500; }
+  .note p code {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--bg); padding: 2px 6px; border-radius: 4px;
+    color: var(--text); border: 1px solid var(--border);
+  }
+
+  /* ---------- Implementation table ---------- */
+  .impl-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 1000px) { .impl-grid { grid-template-columns: 1fr; } }
+  .impl-card {
+    padding: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+  }
+  .impl-card.recommended { border-color: rgba(212,165,116,0.4); position: relative; }
+  .impl-card.recommended::before {
+    content: 'RECOMMENDED'; position: absolute; top: -1px; right: 16px;
+    background: var(--accent); color: var(--bg);
+    padding: 4px 10px; border-radius: 0 0 6px 6px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; font-weight: 600;
+  }
+  .impl-card h3 {
+    font-family: var(--serif); font-size: 18px; font-weight: 400;
+    font-variation-settings: 'opsz' 144; margin-bottom: 6px;
+  }
+  .impl-card .impl-tagline {
+    font-family: var(--mono); font-size: 10px; color: var(--text-faint);
+    letter-spacing: 0.1em; margin-bottom: 14px;
+  }
+  .impl-card p { font-size: 13px; line-height: 1.6; color: var(--text-dim); margin-bottom: 12px; }
+  .impl-card ul { list-style: none; padding: 0; margin-top: auto; }
+  .impl-card li {
+    font-size: 12px; color: var(--text-dim); line-height: 1.5;
+    padding: 4px 0; display: flex; gap: 8px;
+  }
+  .impl-card li::before { content: '·'; color: var(--accent); }
+  .impl-card .url {
+    display: inline-block; margin-top: 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    word-break: break-all;
+  }
+
+  /* ---------- Schema additions ---------- */
+  .schema-block {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 32px;
+  }
+  .schema-block h3 {
+    font-family: var(--serif); font-size: 18px; font-weight: 400;
+    margin-bottom: 16px; font-variation-settings: 'opsz' 144;
+  }
+  .schema-table { width: 100%; border-collapse: collapse; }
+  .schema-table tr { border-bottom: 1px solid var(--border); }
+  .schema-table tr:last-child { border-bottom: none; }
+  .schema-table td { padding: 12px 0; vertical-align: top; }
+  .schema-table td:first-child { width: 200px; }
+  .schema-table .col {
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+  }
+  .schema-table .type {
+    font-family: var(--mono); font-size: 10px; color: var(--accent);
+    letter-spacing: 0.04em; margin-left: 8px;
+  }
+  .schema-table .desc { font-size: 12px; color: var(--text-dim); line-height: 1.55; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- ============ HEADER ============ -->
+  <header class="page-header">
+    <div class="page-eyebrow">Vesper · Real Estate Detail · Mockup v1</div>
+    <h1 class="page-title">A property hub,<br><em>not a row in a list.</em></h1>
+    <p class="page-subtitle">
+      Real estate is the most distinct asset class. It deserves its own page architecture — a dark map placeholder
+      where a real photo will eventually live, equity as the hero (not gross value), a full mortgage block with payoff
+      projection, and clean architectural slots for the WOZ-style auto-valuation and cash flow tracking that come later.
+    </p>
+  </header>
+
+  <!-- ============ MOBILE SCREENS ============ -->
+  <div class="section">
+    <div class="section-label">Mobile · property hub · top + bottom of one screen</div>
+
+    <div class="phones-grid">
+
+      <!-- ===== PHONE 1 — TOP HALF ===== -->
+      <div class="phone-stack">
+        <div class="phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span style="display:flex; gap:5px; align-items:center;">
+              <svg width="16" height="10" viewBox="0 0 16 10" fill="currentColor"><rect x="0" y="6" width="3" height="4" rx="0.5"/><rect x="4" y="4" width="3" height="6" rx="0.5"/><rect x="8" y="2" width="3" height="8" rx="0.5"/><rect x="12" y="0" width="3" height="10" rx="0.5"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 5 Q 7 -1 13 5"/><path d="M3.5 6.5 Q 7 3 10.5 6.5"/><circle cx="7" cy="8.5" r="0.8" fill="currentColor"/></svg>
+              <svg width="22" height="10" viewBox="0 0 22 10"><rect x="0.5" y="0.5" width="18" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="0.8"/><rect x="2" y="2" width="15" height="6" rx="1" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="3" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+
+          <div class="app">
+            <div class="app-content">
+
+              <div class="topbar">
+                <div class="back-link">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  Property
+                </div>
+                <div class="icon-btn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                </div>
+              </div>
+
+              <!-- ===== PHOTO HERO (DARK MAP) ===== -->
+              <div class="photo-hero">
+                <div class="photo-source">MAP · Tap to add photo</div>
+                <svg class="map" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid slice">
+                  <defs>
+                    <linearGradient id="photoGrad" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="55%" stop-color="#0A0A0B" stop-opacity="0"/>
+                      <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0.55"/>
+                    </linearGradient>
+                    <radialGradient id="pinGlow">
+                      <stop offset="0%" stop-color="#D4A574" stop-opacity="0.6"/>
+                      <stop offset="100%" stop-color="#D4A574" stop-opacity="0"/>
+                    </radialGradient>
+                  </defs>
+
+                  <!-- Land base -->
+                  <rect width="320" height="220" fill="#14141A"/>
+
+                  <!-- Maas-like waterway curving across bottom -->
+                  <path d="M 0 162 C 60 158 120 168 180 164 C 240 160 290 172 320 168 L 320 220 L 0 220 Z" fill="#0E1620"/>
+                  <path d="M 0 162 C 60 158 120 168 180 164 C 240 160 290 172 320 168" fill="none" stroke="#1A2632" stroke-width="0.5" opacity="0.7"/>
+
+                  <!-- Park shapes -->
+                  <path d="M 26 38 L 92 38 L 95 76 L 24 78 Z" fill="#16201A" opacity="0.85"/>
+                  <rect x="226" y="22" width="58" height="36" fill="#16201A" rx="2" opacity="0.85"/>
+
+                  <!-- Streets - subtle grid -->
+                  <g stroke="#22222A" stroke-width="0.8" fill="none" opacity="0.85">
+                    <line x1="0" y1="62" x2="320" y2="62"/>
+                    <line x1="0" y1="108" x2="320" y2="108"/>
+                    <line x1="0" y1="132" x2="320" y2="132"/>
+                    <line x1="100" y1="0" x2="100" y2="160"/>
+                    <line x1="160" y1="0" x2="158" y2="160"/>
+                    <line x1="220" y1="0" x2="222" y2="160"/>
+                    <line x1="280" y1="0" x2="282" y2="160"/>
+                    <line x1="0" y1="22" x2="100" y2="62"/>
+                    <line x1="220" y1="62" x2="320" y2="38"/>
+                  </g>
+
+                  <!-- Major street -->
+                  <line x1="0" y1="84" x2="320" y2="84" stroke="#34343C" stroke-width="1.6" opacity="0.7"/>
+
+                  <!-- Building blocks -->
+                  <g fill="#1A1A22" opacity="0.85">
+                    <rect x="105" y="65" width="50" height="40" rx="1"/>
+                    <rect x="165" y="65" width="50" height="40" rx="1"/>
+                    <rect x="225" y="65" width="50" height="18" rx="1"/>
+                    <rect x="225" y="86" width="50" height="20" rx="1"/>
+                    <rect x="105" y="113" width="50" height="14" rx="1"/>
+                    <rect x="165" y="113" width="50" height="14" rx="1"/>
+                    <rect x="105" y="135" width="50" height="22" rx="1"/>
+                    <rect x="165" y="135" width="50" height="22" rx="1"/>
+                    <rect x="40" y="92" width="55" height="34" rx="1"/>
+                    <rect x="40" y="135" width="55" height="22" rx="1"/>
+                  </g>
+
+                  <!-- Pin location -->
+                  <g transform="translate(160, 100)">
+                    <circle r="22" fill="url(#pinGlow)"/>
+                    <circle r="11" fill="#D4A574" opacity="0.18"/>
+                    <circle r="6" fill="#D4A574"/>
+                    <circle r="2" fill="#0A0A0B"/>
+                  </g>
+
+                  <!-- Bottom gradient overlay for legibility -->
+                  <rect width="320" height="220" fill="url(#photoGrad)"/>
+                </svg>
+                <div class="photo-streetview">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+                  Street view
+                </div>
+              </div>
+
+              <!-- ===== ADDRESS LINE ===== -->
+              <div class="address-block">
+                <div class="address-line">
+                  <div>
+                    <div class="address-text">Burg. Hoffmanplein 12</div>
+                    <div class="address-meta">ROTTERDAM · NL · APARTMENT · 78 m²</div>
+                  </div>
+                  <div class="address-icon">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== EQUITY HERO ===== -->
+              <div class="hero">
+                <div class="hero-label">Equity</div>
+                <div class="hero-amount"><span class="currency">€</span>237,250</div>
+                <div class="hero-change">
+                  <span class="change-pill up">+0.3%</span>
+                  <span class="hero-change-label">+€720 this month</span>
+                </div>
+              </div>
+
+              <!-- ===== EQUITY BREAKDOWN ===== -->
+              <div class="equity-breakdown">
+                <div class="breakdown-label">Value composition</div>
+                <div class="breakdown-bar">
+                  <div class="breakdown-seg-equity" style="width:52.7%;"></div>
+                  <div class="breakdown-seg-mortgage" style="width:47.3%;"></div>
+                </div>
+                <div class="breakdown-rows">
+                  <div class="breakdown-row">
+                    <div class="breakdown-row-l"><span class="breakdown-dot" style="background:var(--accent);"></span><span class="breakdown-name">Equity</span></div>
+                    <span class="breakdown-val">€237,250</span>
+                  </div>
+                  <div class="breakdown-row">
+                    <div class="breakdown-row-l"><span class="breakdown-dot" style="background:rgba(255,255,255,0.2);"></span><span class="breakdown-name">Mortgage owed</span></div>
+                    <span class="breakdown-val" style="color:var(--text-dim);">€212,750</span>
+                  </div>
+                  <div class="breakdown-row" style="padding-top:6px; border-top:1px solid var(--border); margin-top:2px;">
+                    <div class="breakdown-row-l"><span class="breakdown-name" style="color:var(--text-dim);">Property value</span></div>
+                    <span class="breakdown-val">€450,000</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== MORTGAGE STATS ===== -->
+              <div class="section-block">
+                <div class="section-block-head">
+                  <div class="section-block-title">Mortgage</div>
+                  <div class="section-block-action">EDIT</div>
+                </div>
+                <div class="mortgage-stat-grid">
+                  <div class="mortgage-stat">
+                    <div class="mortgage-stat-label">Balance</div>
+                    <div class="mortgage-stat-value">€212,750</div>
+                  </div>
+                  <div class="mortgage-stat">
+                    <div class="mortgage-stat-label">Rate</div>
+                    <div class="mortgage-stat-value">3.20%</div>
+                  </div>
+                  <div class="mortgage-stat">
+                    <div class="mortgage-stat-label">Monthly</div>
+                    <div class="mortgage-stat-value">€1,247</div>
+                  </div>
+                  <div class="mortgage-stat">
+                    <div class="mortgage-stat-label">Type</div>
+                    <div class="mortgage-stat-value serif">Annuity</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Above the fold</strong> · photo, address, equity, mortgage</div>
+      </div>
+
+      <!-- ===== PHONE 2 — BOTTOM HALF ===== -->
+      <div class="phone-stack">
+        <div class="phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span style="display:flex; gap:5px; align-items:center;">
+              <svg width="16" height="10" viewBox="0 0 16 10" fill="currentColor"><rect x="0" y="6" width="3" height="4" rx="0.5"/><rect x="4" y="4" width="3" height="6" rx="0.5"/><rect x="8" y="2" width="3" height="8" rx="0.5"/><rect x="12" y="0" width="3" height="10" rx="0.5"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 5 Q 7 -1 13 5"/><path d="M3.5 6.5 Q 7 3 10.5 6.5"/><circle cx="7" cy="8.5" r="0.8" fill="currentColor"/></svg>
+              <svg width="22" height="10" viewBox="0 0 22 10"><rect x="0.5" y="0.5" width="18" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="0.8"/><rect x="2" y="2" width="15" height="6" rx="1" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="3" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+
+          <div class="app">
+            <div class="app-content">
+
+              <!-- ===== PAYOFF CHART ===== -->
+              <div class="payoff-chart">
+                <div class="payoff-head">
+                  <div class="payoff-label">Payoff projection</div>
+                  <div class="payoff-eta">~ MAR 2031</div>
+                </div>
+                <svg class="payoff-svg" viewBox="0 0 280 70" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="payoffFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#D4A574" stop-opacity="0.18"/>
+                      <stop offset="100%" stop-color="#D4A574" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- gridlines -->
+                  <line x1="0" y1="20" x2="280" y2="20" stroke="rgba(255,255,255,0.04)" stroke-dasharray="2 3"/>
+                  <line x1="0" y1="45" x2="280" y2="45" stroke="rgba(255,255,255,0.04)" stroke-dasharray="2 3"/>
+                  <!-- decline curve (annuity: gentle then steep) -->
+                  <path d="M 0 8 C 30 12 60 18 96 26 C 130 34 160 44 196 54 C 220 60 250 65 280 70 L 280 70 L 0 70 Z" fill="url(#payoffFill)"/>
+                  <path d="M 0 8 C 30 12 60 18 96 26 C 130 34 160 44 196 54 C 220 60 250 65 280 70" fill="none" stroke="#D4A574" stroke-width="1.5" stroke-linecap="round"/>
+                  <!-- today marker -->
+                  <line x1="96" y1="0" x2="96" y2="70" stroke="rgba(212,165,116,0.3)" stroke-dasharray="2 2" stroke-width="0.8"/>
+                  <circle cx="96" cy="26" r="3" fill="#D4A574"/>
+                  <circle cx="96" cy="26" r="6" fill="#D4A574" opacity="0.25"/>
+                  <text x="96" y="9" font-family="Geist Mono" font-size="7" fill="#D4A574" text-anchor="middle" letter-spacing="0.5">TODAY</text>
+                  <!-- end marker -->
+                  <circle cx="280" cy="70" r="2.5" fill="#54545E"/>
+                  <!-- axis labels -->
+                  <text x="0" y="68" font-family="Geist Mono" font-size="7" fill="#54545E" letter-spacing="0.5">2014</text>
+                  <text x="265" y="68" font-family="Geist Mono" font-size="7" fill="#54545E" letter-spacing="0.5">2031</text>
+                </svg>
+                <div class="payoff-stats">
+                  <div>
+                    <div class="payoff-stat-label">Paid to date</div>
+                    <div class="payoff-stat-value">€87,250</div>
+                  </div>
+                  <div>
+                    <div class="payoff-stat-label">Interest paid</div>
+                    <div class="payoff-stat-value">€31,180</div>
+                  </div>
+                  <div>
+                    <div class="payoff-stat-label">Time remaining</div>
+                    <div class="payoff-stat-value">4y 10m</div>
+                  </div>
+                  <div>
+                    <div class="payoff-stat-label">Mortgage-free</div>
+                    <div class="payoff-stat-value accent">Mar 2031</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== FUTURE SLOT 1 — VALUATION ===== -->
+              <div class="future-slot">
+                <div class="future-slot-head">
+                  <div class="future-slot-title">Valuation history</div>
+                  <span class="future-tag">Soon</span>
+                </div>
+                <div class="future-slot-desc">
+                  WOZ value · market estimate · track value drift over time
+                </div>
+              </div>
+
+              <!-- ===== FUTURE SLOT 2 — CASH FLOW ===== -->
+              <div class="future-slot">
+                <div class="future-slot-head">
+                  <div class="future-slot-title">Cash flow</div>
+                  <span class="future-tag">Soon</span>
+                </div>
+                <div class="future-slot-desc">
+                  Rent income · mortgage outflow · maintenance · net monthly
+                </div>
+              </div>
+
+              <!-- ===== ACTIVITY ===== -->
+              <div class="section-block" style="padding-bottom:0;">
+                <div class="section-block-head">
+                  <div class="section-block-title">Activity</div>
+                  <div class="section-block-action">ALL</div>
+                </div>
+              </div>
+              <div class="activity-list">
+                <div class="activity-entry">
+                  <div class="activity-meta">
+                    <span class="activity-date">06 May · Today</span>
+                    <span class="activity-action edit">Updated</span>
+                  </div>
+                  <div class="activity-asset">Property revaluation</div>
+                  <div class="activity-value">€440,000 → €450,000</div>
+                  <div class="activity-context">"New WOZ valuation came through, slight bump."</div>
+                </div>
+                <div class="activity-entry">
+                  <div class="activity-meta">
+                    <span class="activity-date">15 Mar</span>
+                    <span class="activity-action add">Extra payment</span>
+                  </div>
+                  <div class="activity-asset">−€5,000 to principal</div>
+                  <div class="activity-value">Balance €217,750 → €212,750</div>
+                </div>
+                <div class="activity-entry">
+                  <div class="activity-meta">
+                    <span class="activity-date">02 Feb</span>
+                    <span class="activity-action edit">Rate change</span>
+                  </div>
+                  <div class="activity-asset">Annual rate adjustment</div>
+                  <div class="activity-value">3.00% → 3.20%</div>
+                </div>
+              </div>
+
+              <!-- ===== ACTIONS ===== -->
+              <div class="detail-actions">
+                <div class="detail-btn secondary">Edit</div>
+                <div class="detail-btn primary">Discuss</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Below the fold</strong> · payoff, future slots, activity</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ ANATOMY ============ -->
+  <div class="section">
+    <div class="section-label">Page anatomy · why each piece is where it is</div>
+
+    <div class="anatomy">
+      <div class="note">
+        <h4>The photo hero</h4>
+        <p>Every property has a photo from day one because the photo slot defaults to <strong>a dark map of the neighborhood</strong>, rendered with the same warm-black + amber palette as the rest of the app. The amber pin marks the property. A "Tap to add photo" hint sits subtle and top-left so users know they can replace it. Tapping anywhere else on the photo opens Google Maps with street view at the property's coordinates.</p>
+      </div>
+
+      <div class="note">
+        <h4>Address as a clickable link</h4>
+        <p>The address line below the photo is its own click target — full address, city, country, type, size. The small amber arrow icon signals it goes somewhere. This duplicates the photo's click target on purpose: <strong>two ways to reach street view</strong>, since the photo is also where users will look first.</p>
+      </div>
+
+      <div class="note">
+        <h4>Equity as the hero, not value</h4>
+        <p>Net worth uses equity, so the property page should too. The big serif number is <strong>€237,250 of equity</strong>, not €450,000 of gross value. The change pill shows month-over-month equity change, which is the meaningful direction (mortgage paid down + property revaluation combined).</p>
+      </div>
+
+      <div class="note">
+        <h4>Value composition card</h4>
+        <p>Right below the equity hero, a small card shows the math: <code>value − mortgage = equity</code> as a <strong>stacked horizontal bar</strong>. Amber for equity, muted grey for mortgage. The bar makes the equity ratio (52.7% in this case) immediately legible. This is the moment that explains why the hero number is what it is.</p>
+      </div>
+
+      <div class="note">
+        <h4>Mortgage stat grid</h4>
+        <p>Four cards in a 2×2 grid: <strong>balance, rate, monthly payment, type</strong>. These are the four numbers a homeowner actually carries in their head. Type is set in serif because it's a word, not a number — and because "Annuity" or "Linear" deserves a moment of typographic difference.</p>
+      </div>
+
+      <div class="note">
+        <h4>Payoff projection chart</h4>
+        <p>A small declining curve from <strong>mortgage start to projected end</strong>, with a "TODAY" marker showing where the user is on the journey. The curve shape reflects the mortgage type — annuity bows gently at first then accelerates; linear is straight; interest-only is flat (and the "mortgage-free" date would simply read as "—"). Below the chart: paid to date, interest paid, time remaining, mortgage-free date.</p>
+      </div>
+
+      <div class="note">
+        <h4>Future slots — visible but dim</h4>
+        <p>Two dashed-border cards labelled "Soon": <strong>Valuation history</strong> (WOZ + market estimate over time) and <strong>Cash flow</strong> (rent, mortgage outflow, maintenance, net). Showing them at 65% opacity does two jobs: it tells users what's coming, and it commits the page to a layout that won't shift dramatically when those sections arrive. We're not hiding the architecture — we're previewing it.</p>
+      </div>
+
+      <div class="note">
+        <h4>Activity, scoped to this property</h4>
+        <p>The bottom of the page shows mutations filtered to this asset only — revaluations, extra payments, rate changes. Same journal-feeling treatment as the global Diary, but scoped. Italic context where it exists, monospace numbers where they belong.</p>
+      </div>
+
+      <div class="note">
+        <h4>Edit and Discuss</h4>
+        <p>Two CTAs at the bottom. <strong>Edit</strong> opens the manual asset CRUD panel (build-plan item #1). <strong>Discuss</strong> opens the chat with the property already as context — useful for "what if I pay an extra €200/month?" or "should I refinance at 4.5%?" questions. The chat is already capable of this conversationally; the button is just a shortcut.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FREE MAP IMPLEMENTATION ============ -->
+  <div class="section">
+    <div class="section-label">Static map · free implementation options</div>
+
+    <div class="impl-grid">
+
+      <div class="impl-card recommended">
+        <h3>OpenFreeMap + MapLibre</h3>
+        <div class="impl-tagline">VECTOR · DARK · TRULY FREE</div>
+        <p>Renders vector tiles in the page using MapLibre GL JS. Hosted by the OpenFreeMap project (community-funded, MIT-licensed). <strong>No API key, no signup, no rate limits</strong>, no commercial restrictions. Lets us apply a custom dark style that matches the warm-black and amber palette exactly.</p>
+        <ul>
+          <li>~80kb MapLibre bundle, lazy-loaded</li>
+          <li>Custom dark style JSON we ship ourselves</li>
+          <li>Capture as PNG via <code>map.getCanvas().toDataURL()</code> and cache in Supabase Storage</li>
+          <li>Falls back gracefully if offline</li>
+        </ul>
+        <span class="url">openfreemap.org</span>
+      </div>
+
+      <div class="impl-card">
+        <h3>OSM Static Maps</h3>
+        <div class="impl-tagline">RASTER · SIMPLE · URL-BASED</div>
+        <p>A simple HTTP endpoint that returns a PNG given lat/lng/zoom/size. <strong>No JS needed</strong> — just an <code>&lt;img src="…"&gt;</code> tag. Free, hosted by the OSM community. Limited styling (default OSM look, not dark) but the lowest implementation cost by far.</p>
+        <ul>
+          <li>Zero client-side dependencies</li>
+          <li>Default OSM tile style — light, not on-brand</li>
+          <li>Reasonable for prototyping; not for production polish</li>
+          <li>Best as a fallback if MapLibre fails to load</li>
+        </ul>
+        <span class="url">staticmap.openstreetmap.de</span>
+      </div>
+
+      <div class="impl-card">
+        <h3>Leaflet + CartoDB Dark Matter</h3>
+        <div class="impl-tagline">RASTER · DARK · FREE FOR SMALL VOLUME</div>
+        <p>Leaflet renders raster tiles served by CartoDB's free Dark Matter style. Dark by default, decent quality, no key needed. Attribution required. <strong>Acceptable for low traffic</strong>, but CartoDB asks heavy users to migrate to their paid tier.</p>
+        <ul>
+          <li>~40kb Leaflet bundle</li>
+          <li>Dark theme out of the box, less customizable than vector</li>
+          <li>Tile-based — slightly less crisp than vector at high zoom</li>
+          <li>Migration path if usage grows: switch tile URL to a paid provider</li>
+        </ul>
+        <span class="url">cartodb-basemaps · dark_all</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ SCHEMA ADDITIONS ============ -->
+  <div class="section">
+    <div class="section-label">Schema additions · for when we build</div>
+
+    <div class="schema-block">
+      <h3>New columns on <code style="font-family:var(--mono); font-size:14px;">assets</code> for real estate</h3>
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:18px;">All optional, nullable, no migration risk on existing rows. Added in a single migration when we start building the page.</p>
+      <table class="schema-table">
+        <tr>
+          <td><span class="col">address</span><span class="type">text</span></td>
+          <td class="desc">Free-text address. Used for display and as fallback for geocoding when lat/lng aren't set.</td>
+        </tr>
+        <tr>
+          <td><span class="col">latitude</span><span class="type">numeric</span></td>
+          <td class="desc">Decimal degrees. Captured automatically by geocoding the address, or set manually. Drives the static map render.</td>
+        </tr>
+        <tr>
+          <td><span class="col">longitude</span><span class="type">numeric</span></td>
+          <td class="desc">Decimal degrees. Pairs with latitude.</td>
+        </tr>
+        <tr>
+          <td><span class="col">photo_url</span><span class="type">text</span></td>
+          <td class="desc">URL of the user-uploaded photo. When null, the page renders the dark map placeholder instead.</td>
+        </tr>
+        <tr>
+          <td><span class="col">property_type</span><span class="type">text</span></td>
+          <td class="desc">"apartment", "house", "townhouse", etc. Free-form for now. Could be enum later if values stabilize.</td>
+        </tr>
+        <tr>
+          <td><span class="col">size_sqm</span><span class="type">numeric</span></td>
+          <td class="desc">Floor area in square metres. Used in the address-meta line ("78 m²"). EU standard unit.</td>
+        </tr>
+      </table>
+
+      <p style="font-size:12px; color:var(--text-dim); margin-top:24px;">
+        <strong style="color:var(--text);">Already in schema</strong> — no changes needed for these:
+        <code>mortgage_balance</code>, <code>mortgage_rate</code>, <code>monthly_payment</code>, <code>mortgage_type</code>, <code>mortgage_start_date</code>, <code>mortgage_end_date</code>.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
