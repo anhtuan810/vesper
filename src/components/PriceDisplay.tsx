@@ -8,15 +8,15 @@ interface PriceDisplayProps {
   compact?: boolean;
 }
 
-function formatAmount(n: number, compact: boolean): string {
+function formatAmount(n: number, compact: boolean): { main: string; suf: string } {
   if (compact) {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-    return `${Math.round(n)}`;
+    if (n >= 1_000_000) return { main: `${(n / 1_000_000).toFixed(2)}`, suf: "M" };
+    if (n >= 1000) return { main: `${(n / 1000).toFixed(1)}`, suf: "k" };
+    return { main: `${Math.round(n)}`, suf: "" };
   }
-  if (n >= 1_000_000) return n.toLocaleString("en", { maximumFractionDigits: 0 });
-  if (n >= 1000) return n.toLocaleString("en", { maximumFractionDigits: 0 });
-  return n.toFixed(2);
+  if (n >= 1_000_000) return { main: n.toLocaleString("en", { maximumFractionDigits: 0 }), suf: "" };
+  if (n >= 1000) return { main: n.toLocaleString("en", { maximumFractionDigits: 0 }), suf: "" };
+  return { main: n.toFixed(2), suf: "" };
 }
 
 /**
@@ -26,7 +26,7 @@ function formatAmount(n: number, compact: boolean): string {
  */
 export function PriceDisplay({ amount, currency = "EUR", compact = false }: PriceDisplayProps) {
   const sym = currencySymbol(currency);
-  const formatted = formatAmount(amount, compact);
+  const { main, suf } = formatAmount(amount, compact);
 
   return (
     <>
@@ -36,7 +36,12 @@ export function PriceDisplay({ amount, currency = "EUR", compact = false }: Pric
       >
         {sym}
       </span>
-      {formatted}
+      {main}
+      {suf && (
+        <span className="text-dim" style={{ fontSize: "0.65em" }}>
+          {suf}
+        </span>
+      )}
     </>
   );
 }

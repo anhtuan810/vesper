@@ -1,5 +1,6 @@
 "use client";
 
+import { PriceDisplay } from "@/components/PriceDisplay";
 import { fmt } from "@/lib/utils";
 
 interface NetWorthHeroProps {
@@ -8,15 +9,7 @@ interface NetWorthHeroProps {
   totalDebt: number;
 }
 
-function splitAmount(fmtd: string): { pre: string; main: string; suf: string } {
-  const match = fmtd.match(/^(€)([\d,.]+)([kM]?)$/);
-  if (!match) return { pre: "€", main: fmtd.slice(1), suf: "" };
-  return { pre: match[1], main: match[2], suf: match[3] };
-}
-
 export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroProps) {
-  const { pre, main, suf } = splitAmount(fmt(netTotal));
-
   return (
     <div>
       <div
@@ -33,18 +26,7 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
           fontVariationSettings: "'opsz' 144",
         }}
       >
-        <span
-          className="text-dim inline-block"
-          style={{ fontSize: "0.56em", verticalAlign: "top", lineHeight: "1.55", marginRight: 3 }}
-        >
-          {pre}
-        </span>
-        {main}
-        {suf && (
-          <span className="text-dim" style={{ fontSize: "0.65em" }}>
-            {suf}
-          </span>
-        )}
+        <PriceDisplay amount={netTotal} compact />
       </div>
       {totalDebt > 0 && (
         <div className="font-mono text-faint mt-2" style={{ fontSize: 10 }}>

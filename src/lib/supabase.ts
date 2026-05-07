@@ -52,6 +52,12 @@ export interface Asset {
   mortgage_type?: "annuity" | "linear" | "interest_only";
   mortgage_start_date?: string;
   mortgage_end_date?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  photo_url?: string;
+  property_type?: string;
+  size_sqm?: number;
   created_at: string;
   updated_at: string;
 }

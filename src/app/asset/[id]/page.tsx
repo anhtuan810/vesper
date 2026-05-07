@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { TradeableDetail } from "@/components/asset-detail/TradeableDetail";
+import { RealEstateDetail } from "@/components/asset-detail/RealEstateDetail";
 import type { Asset } from "@/lib/supabase";
 
 const TRADEABLE_TYPES: Asset["type"][] = ["stocks", "etf", "crypto", "gold"];
@@ -41,6 +42,10 @@ export default async function AssetPage({
 
   if (TRADEABLE_TYPES.includes(asset.type)) {
     return <TradeableDetail asset={asset as Asset} />;
+  }
+
+  if (asset.type === "real_estate") {
+    return <RealEstateDetail asset={asset as Asset} />;
   }
 
   return (
