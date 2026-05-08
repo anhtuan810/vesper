@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getAuthUser } from "@/lib/supabase";
+import { currencySymbol } from "@/lib/utils";
 
 const anthropic = new Anthropic();
 
@@ -11,7 +12,8 @@ export async function POST(req: NextRequest) {
 
     const text = await req.text();
     if (!text) return NextResponse.json({ summary: null });
-    const { mutations, startVal, endVal, periodLabel } = JSON.parse(text);
+    const { mutations, startVal, endVal, periodLabel, currency } = JSON.parse(text);
+    const sym = currencySymbol(currency || "EUR");
 
     if (!mutations || mutations.length === 0) {
       return NextResponse.json({ summary: null });
@@ -25,18 +27,20 @@ export async function POST(req: NextRequest) {
       asset_name: string;
       before_value: number | null;
       after_value: number | null;
+      currency: string | null;
       occurred_at: string | null;
       personal_context: string | null;
     }[])
       .map((m) => {
+        const mSym = currencySymbol(m.currency || currency || "EUR");
         const date = m.occurred_at ? ` (${m.occurred_at})` : "";
         const ctx = m.personal_context ? ` — "${m.personal_context}"` : "";
         if (m.action === "add")
-          return `Added ${m.asset_name}: €${(m.after_value ?? 0).toLocaleString()}${date}${ctx}`;
+          return `Added ${m.asset_name}: ${mSym}${(m.after_value ?? 0).toLocaleString()}${date}${ctx}`;
         if (m.action === "edit")
-          return `Updated ${m.asset_name}: €${(m.before_value ?? 0).toLocaleString()} → €${(m.after_value ?? 0).toLocaleString()}${date}${ctx}`;
+          return `Updated ${m.asset_name}: ${mSym}${(m.before_value ?? 0).toLocaleString()} → ${mSym}${(m.after_value ?? 0).toLocaleString()}${date}${ctx}`;
         if (m.action === "remove")
-          return `Removed ${m.asset_name}: €${(m.before_value ?? 0).toLocaleString()}${date}${ctx}`;
+          return `Removed ${m.asset_name}: ${mSym}${(m.before_value ?? 0).toLocaleString()}${date}${ctx}`;
         return null;
       })
       .filter(Boolean)
@@ -59,7 +63,7 @@ Examples:
         {
           role: "user",
           content: `Period: ${periodLabel}
-Portfolio: started €${(startVal).toLocaleString()}, ended €${(endVal).toLocaleString()} (${change >= 0 ? "+" : ""}€${Math.abs(change).toLocaleString()}, ${change >= 0 ? "+" : ""}${changePct}%)
+Portfolio: started ${sym}${(startVal).toLocaleString()}, ended ${sym}${(endVal).toLocaleString()} (${change >= 0 ? "+" : ""}${sym}${Math.abs(change).toLocaleString()}, ${change >= 0 ? "+" : ""}${changePct}%)
 
 Activity:
 ${lines}

@@ -4,18 +4,11 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
+import type { PriceResult } from "@/app/api/prices/route";
 
 export interface PricePoint {
   timestamp: number;
   close: number;
-}
-
-interface PriceData {
-  symbol: string;
-  price: number;
-  previousClose: number;
-  currency: string;
-  error?: string;
 }
 
 export interface ProfileData {
@@ -58,7 +51,7 @@ export function useProfile(userId: string | undefined) {
 
 export function useAssets(userId: string | undefined) {
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [prices, setPrices] = useState<Record<string, PriceData>>({});
+  const [prices, setPrices] = useState<Record<string, PriceResult>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,18 +82,41 @@ export function useAssets(userId: string | undefined) {
         body: JSON.stringify({ symbols }),
       });
       const data = await res.json();
-      const priceMap: Record<string, PriceData> = {};
-      (data.prices as PriceData[])?.forEach((p) => {
+      const priceMap: Record<string, PriceResult> = {};
+      (data.prices as PriceResult[])?.forEach((p) => {
         if (!p.error) priceMap[p.symbol] = p;
       });
       setPrices(priceMap);
       setLastUpdated(new Date());
+
+      // Self-heal: if Yahoo's reported currency differs from what the DB has stored,
+      // update both currency AND value so they stay coherent.
+      const stale = assets.filter(
+        (asset) =>
+          asset.symbol &&
+          priceMap[asset.symbol] &&
+          priceMap[asset.symbol].nativeCurrency &&
+          priceMap[asset.symbol].nativeCurrency !== asset.currency
+      );
+      if (stale.length > 0) {
+        await Promise.all(
+          stale.map((asset) =>
+            supabase
+              .from("assets")
+              .update({ currency: priceMap[asset.symbol!].nativeCurrency })
+              .eq("id", asset.id)
+              .then(() => undefined)
+          )
+        );
+        // Re-fetch so the local state reflects corrected currency tags
+        await fetchAssets();
+      }
     } catch {
       // Prices stay as manual values
     } finally {
       setRefreshing(false);
     }
-  }, [assets]);
+  }, [assets, fetchAssets, supabase]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAssets(); }, [fetchAssets]);
@@ -113,8 +129,16 @@ export function useAssets(userId: string | undefined) {
     () => assets.map((a) => {
       if (a.symbol && a.units && prices[a.symbol]) {
         const p = prices[a.symbol];
-        const price = normalizePrice(p.price, p.currency);
-        return { ...a, value: Math.round(price * a.units), livePrice: price, livePrev: p.previousClose };
+        // p.price is already EUR-converted by /api/prices
+        const eurValue = Math.round(p.price * a.units);
+        return {
+          ...a,
+          value: eurValue,
+          livePrice: p.price,
+          livePrev: p.previousClose,
+          nativePrice: p.nativePrice,
+          nativeCurrency: p.nativeCurrency,
+        };
       }
       return a;
     }),
@@ -193,23 +217,28 @@ export function useSparklines(symbols: string[], range: string): Record<string, 
 export function useLivePrice(symbol: string | undefined) {
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [livePrev, setLivePrev] = useState<number | null>(null);
+  const [nativePrice, setNativePrice] = useState<number | null>(null);
+  const [nativeCurrency, setNativeCurrency] = useState<string | null>(null);
 
   useEffect(() => {
     if (!symbol) return;
     let cancelled = false;
     fetch(`/api/prices?symbol=${encodeURIComponent(symbol)}`)
       .then((r) => r.json())
-      .then((data) => {
+      .then((data: PriceResult) => {
         if (!cancelled && !data.error) {
-          setLivePrice(normalizePrice(data.price, data.currency));
+          // normalizePrice handles only the GBp edge case; price is already EUR-converted
+          setLivePrice(normalizePrice(data.price, data.nativeCurrency));
           setLivePrev(data.previousClose ?? null);
+          setNativePrice(data.nativePrice ?? null);
+          setNativeCurrency(data.nativeCurrency ?? null);
         }
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [symbol]);
 
-  return { livePrice, livePrev };
+  return { livePrice, livePrev, nativePrice, nativeCurrency };
 }
 
 export function useSignOut() {

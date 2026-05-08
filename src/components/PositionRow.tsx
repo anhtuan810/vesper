@@ -68,7 +68,7 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
 
         {/* Value + change */}
         <div className="text-right shrink-0">
-          <div className="font-mono text-[13px] font-medium text-fg">{fmt(asset.value)}</div>
+          <div className="font-mono text-[13px] font-medium text-fg">{fmt(asset.value, "EUR")}</div>
           {chg !== null ? (
             <div
               className={`font-mono mt-0.5 ${up ? "text-positive" : "text-negative"}`}

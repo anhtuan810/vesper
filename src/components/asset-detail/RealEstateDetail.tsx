@@ -75,8 +75,11 @@ export function RealEstateDetail({ asset }: Props) {
 
   const streetViewUrl = streetViewUrlForAsset(asset.latitude, asset.longitude, asset.address);
 
+  const streetAddress = asset.address ? asset.address.split(",")[0]?.trim() : undefined;
+  const city = asset.address && streetAddress ? parseCity(asset.address, streetAddress) : undefined;
+
   const metaParts = [
-    asset.address ? asset.address.split(",").slice(-2, -1)[0]?.trim() : undefined,
+    city,
     asset.country ?? undefined,
     asset.property_type ? asset.property_type.charAt(0).toUpperCase() + asset.property_type.slice(1) : undefined,
     asset.size_sqm ? `${asset.size_sqm} m²` : undefined,
@@ -321,6 +324,36 @@ export function RealEstateDetail({ asset }: Props) {
       </div>
     </div>
   );
+}
+
+function extractCityFromPostcodeSegment(segment: string): string | undefined {
+  const tokens = segment.split(/\s+/);
+  let cityStart = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    if (/^[A-Z0-9]{1,8}$/.test(tokens[i])) {
+      cityStart = i + 1;
+    } else {
+      break;
+    }
+  }
+  if (cityStart === 0 || cityStart >= tokens.length) return undefined;
+  return tokens.slice(cityStart).join(" ");
+}
+
+function parseCity(address: string, streetAddress: string): string | undefined {
+  const parts = address.split(",").map(s => s.trim());
+  for (let i = parts.length - 1; i > 0; i--) {
+    const p = parts[i];
+    if (/^[A-Z]{2}$/.test(p)) continue;
+    if (p.toLowerCase() === streetAddress.toLowerCase()) return undefined;
+    if (/\d/.test(p)) {
+      const city = extractCityFromPostcodeSegment(p);
+      if (city && city.toLowerCase() !== streetAddress.toLowerCase()) return city;
+      continue;
+    }
+    return p;
+  }
+  return undefined;
 }
 
 function AddressContent({ asset, metaParts }: { asset: RealEstateAsset; metaParts: string[] }) {

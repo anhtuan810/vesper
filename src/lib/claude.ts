@@ -32,14 +32,16 @@ Three actions:
 
 Format:
 <changes>[
-  {"action":"add","name":"SMCI","type":"stocks","value":2300,"currency":"EUR","country":"US","symbol":"SMCI","units":100,"buy_price":25},
+  {"action":"add","name":"SMCI","type":"stocks","value":2300,"currency":"USD","country":"US","symbol":"SMCI","units":100,"buy_price":25},
   {"action":"edit","name":"Property Eindhoven","value":540000},
   {"action":"remove","name":"AMD"}
 ]</changes>
 
 Field names for add (include all that apply):
   name, type (stocks|etf|crypto|bonds|gold|real_estate|cash|pension|other),
-  value (EUR), currency, country (ISO2), symbol (Yahoo Finance ticker),
+  value (number in the asset's native currency — use 0 if unknown, the system will auto-fill),
+  currency (the asset's native currency: USD for US stocks, EUR for European assets, etc.),
+  country (ISO2), symbol (Yahoo Finance ticker),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only)
 
@@ -86,17 +88,19 @@ export function buildDynamicContext(
   const countries = [...new Set(assets.map(a => a.country).filter(Boolean))];
 
   const assetList = assets.map(a => {
-    const parts = [`${a.name} (${a.type}): EUR${a.value.toLocaleString()}`];
+    const cur = a.currency || "EUR";
+    const parts = [`${a.name} (${a.type}): ${cur}${a.value.toLocaleString()}`];
     if (a.symbol) parts.push(`symbol:${a.symbol}`);
     if (a.units) parts.push(`units:${a.units}`);
     if (a.country) parts.push(`country:${a.country}`);
+    if (a.currency && a.currency !== "EUR") parts.push(`currency:${a.currency}`);
     if (a.type === "real_estate" && a.mortgage_balance) parts.push(`mortgage:EUR${a.mortgage_balance.toLocaleString()}`);
     return `- ${parts.join(", ")}`;
   }).join("\n");
 
   return [
     userName ? `User: ${userName}` : "",
-    `CURRENT PORTFOLIO (${assets.length} positions, net worth EUR${total.toLocaleString()}):`,
+    `CURRENT PORTFOLIO (${assets.length} positions, net worth EUR${total.toLocaleString()} — all values converted to EUR):`,
     assetList,
     "",
     `Allocation: ${Object.entries(byType).map(([t, v]) => `${t}: ${((v / total) * 100).toFixed(0)}%`).join(", ")}`,
@@ -138,14 +142,15 @@ Return ONLY the new assets being added.
 
 Format:
 <changes>[
-  {"action":"add","name":"NVIDIA","type":"stocks","value":13000,"currency":"EUR","country":"US","symbol":"NVDA","units":100},
+  {"action":"add","name":"NVIDIA","type":"stocks","value":0,"currency":"USD","country":"US","symbol":"NVDA","units":100},
   {"action":"add","name":"Property Amsterdam","type":"real_estate","value":450000,"currency":"EUR","country":"NL","mortgage_balance":280000}
 ]</changes>
 
 Field names (include all that apply):
   name, type (stocks|etf|crypto|bonds|gold|real_estate|cash|pension|other),
-  value (EUR number, estimate if unknown, use 0 if truly unknown),
-  currency, country (ISO2), symbol (Yahoo Finance ticker if known),
+  value (number in the asset's native currency — use 0 if unknown, the system will auto-fill for stocks/ETFs/crypto),
+  currency (the asset's native currency: USD for US stocks, EUR for European assets — use the correct native currency, not EUR by default),
+  country (ISO2), symbol (Yahoo Finance ticker if known),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type
 

@@ -31,10 +31,10 @@ export function StaticDetail({ asset }: Props) {
 
   const monogram = asset.name.slice(0, 3).toUpperCase();
 
-  const subLine = [
-    asset.country,
-    TYPE_LABEL[asset.type] ?? asset.type,
-  ].filter(Boolean).join(" · ");
+  const nameEqualsType = asset.name.toLowerCase() === asset.type.toLowerCase();
+  const subLine = nameEqualsType
+    ? (asset.currency ?? "")
+    : [asset.country, TYPE_LABEL[asset.type] ?? asset.type].filter(Boolean).join(" · ");
 
   const showRate =
     (asset.type === "cash" || asset.type === "pension") &&
@@ -72,12 +72,14 @@ export function StaticDetail({ asset }: Props) {
               >
                 {asset.name}
               </div>
-              <div
-                className="font-mono text-dim mt-0.5"
-                style={{ fontSize: 10, letterSpacing: "0.05em" }}
-              >
-                {subLine}
-              </div>
+              {subLine && (
+                <div
+                  className="font-mono text-dim mt-0.5"
+                  style={{ fontSize: 10, letterSpacing: "0.05em" }}
+                >
+                  {subLine}
+                </div>
+              )}
             </div>
           </div>
 

@@ -170,12 +170,14 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
           asset_name: m.asset_name,
           before_value: m.before_value,
           after_value: m.after_value,
+          currency: m.currency,
           occurred_at: m.occurred_at,
           personal_context: m.personal_context,
         })),
         startVal,
         endVal,
         periodLabel,
+        currency: "EUR",
       }),
     })
       .then((r) => r.json())
@@ -246,7 +248,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
           className="font-mono mt-1"
           style={{ fontSize: 13, color: positive ? "var(--positive)" : "var(--negative)" }}
         >
-          {positive ? "+" : ""}{fmt(change)}{startDateLabel ? ` since ${startDateLabel}` : ""}
+          {positive ? "+" : ""}{fmt(change, "EUR")}{startDateLabel ? ` since ${startDateLabel}` : ""}
         </div>
       </div>
 
@@ -510,13 +512,14 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
                 ? m.after_value - m.before_value : null;
               const hasValueChange = valueChange !== null && valueChange !== 0;
 
+              const mCur = m.currency ?? "EUR";
               let valueText: string | null = null;
               if (m.action === "add" && m.after_value != null) {
-                valueText = fmt(m.after_value);
+                valueText = fmt(m.after_value, mCur);
               } else if (m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null) {
-                valueText = `${fmt(m.before_value)} → ${fmt(m.after_value)}`;
+                valueText = `${fmt(m.before_value, mCur)} → ${fmt(m.after_value, mCur)}`;
               } else if (m.action === "remove" && m.before_value != null) {
-                valueText = fmt(m.before_value);
+                valueText = fmt(m.before_value, mCur);
               }
 
               return (
@@ -565,7 +568,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
                           className="ml-2 font-medium"
                           style={{ color: valueChange >= 0 ? "var(--positive)" : "var(--negative)" }}
                         >
-                          {valueChange >= 0 ? "+" : ""}{fmt(valueChange)}
+                          {valueChange >= 0 ? "+" : ""}{fmt(valueChange, mCur)}
                         </span>
                       )}
                     </div>

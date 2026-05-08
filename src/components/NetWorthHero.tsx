@@ -30,7 +30,7 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
       </div>
       {totalDebt > 0 && (
         <div className="font-mono text-faint mt-2" style={{ fontSize: 10 }}>
-          Gross {fmt(grossTotal)} · Debt {fmt(totalDebt)}
+          Gross {fmt(grossTotal, "EUR")} · Debt {fmt(totalDebt, "EUR")}
         </div>
       )}
     </div>

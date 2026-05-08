@@ -1,3 +1,5 @@
+import { currencySymbol } from "@/lib/utils";
+
 // Dynamic milestone step sizing — scales with portfolio size
 export function getNextMilestone(currentTotal: number): { target: number; step: number } {
   let step: number;
@@ -16,7 +18,7 @@ export function getNextMilestone(currentTotal: number): { target: number; step: 
 }
 
 // Calculate progress toward next milestone
-export function getMilestoneProgress(currentTotal: number): {
+export function getMilestoneProgress(currentTotal: number, currency = "EUR"): {
   target: number;
   previous: number;
   progress: number; // 0-100
@@ -27,12 +29,12 @@ export function getMilestoneProgress(currentTotal: number): {
   const previous = target - step;
   const progress = ((currentTotal - previous) / (target - previous)) * 100;
   const remaining = target - currentTotal;
+  const sym = currencySymbol(currency);
 
-  // Format the target nicely
   let label: string;
-  if (target >= 1000000) label = `€${(target / 1000000).toFixed(1)}M`;
-  else if (target >= 1000) label = `€${(target / 1000).toFixed(0)}k`;
-  else label = `€${target}`;
+  if (target >= 1000000) label = `${sym}${(target / 1000000).toFixed(1)}M`;
+  else if (target >= 1000) label = `${sym}${(target / 1000).toFixed(0)}k`;
+  else label = `${sym}${target}`;
 
   return {
     target,
@@ -44,8 +46,9 @@ export function getMilestoneProgress(currentTotal: number): {
 }
 
 // Format remaining amount
-export function fmtRemaining(n: number): string {
-  if (n >= 1000000) return `€${(n / 1000000).toFixed(2)}M`;
-  if (n >= 1000) return `€${(n / 1000).toFixed(1)}k`;
-  return `€${Math.round(n)}`;
+export function fmtRemaining(n: number, currency = "EUR"): string {
+  const sym = currencySymbol(currency);
+  if (n >= 1000000) return `${sym}${(n / 1000000).toFixed(2)}M`;
+  if (n >= 1000) return `${sym}${(n / 1000).toFixed(1)}k`;
+  return `${sym}${Math.round(n)}`;
 }

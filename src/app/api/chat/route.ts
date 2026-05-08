@@ -186,7 +186,12 @@ export async function POST(req: NextRequest) {
                 const priceData = await fetchHistoricalPrice(change.symbol, change.buy_date || null);
                 if (priceData) {
                   const p = normalizePrice(priceData.price, priceData.currency);
-                  return { value: Math.round(p * change.units), buyPrice: Math.round(p * 100) / 100 };
+                  return {
+                    value: Math.round(p * change.units),
+                    buyPrice: Math.round(p * 100) / 100,
+                    // Use Yahoo's reported currency so the asset is tagged correctly from the start
+                    yahooCurrency: priceData.currency === "GBp" ? "GBP" : priceData.currency,
+                  };
                 }
               }
               return null;
@@ -201,9 +206,12 @@ export async function POST(req: NextRequest) {
             if (action === "add") {
               let resolvedValue: number = change.value || 0;
               let resolvedBuyPrice: number | null = change.buy_price || null;
+              let resolvedCurrency: string = change.currency || "EUR";
               if (resolvedPrices[i]) {
                 if (resolvedValue === 0) resolvedValue = resolvedPrices[i]!.value;
                 if (!resolvedBuyPrice) resolvedBuyPrice = resolvedPrices[i]!.buyPrice;
+                // Yahoo's currency takes precedence over Claude's guess
+                if (resolvedPrices[i]!.yahooCurrency) resolvedCurrency = resolvedPrices[i]!.yahooCurrency!;
               }
 
               // Geocode address for real_estate assets that include one
@@ -218,7 +226,7 @@ export async function POST(req: NextRequest) {
                 name: name,
                 type: change.type || "other",
                 value: resolvedValue,
-                currency: change.currency || "EUR",
+                currency: resolvedCurrency,
                 country: change.country || null,
                 symbol: change.symbol || null,
                 units: change.units || null,
@@ -252,6 +260,7 @@ export async function POST(req: NextRequest) {
                   asset_type: change.type || "other",
                   symbol: change.symbol || null,
                   after_value: resolvedValue,
+                  currency: resolvedCurrency,
                   personal_context: contextRaw?.trim() || null,
                   portfolio_total: currentTotal + resolvedValue,
                   occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
@@ -309,6 +318,7 @@ export async function POST(req: NextRequest) {
                     symbol: existing.symbol || null,
                     before_value: existing.value,
                     after_value: change.value || existing.value,
+                    currency: change.currency || existing.currency || "EUR",
                     personal_context: contextRaw?.trim() || null,
                     portfolio_total: currentTotal,
                     occurred_at: new Date().toISOString().split("T")[0],
@@ -340,6 +350,7 @@ export async function POST(req: NextRequest) {
                     asset_type: existing.type,
                     symbol: existing.symbol || null,
                     before_value: existing.value,
+                    currency: existing.currency || "EUR",
                     personal_context: contextRaw?.trim() || null,
                     portfolio_total: currentTotal - existing.value,
                     occurred_at: new Date().toISOString().split("T")[0],

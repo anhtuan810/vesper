@@ -41,7 +41,7 @@ export function DonutChart({ data, total, netTotal }: DonutChartProps) {
         fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="500">NET WORTH</text>
       <text x={cx} y={cy + 14} textAnchor="middle" fill="#0F0E0C" fontSize="18"
         fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="800" letterSpacing="-0.03em">
-        {fmt(netTotal)}
+        {fmt(netTotal, "EUR")}
       </text>
     </svg>
   );

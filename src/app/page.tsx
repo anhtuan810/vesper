@@ -7,7 +7,7 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { getWarnings } from "@/lib/utils";
+import { getWarnings, fmt } from "@/lib/utils";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
@@ -159,7 +159,7 @@ export default function Dashboard() {
               className="font-serif font-light text-fg leading-none mb-3"
               style={{ fontSize: 48, letterSpacing: "-0.035em", fontVariationSettings: "'opsz' 144" }}
             >
-              €0
+              {fmt(0, "EUR")}
             </div>
             <div className="text-sm text-dim mb-2">No positions yet</div>
             <p className="text-faint text-xs max-w-xs leading-relaxed mb-8">

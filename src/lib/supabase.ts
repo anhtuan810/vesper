@@ -84,7 +84,12 @@ export interface StaticAsset extends BaseAsset {
 
 export type Asset = TradeableAsset | RealEstateAsset | BondsAsset | StaticAsset;
 
-export type LiveAsset = Asset & { livePrice?: number; livePrev?: number };
+export type LiveAsset = Asset & {
+  livePrice?: number;
+  livePrev?: number;
+  nativePrice?: number;    // original Yahoo price before EUR conversion
+  nativeCurrency?: string; // the currency Yahoo reported (e.g. "USD")
+};
 
 // ── Other types ────────────────────────────────────────────────────────────────
 
@@ -116,6 +121,7 @@ export interface Mutation {
   action: "add" | "edit" | "remove";
   before_value: number | null;
   after_value: number | null;
+  currency: string | null;
   personal_context: string | null;
   market_context: string | null;
   portfolio_total: number | null;

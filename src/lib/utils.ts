@@ -23,10 +23,11 @@ export function currencySymbol(code: string): string {
   return CURRENCY_SYMBOL[code?.toUpperCase()] ?? code;
 }
 
-export function fmt(n: number): string {
-  if (n >= 1000000) return `€${(n / 1000000).toFixed(2)}M`;
-  if (n >= 1000) return `€${(n / 1000).toFixed(1)}k`;
-  return `€${Math.round(n)}`;
+export function fmt(n: number, currency = "EUR"): string {
+  const sym = currencySymbol(currency);
+  if (n >= 1000000) return `${sym}${(n / 1000000).toFixed(2)}M`;
+  if (n >= 1000) return `${sym}${(n / 1000).toFixed(1)}k`;
+  return `${sym}${Math.round(n)}`;
 }
 
 export function fmtAmount(n: number, currency: string): string {

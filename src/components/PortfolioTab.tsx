@@ -51,7 +51,7 @@ export function PortfolioTab({
 
       {/* Milestone progress */}
       {netTotal > 0 && (() => {
-        const m = getMilestoneProgress(netTotal);
+        const m = getMilestoneProgress(netTotal, "EUR");
         return (
           <div className="bg-surface rounded-xl border border-border px-5 py-4 mb-4">
             <div className="flex items-center justify-between mb-2">
@@ -68,7 +68,7 @@ export function PortfolioTab({
             </div>
             <div className="flex items-center justify-between">
               <div className="font-mono text-faint" style={{ fontSize: 10 }}>{m.progress.toFixed(0)}% there</div>
-              <div className="font-mono text-faint" style={{ fontSize: 10 }}>{fmtRemaining(m.remaining)} to go</div>
+              <div className="font-mono text-faint" style={{ fontSize: 10 }}>{fmtRemaining(m.remaining, "EUR")} to go</div>
             </div>
           </div>
         );

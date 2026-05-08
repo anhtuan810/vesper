@@ -47,7 +47,7 @@ export function AllocationBar({ items, total }: AllocationBarProps) {
               <div className="flex items-center gap-3">
                 <span className="font-mono text-[12px] text-dim">{pct.toFixed(0)}%</span>
                 <span className="font-mono text-[13px] font-medium text-fg" style={{ minWidth: 60, textAlign: "right" }}>
-                  {fmt(value)}
+                  {fmt(value, "EUR")}
                 </span>
               </div>
             </div>
