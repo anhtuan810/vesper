@@ -25,6 +25,18 @@ export default function ChatPage() {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
+  // Apply seed pre-fill from ?seed= query param (set by Edit buttons on detail pages).
+  // Reads window.location.search directly to avoid the Suspense requirement of useSearchParams.
+  // Runs once on mount; replaces the URL to prevent re-trigger on back-nav.
+  useEffect(() => {
+    const seed = new URLSearchParams(window.location.search).get("seed");
+    if (!seed) return;
+    setInput(decodeURIComponent(seed));
+    router.replace("/chat");
+    setTimeout(() => inputRef.current?.focus(), 100);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <>
       <style>{`

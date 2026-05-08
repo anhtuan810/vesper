@@ -208,6 +208,7 @@ export function StaticDetail({ asset }: Props) {
         {/* CTAs */}
         <div style={{ display: "flex", gap: 8, paddingTop: 22 }}>
           <button
+            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`I'd like to update ${asset.name}`)}`)}
             className="font-mono text-center"
             style={{
               flex: 1, padding: "11px 0", borderRadius: 12,
