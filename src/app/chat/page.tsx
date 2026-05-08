@@ -47,7 +47,7 @@ export default function ChatPage() {
         .chat-dot:nth-child(2){animation-delay:.2s}.chat-dot:nth-child(3){animation-delay:.4s}
       `}</style>
 
-      <div className="flex flex-col bg-surface" style={{ minHeight: "100dvh" }}>
+      <div className="flex flex-col overflow-x-hidden bg-surface" style={{ height: "100dvh", paddingBottom: "calc(64px + env(safe-area-inset-bottom))" }}>
         {/* Header */}
         <div
           className="flex items-center justify-between px-5 py-4 shrink-0"
@@ -73,7 +73,7 @@ export default function ChatPage() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4" style={{ scrollbarWidth: "none" }}>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 flex flex-col gap-4" style={{ scrollbarWidth: "none", scrollbarGutter: "stable" }}>
           {messages.length === 0 && (
             <div>
               <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>
@@ -125,6 +125,8 @@ export default function ChatPage() {
                   color: "var(--text-dim)",
                   fontSize: 13,
                   lineHeight: 1.55,
+                  overflowWrap: "break-word",
+                  minWidth: 0,
                 }}
               >
                 {msg.from === "assistant" ? <FormatText text={msg.text} /> : msg.text}
@@ -159,28 +161,6 @@ export default function ChatPage() {
             >
               ✕
             </button>
-          </div>
-        )}
-
-        {/* Suggestion chips after conversation starts */}
-        {messages.length > 0 && !loading && (
-          <div className="px-4 pt-2 pb-1 flex gap-1.5 overflow-x-auto shrink-0" style={{ scrollbarWidth: "none" }}>
-            {CHAT_SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => { setInput(s); inputRef.current?.focus(); }}
-                className="shrink-0 text-dim transition-colors whitespace-nowrap"
-                style={{
-                  fontSize: 11,
-                  padding: "6px 12px",
-                  borderRadius: 20,
-                  background: "var(--surface-elev)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                {s}
-              </button>
-            ))}
           </div>
         )}
 

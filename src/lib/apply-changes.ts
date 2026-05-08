@@ -206,7 +206,7 @@ export async function applyPortfolioChanges({
             currency: change.currency || existing.currency || "EUR",
             personal_context: contextNote,
             portfolio_total: currentTotal,
-            occurred_at: new Date().toISOString().split("T")[0],
+            occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
           });
         }
       }

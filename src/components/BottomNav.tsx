@@ -49,8 +49,7 @@ const TABS = [
 export function BottomNav() {
   const pathname = usePathname();
 
-  // Chat page is full-screen; hide nav there so it doesn't overlap the input bar
-  if (pathname === "/chat" || pathname === "/login") return null;
+  if (pathname === "/login") return null;
 
   return (
     <nav

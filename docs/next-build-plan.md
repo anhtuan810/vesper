@@ -11,53 +11,56 @@ This is the prioritized roadmap for Vesper. MVP-focused. Avoid enterprise archit
 - **Phase 2b — Inline edit + delete for RealEstateDetail and StaticDetail**. Full CRUD parity with TradeableDetail. RealEstate inline-editable: name, address (re-geocodes server-side), property_type, size_sqm, country, value, all 6 mortgage fields. Static inline-editable: name, value, currency, plus all bond fields. ContextNotePrompt fires on >5% value change. EDIT button stopgap removed everywhere. `name` added to ALLOWED_COMMON. Address field decoupled from name display.
 - **Cleanup A — Rename via chat**. Chat API edit action accepts `new_name` field. System prompt updated. Users can rename any asset by saying "Rename X to Y".
 - **Cleanup B — Diary AI summary slimmed**. PeriodHighlight chart card removed (redundant with Portfolio chart). AI summary kept and demoted to lightweight card with pulsing V mark while loading. Period title moved above filter chips.
+- **Diary improvements**. Inline expandable notes (tap entry → edit `personal_context` → PATCH save with optimistic update). Search input above filter chips (case-insensitive substring on `asset_name` OR `personal_context`, AND-combined with period and action filters). "On this day" callout (same MM-DD in a prior year, ≥30-day floor, oldest match, scroll-and-amber-highlight on tap, filter-independent). All in `src/components/DiaryTab.tsx`.
+- **Portfolio change validation**. `src/lib/validations.ts` invoked from `/api/chat` before any DB write. All-or-nothing: any negative-unit or negative-value result rejects the full turn. Banker's-tone error messages saved as the assistant reply. Float tolerance `1e-9` for fractional crypto. `edit` mutations now propagate user-stated `buy_date` to `mutations.occurred_at` (was always writing today).
+- **BottomNav on /chat + layout hardening**. Restored mobile bottom navigation on the chat route. `height: 100dvh` + `padding-bottom: calc(64px + env(safe-area-inset-bottom))` contains the flex column to the viewport. `scrollbar-gutter: stable` on body prevents position:fixed elements from shifting when page-level scrollbars appear. `overflow-wrap: break-word` on message bubbles prevents horizontal page overflow from long URLs.
+- **DB-backed chat history fallback**. New `GET /api/messages?limit=20` endpoint (authenticated, DESC fetch reversed to ASC for display, capped at 50). `useChatSession` now falls back to a single DB fetch when localStorage is absent, expired, or empty — resolves the "returning user after 24h sees empty chat while Claude references their conversation" trust gap. Works cross-device. Fetched history is written back to localStorage to warm the cache.
 
 ## Build Order
 
-1. **Decision diary improvements** (search, "on this day" callout, inline note editing)
+1. **Display currency parameterization** (EUR-equivalent storage, per-user display preference, single formatting utility, system prompt parameterized)
 2. **Logo proxy** (privacy debt — proxy CDN logos through `/api/logo?symbol=...`)
-3. **Dashboard highlights** (market events, milestones, reflections — was always planned, now unblocked)
+3. **Dashboard highlights** (market events, milestones, reflections — unblocked now diary improvements shipped)
 4. **Scenario analysis UI**
 
-This order: finish making the diary genuinely useful as a decision log, clear the one pressing tech debt, then start adding new top-level surfaces.
+This order: fix the currency display gap that limits the app to EUR-centric users, clear the CDN privacy debt, then add new top-level surfaces.
 
 ---
 
-## 1. Decision Diary Improvements
+## 1. Display Currency Parameterization
 
-### Goal
-The diary's foundation is solid. Make it materially more useful as a decision log: searchable, surfaces past decisions on anniversaries, lets users add reasoning notes after the fact.
+### Motivation
+The current EUR-only display is an MVP shortcut, not a design decision. Vesper's target users span multiple currencies — a USD or GBP user shouldn't have to mentally convert their net worth every time they open the app.
 
-### Three sub-features
+### Architectural principle
+EUR-equivalent in storage, target currency at display only. No data migrations needed. User preference stored in `users.display_currency` (ISO code, default `EUR`). All number formatting flows through a single `formatMoney(eurValue, targetCurrency)` utility. System prompt to Claude is parameterized so responses come back in the user's currency. Math (allocation %, concentration, milestones, snapshots) stays in EUR — only the rendered number changes.
 
-**Search**
-- Text input above the period filter chips
-- Filters mutations by `asset_name` OR `personal_context` substring (case-insensitive)
-- Combines with existing period and action filters
-- Client-side filter on already-loaded mutations array
-- Empty-state copy adapts: "No entries match {query}"
+### Currency list at launch
+EUR, USD, GBP, CHF, CAD, AUD, SEK, NOK, DKK, SGD, JPY. Approximately 10 majors covering the target market.
 
-**"On this day"**
-- Callout above the entries list when conditions met
-- Conditions: a mutation has `occurred_at` matching today's month + day in any prior year, AND is at least 30 days old
-- Picks oldest matching mutation if multiple
-- Display: serif italic header "On this day" + entry-style row + relative label ("1 year ago", "3 months ago")
-- Tap scrolls to that mutation in the timeline
-- Independent of search and action filters — anniversary surprise
+### Tradeoffs to address during build
+- Goals stored in EUR, displayed in current currency (re-converts every render — simplest, goal doesn't drift with FX)
+- Currency switch UX needs a one-line note that the underlying portfolio is unchanged, only display
+- Historical mutations have currency-implicit-EUR values; non-EUR display uses today's FX rate over those, with the same precision caveats already documented
+- Milestone step sizing scales per currency (€1k → $1k → £1k → ¥150k, round-number-equivalent per currency)
 
-**Inline expandable notes**
-- Each diary entry becomes tappable
-- Tap expands an editor below the entry showing full `personal_context`
-- "+ Add note" affordance when context is empty
-- Save calls existing `PATCH /api/mutations/[id]`
-- Optimistically updates local state, falls back on error
+### Phasing (to be confirmed by audit pass)
+- **Foundation** — schema column, `formatMoney` utility, `useDisplayCurrency` hook, profile page setting. No visible UI changes
+- **Display swap** — every component starts using `formatMoney` instead of hardcoded `€`. Visible everywhere
+- **Input flows + Claude prompt** — manual entries convert at write time, system prompt parameterizes display currency, milestone scaling
+
+### Process
+Audit comes first as a separate chat (read-only, produces a written report of every formatting callsite and FX dependency) before any code is written.
 
 ### Database Impact
-- None — `personal_context` already exists on `mutations`
+- `users.display_currency` column (ISO code, e.g. `USD`, `GBP`, `SEK`) — default `EUR`
 
 ### Files Likely to Change
-- `src/components/DiaryTab.tsx` — search input, "on this day" block, inline expanded view
-- New: small inline note editor component (or inline in DiaryTab if it stays simple)
+- `src/lib/utils.ts` — `formatMoney` utility replaces or wraps `fmt()`
+- `src/lib/claude.ts` — system prompt parameterized with display currency
+- `src/app/api/fx/route.ts` — may need to serve rates for the display currency, not just EUR base
+- Every component that calls `fmt()` or formats EUR values directly
+- `src/app/profile/page.tsx` or settings surface — currency preference picker
 
 ---
 
@@ -157,3 +160,5 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 - Hardcoded FX fallback rates drift over time — review annually if the cache and frankfurter.app both fail
 - No tests — accepted for MVP, will become a problem as feature surface grows
 - No analytics (PostHog/Mixpanel) — defer until user count justifies it
+- Compound index on `messages (user_id, created_at DESC)` would optimize the chat history fallback fetch (`GET /api/messages`). Not blocking at current scale (hundreds of messages per user). File for a future migration when query latency becomes measurable
+- Chat history mapper silently coerces unknown `role` values to `"assistant"` (`from: m.role`). Acceptable given the schema only ever writes `"user"` or `"assistant"`, but a `continue` in the mapper would be more defensive against future schema drift

@@ -40,4 +40,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
+  /* Reserve scrollbar gutter at the page level so position:fixed elements
+     never shift when a vertical scrollbar appears or disappears. */
+  scrollbar-gutter: stable;
 }

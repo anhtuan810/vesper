@@ -41,7 +41,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
   useEffect(() => {
     if (!userId) return;
+
     const key = storageKey(userId);
+    let hasHistory = false;
+    const controller = new AbortController();
+
     try {
       // Sweep any keys belonging to other users
       for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -53,10 +57,37 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       const raw = localStorage.getItem(key);
       if (raw) {
         const { messages: stored, ts } = JSON.parse(raw) as { messages: ChatMessage[]; ts: number };
-        if (Date.now() - ts < CHAT_TTL_MS) setMessages(stored);
-        else localStorage.removeItem(key);
+        if (Date.now() - ts < CHAT_TTL_MS) {
+          if (stored.length > 0) {
+            setMessages(stored);
+            hasHistory = true;
+          }
+        } else {
+          localStorage.removeItem(key);
+        }
       }
     } catch {}
+
+    // DB fallback: fires only when localStorage had no usable messages.
+    // setMessages() here triggers the write effect, which caches the result
+    // automatically with a fresh timestamp — no explicit localStorage.setItem needed.
+    if (!hasHistory) {
+      fetch("/api/messages?limit=20", { signal: controller.signal })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!Array.isArray(data?.messages) || data.messages.length === 0) return;
+          const mapped: ChatMessage[] = data.messages.map(
+            (m: { role: "user" | "assistant"; content: string }) => ({
+              from: m.role,
+              text: m.content,
+            })
+          );
+          setMessages(mapped);
+        })
+        .catch(() => {});
+    }
+
+    return () => { controller.abort(); };
   }, [userId]);
 
   useEffect(() => {

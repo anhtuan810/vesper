@@ -17,6 +17,7 @@
 - Active tab highlighted in amber via `usePathname()`
 - Browser back button and direct linking work across all four
 - On desktop, the chat route falls back to the floating `ChatPopup` widget pattern
+- BottomNav now renders on `/chat` (was previously suppressed on this route to avoid overlapping the input bar). Layout uses `height: 100dvh` and `padding-bottom: calc(64px + env(safe-area-inset-bottom))` to keep the nav fixed at the viewport bottom while correctly handling iOS safe area and keyboard behavior. `scrollbar-gutter: stable` on body prevents horizontal layout shift when page-level scrollbars appear
 - Files: `src/app/page.tsx`, `src/app/diary/page.tsx`, `src/app/chat/page.tsx`, `src/app/profile/page.tsx`, `src/app/asset/[id]/page.tsx`, `src/components/BottomNav.tsx`
 
 ### Portfolio Dashboard
@@ -123,12 +124,24 @@
 - Image paste support (Claude vision reads broker app screenshots)
 - Changes-only architecture — Claude returns `<changes>` block with only what changed (add/edit/remove), not the full portfolio
 - Three actions parsed by backend: add (INSERT), edit (UPDATE by name match, case-insensitive, supports `new_name` field for renaming), remove (DELETE by name match, case-insensitive)
+- Edit mutations now propagate a user-stated `buy_date` from Claude's `<changes>` block to `mutations.occurred_at`, matching add-action behavior. Previously edit mutations always wrote `occurred_at = today`
 - Currency on insert: derived from Yahoo's reported currency when symbol is known, else EUR default
 - Strict topic boundary in system prompt — declines off-topic requests with a fixed redirect
 - Rate limit: 50 messages per user per day
 - Input cap: 500 characters
 - Auto-retry on Claude API failure (3 attempts with backoff)
-- Files: `src/components/ChatPopup.tsx`, `src/app/chat/page.tsx`, `src/app/api/chat/route.ts`, `src/lib/claude.ts`, `src/lib/use-chat-session.ts`
+- Chat history falls back to DB on cold load: `useChatSession` reads localStorage first (24h TTL); on miss or expiry, issues a single `GET /api/messages?limit=20` and populates the initial message state; the fetched messages are written back to localStorage with a fresh timestamp. Resolves cross-device empty history and the post-24h disorientation where Claude references a prior conversation the UI has already forgotten
+- Files: `src/components/ChatPopup.tsx`, `src/app/chat/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/messages/route.ts`, `src/lib/claude.ts`, `src/lib/use-chat-session.ts`
+
+### Portfolio Change Validation
+- Server-side validation in `src/lib/validations.ts`, invoked from `/api/chat` after JSON parsing and before any database write
+- All-or-nothing: if any change in a multi-change turn fails validation, the entire turn is rejected — no partial writes, no mutation rows logged
+- Rules: edit with resulting units below zero is blocked; edit with resulting value below zero is blocked; add with non-positive units or negative value is blocked; remove is unconditionally allowed
+- Float tolerance of `1e-9` applied to all unit comparisons to absorb floating-point drift on fractional crypto positions (e.g. closing a position held as 0.100000000001 units)
+- Error messages use banker's tone: negative-position edits name the asset and describe the attempted sell quantity; negative-value edits prompt the user to close explicitly; invalid adds give a generic size check; no apology language
+- On validation failure the error message is saved to the `messages` table as the assistant turn and returned as the API response — Claude is not called again
+- `PATCH /api/assets/[id]` (manual UI edit path) does not yet apply these checks — direct asset edits bypass validation; parity there is a identified future improvement, not implemented in this pass
+- Files: `src/lib/validations.ts` (new), `src/app/api/chat/route.ts`
 
 ### Conversational Onboarding
 - Triggers when user has zero assets
@@ -150,7 +163,10 @@
 - Period title shown above filters when a non-"all" period is selected
 - AI summary card (slimmed from former PeriodHighlight) at top of timeline — pulsing V mark while loading, 3 bullet points + activity counts when loaded
 - Recent activity preview (last 3) on Portfolio tab
-- Files: `src/app/diary/page.tsx`, `src/components/DiaryTab.tsx`, `src/app/api/chat/route.ts` (write), `src/app/api/assets/[id]/route.ts` (write), `src/app/api/diary-summary/route.ts` (AI summary)
+- **Inline expandable notes**: each entry row is tappable; tap expands an inline editor below the row pre-filled with the full `personal_context`; Save calls `PATCH /api/mutations/[id]` with optimistic update and rollback on error; "+ Add note" affordance shown when context is empty; only one editor open at a time — tapping a second entry collapses the first
+- **Search**: text input above the period filter chips; case-insensitive substring match on `asset_name` OR `personal_context` (including locally-edited notes); combines with period and action filters via AND; client-side, no server round-trip; empty state adapts to "No entries match {query}"
+- **"On this day" callout**: rendered above the timeline, independent of all filters; conditions — `occurred_at` shares today's month and day, is in a prior year, and is at least 30 days ago; oldest match wins when multiple qualify; displays a read-only entry-style row with a relative label ("1 year ago", "3 months ago"); tap clears active filters if the row is hidden, then smooth-scrolls to the matching entry in the timeline and plays a 1.5s amber ring highlight; uses browser-local date parsing to avoid UTC-offset drift
+- Files: `src/app/diary/page.tsx`, `src/components/DiaryTab.tsx`, `src/app/api/chat/route.ts` (write), `src/app/api/assets/[id]/route.ts` (write), `src/app/api/diary-summary/route.ts` (AI summary), `src/app/api/mutations/[id]/route.ts` (note PATCH)
 
 ### Investor Profile (Self-Building)
 - Background Claude call after each conversation extracts lasting facts
@@ -175,12 +191,8 @@
 
 ## What Is Incomplete or Fragile
 
-### Diary Improvements — Pending
-- Search by asset name or context (planned next)
-- "On this day" anniversary callout (planned next)
-- Inline expandable mutation notes (planned next)
-- Manual note add/edit on existing mutations (planned next)
-- Dashboard highlights cards (market events, milestones, reflections) — deferred until diary improvements ship and user retention is established
+### Dashboard Highlights — Pending
+- Dashboard highlights cards (market events, milestones, reflections) — deferred pending user retention signal
 
 ### Profile Extraction — Untested at Scale
 - Code is in place, runs as fire-and-forget background call

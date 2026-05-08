@@ -7,6 +7,7 @@ import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges } from "@/lib/apply-changes";
+import { validatePortfolioChanges } from "@/lib/validations";
 
 validateEnv();
 
@@ -172,6 +173,15 @@ export async function POST(req: NextRequest) {
       try {
         const changes = JSON.parse(changesRaw.trim());
         if (Array.isArray(changes) && changes.length > 0) {
+          const validationError = validatePortfolioChanges(changes, currentAssets);
+          if (validationError) {
+            await supabase.from("messages").insert([
+              { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
+              { user_id: userId, role: "assistant", content: validationError },
+            ]);
+            return NextResponse.json({ message: validationError, assets: null, remaining: DAILY_LIMIT - used });
+          }
+
           const { changed, duplicateWarnings } = await applyPortfolioChanges({
             supabase,
             userId,

@@ -58,9 +58,9 @@ function ChangesBlock({ content }: { content: string }) {
               fontSize: 11,
             }}
           >
-            <span style={{ color: "var(--text)" }}>{name?.trim()}</span>
+            <span style={{ color: "var(--text)", minWidth: 0, overflowWrap: "break-word" }}>{name?.trim()}</span>
             {rest.length > 0 && (
-              <span style={{ color: "var(--positive)" }}>{rest.join("·").trim()}</span>
+              <span style={{ color: "var(--positive)", flexShrink: 0, marginLeft: 8 }}>{rest.join("·").trim()}</span>
             )}
           </div>
         );

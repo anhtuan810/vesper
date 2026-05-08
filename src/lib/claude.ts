@@ -35,6 +35,7 @@ Format:
   {"action":"add","name":"SMCI","type":"stocks","value":2300,"currency":"USD","country":"US","symbol":"SMCI","units":100,"buy_price":25},
   {"action":"edit","name":"Property Eindhoven","value":540000},
   {"action":"edit","name":"Property Eindhoven","new_name":"Eindhoven"},
+  {"action":"edit","name":"ASML","units":71,"buy_price":990,"buy_date":"2025-05-08","value":70290},
   {"action":"remove","name":"AMD"}
 ]</changes>
 
@@ -54,6 +55,8 @@ The system geocodes the address automatically — do NOT ask the user for coordi
 NAMING REAL ESTATE: use the city from the address as the name by default (e.g. "Amsterdam", "Eindhoven"). Do not prefix with "Property" or "House" — the asset type makes that redundant. If the user has multiple properties in the same city, ask for a short discriminator (e.g. "Amsterdam home" vs "Amsterdam rental") rather than auto-generating one.
 
 Field names for edit: name (to match), plus any fields being changed.
+Valid edit fields: value, units, buy_price, buy_date, type, currency, country, symbol, new_name, and all mortgage/real_estate fields listed above.
+When the user buys more of an existing position and states a date, include buy_date and buy_price on the edit action — the system records them as the transaction date and price for that lot.
 RENAMING: to rename an asset, use the edit action with the OLD name as "name" (for matching) and a "new_name" field for the new name. Example: {"action":"edit","name":"Property Eindhoven","new_name":"Eindhoven"}
 This is the only way to change an asset's name. Do not put the new name in the "name" field — that field is used for matching the existing asset.
 Field names for remove: just name.

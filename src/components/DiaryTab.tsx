@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { fmt, formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
 import type { Mutation } from "@/lib/supabase";
 import { AssetLogo } from "@/components/AssetLogo";
@@ -11,6 +12,53 @@ function unitNoun(assetType: string | null): string {
   if (assetType === "crypto") return "units";
   if (assetType === "gold") return "oz";
   return "shares";
+}
+
+function hasContent(m: Mutation): boolean {
+  return m.before_value != null || m.after_value != null || !!m.personal_context;
+}
+
+function buildValueNode(m: Mutation): React.ReactNode {
+  const mCur = m.currency ?? "EUR";
+  const isUnitEligible =
+    m.asset_type != null &&
+    TRADEABLE_TYPES.has(m.asset_type) &&
+    (m.before_units != null || m.after_units != null);
+  const noun = unitNoun(m.asset_type);
+
+  if (isUnitEligible) {
+    if (m.action === "add" && m.after_units != null) {
+      return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>+{m.after_units.toLocaleString()} {noun}</span>;
+    }
+    if (m.action === "edit") {
+      const delta = (m.after_units ?? 0) - (m.before_units ?? 0);
+      if (delta !== 0) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: delta >= 0 ? "var(--positive)" : "var(--negative)" }}>{delta >= 0 ? "+" : ""}{delta.toLocaleString()} {noun}</span>;
+    }
+    if (m.action === "remove" && m.before_units != null) {
+      return <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>{m.before_units.toLocaleString()} {noun}</span>;
+    }
+  }
+
+  if (m.action === "add" && m.after_value != null) {
+    return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>{fmt(m.after_value, mCur)}</span>;
+  }
+  if (m.action === "edit") {
+    const valDelta = m.before_value != null && m.after_value != null ? m.after_value - m.before_value : null;
+    if (valDelta !== null && valDelta !== 0) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>{valDelta >= 0 ? "+" : ""}{fmt(valDelta, mCur)}</span>;
+    if (m.after_value != null) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>{fmt(m.after_value, mCur)}</span>;
+  }
+  if (m.action === "remove" && m.before_value != null) {
+    return <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>{fmt(m.before_value, mCur)}</span>;
+  }
+  return null;
+}
+
+function relativeAge(past: Date, now: Date): string {
+  const months = (now.getFullYear() - past.getFullYear()) * 12 + (now.getMonth() - past.getMonth());
+  const years = Math.floor(months / 12);
+  if (years >= 1) return years === 1 ? "1 year ago" : `${years} years ago`;
+  if (months <= 1) return "1 month ago";
+  return `${months} months ago`;
 }
 
 // ── Inline note editor ─────────────────────────────────────────────────────────
@@ -360,13 +408,26 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [localContexts, setLocalContexts] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   function getContext(m: Mutation): string {
     return m.id in localContexts ? localContexts[m.id] : (m.personal_context ?? "");
   }
 
-  const hasContent = (m: Mutation) =>
-    m.before_value != null || m.after_value != null || !!m.personal_context;
+  // Anniversary: same MM-DD as today, at least 30 days in the past, oldest wins
+  const anniversaryEntry = (() => {
+    const month = now.getMonth(), day = now.getDate();
+    const cutoff = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+    const candidates = mutations.filter(hasContent).filter((m) => {
+      if (!m.occurred_at) return false;
+      const [y, mo, d] = m.occurred_at.split("-").map(Number);
+      return (mo - 1) === month && d === day && new Date(y, mo - 1, d).getTime() <= cutoff;
+    });
+    if (candidates.length === 0) return null;
+    const m = [...candidates].sort((a, b) => a.occurred_at!.localeCompare(b.occurred_at!))[0];
+    const [y, mo, d] = m.occurred_at!.split("-").map(Number);
+    return { mutation: m, date: new Date(y, mo - 1, d) };
+  })();
 
   const periodMutations = mutations
     .filter(hasContent)
@@ -383,6 +444,21 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
         getContext(m).toLowerCase().includes(trimmedQuery)
       );
     });
+
+  function jumpToEntry(m: Mutation) {
+    const inTimeline = filteredMutations.some((fm) => fm.id === m.id);
+    if (!inTimeline) {
+      flushSync(() => {
+        setPeriod("all");
+        setDiaryFilter("all");
+        setSearchQuery("");
+      });
+    }
+    const el = document.getElementById(`diary-entry-${m.id}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedId(m.id);
+    setTimeout(() => setHighlightedId(null), 1500);
+  }
 
   const grouped = filteredMutations.reduce((acc, m) => {
     const key = getMonthKey(m.occurred_at || m.recorded_at);
@@ -543,6 +619,61 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
         })}
       </div>
 
+      <style>{`
+        @keyframes diaryHighlight {
+          0%   { outline: 2px solid rgba(212,165,116,0.75); outline-offset: 1px; }
+          100% { outline: 2px solid rgba(212,165,116,0);    outline-offset: 1px; }
+        }
+      `}</style>
+
+      {/* On this day */}
+      {anniversaryEntry && (
+        <div className="bg-surface rounded-2xl border border-border p-4 mb-6">
+          <div
+            className="font-serif italic text-dim mb-3"
+            style={{ fontSize: 13, fontVariationSettings: "'opsz' 144" }}
+          >
+            On this day
+          </div>
+          <button
+            onClick={() => jumpToEntry(anniversaryEntry.mutation)}
+            style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          >
+            <div className="flex items-center gap-3">
+              <AssetLogo
+                type={anniversaryEntry.mutation.asset_type}
+                symbol={anniversaryEntry.mutation.symbol}
+                name={anniversaryEntry.mutation.asset_name}
+              />
+              <span
+                className="font-serif flex-1 min-w-0"
+                style={{ fontSize: 14, fontWeight: 400, fontVariationSettings: "'opsz' 144", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {anniversaryEntry.mutation.asset_name}
+              </span>
+              {buildValueNode(anniversaryEntry.mutation)}
+              <span
+                className="font-mono uppercase"
+                style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.12em", flexShrink: 0, marginLeft: 12 }}
+              >
+                {formatDate(anniversaryEntry.mutation.occurred_at || anniversaryEntry.mutation.recorded_at)}
+              </span>
+            </div>
+            {getContext(anniversaryEntry.mutation) && (
+              <div
+                className="italic"
+                style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3, marginLeft: 36 }}
+              >
+                {getContext(anniversaryEntry.mutation)}
+              </div>
+            )}
+          </button>
+          <div className="font-mono uppercase text-faint mt-3" style={{ fontSize: 10, letterSpacing: "0.12em" }}>
+            {relativeAge(anniversaryEntry.date, now)}
+          </div>
+        </div>
+      )}
+
       {/* Empty state */}
       {filteredMutations.length === 0 && (
         <div className="text-center pt-16">
@@ -576,82 +707,18 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
 
           <div>
             {grouped[monthKey].map((m) => {
-              const mCur = m.currency ?? "EUR";
               const date = m.occurred_at || m.recorded_at;
-
-              // Unit-based display for tradeable mutations; value-based fallback for all others
-              const isUnitEligible =
-                m.asset_type != null &&
-                TRADEABLE_TYPES.has(m.asset_type) &&
-                (m.before_units != null || m.after_units != null);
-              const noun = unitNoun(m.asset_type);
-
-              let valueNode: React.ReactNode = null;
-
-              if (isUnitEligible) {
-                if (m.action === "add" && m.after_units != null) {
-                  valueNode = (
-                    <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>
-                      +{m.after_units.toLocaleString()} {noun}
-                    </span>
-                  );
-                } else if (m.action === "edit") {
-                  const unitDelta = (m.after_units ?? 0) - (m.before_units ?? 0);
-                  if (unitDelta !== 0) {
-                    valueNode = (
-                      <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: unitDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>
-                        {unitDelta >= 0 ? "+" : ""}{unitDelta.toLocaleString()} {noun}
-                      </span>
-                    );
-                  }
-                  // zero delta falls through to value-based below
-                } else if (m.action === "remove" && m.before_units != null) {
-                  valueNode = (
-                    <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>
-                      {m.before_units.toLocaleString()} {noun}
-                    </span>
-                  );
-                }
-              }
-
-              // Value-based fallback (non-tradeable, historical without units, or edit with zero unit delta)
-              if (valueNode === null) {
-                if (m.action === "add" && m.after_value != null) {
-                  valueNode = (
-                    <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>
-                      {fmt(m.after_value, mCur)}
-                    </span>
-                  );
-                } else if (m.action === "edit") {
-                  const valDelta = m.before_value != null && m.after_value != null
-                    ? m.after_value - m.before_value : null;
-                  if (valDelta !== null && valDelta !== 0) {
-                    valueNode = (
-                      <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>
-                        {valDelta >= 0 ? "+" : ""}{fmt(valDelta, mCur)}
-                      </span>
-                    );
-                  } else if (m.after_value != null) {
-                    valueNode = (
-                      <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>
-                        {fmt(m.after_value, mCur)}
-                      </span>
-                    );
-                  }
-                } else if (m.action === "remove" && m.before_value != null) {
-                  valueNode = (
-                    <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>
-                      {fmt(m.before_value, mCur)}
-                    </span>
-                  );
-                }
-              }
-
+              const valueNode = buildValueNode(m);
               const context = getContext(m);
               const isExpanded = expandedId === m.id;
 
               return (
-                <div key={m.id} className="border-b border-border last:border-0">
+                <div
+                  key={m.id}
+                  id={`diary-entry-${m.id}`}
+                  className="border-b border-border last:border-0"
+                  style={highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : undefined}
+                >
                   {/* Clickable row — tap to toggle note editor */}
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : m.id)}
