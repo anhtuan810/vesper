@@ -111,7 +111,7 @@ The diary is already on the right track post-redesign. Make it more useful as a 
 - `src/app/diary/page.tsx` — search + group-by-year
 - `src/components/DiaryTab.tsx` — "on this day" callout
 - `src/components/MutationDetail.tsx` (new) — expanded view modal
-- `src/app/api/mutations/[id]/route.ts` (new) — PATCH for notes
+- `src/app/api/mutations/[id]/route.ts` — extend allowed fields to include `notes`
 
 ---
 

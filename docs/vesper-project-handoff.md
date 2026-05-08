@@ -114,7 +114,7 @@ docs/
 
 ## Important Product Principles
 
-1. **Conversation-first**. Everything happens through the chat assistant. No dedicated forms for adding assets.
+1. **Conversation-first for adds; direct edit for everything else**. Adding assets always happens through chat (it captures context, handles screenshots, infers types). Edits and deletes happen inline on detail pages where possible. The chat assistant remains available for conversational edits.
 2. **Investing tone, not trading**. Use "growth" not "P&L". Use "added" not "entry". No win/loss ratios. No gamification.
 3. **Professional language**. No emojis. No exclamation marks. No "awesome / great / cool". Speak like a private banker.
 4. **Asset-agnostic**. No country-specific features. No asset-type-specific logic outside detail dispatchers. The intelligence is in the AI layer.

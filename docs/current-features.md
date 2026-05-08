@@ -172,4 +172,3 @@
 - **Token usage grows with portfolio size** — at 50+ assets the system prompt gets large; no compression layer
 - **No retry on Yahoo Finance failures** — if Yahoo is down, prices show as offline (acceptable, not gracefully handled)
 - **Historical mutations have currency-implicit-EUR values** — rows logged before the currency normalization fix have `before_value` and `after_value` stored as if they were EUR even when the position was USD-priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP
-- **The Mutation type omits asset_type and symbol columns that are real in the DB; left alone per "no refactoring unrelated files" rule. The insert calls just use those columns directly (Supabase JS doesn't enforce the TS interface at runtime).
