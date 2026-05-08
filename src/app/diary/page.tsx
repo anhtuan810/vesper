@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useAssets } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
@@ -9,25 +9,51 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import type { Mutation } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
+const PAGE_SIZE = 100;
 
 export default function DiaryPage() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
   const { assets } = useAssets(user?.id);
   const [mutations, setMutations] = useState<Mutation[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const [diaryFilter, setDiaryFilter] = useState("all");
   const [backfillDone, setBackfillDone] = useState(false);
+  const loadedRef = useRef(0);
 
   const fetchMutations = useCallback(async () => {
     if (!user?.id) return;
+    const { data, count, error } = await supabase
+      .from("mutations")
+      .select("*", { count: "exact" })
+      .eq("user_id", user.id)
+      .order("occurred_at", { ascending: false, nullsFirst: false })
+      .range(0, PAGE_SIZE - 1);
+    if (error) { console.error("Failed to load diary:", error.message); return; }
+    const loaded = data?.length ?? 0;
+    const total = count ?? 0;
+    setMutations(data || []);
+    setTotalCount(total);
+    setHasMore(total > loaded);
+    loadedRef.current = loaded;
+  }, [user?.id]);
+
+  const loadMore = useCallback(async () => {
+    if (!user?.id) return;
+    const offset = loadedRef.current;
     const { data, error } = await supabase
       .from("mutations")
       .select("*")
       .eq("user_id", user.id)
-      .order("occurred_at", { ascending: false, nullsFirst: false });
-    if (error) { console.error("Failed to load diary:", error.message); return; }
-    setMutations(data || []);
-  }, [user?.id]);
+      .order("occurred_at", { ascending: false, nullsFirst: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) return;
+    const newData = data || [];
+    setMutations((prev) => [...prev, ...newData]);
+    loadedRef.current = offset + newData.length;
+    setHasMore(loadedRef.current < totalCount);
+  }, [user?.id, totalCount]);
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
@@ -73,7 +99,7 @@ export default function DiaryPage() {
       <NavBar
         tab="diary"
         setTab={setTab}
-        mutationCount={mutations.length}
+        mutationCount={totalCount}
         liveCount={0}
         totalSymbols={0}
         refreshing={false}
@@ -84,6 +110,8 @@ export default function DiaryPage() {
           mutations={enrichedMutations}
           diaryFilter={diaryFilter}
           setDiaryFilter={setDiaryFilter}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
         />
       </div>
     </div>

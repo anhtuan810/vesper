@@ -34,6 +34,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message too long (500 char max)" }, { status: 400 });
     }
 
+    // ~7 MB base64 ≈ 5 MB binary — matches the client-side paste limit
+    if (imageData?.base64 && imageData.base64.length > 7_000_000) {
+      return NextResponse.json({ error: "Image too large (5 MB max)" }, { status: 400 });
+    }
+
     const supabase = createServerSupabase();
 
     // --- Rate limiting: 50 messages per day ---

@@ -78,6 +78,8 @@ export async function applyPortfolioChanges({
     const change = changes[i];
     const { action, name } = change;
 
+    if (!name?.trim()) continue;
+
     if (action === "add") {
       const isDuplicate = change.symbol
         ? currentAssets.some((a) => a.symbol && a.symbol.toLowerCase() === change.symbol!.toLowerCase())

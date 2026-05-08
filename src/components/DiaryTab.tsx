@@ -18,6 +18,8 @@ interface DiaryTabProps {
   mutations: Mutation[];
   diaryFilter: string;
   setDiaryFilter: (filter: string) => void;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 type PeriodKey = "all" | "week" | "month" | "3months" | "year" | "custom";
@@ -235,7 +237,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabProps) {
+export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLoadMore }: DiaryTabProps) {
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [period, setPeriod] = useState<PeriodKey>("all");
@@ -504,6 +506,17 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
           </div>
         </div>
       ))}
+      {hasMore && onLoadMore && (
+        <div className="pt-4 pb-8 flex justify-center">
+          <button
+            onClick={onLoadMore}
+            className="font-mono text-faint hover:text-dim transition-colors"
+            style={{ fontSize: 11, letterSpacing: "0.08em" }}
+          >
+            Load more
+          </button>
+        </div>
+      )}
     </>
   );
 }

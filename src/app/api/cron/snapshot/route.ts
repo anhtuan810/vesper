@@ -13,9 +13,7 @@ export async function GET(req: NextRequest) {
 
   const userIds = [...new Set((rows || []).map((r) => r.user_id as string))];
 
-  for (const userId of userIds) {
-    await writeSnapshot(userId);
-  }
+  await Promise.all(userIds.map((userId) => writeSnapshot(userId)));
 
   return NextResponse.json({ ok: true, users: userIds.length });
 }
