@@ -359,6 +359,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
   const [customTo, setCustomTo] = useState(thisMonth);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [localContexts, setLocalContexts] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
 
   function getContext(m: Mutation): string {
     return m.id in localContexts ? localContexts[m.id] : (m.personal_context ?? "");
@@ -371,8 +372,17 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
     .filter(hasContent)
     .filter((m) => isInPeriod(m, period, customFrom, customTo));
 
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+
   const filteredMutations = periodMutations
-    .filter((m) => diaryFilter === "all" || m.action === diaryFilter);
+    .filter((m) => diaryFilter === "all" || m.action === diaryFilter)
+    .filter((m) => {
+      if (!trimmedQuery) return true;
+      return (
+        (m.asset_name ?? "").toLowerCase().includes(trimmedQuery) ||
+        getContext(m).toLowerCase().includes(trimmedQuery)
+      );
+    });
 
   const grouped = filteredMutations.reduce((acc, m) => {
     const key = getMonthKey(m.occurred_at || m.recorded_at);
@@ -412,6 +422,50 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
           {getPeriodLabel(period, customFrom, customTo)}
         </div>
       )}
+
+      {/* Search input */}
+      <div style={{ position: "relative", marginBottom: 8 }}>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search entries"
+          className="font-mono"
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: "5px 28px 5px 10px",
+            fontSize: 11,
+            color: "var(--text)",
+            outline: "none",
+            caretColor: "var(--accent)",
+          }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            aria-label="Clear search"
+            style={{
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "var(--text-faint)",
+              fontSize: 14,
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
 
       {/* Row A — period chips */}
       <div
@@ -492,8 +546,17 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
       {/* Empty state */}
       {filteredMutations.length === 0 && (
         <div className="text-center pt-16">
-          <div className="text-sm text-dim mb-2">No entries for this period</div>
-          <p className="text-faint text-xs">Try a different time range or filter.</p>
+          {trimmedQuery ? (
+            <>
+              <div className="text-sm text-dim mb-2">No entries match &ldquo;{searchQuery.trim()}&rdquo;</div>
+              <p className="text-faint text-xs">Try a different search term.</p>
+            </>
+          ) : (
+            <>
+              <div className="text-sm text-dim mb-2">No entries for this period</div>
+              <p className="text-faint text-xs">Try a different time range or filter.</p>
+            </>
+          )}
         </div>
       )}
 
