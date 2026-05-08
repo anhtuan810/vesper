@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useUser, useAssets, useProfile, useSignOut } from "@/lib/hooks";
+import { useUser, useAssets } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
@@ -15,12 +15,10 @@ const supabase = createBrowserSupabase();
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
-  const profile = useProfile(user?.id);
   const {
-    assets, loading: assetsLoading, error: assetsError, refreshing, lastUpdated,
+    assets, loading: assetsLoading, error: assetsError, refreshing,
     refreshPrices, refetchAssets,
   } = useAssets(user?.id);
-  const signOut = useSignOut();
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
@@ -139,11 +137,8 @@ export default function Dashboard() {
         mutationCount={mutations.length}
         liveCount={liveCount}
         totalSymbols={totalSymbols}
-        lastUpdated={lastUpdated}
         refreshing={refreshing}
         refreshPrices={refreshPrices}
-        avatarUrl={profile?.avatar_url}
-        signOut={signOut}
       />
 
       <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-36">

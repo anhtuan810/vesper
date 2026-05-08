@@ -8,24 +8,35 @@ interface NavBarProps {
   mutationCount: number;
   liveCount: number;
   totalSymbols: number;
-  lastUpdated: Date | null;
   refreshing: boolean;
   refreshPrices: () => void;
-  avatarUrl?: string;
-  signOut: () => void;
 }
 
 export function NavBar({
   tab, setTab, mutationCount, liveCount, totalSymbols,
-  lastUpdated, refreshing, refreshPrices, avatarUrl, signOut,
+  refreshing, refreshPrices,
 }: NavBarProps) {
+  const dotColor =
+    totalSymbols > 0 && liveCount === totalSymbols
+      ? "var(--positive)"
+      : liveCount > 0
+      ? "var(--accent)"
+      : "var(--text-faint)";
+
+  const dotShadow =
+    totalSymbols > 0 && liveCount === totalSymbols
+      ? "0 0 8px var(--positive)"
+      : liveCount > 0
+      ? "0 0 8px var(--accent)"
+      : "none";
+
   return (
     <nav
       className="sticky top-0 z-20 border-b border-border backdrop-blur-xl"
       style={{ background: "rgba(10,10,11,0.85)" }}
     >
       <div className="max-w-[960px] mx-auto flex items-center justify-between px-6 sm:px-8 h-14">
-        {/* Brand */}
+        {/* Brand + desktop tabs */}
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-2">
             <span
@@ -40,12 +51,12 @@ export function NavBar({
               Vesper
             </span>
             <span
-              className="rounded-full bg-accent inline-block shrink-0"
-              style={{ width: 5, height: 5, boxShadow: "0 0 8px var(--accent)" }}
+              className="rounded-full inline-block shrink-0"
+              style={{ width: 5, height: 5, background: dotColor, boxShadow: dotShadow }}
             />
           </div>
 
-          {/* Tabs */}
+          {/* Desktop tabs */}
           <div className="hidden md:flex items-center gap-0.5">
             {(["portfolio", "diary", "profile"] as Tab[]).map((t) => (
               <button
@@ -77,49 +88,28 @@ export function NavBar({
           </div>
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-3">
-          {totalSymbols > 0 && (
-            <div
-              className="flex items-center gap-1.5 font-mono text-dim bg-surface border border-border"
-              style={{ fontSize: 10, padding: "5px 10px", borderRadius: 12 }}
-            >
-              <div
-                className="rounded-full shrink-0"
-                style={{
-                  width: 5,
-                  height: 5,
-                  background: liveCount > 0 ? "var(--positive)" : "var(--text-faint)",
-                  boxShadow: liveCount > 0 ? "0 0 6px var(--positive)" : "none",
-                }}
-              />
-              {liveCount > 0 ? `${liveCount}/${totalSymbols} live` : "offline"}
-            </div>
-          )}
-          {lastUpdated && (
-            <span className="font-mono text-faint" style={{ fontSize: 10 }}>
-              {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          )}
-          <button
-            onClick={refreshPrices}
-            disabled={refreshing}
-            className="font-mono text-dim border border-border hover:bg-surface transition-colors"
-            style={{ fontSize: 11, padding: "5px 10px", borderRadius: 8 }}
+        {/* Refresh icon button */}
+        <button
+          onClick={refreshPrices}
+          disabled={refreshing}
+          aria-label="Refresh prices"
+          className="flex items-center justify-center text-dim border border-border hover:bg-surface transition-colors"
+          style={{ width: 32, height: 32, borderRadius: 8, opacity: refreshing ? 0.5 : 1 }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
           >
-            {refreshing ? "↻ …" : "↻ Refresh"}
-          </button>
-          {avatarUrl && (
-            <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full" />
-          )}
-          <button
-            onClick={signOut}
-            className="font-mono text-faint hover:text-dim transition-colors"
-            style={{ fontSize: 10 }}
-          >
-            Sign out
-          </button>
-        </div>
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+        </button>
       </div>
     </nav>
   );

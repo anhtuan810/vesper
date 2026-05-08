@@ -41,23 +41,11 @@ export default function ChatPage() {
           className="flex items-center justify-between px-5 py-4 shrink-0"
           style={{ borderBottom: "1px solid var(--border)" }}
         >
-          <div>
-            <div
-              className="font-serif text-fg"
-              style={{ fontSize: 18, fontWeight: 400, letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 144" }}
-            >
-              Vesper
-            </div>
-            <div
-              className="font-mono text-faint flex items-center gap-1.5"
-              style={{ fontSize: 10, letterSpacing: "0.08em" }}
-            >
-              <span
-                className="rounded-full bg-positive"
-                style={{ width: 5, height: 5, display: "inline-block", boxShadow: "0 0 5px var(--positive)" }}
-              />
-              Portfolio assistant
-            </div>
+          <div
+            className="font-serif text-fg"
+            style={{ fontSize: 18, fontWeight: 400, letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 144" }}
+          >
+            Vesper
           </div>
           <button
             onClick={() => router.back()}

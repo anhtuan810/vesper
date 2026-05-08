@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, useAssets, useProfile, useSignOut } from "@/lib/hooks";
+import { useUser, useAssets } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { DiaryTab } from "@/components/DiaryTab";
 import { createBrowserSupabase } from "@/lib/supabase";
@@ -13,8 +13,6 @@ const supabase = createBrowserSupabase();
 export default function DiaryPage() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
-  const profile = useProfile(user?.id);
-  const signOut = useSignOut();
   const { assets } = useAssets(user?.id);
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [diaryFilter, setDiaryFilter] = useState("all");
@@ -78,11 +76,8 @@ export default function DiaryPage() {
         mutationCount={mutations.length}
         liveCount={0}
         totalSymbols={0}
-        lastUpdated={null}
         refreshing={false}
         refreshPrices={() => {}}
-        avatarUrl={profile?.avatar_url}
-        signOut={signOut}
       />
       <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-24 md:pb-10">
         <DiaryTab
