@@ -16,6 +16,7 @@ export const CHAT_SUGGESTIONS = [
 
 // Shared across ChatPopup and /chat so history persists between surfaces
 const STORAGE_KEY = "vesper_chat_history";
+const CHAT_TTL_MS = 24 * 60 * 60 * 1000;
 
 interface Options {
   userId: string | undefined;
@@ -40,13 +41,17 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) setMessages(JSON.parse(stored) as ChatMessage[]);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const { messages: stored, ts } = JSON.parse(raw) as { messages: ChatMessage[]; ts: number };
+        if (Date.now() - ts < CHAT_TTL_MS) setMessages(stored);
+        else localStorage.removeItem(STORAGE_KEY);
+      }
     } catch {}
   }, []);
 
   useEffect(() => {
-    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, ts: Date.now() })); } catch {}
   }, [messages]);
 
   const clearImage = useCallback(() => {

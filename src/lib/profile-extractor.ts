@@ -73,17 +73,18 @@ What lasting facts about this user (if any) can be extracted from this exchange?
 
     // Merge with existing profile — never overwrite, only add/refine
     const mergedProfile = { ...currentProfile };
+    const FIELD_MAX = 200;
 
     for (const [key, value] of Object.entries(extracted)) {
       if (value && typeof value === "string" && value.trim().length > 0) {
         if (mergedProfile[key]) {
-          // If field exists, append if different information
           const existing = mergedProfile[key] as string;
           if (!existing.toLowerCase().includes((value as string).toLowerCase())) {
-            mergedProfile[key] = `${existing}. ${value}`;
+            const appended = `${existing}. ${value}`;
+            mergedProfile[key] = appended.length > FIELD_MAX ? appended.slice(0, FIELD_MAX) : appended;
           }
         } else {
-          mergedProfile[key] = value;
+          mergedProfile[key] = (value as string).slice(0, FIELD_MAX);
         }
       }
     }

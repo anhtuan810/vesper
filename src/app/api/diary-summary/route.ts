@@ -1,37 +1,42 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getAuthUser } from "@/lib/supabase";
+import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { validateEnv } from "@/lib/env";
 import { currencySymbol } from "@/lib/utils";
 
 validateEnv();
 
 const anthropic = new Anthropic();
-
 const DAILY_LIMIT = 20;
-const dailyCounts = new Map<string, { count: number; date: string }>();
-
-function checkRateLimit(userId: string): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-  const entry = dailyCounts.get(userId);
-  if (!entry || entry.date !== today) {
-    dailyCounts.set(userId, { count: 1, date: today });
-    return true;
-  }
-  if (entry.count >= DAILY_LIMIT) return false;
-  entry.count++;
-  return true;
-}
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!checkRateLimit(user.id)) {
+    const supabase = createServerSupabase();
+    const today = new Date().toISOString().slice(0, 10);
+
+    // DB-backed rate limit — survives server restarts and multiple instances
+    const { data: userData } = await supabase
+      .from("users")
+      .select("profile")
+      .eq("id", user.id)
+      .single();
+
+    const profile = (userData?.profile as Record<string, unknown>) || {};
+    const rateLimit = profile._diary_rate as { count: number; date: string } | undefined;
+
+    if (rateLimit?.date === today && rateLimit.count >= DAILY_LIMIT) {
       return NextResponse.json({ error: "Daily limit reached" }, { status: 429 });
     }
+
+    const newCount = rateLimit?.date === today ? rateLimit.count + 1 : 1;
+    await supabase
+      .from("users")
+      .update({ profile: { ...profile, _diary_rate: { count: newCount, date: today } } })
+      .eq("id", user.id);
 
     const text = await req.text();
     if (!text) return NextResponse.json({ error: "No input" }, { status: 400 });
