@@ -6,111 +6,23 @@ import type { Mutation } from "@/lib/supabase";
 import { PriceDisplay } from "@/components/PriceDisplay";
 
 // ── Asset icon ─────────────────────────────────────────────────────────────────
-const TYPE_ICON: Record<string, React.ReactNode> = {
-  real_estate: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <path d="M3 12L12 4L21 12V21H15V15H9V21H3V12Z" />
-    </svg>
-  ),
-  gold: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <rect x="3" y="9" width="18" height="7" rx="1.5" />
-      <path d="M7 9V7M12 9V6M17 9V7" />
-    </svg>
-  ),
-  bonds: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <rect x="4" y="3" width="16" height="18" rx="2" />
-      <path d="M8 8H16M8 12H16M8 16H12" />
-    </svg>
-  ),
-  cash: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <rect x="2" y="7" width="20" height="11" rx="2" />
-      <circle cx="12" cy="12" r="2.5" />
-      <path d="M6 10V14M18 10V14" />
-    </svg>
-  ),
-  pension: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <path d="M12 4C7.5 4 3.5 7.5 3 12H21C20.5 7.5 16.5 4 12 4Z" />
-      <path d="M12 12V18C12 19.1 12.9 20 14 20C15.1 20 16 19.1 16 18" />
-    </svg>
-  ),
-  crypto: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9 8.5H13C14.1 8.5 15 9.4 15 10.5C15 11.6 14.1 12.5 13 12.5H9V8.5Z" />
-      <path d="M9 12.5H13.5C14.6 12.5 15.5 13.4 15.5 14.5C15.5 15.6 14.6 16.5 13.5 16.5H9V12.5Z" />
-      <path d="M11 8.5V7M11 17V18M13 8.5V7M13 17V18" />
-    </svg>
-  ),
-  stocks: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <polyline points="4,17 9,11 14,14 20,7" />
-      <path d="M4 20H20" />
-    </svg>
-  ),
-  etf: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <rect x="3" y="13" width="4" height="8" rx="1" />
-      <rect x="10" y="8" width="4" height="13" rx="1" />
-      <rect x="17" y="4" width="4" height="17" rx="1" />
-    </svg>
-  ),
-  other: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </svg>
-  ),
-};
-
-function AssetIcon({ type, symbol }: { type: string | null; symbol: string | null }) {
-  const [imgFailed, setImgFailed] = useState(false);
+function AssetIcon({ type, symbol, name }: { type: string | null; symbol: string | null; name?: string | null }) {
   const assetType = type || "other";
   const color = TYPE_COLOR[assetType] || TYPE_COLOR.other;
 
-  const useLogoTypes = ["stocks", "etf", "crypto"];
-  const logoSymbol = symbol
+  const symbolMonogram = symbol
     ? symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase()
     : null;
+  const monogram = symbolMonogram
+    ? symbolMonogram.slice(0, 4)
+    : (name || assetType).slice(0, 3).toUpperCase();
 
-  if (logoSymbol && useLogoTypes.includes(assetType) && !imgFailed) {
-    return (
-      <div className="w-6 h-6 rounded-md bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
-        <img
-          src={`https://assets.parqet.com/logos/symbol/${logoSymbol}?format=png`}
-          alt={logoSymbol}
-          className="w-full h-full object-contain"
-          onError={() => setImgFailed(true)}
-        />
-      </div>
-    );
-  }
-
-  // When we have a symbol but the logo failed, show the ticker as a monogram
-  // instead of the generic crypto/stock SVG (which looks like BTC for all crypto)
-  if (logoSymbol && imgFailed) {
-    return (
-      <div
-        className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center font-mono font-medium"
-        style={{ background: `${color}18`, color, fontSize: 7, letterSpacing: "0.02em" }}
-      >
-        {logoSymbol.slice(0, 4)}
-      </div>
-    );
-  }
-
-  const icon = TYPE_ICON[assetType] || TYPE_ICON.other;
   return (
     <div
-      className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center"
-      style={{ background: `${color}18`, color }}
+      className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center font-mono font-medium"
+      style={{ background: `${color}18`, color, fontSize: 7, letterSpacing: "0.02em" }}
     >
-      {icon}
+      {monogram}
     </div>
   );
 }
@@ -186,7 +98,7 @@ function getPeriodLabel(period: PeriodKey, customFrom: string, customTo: string)
   const now = new Date();
   const fmtDate = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-GB", opts);
   switch (period) {
-    case "week": return "past 7 days";
+    case "week": return "last 7 days";
     case "month": return fmtDate(now, { month: "long", year: "numeric" });
     case "3months": {
       const from = new Date(now.getFullYear(), now.getMonth() - 3, 1);
@@ -278,8 +190,10 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
 
   const pts = byDay;
   const change = endVal - startVal;
-  const changePct = startVal > 0 ? (change / startVal) * 100 : 0;
   const positive = change >= 0;
+  const startDateLabel = pts.length > 0
+    ? new Date(pts[0].date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    : "";
 
   const W = 560;
   const H = 72;
@@ -315,38 +229,24 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   return (
     <div className="bg-surface rounded-2xl border border-border p-5 mb-6 overflow-hidden">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div
-            className="font-mono text-faint uppercase mb-1"
-            style={{ fontSize: 10, letterSpacing: "0.16em" }}
-          >
-            Portfolio during {periodLabel}
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span
-              className="font-serif text-fg"
-              style={{ fontSize: 24, fontWeight: 400, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 144" }}
-            >
-              <PriceDisplay amount={endVal} compact />
-            </span>
-            <span
-              className="font-mono"
-              style={{ fontSize: 13, fontWeight: 500, color: positive ? "var(--positive)" : "var(--negative)" }}
-            >
-              {positive ? "+" : ""}{fmt(change)}
-            </span>
-            <span
-              className="font-mono"
-              style={{ fontSize: 12, color: positive ? "var(--positive)" : "var(--negative)" }}
-            >
-              ({positive ? "+" : ""}{changePct.toFixed(1)}%)
-            </span>
-          </div>
+      <div className="mb-4">
+        <div
+          className="font-mono text-faint uppercase mb-2"
+          style={{ fontSize: 10, letterSpacing: "0.16em" }}
+        >
+          Portfolio · {periodLabel}
         </div>
-        <div className="text-right">
-          <div className="font-mono text-faint mb-0.5" style={{ fontSize: 10 }}>Started at</div>
-          <div className="font-mono text-dim" style={{ fontSize: 13, fontWeight: 500 }}>{fmt(startVal)}</div>
+        <div
+          className="font-serif text-fg"
+          style={{ fontSize: 28, fontWeight: 400, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 144" }}
+        >
+          <PriceDisplay amount={endVal} compact />
+        </div>
+        <div
+          className="font-mono mt-1"
+          style={{ fontSize: 13, color: positive ? "var(--positive)" : "var(--negative)" }}
+        >
+          {positive ? "+" : ""}{fmt(change)}{startDateLabel ? ` since ${startDateLabel}` : ""}
         </div>
       </div>
 
@@ -399,28 +299,15 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
       </div>
 
       {/* Activity summary */}
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border">
-        {adds > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-positive" />
-            <span className="font-mono text-dim" style={{ fontSize: 11 }}>{adds} added</span>
-          </div>
-        )}
-        {edits > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-accent" />
-            <span className="font-mono text-dim" style={{ fontSize: 11 }}>{edits} updated</span>
-          </div>
-        )}
-        {removes > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-negative" />
-            <span className="font-mono text-dim" style={{ fontSize: 11 }}>{removes} removed</span>
-          </div>
-        )}
-        <div className="ml-auto font-mono text-faint" style={{ fontSize: 11 }}>
-          {pts.length} data point{pts.length !== 1 ? "s" : ""}
-        </div>
+      <div className="mt-4 pt-3 border-t border-border">
+        <span className="font-mono text-dim" style={{ fontSize: 11 }}>
+          {[
+            adds > 0 ? `${adds} added` : null,
+            edits > 0 ? `${edits} updated` : null,
+            removes > 0 ? `${removes} removed` : null,
+            `${pts.length} data point${pts.length !== 1 ? "s" : ""}`,
+          ].filter(Boolean).join(" · ")}
+        </span>
       </div>
 
       {/* AI narrative */}
@@ -651,7 +538,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
                       >
                         {style.label}
                       </span>
-                      <AssetIcon type={m.asset_type} symbol={m.symbol} />
+                      <AssetIcon type={m.asset_type} symbol={m.symbol} name={m.asset_name} />
                     </div>
                     <span
                       className="font-mono text-faint uppercase"
