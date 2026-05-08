@@ -6,6 +6,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { useLivePrice } from "@/lib/hooks";
 import { PriceChart } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
+import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL, currencySymbol } from "@/lib/utils";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import type { TradeableAsset, Mutation } from "@/lib/supabase";
@@ -28,8 +29,9 @@ function monogram(asset: TradeableAsset): string {
   return asset.name.slice(0, 3).toUpperCase();
 }
 
-export function TradeableDetail({ asset }: Props) {
+export function TradeableDetail({ asset: initialAsset }: Props) {
   const router = useRouter();
+  const [asset, setAsset] = useState<TradeableAsset>(initialAsset);
   const { livePrice, livePrev } = useLivePrice(asset.symbol);
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const supabase = createBrowserSupabase();
@@ -45,6 +47,26 @@ export function TradeableDetail({ asset }: Props) {
   }, [asset.id]);
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
+
+  /**
+   * PATCH a single field. Returns the mutation_id on success or throws.
+   * Caller is responsible for validation before calling.
+   */
+  const patchField = useCallback(async (
+    field: string,
+    value: unknown
+  ): Promise<{ asset: TradeableAsset; mutation_id: string | null }> => {
+    const res = await fetch(`/api/assets/${asset.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Save failed");
+    }
+    return res.json();
+  }, [asset.id]);
 
   const currentValue = livePrice != null && asset.units
     ? Math.round(livePrice * asset.units)
@@ -152,47 +174,96 @@ export function TradeableDetail({ asset }: Props) {
 
         {/* Metric grid */}
         <div className="grid grid-cols-2 gap-2 py-4">
-          {[
-            {
-              label: "Units",
-              value: asset.units != null ? asset.units.toLocaleString("en") : "—",
-            },
-            {
-              label: "Avg buy price",
-              value: asset.buy_price != null ? `€${fmtPrice(asset.buy_price)}` : "—",
-            },
-            {
-              label: "Live price",
-              value: livePrice != null ? `€${fmtPrice(livePrice)}` : "—",
-            },
-            {
-              label: "Total return",
-              value: totalReturn != null ? `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(1)}%` : "—",
-              color:
-                totalReturn == null ? undefined
-                : totalReturn >= 0 ? "var(--positive)"
-                : "var(--negative)",
-            },
-          ].map(({ label, value, color }) => (
+          {/* Units — inline-editable */}
+          <div
+            className="border border-border rounded-xl"
+            style={{ background: "var(--surface)", padding: "12px 14px" }}
+          >
             <div
-              key={label}
-              className="border border-border rounded-xl"
-              style={{ background: "var(--surface)", padding: "12px 14px" }}
+              className="font-mono text-faint uppercase mb-2"
+              style={{ fontSize: 9, letterSpacing: "0.16em" }}
             >
-              <div
-                className="font-mono text-faint uppercase mb-2"
-                style={{ fontSize: 9, letterSpacing: "0.16em" }}
-              >
-                {label}
-              </div>
-              <div
-                className="font-mono"
-                style={{ fontSize: 14, fontWeight: 500, color: color ?? "var(--text)" }}
-              >
-                {value}
-              </div>
+              Units
             </div>
-          ))}
+            <InlineEdit
+              display={
+                <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+                  {asset.units != null ? asset.units.toLocaleString("en") : "—"}
+                </span>
+              }
+              rawValue={asset.units != null ? String(asset.units) : ""}
+              placeholder="e.g. 10.5"
+              displayStyle={{ minHeight: 32 }}
+              inputStyle={{ fontSize: 14, fontWeight: 500 }}
+              onSave={async (raw) => {
+                if (raw.trim() === "") return "";      // silent revert
+                const n = parseFloat(raw);
+                if (isNaN(n) || n <= 0) return "Must be a positive number";
+                try {
+                  const { asset: updated } = await patchField("units", n);
+                  setAsset(updated);
+                  fetchMutations();
+                  return null;
+                } catch (e) {
+                  return e instanceof Error ? e.message : "Save failed";
+                }
+              }}
+            />
+          </div>
+
+          {/* Avg buy price — static for now, extended in step 2 */}
+          <div
+            className="border border-border rounded-xl"
+            style={{ background: "var(--surface)", padding: "12px 14px" }}
+          >
+            <div
+              className="font-mono text-faint uppercase mb-2"
+              style={{ fontSize: 9, letterSpacing: "0.16em" }}
+            >
+              Avg buy price
+            </div>
+            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+              {asset.buy_price != null ? `€${fmtPrice(asset.buy_price)}` : "—"}
+            </div>
+          </div>
+
+          {/* Live price — read-only */}
+          <div
+            className="border border-border rounded-xl"
+            style={{ background: "var(--surface)", padding: "12px 14px" }}
+          >
+            <div
+              className="font-mono text-faint uppercase mb-2"
+              style={{ fontSize: 9, letterSpacing: "0.16em" }}
+            >
+              Live price
+            </div>
+            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+              {livePrice != null ? `€${fmtPrice(livePrice)}` : "—"}
+            </div>
+          </div>
+
+          {/* Total return — read-only */}
+          <div
+            className="border border-border rounded-xl"
+            style={{ background: "var(--surface)", padding: "12px 14px" }}
+          >
+            <div
+              className="font-mono text-faint uppercase mb-2"
+              style={{ fontSize: 9, letterSpacing: "0.16em" }}
+            >
+              Total return
+            </div>
+            <div
+              className="font-mono"
+              style={{
+                fontSize: 14, fontWeight: 500,
+                color: totalReturn == null ? "var(--text)" : totalReturn >= 0 ? "var(--positive)" : "var(--negative)",
+              }}
+            >
+              {totalReturn != null ? `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(1)}%` : "—"}
+            </div>
+          </div>
         </div>
 
         {/* Crypto volatility */}
