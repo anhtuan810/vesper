@@ -7,6 +7,7 @@ import { useLivePrice } from "@/lib/hooks";
 import { PriceChart } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
+import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
 import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL, currencySymbol } from "@/lib/utils";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import type { TradeableAsset, Mutation } from "@/lib/supabase";
@@ -381,21 +382,10 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
         )}
 
         {/* CTAs */}
-        <div className="flex gap-2 pt-4 pb-2">
-          <button
-            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`I'd like to update ${asset.name}`)}`)}
-            className="flex-1 font-mono text-center border border-border"
-            style={{
-              padding: "11px 0", borderRadius: 12,
-              fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
-              background: "var(--surface)", color: "var(--text)", cursor: "pointer",
-            }}
-          >
-            Edit
-          </button>
+        <div className="pt-4 pb-2">
           <button
             onClick={() => router.push("/chat")}
-            className="flex-1 font-mono text-center"
+            className="w-full font-mono text-center"
             style={{
               padding: "11px 0", borderRadius: 12,
               fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
@@ -405,6 +395,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
           >
             Discuss
           </button>
+          <DeleteAssetButton assetId={asset.id} />
         </div>
 
       </div>
