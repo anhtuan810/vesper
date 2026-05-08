@@ -7,7 +7,7 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { getWarnings, fmt } from "@/lib/utils";
+import { getWarnings, fmt, computeNetWorth } from "@/lib/utils";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
@@ -110,12 +110,7 @@ export default function Dashboard() {
     );
   }
 
-  const netTotal = assets.reduce((sum, a) => {
-    const net = a.type === "real_estate"
-      ? a.value - (a.mortgage_balance ?? 0)
-      : a.value;
-    return sum + net;
-  }, 0);
+  const netTotal = computeNetWorth(assets);
   const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
   const byType = assets.reduce((acc, a) => {
     acc[a.type] = (acc[a.type] || 0) + a.value;

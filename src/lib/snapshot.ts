@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
+import { computeNetWorth } from "@/lib/utils";
 
 export async function writeSnapshot(userId: string): Promise<void> {
   try {
@@ -13,18 +14,11 @@ export async function writeSnapshot(userId: string): Promise<void> {
     if (error) throw error;
     if (!assets || assets.length === 0) return;
 
-    let netTotal = 0;
+    const netTotal = computeNetWorth(assets as Array<{ type: string; value: number; mortgage_balance?: number | null }>);
     const breakdown: Record<string, number> = {};
 
     for (const a of assets) {
-      const gross = a.value as number;
-      const net =
-        a.type === "real_estate" && a.mortgage_balance
-          ? gross - (a.mortgage_balance as number)
-          : gross;
-
-      netTotal += net;
-      breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + gross;
+      breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + (a.value as number);
     }
 
     const today = new Date().toISOString().slice(0, 10);

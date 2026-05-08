@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { writeSnapshot } from "@/lib/snapshot";
 import { geocodeAddress } from "@/lib/geocode";
+import { computeNetWorth } from "@/lib/utils";
 
 const ALLOWED_COMMON = new Set([
   "name", "value", "currency", "country", "units", "buy_price", "buy_date",
@@ -18,17 +19,6 @@ const ALLOWED_BONDS = new Set([
   "coupon_rate", "maturity_date", "issuer", "isin",
 ]);
 
-function computePortfolioTotal(
-  assets: Array<{ type: string; value: number; mortgage_balance?: number | null }>
-) {
-  return assets.reduce((sum, a) => {
-    const net =
-      a.type === "real_estate" && a.mortgage_balance
-        ? a.value - (a.mortgage_balance || 0)
-        : a.value;
-    return sum + net;
-  }, 0);
-}
 
 export async function PATCH(
   req: NextRequest,
@@ -78,7 +68,10 @@ export async function PATCH(
       .single();
 
     if (updateError || !updatedRaw) {
-      console.error("PATCH asset error:", updateError);
+      Sentry.captureException(updateError, {
+        tags: { route: "PATCH /api/assets/[id]", step: "update" },
+        extra: { user_id: user.id, asset_id: id },
+      });
       return NextResponse.json({ error: "Update failed" }, { status: 500 });
     }
 
@@ -101,7 +94,7 @@ export async function PATCH(
       .select("type, value, mortgage_balance")
       .eq("user_id", user.id);
 
-    const portfolioTotal = computePortfolioTotal(allAssets || []);
+    const portfolioTotal = computeNetWorth(allAssets || []);
 
     const { data: mutation, error: mutationError } = await supabase
       .from("mutations")
@@ -135,13 +128,11 @@ export async function PATCH(
       );
     }
 
-    writeSnapshot(user.id).catch((err) =>
-      console.error("Snapshot background error:", err)
-    );
+    writeSnapshot(user.id);
 
     return NextResponse.json({ asset: updated, mutation_id: mutation?.id ?? null });
   } catch (err) {
-    console.error("PATCH /api/assets/[id] error:", err);
+    Sentry.captureException(err, { tags: { route: "PATCH /api/assets/[id]" } });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -172,12 +163,8 @@ export async function DELETE(
       .select("type, value, mortgage_balance")
       .eq("user_id", user.id);
 
-    const totalBefore = computePortfolioTotal(allAssets || []);
-    const assetNet =
-      asset.type === "real_estate" && asset.mortgage_balance
-        ? asset.value - (asset.mortgage_balance || 0)
-        : asset.value;
-    const portfolioTotal = totalBefore - assetNet;
+    const totalBefore = computeNetWorth(allAssets || []);
+    const portfolioTotal = totalBefore - computeNetWorth([asset]);
 
     const { error: deleteError } = await supabase
       .from("assets")
@@ -185,7 +172,10 @@ export async function DELETE(
       .eq("id", id);
 
     if (deleteError) {
-      console.error("DELETE asset error:", deleteError);
+      Sentry.captureException(deleteError, {
+        tags: { route: "DELETE /api/assets/[id]", step: "delete" },
+        extra: { user_id: user.id, asset_id: id },
+      });
       return NextResponse.json({ error: "Delete failed" }, { status: 500 });
     }
 
@@ -219,13 +209,11 @@ export async function DELETE(
       );
     }
 
-    writeSnapshot(user.id).catch((err) =>
-      console.error("Snapshot background error:", err)
-    );
+    writeSnapshot(user.id);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("DELETE /api/assets/[id] error:", err);
+    Sentry.captureException(err, { tags: { route: "DELETE /api/assets/[id]" } });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

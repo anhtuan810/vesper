@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getAuthUser } from "@/lib/supabase";
@@ -102,7 +103,7 @@ Give 3 bullet-point insights.`,
 
     return NextResponse.json({ summary });
   } catch (err) {
-    console.error("Diary summary error:", err);
+    Sentry.captureException(err, { tags: { route: "POST /api/diary-summary" } });
     return NextResponse.json({ summary: null });
   }
 }

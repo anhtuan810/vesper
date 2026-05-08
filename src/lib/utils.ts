@@ -63,6 +63,15 @@ export function getMonthLabel(key: string): string {
   return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
+export function computeNetWorth(
+  assets: Array<{ type: string; value: number; mortgage_balance?: number | null }>
+): number {
+  return assets.reduce((sum, a) => {
+    const net = a.type === "real_estate" ? a.value - (a.mortgage_balance ?? 0) : a.value;
+    return sum + net;
+  }, 0);
+}
+
 export function getWarnings(
   assets: { name: string; value: number; type: string }[],
   byType: Record<string, number>,
