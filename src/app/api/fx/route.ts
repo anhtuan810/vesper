@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 
@@ -9,6 +10,17 @@ const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 export interface FxRates {
   [quote: string]: number; // rate: 1 EUR = N quote
 }
+
+// Last reviewed: 2026. These drift over time; review annually.
+const HARDCODED_FALLBACK_RATES: FxRates = {
+  USD: 1.12,
+  GBP: 0.85,
+  CHF: 0.94,
+  JPY: 160,
+  CAD: 1.56,
+  AUD: 1.75,
+  HKD: 8.72,
+};
 
 // In-process cache so a burst of price fetches in one request cycle shares one lookup
 let memCache: { rates: FxRates; ts: number } | null = null;
@@ -54,8 +66,19 @@ export async function getEurRates(): Promise<FxRates> {
       memCache = { rates, ts: now };
       return rates;
     }
-    // No stale fallback — surface the failure so callers know prices are unreliable
-    throw new Error(`FX rates unavailable and no cached fallback: ${err}`);
+    // Last resort: hardcoded approximate rates. Upsert with epoch zero so the
+    // next request treats them as maximally stale and attempts a live refresh.
+    Sentry.captureMessage("FX rates unavailable — using hardcoded fallback", "warning");
+    console.warn("FX rates unavailable; using hardcoded fallback:", err);
+    const fallbackRows = Object.entries(HARDCODED_FALLBACK_RATES).map(([quote, rate]) => ({
+      base: "EUR",
+      quote,
+      rate,
+      fetched_at: new Date(0).toISOString(),
+    }));
+    await supabase.from("fx_rates").upsert(fallbackRows, { onConflict: "base,quote" });
+    memCache = { rates: HARDCODED_FALLBACK_RATES, ts: now };
+    return HARDCODED_FALLBACK_RATES;
   }
 
   // Upsert all pairs

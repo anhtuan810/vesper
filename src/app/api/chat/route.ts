@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
     const changesRaw = extractTag(raw, "changes");
     const contextRaw = extractTag(raw, "context");
     const goalRaw = extractTag(raw, "goal");
-    const displayText = stripTags(raw);
+    let displayText = stripTags(raw);
 
     let portfolioChanged = false;
 
@@ -198,12 +198,31 @@ export async function POST(req: NextRequest) {
             })
           );
 
+          const duplicateRejections: string[] = [];
+
           for (let i = 0; i < changes.length; i++) {
             const change = changes[i];
             const action = change.action;
             const name = change.name;
 
             if (action === "add") {
+              // Reject duplicates — do not auto-merge to preserve buy_price/buy_date intent
+              const isDuplicate = change.symbol
+                ? currentAssets.some(
+                    (a) => a.symbol && a.symbol.toLowerCase() === change.symbol.toLowerCase()
+                  )
+                : currentAssets.some(
+                    (a) => a.name.trim().toLowerCase() === name.trim().toLowerCase()
+                  );
+
+              if (isDuplicate) {
+                const identifier = change.symbol ? change.symbol.toUpperCase() : `"${name}"`;
+                duplicateRejections.push(
+                  `${identifier} already exists in your portfolio. If you want to update the existing position, ask me to edit it — or give the new entry a different name to keep both.`
+                );
+                continue;
+              }
+
               let resolvedValue: number = change.value || 0;
               let resolvedBuyPrice: number | null = change.buy_price || null;
               let resolvedCurrency: string = change.currency || "EUR";
@@ -359,6 +378,11 @@ export async function POST(req: NextRequest) {
               }
             }
           }
+
+          if (duplicateRejections.length > 0) {
+            const suffix = duplicateRejections.join(" ");
+            displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
+          }
         }
       } catch (parseErr) {
         console.error("Changes parse failed:", parseErr);
@@ -385,7 +409,9 @@ export async function POST(req: NextRequest) {
           target_value: goal.target_value || null,
           target_date: goal.target_date || null,
         });
-      } catch {}
+      } catch (err) {
+        console.error("Goal parse failed:", err);
+      }
     }
 
     // --- Save assistant response ---

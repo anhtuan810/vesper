@@ -9,46 +9,42 @@ This is the prioritized roadmap for Vesper post-redesign and post-currency-norma
 - Real estate Phase 5 follow-ups (PropertyMap empty state, Street View URL fix, address re-geocoding, Dutch postcode-then-city parser)
 - Currency normalization end-to-end: `fx_rates` table, `/api/fx` lazy refresh, server-side EUR conversion in `/api/prices`, currency-aware display layer, `mutations.currency` column, self-healing currency tags on assets
 - EDIT button stopgap: routes to chat with a seeded edit message until full inline CRUD is built
+- Tech debt sweep: dedup check on chat-driven `add` actions, Sentry error tracking, hardcoded FX fallback rates as last-resort defense
+- **Phase 2a — Inline edit + delete for TradeableDetail**: `InlineEdit` primitive, `DeleteAssetButton` (two-step confirm), `ContextNotePrompt` (>5% units change). Units, buy_price, country now inline-editable in `TradeableDetail`. EDIT-button stopgap removed for Tradeable; still in place for RealEstate / Static. New routes: `PATCH /api/assets/[id]`, `DELETE /api/assets/[id]`, `PATCH /api/mutations/[id]`. Pencil affordance glyph on editable fields for mobile discoverability.
 
 ## Build Order
 
-1. **Manual asset CRUD** (full inline version)
+1. **Manual asset CRUD — Phase 2b** (RealEstate + Static inline edit, same pattern as Tradeable)
 2. **Daily snapshots cron** (unblocks net-worth-over-time chart)
 3. **Net worth over time chart** (depends on #2)
 4. **Decision diary improvements** (search, "on this day", expanded mutation view)
 5. **Scenario analysis UI**
 
-This order: close the visible UX gap first (CRUD), then build the data pipeline that unlocks future trend features (snapshots → chart), then iterate on the diary that's already differentiated, then add scenario depth.
+This order: finish CRUD parity first (2b), then build the data pipeline that unlocks future trend features (snapshots → chart), then iterate on the diary that's already differentiated, then add scenario depth.
 
 ---
 
-## 1. Manual Asset CRUD
+## 1. Manual Asset CRUD — Phase 2b (RealEstate + Static)
 
 ### Goal
-Let users edit and delete assets directly from the asset detail page, without going through the chat assistant. The chat works but is brittle for precise edits (correcting a typo, fixing a wrong value, deleting a stale row).
+Complete inline edit + delete for `RealEstateDetail` and `StaticDetail`, matching what shipped in Phase 2a for Tradeable. The EDIT-button stopgap remains for these two until this ships.
 
 ### Current state
-The EDIT button on asset detail pages exists but is a stopgap — it routes to `/chat` with a pre-filled "I'd like to update [asset name]" message. That works but adds round trips and feels slower than direct editing.
+`TradeableDetail` is fully inline-editable (units, buy_price, country). `InlineEdit`, `DeleteAssetButton`, `ContextNotePrompt`, and the backing API routes (`PATCH /api/assets/[id]`, `DELETE /api/assets/[id]`, `PATCH /api/mutations/[id]`) are all in place and can be reused.
 
 ### Expected UI
-- Replace the current stopgap navigation with a side panel or modal opened from the EDIT button on each asset detail variant
-- Fields shown match the asset type:
-  - Tradeable: name, symbol, units, buy_price, buy_date, country
-  - Real Estate: name, address (re-geocodes on save), value, all mortgage fields, photo upload
-  - Static (cash/pension/bond): name, value, currency, plus bond fields where applicable
-- Save button (primary action), Delete button (secondary, with confirm step)
-- A small "Discuss instead" link inside the panel for users who prefer the conversational flow
+- **RealEstate**: inline-editable value, address (re-geocodes on save), mortgage fields (balance, rate, monthly payment, type, dates). Delete with confirm. Remove the EDIT-button stopgap.
+- **Static** (cash / pension / bond): inline-editable value, currency. Bond sub-type: coupon rate, maturity date, issuer, ISIN. Delete with confirm. Remove the EDIT-button stopgap.
+- `ContextNotePrompt` fires on value changes > 5% (same rule as units in Tradeable).
+- Pencil affordance glyph on all editable fields.
 
 ### Database Impact
-- No schema changes
-- Every save/delete must write a row to `mutations` (same pattern as the AI flow)
-- Use a server action or new API route to enforce the mutation log
+- No schema changes — `ALLOWED_REAL_ESTATE` and `ALLOWED_BONDS` field allowlists are already in `src/app/api/assets/[id]/route.ts`
 
 ### Files Likely to Change
-- `src/components/asset-detail/{TradeableDetail,RealEstateDetail,StaticDetail}.tsx` — wire EDIT to open the panel instead of the chat seed
-- `src/components/AssetEditor.tsx` (new) — the editor UI, dispatched by asset type
-- `src/app/api/assets/route.ts` (new) — PATCH and DELETE endpoints with mutation logging
-- `src/lib/hooks.ts` — add a `refetchAssets` trigger after mutations
+- `src/components/asset-detail/RealEstateDetail.tsx` — replace EDIT stopgap with inline edits
+- `src/components/asset-detail/StaticDetail.tsx` — replace EDIT stopgap with inline edits
+- `src/components/asset-detail/BondBlock.tsx` — add inline edits for bond fields
 
 ---
 
@@ -157,3 +153,12 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 - Mobile native app — web-first
 - Tax features — never, not Vesper's lane
 - Broker sync / bank integrations — never for MVP, manual + AI-driven is the differentiator
+
+---
+
+## Tech Debts
+
+- The Mutation TypeScript type in src/lib/supabase.ts omits asset_type and symbol — small one-line fix, do after Phase 4
+- Mutation before_value / after_value are EUR-equivalents but currency is native — pre-existing semantic muddle, separate task to design properly
+- No type validation on personal_context body — fine for MVP, revisit if API ever goes public
+- Two-write atomicity (asset update + mutation insert) is not transactional — if this ever becomes a real reliability issue, move both writes into a Postgres function via Supabase RPC

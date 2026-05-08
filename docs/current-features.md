@@ -32,12 +32,12 @@
 
 ### Asset Detail Pages
 - Three layout variants dispatched by asset type from `src/app/asset/[id]/page.tsx`
-- **Tradeable** (stocks, ETFs, crypto, gold): icon, big EUR price, change pill, time-range tabs (1D/1W/1M/3M/1Y/ALL), full price chart, metric grid (units, avg buy, live price, total return), recent activity scoped to the asset, EDIT / DISCUSS CTAs
-- **Real Estate**: property hub with map (or photo if uploaded), Street View link, value composition bar, mortgage block with payoff projection, scoped activity
-- **Static** (cash, pension, bonds, other): minimal layout — balance hero, optional currency code, scoped activity. Bonds get an additional `BondBlock` showing issuer, coupon rate, maturity date, ISIN
+- **Tradeable** (stocks, ETFs, crypto, gold): icon, big EUR price, change pill, time-range tabs (1D/1W/1M/3M/1Y/ALL), full price chart, metric grid (units, avg buy, live price, total return), recent activity scoped to the asset, DISCUSS CTA. Units, avg buy price, and country are inline-editable directly in the metric grid and header sub-line. Delete with two-step confirm. Pencil glyph at idle on editable fields signals editability on mobile (no hover state).
+- **Real Estate**: property hub with map (or photo if uploaded), Street View link, value composition bar, mortgage block with payoff projection, scoped activity. EDIT button still routes to chat (inline edit for RE is Phase 2b).
+- **Static** (cash, pension, bonds, other): minimal layout — balance hero, optional currency code, scoped activity. Bonds get an additional `BondBlock` showing issuer, coupon rate, maturity date, ISIN. EDIT button still routes to chat (inline edit for Static is Phase 2b).
 - Crypto positions show a 24h volatility block; stocks do not
 - Crypto positions hide the country field
-- Files: `src/components/asset-detail/{TradeableDetail,RealEstateDetail,StaticDetail,CryptoVolatilityBlock,BondBlock}.tsx`, `src/components/PriceChart.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`
+- Files: `src/components/asset-detail/{TradeableDetail,RealEstateDetail,StaticDetail,InlineEdit,DeleteAssetButton,ContextNotePrompt,CryptoVolatilityBlock,BondBlock}.tsx`, `src/components/PriceChart.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`
 
 ### Real Estate & Mortgage Tracking
 - Properties stored as assets with `type = 'real_estate'`
@@ -91,7 +91,7 @@
 - Rate limit: 50 messages per user per day
 - Input cap: 500 characters
 - Auto-retry on Claude API failure (3 attempts with backoff)
-- EDIT button on detail pages routes to `/chat` with a seeded edit message (stopgap until full inline CRUD ships)
+- EDIT button on RealEstate and Static detail pages routes to `/chat` with a seeded edit message (stopgap until Phase 2b ships)
 - Files: `src/components/ChatPopup.tsx`, `src/app/chat/page.tsx`, `src/app/api/chat/route.ts`, `src/lib/claude.ts`
 
 ### Conversational Onboarding
@@ -137,11 +137,11 @@
 
 ## What Is Incomplete or Fragile
 
-### Manual Asset CRUD — Stopgap, Full Version Pending
-- No dedicated UI for editing or deleting assets
-- The detail-page EDIT button currently routes to `/chat` with a seeded "I'd like to update [asset name]" message. The user reviews and sends, then the existing chat-driven edit flow handles the rest
-- DISCUSS button routes to chat with the asset as conversational context
-- Full inline edit form (side panel or modal) with mutation logging is item #1 in `next-build-plan.md`
+### Manual Asset CRUD — Phase 2a Done, Phase 2b Pending
+- **Tradeable assets** (stocks, ETFs, crypto, gold): fully inline-editable. Units, avg buy price, and country editable in-place via `InlineEdit` with optimistic state. Delete available with two-tap confirm and 5-second revert window. All mutations logged to the `mutations` table via `PATCH /api/assets/[id]` and `DELETE /api/assets/[id]`.
+- **`ContextNotePrompt`**: after a units change > 5%, a prompt appears offering to attach a personal note to the mutation entry.
+- **RealEstate and Static**: EDIT button still routes to chat (Phase 2b). No inline edit yet.
+- New API routes: `src/app/api/assets/[id]/route.ts` (PATCH + DELETE with mutation logging), `src/app/api/mutations/[id]/route.ts` (PATCH `personal_context`)
 
 ### Snapshots — Schema Only
 - `snapshots` table exists but has no daily cron writing to it
@@ -171,6 +171,5 @@
 - **Middleware deprecation warning** in Next.js 16 — file convention is being renamed to `proxy`, currently functional
 - **Token usage grows with portfolio size** — at 50+ assets the system prompt gets large; no compression layer
 - **No retry on Yahoo Finance failures** — if Yahoo is down, prices show as offline (acceptable, not gracefully handled)
-- **No deduplication on add** — adding "AAPL" twice creates two rows; the assistant usually catches this conversationally but the backend does not enforce it
 - **Historical mutations have currency-implicit-EUR values** — rows logged before the currency normalization fix have `before_value` and `after_value` stored as if they were EUR even when the position was USD-priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP
-- **Frankfurter fallback path** — if `fx_rates` is empty AND the API is unreachable on first run, prices may surface in native currency rather than EUR. Defensive guards are in place but not heavily tested
+- **The Mutation type omits asset_type and symbol columns that are real in the DB; left alone per "no refactoring unrelated files" rule. The insert calls just use those columns directly (Supabase JS doesn't enforce the TS interface at runtime).

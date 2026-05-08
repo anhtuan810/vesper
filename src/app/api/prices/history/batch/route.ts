@@ -40,7 +40,8 @@ async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]
 
     cache.set(key, { data, ts: Date.now() });
     return data;
-  } catch {
+  } catch (err) {
+    console.error("prices/history/batch fetch failed for", symbol, ":", err);
     return [];
   }
 }

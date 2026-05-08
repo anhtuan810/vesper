@@ -18,7 +18,7 @@ A single web dashboard where a user can:
 - Drill into any position via a dedicated detail page (with a property hub for real estate, including map, mortgage projection, and value composition)
 - See an AI-built profile of themselves that grows over time
 
-The MVP is conversation-first — there are no dedicated forms for adding assets. Edits happen through the chat assistant, including from the EDIT button on each asset detail page (which currently seeds a pre-filled message into the chat).
+The MVP is conversation-first — there are no dedicated forms for adding assets. For tradeable assets, edits and deletes now happen inline on the detail page. Real estate and static assets still route to chat via the EDIT button (Phase 2b pending).
 
 ## Current Stack
 
@@ -26,6 +26,7 @@ The MVP is conversation-first — there are no dedicated forms for adding assets
 - **Database**: Supabase (Postgres) with Row Level Security
 - **Auth**: Supabase Auth — Google OAuth + email magic link
 - **AI**: Anthropic Claude API (`claude-sonnet-4-6`)
+- **Error tracking**: Sentry (free tier, graceful no-op when DSN unset)
 - **Market Data**: Yahoo Finance via server-side proxy
 - **FX Data**: frankfurter.app (no key, ECB-backed) cached in Postgres with 24h TTL
 - **Maps**: OpenFreeMap (no key, MIT-licensed) with MapLibre GL JS
@@ -63,6 +64,8 @@ src/
       fx/route.ts               FX rate fetch + cache (frankfurter.app)
       diary-summary/route.ts    Background Claude call for diary summary card
       geocode/route.ts          Server-side Nominatim geocoding
+      assets/[id]/route.ts      PATCH (field allowlist) + DELETE with mutation logging
+      mutations/[id]/route.ts   PATCH personal_context on a mutation entry
   components/
     ChatPopup.tsx               Floating chat (desktop)
     BottomNav.tsx               4-tab mobile nav
@@ -77,9 +80,12 @@ src/
     DiaryTab.tsx                Diary list and summary card rendering
     DonutChart.tsx              Legacy; replaced by AllocationBar in Phase 2
     asset-detail/
-      TradeableDetail.tsx       Stocks / ETFs / crypto / gold layout
-      RealEstateDetail.tsx      Property hub layout
-      StaticDetail.tsx          Cash / pension / bond / other layout
+      TradeableDetail.tsx       Stocks / ETFs / crypto / gold layout (inline-editable)
+      RealEstateDetail.tsx      Property hub layout (EDIT → chat, Phase 2b pending)
+      StaticDetail.tsx          Cash / pension / bond / other layout (EDIT → chat, Phase 2b pending)
+      InlineEdit.tsx            Inline edit primitive with optional pencil affordance
+      DeleteAssetButton.tsx     Two-step delete with 5s revert window
+      ContextNotePrompt.tsx     Post-mutation note prompt (fires on >5% units change)
       CryptoVolatilityBlock.tsx 24h volatility (crypto only)
       BondBlock.tsx             Issuer / coupon / maturity / ISIN (bonds only)
   lib/

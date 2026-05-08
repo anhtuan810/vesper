@@ -52,7 +52,8 @@ export async function GET(req: NextRequest) {
 
     cache.set(key, { data, ts: Date.now() });
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    console.error("prices/history fetch failed:", err);
     return NextResponse.json({ error: "fetch failed" }, { status: 500 });
   }
 }

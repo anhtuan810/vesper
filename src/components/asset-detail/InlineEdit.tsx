@@ -20,6 +20,28 @@ interface Props {
   /** Styles applied to the <input> */
   inputStyle?: React.CSSProperties;
   displayClassName?: string;
+  /** Show a pencil glyph in idle state to signal editability */
+  affordance?: boolean;
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ color: "var(--text-faint)", flexShrink: 0, marginLeft: 3 }}
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
 }
 
 export function InlineEdit({
@@ -30,6 +52,7 @@ export function InlineEdit({
   displayStyle,
   inputStyle,
   displayClassName,
+  affordance,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(rawValue);
@@ -98,6 +121,7 @@ export function InlineEdit({
         }}
       >
         {display}
+        {affordance && <PencilIcon />}
       </button>
     );
   }

@@ -57,8 +57,9 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
+    const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
     for (const item of items) {
-      if (item.type.startsWith("image/")) {
+      if (ALLOWED_IMAGE_TYPES.has(item.type)) {
         e.preventDefault();
         const file = item.getAsFile();
         if (!file || file.size > 5 * 1024 * 1024) return;

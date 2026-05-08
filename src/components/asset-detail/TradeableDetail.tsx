@@ -136,6 +136,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
                       }
                       rawValue={asset.country ?? ""}
                       placeholder="US"
+                      affordance
                       displayStyle={{ minHeight: 28, fontSize: 10, letterSpacing: "0.05em" }}
                       inputStyle={{ fontSize: 10, width: 52, padding: "2px 6px", minHeight: 28 }}
                       onSave={async (raw) => {
@@ -219,7 +220,8 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
               }
               rawValue={asset.units != null ? String(asset.units) : ""}
               placeholder="e.g. 10.5"
-              displayStyle={{ minHeight: 32 }}
+              affordance
+              displayStyle={{ minHeight: 32, width: "100%", justifyContent: "space-between", alignItems: "center" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 if (raw.trim() === "") return "";      // silent revert
@@ -262,7 +264,8 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
               }
               rawValue={asset.buy_price != null ? String(asset.buy_price) : ""}
               placeholder="e.g. 150.00"
-              displayStyle={{ minHeight: 32 }}
+              affordance
+              displayStyle={{ minHeight: 32, width: "100%", justifyContent: "space-between", alignItems: "center" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 const trimmed = raw.trim();

@@ -15,8 +15,9 @@
 - **Supabase Postgres** with Row Level Security on all user-scoped tables
 - **Supabase Auth** for Google OAuth + email magic link
 - **Supabase Storage** bucket `property-photos` for cached map snapshots and uploaded property photos (RLS: users can only read/write files prefixed with their own `user_id`)
-- **Next.js API routes** for server-side logic (`/api/chat`, `/api/prices`, `/api/fx`, `/api/geocode`, `/api/diary-summary`, `/api/prices/history`)
+- **Next.js API routes** for server-side logic (`/api/chat`, `/api/prices`, `/api/fx`, `/api/geocode`, `/api/diary-summary`, `/api/prices/history`, `/api/assets/[id]`, `/api/mutations/[id]`)
 - **Anthropic Claude API** called server-side only (API key never exposed to client)
+- **Sentry** for error tracking (server, client, and edge). Free tier covers MVP scale. App runs gracefully when DSN is unset.
 - **frankfurter.app** for FX rates (no key, ECB-backed)
 - **OpenFreeMap** for property maps (no key, MIT-licensed) via MapLibre GL JS
 - **OSM Nominatim** for geocoding (free, rate-limited at 1 req/sec, requires User-Agent header)
@@ -129,11 +130,13 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 ## Mutation / Diary Logging Rules
 
 - Every `add`, `edit`, `remove` action in `/api/chat` writes a row to `mutations`
+- `add` actions are dedup-checked before INSERT: case-insensitive symbol match if symbol present, else case-insensitive name match. Duplicates are rejected and surfaced conversationally so the assistant can clarify with the user (update vs rename)
 - `currency` is recorded alongside the value, derived from the resolved asset currency at write time
 - `personal_context` comes from the optional `<context>` block returned by Claude; banker's-note style enforced
 - `portfolio_total` is captured at the moment of mutation
 - `occurred_at` defaults to today; Claude uses `buy_date` for adds when known
-- **Currently no mutation logging for manual UI changes** — full manual CRUD is not yet built. The EDIT button on detail pages routes to chat, so all edits still flow through the existing AI mutation pipeline
+- **Manual UI changes are now logged for Tradeable assets** — `PATCH /api/assets/[id]` and `DELETE /api/assets/[id]` write to `mutations` using the same schema as the AI pipeline. RealEstate and Static still route to chat (Phase 2b pending)
+- `PATCH /api/mutations/[id]` allows updating `personal_context` only; all other fields are rejected with 400
 
 ## Price Fetching and Currency Conversion
 
@@ -142,6 +145,7 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 - For each result, converts native price (and `previousClose`) to EUR using `toEur()` from `/api/fx/route.ts`
 - Returns `{ symbol, price (EUR), previousClose (EUR), nativePrice, nativeCurrency }`
 - 5-minute in-process price cache; 60s in-process FX memo cache; 24h `fx_rates` table TTL
+- FX resolution order: DB cache (within 24h) → frankfurter.app live fetch → hardcoded fallback rates (last-resort, ±10% acceptable, drift over time, review annually)
 - `nativePrice` and `nativeCurrency` are carried onto `LiveAsset` for asset detail "transparency" display
 - Self-heal: when `nativeCurrency` differs from `assets.currency`, both the currency tag and the freshly-converted EUR `value` are written back in the same operation
 - `normalizePrice()` in `src/lib/prices.ts` retains its sole responsibility of handling Yahoo's GBp → GBP penny quirk; FX is no longer this file's concern
@@ -163,13 +167,11 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 
 ## Known Technical Debt
 
-- **No manual asset CRUD UI**. EDIT button currently routes to `/chat` with a seeded message; full inline edit form is item #1 on the build plan.
-- **No deduplication on insert**. Adding "AAPL" twice creates two rows.
+- **Manual asset CRUD partial**. Tradeable detail is fully inline-editable (Phase 2a done). RealEstate and Static still route to `/chat` via EDIT button (Phase 2b pending).
 - **No daily snapshot job**. The `snapshots` table is empty.
 - **Historical mutations have currency-implicit-EUR values**. Cannot be retroactively converted without historical FX rates per `occurred_at`.
 - **System prompt is verbose**. At 50+ assets, ~50% token compression is achievable. Not yet implemented.
 - **Cosmetic warnings** in dev mode: middleware deprecation, multiple lockfiles. Functional, can be ignored.
-- **No tests**. Zero unit, integration, or E2E coverage. Acceptable for MVP, will become a problem.
-- **No error tracking**. No Sentry, no LogRocket. Errors only visible in Vercel logs.
-- **No analytics**. No PostHog, no Mixpanel. No usage data being captured.
-- **Frankfurter cold-start fallback**. If `fx_rates` is empty AND frankfurter.app is unreachable on first run, behavior is degraded but does not crash. Lightly tested.
+- **No tests**. Zero unit, integration, or E2E coverage. Acceptable for MVP, will become a problem post-CRUD.
+- **No analytics**. No PostHog, no Mixpanel. No usage data being captured. Defer until user count justifies it.
+- **Hardcoded FX fallback rates drift**. If both DB cache and frankfurter.app fail, the app uses approximate hardcoded rates. Review annually.
