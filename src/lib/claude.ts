@@ -34,6 +34,7 @@ Format:
 <changes>[
   {"action":"add","name":"SMCI","type":"stocks","value":2300,"currency":"USD","country":"US","symbol":"SMCI","units":100,"buy_price":25},
   {"action":"edit","name":"Property Eindhoven","value":540000},
+  {"action":"edit","name":"Property Eindhoven","new_name":"Eindhoven"},
   {"action":"remove","name":"AMD"}
 ]</changes>
 
@@ -54,6 +55,7 @@ NAMING REAL ESTATE: use the city from the address as the name by default (e.g. "
 
 Field names for edit: name (to match), plus any fields being changed.
 RENAMING: to rename an asset, use the edit action with the OLD name as "name" (for matching) and a "new_name" field for the new name. Example: {"action":"edit","name":"Property Eindhoven","new_name":"Eindhoven"}
+This is the only way to change an asset's name. Do not put the new name in the "name" field — that field is used for matching the existing asset.
 Field names for remove: just name.
 
 IMPORTANT: The <changes> block must contain valid JSON only. No markdown, no comments.

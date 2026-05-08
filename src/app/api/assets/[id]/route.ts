@@ -2,9 +2,10 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { writeSnapshot } from "@/lib/snapshot";
+import { geocodeAddress } from "@/lib/geocode";
 
 const ALLOWED_COMMON = new Set([
-  "value", "currency", "country", "units", "buy_price", "buy_date",
+  "name", "value", "currency", "country", "units", "buy_price", "buy_date",
 ]);
 
 const ALLOWED_REAL_ESTATE = new Set([
@@ -69,16 +70,30 @@ export async function PATCH(
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
-    const { data: updated, error: updateError } = await supabase
+    const { data: updatedRaw, error: updateError } = await supabase
       .from("assets")
       .update(updateData)
       .eq("id", id)
       .select("*")
       .single();
 
-    if (updateError || !updated) {
+    if (updateError || !updatedRaw) {
       console.error("PATCH asset error:", updateError);
       return NextResponse.json({ error: "Update failed" }, { status: 500 });
+    }
+
+    // Re-geocode when address changes on a real_estate asset
+    let updated = updatedRaw;
+    if ("address" in updateData && asset.type === "real_estate") {
+      try {
+        const geo = await geocodeAddress(updated.address, updated.country || asset.country || null);
+        if (geo) {
+          await supabase.from("assets").update({ latitude: geo.latitude, longitude: geo.longitude }).eq("id", id);
+          updated = { ...updated, latitude: geo.latitude, longitude: geo.longitude };
+        }
+      } catch {
+        // geocoding failure is non-fatal — leave existing coordinates
+      }
     }
 
     const { data: allAssets } = await supabase

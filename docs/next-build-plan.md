@@ -1,121 +1,113 @@
 # Next Build Plan
 
-This is the prioritized roadmap for Vesper post-redesign and post-currency-normalization. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
+This is the prioritized roadmap for Vesper. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
 
-## What just shipped (context for the next pass)
+## What just shipped
 
-- Full mobile-first redesign across six phases (design tokens, visual refresh, route split, asset detail variants for tradeable / real estate / static, bond block)
-- Mobile UI review pass (header strip, profile avatar, bottom nav cleanup, chat brand mark removal, diary summary card redesign, monogram unification, banker's-note context style, cash subtitle, property city subtitle parser)
-- Real estate Phase 5 follow-ups (PropertyMap empty state, Street View URL fix, address re-geocoding, Dutch postcode-then-city parser)
-- Currency normalization end-to-end: `fx_rates` table, `/api/fx` lazy refresh, server-side EUR conversion in `/api/prices`, currency-aware display layer, `mutations.currency` column, self-healing currency tags on assets
-- EDIT button stopgap: routes to chat with a seeded edit message until full inline CRUD is built
-- Tech debt sweep: dedup check on chat-driven `add` actions, Sentry error tracking, hardcoded FX fallback rates as last-resort defense
-- **Phase 2a — Inline edit + delete for TradeableDetail**: `InlineEdit` primitive, `DeleteAssetButton` (two-step confirm), `ContextNotePrompt` (>5% units change). Units, buy_price, country now inline-editable in `TradeableDetail`. EDIT-button stopgap removed for Tradeable; still in place for RealEstate / Static. New routes: `PATCH /api/assets/[id]`, `DELETE /api/assets/[id]`, `PATCH /api/mutations/[id]`. Pencil affordance glyph on editable fields for mobile discoverability.
+- **Phase 3a — Daily snapshots cron**. Vercel cron writes one row per user per day to `snapshots`. Trigger also fires fire-and-forget on every successful mutation (chat API, asset PATCH, asset DELETE). Idempotent via unique index on `(user_id, date)`. Secured via `CRON_SECRET` header. Shared `writeSnapshot` helper in `src/lib/snapshot.ts`.
+- **Phase 3b — Net worth chart + change pill**. `/api/snapshots` GET endpoint, `NetWorthChart` component on Portfolio tab between hero and allocation cards, range pills (1W / 1M / 3M / 1Y / ALL), 7-snapshot empty state, today marker. Hero now shows a change pill (% + EUR delta vs 1 month ago) when historical data exists. Allocation moved to its own card with header + DETAILS scroll-to-positions.
+- **Diary cleanup pass**. Filter section compressed to two thin pill rows (period + action), counts removed, custom date range styled. Entry layout compressed to two lines (icon + name + delta + date, optional context note). Date format drops year for current-year entries. Real asset logos shipped via shared `AssetLogo` component (cryptocurrency-icons CDN, FMP for stocks, inline SVG for real estate, monogram fallback). Used in both `DiaryTab` and `PositionRow`.
+- **Mutation unit tracking**. `mutations` table gained `before_units` / `after_units` columns. Chat API and asset PATCH/DELETE log unit changes. Diary and TradeableDetail recent activity show "+N shares / units / oz" deltas for tradeable mutations, fall back to value-based for real estate / cash / bonds / pension.
+- **Phase 2b — Inline edit + delete for RealEstateDetail and StaticDetail**. Full CRUD parity with TradeableDetail. RealEstate inline-editable: name, address (re-geocodes server-side), property_type, size_sqm, country, value, all 6 mortgage fields. Static inline-editable: name, value, currency, plus all bond fields. ContextNotePrompt fires on >5% value change. EDIT button stopgap removed everywhere. `name` added to ALLOWED_COMMON. Address field decoupled from name display.
+- **Cleanup A — Rename via chat**. Chat API edit action accepts `new_name` field. System prompt updated. Users can rename any asset by saying "Rename X to Y".
+- **Cleanup B — Diary AI summary slimmed**. PeriodHighlight chart card removed (redundant with Portfolio chart). AI summary kept and demoted to lightweight card with pulsing V mark while loading. Period title moved above filter chips.
 
 ## Build Order
 
-1. **Manual asset CRUD — Phase 2b** (RealEstate + Static inline edit, same pattern as Tradeable)
-2. **Daily snapshots cron** (unblocks net-worth-over-time chart)
-3. **Net worth over time chart** (depends on #2)
-4. **Decision diary improvements** (search, "on this day", expanded mutation view)
-5. **Scenario analysis UI**
+1. **Decision diary improvements** (search, "on this day" callout, inline note editing)
+2. **Logo proxy** (privacy debt — proxy CDN logos through `/api/logo?symbol=...`)
+3. **Dashboard highlights** (market events, milestones, reflections — was always planned, now unblocked)
+4. **Scenario analysis UI**
 
-This order: finish CRUD parity first (2b), then build the data pipeline that unlocks future trend features (snapshots → chart), then iterate on the diary that's already differentiated, then add scenario depth.
+This order: finish making the diary genuinely useful as a decision log, clear the one pressing tech debt, then start adding new top-level surfaces.
 
 ---
 
-## 1. Manual Asset CRUD — Phase 2b (RealEstate + Static)
+## 1. Decision Diary Improvements
 
 ### Goal
-Complete inline edit + delete for `RealEstateDetail` and `StaticDetail`, matching what shipped in Phase 2a for Tradeable. The EDIT-button stopgap remains for these two until this ships.
+The diary's foundation is solid. Make it materially more useful as a decision log: searchable, surfaces past decisions on anniversaries, lets users add reasoning notes after the fact.
 
-### Current state
-`TradeableDetail` is fully inline-editable (units, buy_price, country). `InlineEdit`, `DeleteAssetButton`, `ContextNotePrompt`, and the backing API routes (`PATCH /api/assets/[id]`, `DELETE /api/assets/[id]`, `PATCH /api/mutations/[id]`) are all in place and can be reused.
+### Three sub-features
 
-### Expected UI
-- **RealEstate**: inline-editable value, address (re-geocodes on save), mortgage fields (balance, rate, monthly payment, type, dates). Delete with confirm. Remove the EDIT-button stopgap.
-- **Static** (cash / pension / bond): inline-editable value, currency. Bond sub-type: coupon rate, maturity date, issuer, ISIN. Delete with confirm. Remove the EDIT-button stopgap.
-- `ContextNotePrompt` fires on value changes > 5% (same rule as units in Tradeable).
-- Pencil affordance glyph on all editable fields.
+**Search**
+- Text input above the period filter chips
+- Filters mutations by `asset_name` OR `personal_context` substring (case-insensitive)
+- Combines with existing period and action filters
+- Client-side filter on already-loaded mutations array
+- Empty-state copy adapts: "No entries match {query}"
+
+**"On this day"**
+- Callout above the entries list when conditions met
+- Conditions: a mutation has `occurred_at` matching today's month + day in any prior year, AND is at least 30 days old
+- Picks oldest matching mutation if multiple
+- Display: serif italic header "On this day" + entry-style row + relative label ("1 year ago", "3 months ago")
+- Tap scrolls to that mutation in the timeline
+- Independent of search and action filters — anniversary surprise
+
+**Inline expandable notes**
+- Each diary entry becomes tappable
+- Tap expands an editor below the entry showing full `personal_context`
+- "+ Add note" affordance when context is empty
+- Save calls existing `PATCH /api/mutations/[id]`
+- Optimistically updates local state, falls back on error
 
 ### Database Impact
-- No schema changes — `ALLOWED_REAL_ESTATE` and `ALLOWED_BONDS` field allowlists are already in `src/app/api/assets/[id]/route.ts`
+- None — `personal_context` already exists on `mutations`
 
 ### Files Likely to Change
-- `src/components/asset-detail/RealEstateDetail.tsx` — replace EDIT stopgap with inline edits
-- `src/components/asset-detail/StaticDetail.tsx` — replace EDIT stopgap with inline edits
-- `src/components/asset-detail/BondBlock.tsx` — add inline edits for bond fields
+- `src/components/DiaryTab.tsx` — search input, "on this day" block, inline expanded view
+- New: small inline note editor component (or inline in DiaryTab if it stays simple)
 
 ---
 
-## 2. Daily Snapshots Cron
+## 2. Logo Proxy
 
 ### Goal
-Capture daily net worth snapshots so we can build a net-worth-over-time chart. This unlocks all future trend features and re-enables the percentage indicator on the diary period-summary card (currently hidden because there's no historical baseline).
+AssetLogo currently fetches from external CDNs (jsdelivr for crypto, FMP for stocks), which leaks user holdings to those CDNs. Build a proxy at `/api/logo?type=...&symbol=...` that fetches once, caches in-process, serves to the client.
 
 ### Expected behavior
-- Vercel Cron job runs once daily, writes a row per user to `snapshots` with `total_value` (EUR) and `breakdown` (jsonb per asset type)
-- Trigger should also fire after large mutations (e.g. > 5% net worth change) to avoid stale data
-- Backfill not needed for MVP — charts start from launch day
-- No UI yet — that's item #3
+- Client-side AssetLogo component points at `/api/logo?...` instead of the CDN URLs directly
+- Server-side route fetches from the appropriate upstream, caches the bytes in-process, and serves with appropriate cache headers
+- Long cache lifetime acceptable — logos rarely change
+- Falls back to monogram on upstream failure
 
 ### Database Impact
-- Use the existing `snapshots` table (schema already in place)
-- One row per user per day
+- None — pure server-side caching
 
 ### Files Likely to Change
-- `src/app/api/cron/snapshot/route.ts` (new) — the daily job
-- `vercel.json` — add cron config (Vercel Cron is free for one job)
-- `src/app/api/chat/route.ts` — fire a snapshot after large mutations
+- `src/components/AssetLogo.tsx` — swap CDN URLs for proxy URLs
+- New: `src/app/api/logo/route.ts`
+- Optional: add a stale-while-revalidate header strategy
 
 ---
 
-## 3. Net Worth Over Time Chart
+## 3. Dashboard Highlights
 
 ### Goal
-With snapshots populating, render the chart on the Portfolio tab. Unlocks the "this week" / "this month" percentage indicators on the diary card.
+The original tech spec's launch feature #9 — daily highlights surfaced on the Portfolio tab. Three types: market events affecting holdings (Claude-filtered), portfolio milestones (deterministic from snapshots + dynamic step sizing), personal reflections (anniversary-style from mutation history).
 
 ### Expected UI
-- Simple line chart on the Portfolio tab (between hero and stats)
-- Toggle 30 / 90 / 365 days
-- Toggle gross vs net
-- Reuses the design system colors (amber line, dim grid)
+- Horizontal card carousel between net worth hero and allocation card on Portfolio tab
+- Max 3 cards, section hidden entirely when no highlights
+- Each card: type icon, title (one line), detail (one sentence), impact amount if applicable
+- Highlights expire: market events 24h, milestones 7d, reflections 3d
 
 ### Database Impact
-- None — reads from `snapshots`
+- The `highlights` table already exists in schema. No data being written yet
+- Reads from: `assets`, `snapshots`, `mutations`
 
 ### Files Likely to Change
-- `src/components/NetWorthChart.tsx` (new) — line chart (Recharts)
-- `src/app/page.tsx` — mount the chart between hero and stats
-- `src/components/DiaryTab.tsx` — re-enable the percentage indicator on the period summary card now that historical data exists
+- `src/app/api/cron/highlights/route.ts` (new) — three sub-jobs for the three highlight types
+- `src/lib/milestones.ts` (new) — dynamic step detection
+- `src/lib/reflections.ts` (new) — anniversary checks
+- `src/components/HighlightsCarousel.tsx` (new)
+- `src/app/page.tsx` or `src/components/PortfolioTab.tsx` — mount the carousel
+- `vercel.json` — add the highlights cron job
 
 ---
 
-## 4. Decision Diary Improvements
-
-### Goal
-The diary is already on the right track post-redesign. Make it more useful as a research tool rather than just a log.
-
-### Expected UI
-- **Search** by asset name or context keyword (client-side, diaries won't be huge for years)
-- **Group by year** when the timeline gets long
-- **"On this day" callout** at the top if any past mutation matches today's date
-- Click a mutation → expanded view showing the full conversation that produced it (read-only)
-- Optional: ability to add a manual note to an existing mutation entry
-
-### Database Impact
-- Add `notes` (text, nullable) column to `mutations`
-- No new tables
-
-### Files Likely to Change
-- `src/app/diary/page.tsx` — search + group-by-year
-- `src/components/DiaryTab.tsx` — "on this day" callout
-- `src/components/MutationDetail.tsx` (new) — expanded view modal
-- `src/app/api/mutations/[id]/route.ts` — extend allowed fields to include `notes`
-
----
-
-## 5. Scenario Analysis UI
+## 4. Scenario Analysis UI
 
 ### Goal
 Let users explore "what if" questions visually, not just conversationally. Examples: "what if I sell my apartment", "what if NVIDIA doubles", "what if I add €50k to ETFs".
@@ -133,7 +125,7 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 
 ### Files Likely to Change
 - `src/app/scenarios/page.tsx` (new) — scenarios list view
-- `src/components/ScenarioBuilder.tsx` (new) — the builder
+- `src/components/ScenarioBuilder.tsx` (new)
 - `src/app/api/scenarios/route.ts` (new) — CRUD endpoints
 - `src/lib/claude.ts` — extend the system prompt to handle scenario context
 - New SQL migration for `scenarios` table
@@ -146,7 +138,8 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 
 ## Out of Scope for Now
 
-- Dashboard highlights cards (market events, milestones, reflections) — wait until snapshots and chart exist
+- Group-by-year header in diary — premature
+- Expanded mutation view showing the full conversation that produced it — requires linking mutations to message ranges, data plumbing not in place
 - Weekly insight email — wait until users actually retain
 - Allocation benchmarking — nice-to-have, not core
 - Shareable portfolio report — growth feature, not retention
@@ -158,7 +151,9 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 
 ## Tech Debts
 
-- The Mutation TypeScript type in src/lib/supabase.ts omits asset_type and symbol — small one-line fix, do after Phase 4
-- Mutation before_value / after_value are EUR-equivalents but currency is native — pre-existing semantic muddle, separate task to design properly
-- No type validation on personal_context body — fine for MVP, revisit if API ever goes public
-- Two-write atomicity (asset update + mutation insert) is not transactional — if this ever becomes a real reliability issue, move both writes into a Postgres function via Supabase RPC
+- The `before_value` / `after_value` columns on `mutations` are EUR-equivalents but `currency` is native — pre-existing semantic muddle, separate task to design properly
+- No type validation on `personal_context` body — fine for MVP, revisit if API ever goes public
+- Two-write atomicity (asset update + mutation insert) is not transactional — if this becomes a real reliability issue, move both writes into a Postgres function via Supabase RPC
+- Hardcoded FX fallback rates drift over time — review annually if the cache and frankfurter.app both fail
+- No tests — accepted for MVP, will become a problem as feature surface grows
+- No analytics (PostHog/Mixpanel) — defer until user count justifies it

@@ -335,7 +335,7 @@ export async function POST(req: NextRequest) {
                   await supabase.from("mutations").insert({
                     user_id: userId,
                     asset_id: existing.id,
-                    asset_name: name,
+                    asset_name: change.new_name || name,
                     action: "edit",
                     asset_type: existing.type,
                     symbol: existing.symbol || null,

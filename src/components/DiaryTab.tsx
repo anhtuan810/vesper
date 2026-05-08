@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { fmt, formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
 import type { Mutation } from "@/lib/supabase";
-import { PriceDisplay } from "@/components/PriceDisplay";
 import { AssetLogo } from "@/components/AssetLogo";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
@@ -129,7 +128,7 @@ function getPeriodLabel(period: PeriodKey, customFrom: string, customTo: string)
   }
 }
 
-// ── Period highlight card with SVG area chart ──────────────────────────────────
+// ── Period highlight — AI summary only ────────────────────────────────────────
 function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   mutations: Mutation[];
   period: PeriodKey;
@@ -140,36 +139,10 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   const summaryKey = useMemo(() => mutations.map((m) => m.id).join(","), [mutations]);
-
-  const withTotal = useMemo(() =>
-    mutations
-      .filter((m) => m.portfolio_total != null && m.portfolio_total > 0)
-      .sort((a, b) => {
-        const da = a.occurred_at || a.recorded_at;
-        const db = b.occurred_at || b.recorded_at;
-        return da < db ? -1 : da > db ? 1 : 0;
-      }),
-    [mutations]
-  );
-
-  const byDay = useMemo(() => {
-    const map = new Map<string, { date: string; value: number; actions: string[] }>();
-    for (const m of withTotal) {
-      const day = m.occurred_at || m.recorded_at.split("T")[0];
-      if (!map.has(day)) map.set(day, { date: day, value: 0, actions: [] });
-      const entry = map.get(day)!;
-      entry.value = m.portfolio_total!;
-      if (!entry.actions.includes(m.action)) entry.actions.push(m.action);
-    }
-    return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
-  }, [withTotal]);
-
-  const startVal = byDay[0]?.value ?? 0;
-  const endVal = byDay[byDay.length - 1]?.value ?? 0;
   const periodLabel = getPeriodLabel(period, customFrom, customTo);
 
   useEffect(() => {
-    if (withTotal.length === 0) return;
+    if (mutations.length === 0) return;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
     setSummary(null);
@@ -189,8 +162,8 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
           occurred_at: m.occurred_at,
           personal_context: m.personal_context,
         })),
-        startVal,
-        endVal,
+        startVal: 0,
+        endVal: 0,
         periodLabel,
         currency: "EUR",
       }),
@@ -203,161 +176,59 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryKey]);
 
-  if (withTotal.length === 0) return null;
-
-  const pts = byDay;
-  const change = endVal - startVal;
-  const positive = change >= 0;
-  const startDateLabel = pts.length > 0
-    ? new Date(pts[0].date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-    : "";
-
-  const W = 560;
-  const H = 72;
-  const PAD_X = 0;
-  const PAD_Y = 8;
-  const allVals = pts.map((p) => p.value);
-  const minVal = Math.min(...allVals);
-  const maxVal = Math.max(...allVals);
-  const range = Math.max(maxVal - minVal, maxVal * 0.0001);
-
-  const toX = (i: number) =>
-    pts.length === 1 ? W / 2 : PAD_X + (i / (pts.length - 1)) * (W - PAD_X * 2);
-  const toY = (v: number) =>
-    PAD_Y + H - ((v - minVal) / range) * H;
-
-  const svgPts = pts.map((p, i) => ({ x: toX(i), y: toY(p.value), ...p }));
-  const polylineStr = svgPts.map((p) => `${p.x},${p.y}`).join(" ");
-  const areaStr = `${svgPts[0].x},${H + PAD_Y * 2} ` + polylineStr + ` ${svgPts[svgPts.length - 1].x},${H + PAD_Y * 2}`;
-
-  const lineColor = positive ? "var(--accent)" : "var(--negative)";
-  const gradientId = `dg-${positive ? "pos" : "neg"}`;
-
-  const dotColor = (actions: string[]) => {
-    if (actions.includes("remove")) return "var(--negative)";
-    if (actions.includes("add")) return "var(--positive)";
-    return "var(--accent)";
-  };
+  if (mutations.length === 0) return null;
+  if (!summaryLoading && !summary) return null;
 
   const adds = mutations.filter((m) => m.action === "add").length;
   const edits = mutations.filter((m) => m.action === "edit").length;
   const removes = mutations.filter((m) => m.action === "remove").length;
+  const activityStr = [
+    adds > 0 ? `${adds} added` : null,
+    edits > 0 ? `${edits} updated` : null,
+    removes > 0 ? `${removes} removed` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-5 mb-6 overflow-hidden">
-      {/* Header */}
-      <div className="mb-4">
-        <div
-          className="font-mono text-faint uppercase mb-2"
-          style={{ fontSize: 10, letterSpacing: "0.16em" }}
-        >
-          Portfolio · {periodLabel}
-        </div>
-        <div
-          className="font-serif text-fg"
-          style={{ fontSize: 28, fontWeight: 400, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 144" }}
-        >
-          <PriceDisplay amount={endVal} compact />
-        </div>
-        <div
-          className="font-mono mt-1"
-          style={{ fontSize: 13, color: positive ? "var(--positive)" : "var(--negative)" }}
-        >
-          {positive ? "+" : ""}{fmt(change, "EUR")}{startDateLabel ? ` since ${startDateLabel}` : ""}
-        </div>
-      </div>
+    <div className="bg-surface rounded-2xl border border-border p-4 mb-4">
+      <style>{`
+        @keyframes vesperPulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
+      `}</style>
 
-      {/* Chart */}
-      <div className="relative -mx-5">
-        <svg
-          viewBox={`0 0 ${W} ${H + PAD_Y * 2}`}
-          preserveAspectRatio="none"
-          className="w-full"
-          style={{ height: 88, display: "block" }}
-        >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={lineColor} stopOpacity="0.15" />
-              <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <line
-            x1={0} y1={(H + PAD_Y * 2) / 2}
-            x2={W} y2={(H + PAD_Y * 2) / 2}
-            stroke="var(--border)" strokeWidth="1"
-          />
-          <polygon points={areaStr} fill={`url(#${gradientId})`} />
-          <polyline
-            points={polylineStr}
-            fill="none"
-            stroke={lineColor}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {pts.length <= 30 && svgPts.map((p, i) => (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r={pts.length <= 10 ? 3 : 2.5}
-              fill={dotColor(p.actions)}
-              stroke="var(--surface)"
-              strokeWidth="1.5"
-            />
-          ))}
-        </svg>
-        <div className="flex justify-between px-5 mt-1">
-          <span className="font-mono text-faint" style={{ fontSize: 10 }}>{formatDate(pts[0].date)}</span>
-          {pts.length > 1 && (
-            <span className="font-mono text-faint" style={{ fontSize: 10 }}>{formatDate(pts[pts.length - 1].date)}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Activity summary */}
-      <div className="mt-4 pt-3 border-t border-border">
-        <span className="font-mono text-dim" style={{ fontSize: 11 }}>
-          {[
-            adds > 0 ? `${adds} added` : null,
-            edits > 0 ? `${edits} updated` : null,
-            removes > 0 ? `${removes} removed` : null,
-            `${pts.length} data point${pts.length !== 1 ? "s" : ""}`,
-          ].filter(Boolean).join(" · ")}
-        </span>
-      </div>
-
-      {/* AI narrative */}
-      {(summaryLoading || summary) && (
-        <div className="mt-4 pt-4 border-t border-border">
-          <div className="flex items-start gap-2.5">
-            <div
-              className="flex items-center justify-center shrink-0 mt-0.5"
-              style={{
-                width: 20, height: 20, borderRadius: 6,
-                background: "var(--accent-soft)",
-                border: "1px solid rgba(212,165,116,0.18)",
-              }}
-            >
-              <span className="font-mono text-accent" style={{ fontSize: 9, fontWeight: 600 }}>V</span>
-            </div>
-            {summaryLoading ? (
-              <div className="flex-1 space-y-1.5 pt-0.5">
-                <div className="h-2.5 rounded-full bg-surface-elev animate-pulse w-[60%]" />
-                <div className="h-2.5 rounded-full bg-surface-elev animate-pulse w-[50%]" />
-                <div className="h-2.5 rounded-full bg-surface-elev animate-pulse w-[40%]" />
-              </div>
-            ) : (
-              <ul className="flex-1 space-y-1">
-                {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i) => (
-                  <li key={i} className="text-dim leading-snug" style={{ fontSize: 12 }}>
-                    {line.replace(/^•\s*/, "• ")}
-                  </li>
-                ))}
-              </ul>
-            )}
+      {summaryLoading ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "4px 0" }}>
+          <div
+            style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: "var(--accent-soft)",
+              border: "1px solid rgba(212,165,116,0.18)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              animation: "vesperPulse 1.6s ease-in-out infinite",
+            }}
+          >
+            <span className="font-serif text-accent" style={{ fontSize: 16, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}>V</span>
           </div>
+          <span className="font-mono text-faint italic" style={{ fontSize: 10, letterSpacing: "0.04em" }}>
+            Reading the period...
+          </span>
         </div>
+      ) : (
+        <>
+          <ul className="space-y-1">
+            {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i) => (
+              <li key={i} className="text-dim leading-snug" style={{ fontSize: 12 }}>
+                {line.replace(/^•\s*/, "• ")}
+              </li>
+            ))}
+          </ul>
+          {activityStr && (
+            <div className="font-mono uppercase text-faint mt-2" style={{ fontSize: 10, letterSpacing: "0.12em" }}>
+              {activityStr}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -411,6 +282,13 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
           customFrom={customFrom}
           customTo={customTo}
         />
+      )}
+
+      {/* Period label */}
+      {period !== "all" && (
+        <div className="font-mono uppercase text-faint" style={{ fontSize: 10, letterSpacing: "0.18em", marginBottom: 8 }}>
+          {getPeriodLabel(period, customFrom, customTo)}
+        </div>
       )}
 
       {/* Row A — period chips */}
