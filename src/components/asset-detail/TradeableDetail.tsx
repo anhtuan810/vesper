@@ -8,6 +8,7 @@ import { PriceChart } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
+import { ContextNotePrompt } from "@/components/asset-detail/ContextNotePrompt";
 import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL, currencySymbol } from "@/lib/utils";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import type { TradeableAsset, Mutation } from "@/lib/supabase";
@@ -35,6 +36,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
   const [asset, setAsset] = useState<TradeableAsset>(initialAsset);
   const { livePrice, livePrev } = useLivePrice(asset.symbol);
   const [mutations, setMutations] = useState<Mutation[]>([]);
+  const [pendingNote, setPendingNote] = useState<string | null>(null);
   const supabase = createBrowserSupabase();
 
   const fetchMutations = useCallback(async () => {
@@ -224,9 +226,15 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
                 const n = parseFloat(raw);
                 if (isNaN(n) || n <= 0) return "Must be a positive number";
                 try {
-                  const { asset: updated } = await patchField("units", n);
+                  const prevUnits = asset.units ?? 0;
+                  const { asset: updated, mutation_id } = await patchField("units", n);
                   setAsset(updated);
                   fetchMutations();
+                  // Offer context note when value changes by more than 5%
+                  if (prevUnits > 0 && mutation_id) {
+                    const delta = Math.abs(n - prevUnits) / prevUnits;
+                    if (delta > 0.05) setPendingNote(mutation_id);
+                  }
                   return null;
                 } catch (e) {
                   return e instanceof Error ? e.message : "Save failed";
@@ -310,6 +318,14 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Context note prompt after significant units change */}
+        {pendingNote && (
+          <ContextNotePrompt
+            mutationId={pendingNote}
+            onDismiss={() => setPendingNote(null)}
+          />
+        )}
 
         {/* Crypto volatility */}
         <CryptoVolatilityBlock asset={asset} />
