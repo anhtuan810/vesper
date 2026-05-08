@@ -86,12 +86,8 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
 
   const sym = currencySymbol(asset.currency);
 
-  const subLine = [
-    asset.type !== "crypto" && asset.country ? asset.country : null,
-    TYPE_LABEL[asset.type] ?? asset.type,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const typeLabel = TYPE_LABEL[asset.type] ?? asset.type;
+  const showCountry = asset.type !== "crypto";
 
   return (
     <div className="min-h-screen bg-bg">
@@ -126,10 +122,37 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
                 {asset.name}
               </div>
               <div
-                className="font-mono text-dim mt-0.5"
+                className="font-mono text-dim mt-0.5 flex items-center gap-1"
                 style={{ fontSize: 10, letterSpacing: "0.05em" }}
               >
-                {subLine}
+                {showCountry && (
+                  <>
+                    <InlineEdit
+                      display={
+                        <span>{asset.country ?? <span style={{ color: "var(--text-faint)" }}>??</span>}</span>
+                      }
+                      rawValue={asset.country ?? ""}
+                      placeholder="US"
+                      displayStyle={{ minHeight: 28, fontSize: 10, letterSpacing: "0.05em" }}
+                      inputStyle={{ fontSize: 10, width: 52, padding: "2px 6px", minHeight: 28 }}
+                      onSave={async (raw) => {
+                        const trimmed = raw.trim().toUpperCase().slice(0, 3);
+                        const value = trimmed === "" ? null : trimmed;
+                        if (value !== null && value.length > 3) return "Max 3 characters";
+                        try {
+                          const { asset: updated } = await patchField("country", value);
+                          setAsset(updated);
+                          fetchMutations();
+                          return null;
+                        } catch (e) {
+                          return e instanceof Error ? e.message : "Save failed";
+                        }
+                      }}
+                    />
+                    <span style={{ color: "var(--text-faint)" }}>·</span>
+                  </>
+                )}
+                {typeLabel}
               </div>
             </div>
           </div>
@@ -211,7 +234,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             />
           </div>
 
-          {/* Avg buy price — static for now, extended in step 2 */}
+          {/* Avg buy price — inline-editable */}
           <div
             className="border border-border rounded-xl"
             style={{ background: "var(--surface)", padding: "12px 14px" }}
@@ -222,9 +245,30 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             >
               Avg buy price
             </div>
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {asset.buy_price != null ? `€${fmtPrice(asset.buy_price)}` : "—"}
-            </div>
+            <InlineEdit
+              display={
+                <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+                  {asset.buy_price != null ? `€${fmtPrice(asset.buy_price)}` : "—"}
+                </span>
+              }
+              rawValue={asset.buy_price != null ? String(asset.buy_price) : ""}
+              placeholder="e.g. 150.00"
+              displayStyle={{ minHeight: 32 }}
+              inputStyle={{ fontSize: 14, fontWeight: 500 }}
+              onSave={async (raw) => {
+                const trimmed = raw.trim();
+                const value = trimmed === "" ? null : parseFloat(trimmed);
+                if (value !== null && (isNaN(value) || value < 0)) return "Must be a non-negative number";
+                try {
+                  const { asset: updated } = await patchField("buy_price", value);
+                  setAsset(updated);
+                  fetchMutations();
+                  return null;
+                } catch (e) {
+                  return e instanceof Error ? e.message : "Save failed";
+                }
+              }}
+            />
           </div>
 
           {/* Live price — read-only */}
