@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { STATIC_SYSTEM, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
@@ -39,28 +39,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Image too large (5 MB max)" }, { status: 400 });
     }
 
+    const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+    if (imageData && !ALLOWED_IMAGE_TYPES.has(imageData.mediaType)) {
+      return NextResponse.json({ error: "Unsupported image type" }, { status: 400 });
+    }
+
     const supabase = createServerSupabase();
 
-    // --- Rate limiting: 50 messages per day ---
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const { count: messageCount } = await supabase
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("created_at", today.toISOString());
-
+    // --- Rate limiting: 50 messages per day (atomic upsert) ---
     const DAILY_LIMIT = 50;
-    const used = messageCount ?? 0;
+    const today = new Date().toISOString().slice(0, 10);
 
-    if (used >= DAILY_LIMIT) {
+    const { data: newCount } = await supabase.rpc("increment_rate_limit", {
+      p_user_id: userId,
+      p_bucket: "chat",
+      p_date: today,
+    });
+
+    if ((newCount as number) > DAILY_LIMIT) {
       return NextResponse.json({
         message: "You've reached today's message limit (50). Come back tomorrow!",
         assets: null,
         remaining: 0,
       });
     }
+
+    const used = (newCount as number) - 1;
 
     // --- Load user context ---
     const [
@@ -125,13 +129,6 @@ export async function POST(req: NextRequest) {
     userContent.push({
       type: "text",
       text: message || "Extract all positions from this screenshot and add them to my portfolio.",
-    });
-
-    // --- Save user message ---
-    await supabase.from("messages").insert({
-      user_id: userId,
-      role: "user",
-      content: message || "[screenshot uploaded]",
     });
 
     // --- Call Claude (with retry) ---
@@ -218,25 +215,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // --- Save assistant response ---
-    await supabase.from("messages").insert({
-      user_id: userId,
-      role: "assistant",
-      content: displayText,
-    });
+    // --- Save user + assistant messages together after Claude succeeds ---
+    await supabase.from("messages").insert([
+      { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
+      { user_id: userId, role: "assistant", content: displayText },
+    ]);
 
     // --- Background: profile extraction & snapshot (both catch internally) ---
     if (message && displayText && !isNewUser && !changesRaw) {
-      extractProfileUpdate(userId, message, displayText, profile);
+      after(() => extractProfileUpdate(userId, message, displayText, profile));
     }
     if (portfolioChanged) {
-      writeSnapshot(userId);
+      after(() => writeSnapshot(userId));
     }
 
     return NextResponse.json({
       message: displayText || "Done.",
       assets: updatedAssets,
-      remaining: DAILY_LIMIT - used - 1,
+      remaining: DAILY_LIMIT - used,
     });
   } catch (err) {
     Sentry.captureException(err, { tags: { route: "POST /api/chat" } });

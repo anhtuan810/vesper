@@ -1,9 +1,10 @@
 import * as Sentry from "@sentry/nextjs";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { writeSnapshot } from "@/lib/snapshot";
 import { geocodeAddress } from "@/lib/geocode";
 import { computeNetWorth } from "@/lib/utils";
+import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
 
 const ALLOWED_COMMON = new Set([
   "name", "value", "currency", "country", "units", "buy_price", "buy_date",
@@ -56,8 +57,65 @@ export async function PATCH(
       updateData[key] = body[key];
     }
 
+    // --- Input validation ---
+    const NUMERIC_NON_NEG = new Set([
+      "value", "units", "mortgage_balance", "mortgage_rate",
+      "monthly_payment", "buy_price", "size_sqm",
+    ]);
+    const NUMERIC_ANY_SIGN = new Set(["latitude", "longitude"]);
+    const STRING_200 = new Set(["name", "address", "symbol"]);
+    const STRING_8 = new Set(["currency", "country"]);
+    const DATE_FIELDS = new Set(["buy_date", "mortgage_start_date", "mortgage_end_date"]);
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const MORTGAGE_TYPES = new Set(["fixed", "variable", "interest_only"]);
+    const PROPERTY_TYPES = new Set(["apartment", "house", "commercial", "land", "other"]);
+
+    for (const [k, v] of Object.entries(updateData)) {
+      if (NUMERIC_NON_NEG.has(k)) {
+        if (typeof v !== "number" || !isFinite(v) || v < 0)
+          return NextResponse.json({ error: `${k} must be a finite non-negative number` }, { status: 400 });
+      } else if (NUMERIC_ANY_SIGN.has(k)) {
+        if (typeof v !== "number" || !isFinite(v))
+          return NextResponse.json({ error: `${k} must be a finite number` }, { status: 400 });
+      } else if (STRING_200.has(k)) {
+        if (typeof v !== "string" || v.trim().length === 0 || v.trim().length > 200)
+          return NextResponse.json({ error: `${k} must be a non-empty string (max 200 chars)` }, { status: 400 });
+      } else if (STRING_8.has(k)) {
+        if (typeof v !== "string" || v.trim().length === 0 || v.trim().length > 8)
+          return NextResponse.json({ error: `${k} must be a non-empty string (max 8 chars)` }, { status: 400 });
+      } else if (DATE_FIELDS.has(k)) {
+        if (v !== null && (typeof v !== "string" || !DATE_RE.test(v)))
+          return NextResponse.json({ error: `${k} must be a date string (YYYY-MM-DD) or null` }, { status: 400 });
+      } else if (k === "mortgage_type") {
+        if (v !== null && !MORTGAGE_TYPES.has(v as string))
+          return NextResponse.json({ error: `mortgage_type must be one of: ${[...MORTGAGE_TYPES].join(", ")}` }, { status: 400 });
+      } else if (k === "property_type") {
+        if (v !== null && !PROPERTY_TYPES.has(v as string))
+          return NextResponse.json({ error: `property_type must be one of: ${[...PROPERTY_TYPES].join(", ")}` }, { status: 400 });
+      }
+    }
+
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
+    // Recompute value from live price when only units change on a tradeable asset
+    const TRADEABLE = new Set(["stocks", "etf", "crypto", "gold"]);
+    if (
+      "units" in updateData &&
+      !("value" in updateData) &&
+      TRADEABLE.has(asset.type) &&
+      asset.symbol
+    ) {
+      try {
+        const priceData = await fetchHistoricalPrice(asset.symbol, null);
+        if (priceData) {
+          const newUnits = updateData.units as number;
+          updateData.value = Math.round(normalizePrice(priceData.price, priceData.currency) * newUnits);
+        }
+      } catch {
+        // live-price fetch is non-fatal; leave value unchanged
+      }
     }
 
     const { data: updatedRaw, error: updateError } = await supabase
@@ -128,7 +186,7 @@ export async function PATCH(
       );
     }
 
-    writeSnapshot(user.id);
+    after(() => writeSnapshot(user.id));
 
     return NextResponse.json({ asset: updated, mutation_id: mutation?.id ?? null });
   } catch (err) {
@@ -209,7 +267,7 @@ export async function DELETE(
       );
     }
 
-    writeSnapshot(user.id);
+    after(() => writeSnapshot(user.id));
 
     return NextResponse.json({ ok: true });
   } catch (err) {

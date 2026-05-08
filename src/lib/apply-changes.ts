@@ -200,7 +200,7 @@ export async function applyPortfolioChanges({
             asset_type: existing.type,
             symbol: existing.symbol || null,
             before_value: existing.value,
-            after_value: change.value || existing.value,
+            after_value: change.value !== undefined ? change.value : existing.value,
             before_units: existing.units || null,
             after_units: change.units !== undefined ? change.units : (existing.units || null),
             currency: change.currency || existing.currency || "EUR",

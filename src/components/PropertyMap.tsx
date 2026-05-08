@@ -46,6 +46,7 @@ export function PropertyMap({ asset }: Props) {
   const router = useRouter();
   const supabase = createBrowserSupabase();
   const [effectivePhotoUrl, setEffectivePhotoUrl] = useState(asset.photo_url ?? null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   // Prevents re-caching loop when a cached URL turns out to be un-servable
   const photoFailedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +63,16 @@ export function PropertyMap({ asset }: Props) {
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setUploadError(null);
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Only image files are allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("File must be under 5 MB.");
+      return;
+    }
 
     const ext = file.name.split(".").pop() ?? "jpg";
     const path = `${asset.user_id}/${asset.id}-user.${ext}`;
@@ -115,6 +126,21 @@ export function PropertyMap({ asset }: Props) {
           {effectivePhotoUrl ? "Change photo" : "Map · Tap to add photo"}
         </span>
       </button>
+      {uploadError && (
+        <div
+          className="font-mono"
+          style={{
+            position: "absolute", top: 38, left: 12,
+            background: "rgba(201,122,110,0.15)",
+            border: "1px solid rgba(201,122,110,0.4)",
+            color: "var(--negative)",
+            fontSize: 9, padding: "3px 8px", borderRadius: 4,
+            letterSpacing: "0.06em",
+          }}
+        >
+          {uploadError}
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"

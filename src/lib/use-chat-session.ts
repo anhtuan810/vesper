@@ -15,7 +15,7 @@ export const CHAT_SUGGESTIONS = [
 ];
 
 // Shared across ChatPopup and /chat so history persists between surfaces
-const STORAGE_KEY = "vesper_chat_history";
+const storageKey = (uid: string) => "vesper_chat_history_" + uid;
 const CHAT_TTL_MS = 24 * 60 * 60 * 1000;
 
 interface Options {
@@ -40,19 +40,29 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   useEffect(() => { onNewMessageRef.current = onNewMessage; }, [onNewMessage]);
 
   useEffect(() => {
+    if (!userId) return;
+    const key = storageKey(userId);
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      // Sweep any keys belonging to other users
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("vesper_chat_history_") && k !== key) {
+          localStorage.removeItem(k);
+        }
+      }
+      const raw = localStorage.getItem(key);
       if (raw) {
         const { messages: stored, ts } = JSON.parse(raw) as { messages: ChatMessage[]; ts: number };
         if (Date.now() - ts < CHAT_TTL_MS) setMessages(stored);
-        else localStorage.removeItem(STORAGE_KEY);
+        else localStorage.removeItem(key);
       }
     } catch {}
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, ts: Date.now() })); } catch {}
-  }, [messages]);
+    if (!userId) return;
+    try { localStorage.setItem(storageKey(userId), JSON.stringify({ messages, ts: Date.now() })); } catch {}
+  }, [messages, userId]);
 
   const clearImage = useCallback(() => {
     setImagePreview(null);

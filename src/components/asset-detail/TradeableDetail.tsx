@@ -34,7 +34,7 @@ function monogram(asset: TradeableAsset): string {
 export function TradeableDetail({ asset: initialAsset }: Props) {
   const router = useRouter();
   const [asset, setAsset] = useState<TradeableAsset>(initialAsset);
-  const { livePrice, livePrev } = useLivePrice(asset.symbol);
+  const { livePrice, livePrev, nativePrice, nativeCurrency: _nativeCurrency } = useLivePrice(asset.symbol);
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [pendingNote, setPendingNote] = useState<string | null>(null);
   const supabase = createBrowserSupabase();
@@ -83,8 +83,8 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
   const up = dailyChg != null && dailyChg >= 0;
 
   const totalReturn =
-    livePrice != null && asset.buy_price && asset.buy_price > 0
-      ? ((livePrice - asset.buy_price) / asset.buy_price) * 100
+    nativePrice != null && asset.buy_price && asset.buy_price > 0
+      ? ((nativePrice - asset.buy_price) / asset.buy_price) * 100
       : null;
 
   const sym = currencySymbol(asset.currency);

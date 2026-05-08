@@ -18,25 +18,16 @@ export async function POST(req: NextRequest) {
     const supabase = createServerSupabase();
     const today = new Date().toISOString().slice(0, 10);
 
-    // DB-backed rate limit — survives server restarts and multiple instances
-    const { data: userData } = await supabase
-      .from("users")
-      .select("profile")
-      .eq("id", user.id)
-      .single();
+    // Atomic rate limit via upsert — prevents race conditions and leaking _diary_rate into profile
+    const { data: newCount } = await supabase.rpc("increment_rate_limit", {
+      p_user_id: user.id,
+      p_bucket: "diary",
+      p_date: today,
+    });
 
-    const profile = (userData?.profile as Record<string, unknown>) || {};
-    const rateLimit = profile._diary_rate as { count: number; date: string } | undefined;
-
-    if (rateLimit?.date === today && rateLimit.count >= DAILY_LIMIT) {
+    if ((newCount as number) > DAILY_LIMIT) {
       return NextResponse.json({ error: "Daily limit reached" }, { status: 429 });
     }
-
-    const newCount = rateLimit?.date === today ? rateLimit.count + 1 : 1;
-    await supabase
-      .from("users")
-      .update({ profile: { ...profile, _diary_rate: { count: newCount, date: today } } })
-      .eq("id", user.id);
 
     const text = await req.text();
     if (!text) return NextResponse.json({ error: "No input" }, { status: 400 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { usePriceHistory } from "@/lib/hooks";
 
 const RANGES = ["1D", "1W", "1M", "3M", "1Y", "ALL"] as const;
@@ -41,12 +42,14 @@ function buildPath(closes: number[], W: number, H: number): { line: string; area
 
 export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [range, setRange] = useState<Range>(defaultRange);
 
-  const rawRange = searchParams.get("range") ?? "";
-  const range: Range = (RANGES as readonly string[]).includes(rawRange)
-    ? (rawRange as Range)
-    : defaultRange;
+  // Reads window.location.search directly to avoid the Suspense requirement of useSearchParams.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const r = new URLSearchParams(window.location.search).get("range") ?? "";
+    if ((RANGES as readonly string[]).includes(r)) setRange(r as Range);
+  }, []);
 
   const { closes, loading } = usePriceHistory(symbol, range);
 
@@ -70,7 +73,8 @@ export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
       : null;
 
   function selectRange(r: Range) {
-    const params = new URLSearchParams(searchParams.toString());
+    setRange(r);
+    const params = new URLSearchParams(window.location.search);
     params.set("range", r);
     router.replace(`?${params.toString()}`, { scroll: false });
   }

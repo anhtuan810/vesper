@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
-import type { PriceResult } from "@/app/api/prices/route";
+import type { PriceResult } from "@/lib/prices-server";
 
 export interface PricePoint {
   timestamp: number;

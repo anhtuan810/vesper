@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geocodeAddress } from "@/lib/geocode";
+import { getAuthUser } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const address = request.nextUrl.searchParams.get("address")?.trim();
   if (!address) {
     return NextResponse.json({ error: "address required" }, { status: 400 });
