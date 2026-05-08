@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { STATIC_SYSTEM, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
+import { writeSnapshot } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
 import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
 import { geocodeAddress } from "@/lib/geocode";
@@ -279,6 +280,8 @@ export async function POST(req: NextRequest) {
                   asset_type: change.type || "other",
                   symbol: change.symbol || null,
                   after_value: resolvedValue,
+                  before_units: null,
+                  after_units: change.units || null,
                   currency: resolvedCurrency,
                   personal_context: contextRaw?.trim() || null,
                   portfolio_total: currentTotal + resolvedValue,
@@ -294,6 +297,7 @@ export async function POST(req: NextRequest) {
 
               if (existing) {
                 const updateData: Record<string, unknown> = {};
+                if (change.new_name !== undefined && change.new_name !== existing.name) updateData.name = change.new_name;
                 if (change.value !== undefined) updateData.value = change.value;
                 if (change.type !== undefined) updateData.type = change.type;
                 if (change.currency !== undefined) updateData.currency = change.currency;
@@ -337,6 +341,8 @@ export async function POST(req: NextRequest) {
                     symbol: existing.symbol || null,
                     before_value: existing.value,
                     after_value: change.value || existing.value,
+                    before_units: existing.units || null,
+                    after_units: change.units !== undefined ? change.units : (existing.units || null),
                     currency: change.currency || existing.currency || "EUR",
                     personal_context: contextRaw?.trim() || null,
                     portfolio_total: currentTotal,
@@ -369,6 +375,8 @@ export async function POST(req: NextRequest) {
                     asset_type: existing.type,
                     symbol: existing.symbol || null,
                     before_value: existing.value,
+                    before_units: existing.units || null,
+                    after_units: null,
                     currency: existing.currency || "EUR",
                     personal_context: contextRaw?.trim() || null,
                     portfolio_total: currentTotal - existing.value,
@@ -425,6 +433,13 @@ export async function POST(req: NextRequest) {
     if (message && displayText && !isNewUser && !changesRaw) {
       extractProfileUpdate(userId, message, displayText, profile).catch((err) =>
         console.error("Profile extraction background error:", err)
+      );
+    }
+
+    // --- Snapshot (fire-and-forget, non-blocking) ---
+    if (portfolioChanged) {
+      writeSnapshot(userId).catch((err) =>
+        console.error("Snapshot background error:", err)
       );
     }
 

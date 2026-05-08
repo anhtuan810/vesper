@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
+import { writeSnapshot } from "@/lib/snapshot";
 
 const ALLOWED_COMMON = new Set([
   "value", "currency", "country", "units", "buy_price", "buy_date",
@@ -98,6 +99,8 @@ export async function PATCH(
         symbol: asset.symbol || null,
         before_value: asset.value,
         after_value: updated.value,
+        before_units: asset.units ?? null,
+        after_units: updated.units ?? null,
         currency: updated.currency || asset.currency,
         personal_context: null,
         portfolio_total: portfolioTotal,
@@ -116,6 +119,10 @@ export async function PATCH(
         { status: 200 }
       );
     }
+
+    writeSnapshot(user.id).catch((err) =>
+      console.error("Snapshot background error:", err)
+    );
 
     return NextResponse.json({ asset: updated, mutation_id: mutation?.id ?? null });
   } catch (err) {
@@ -178,6 +185,8 @@ export async function DELETE(
         symbol: asset.symbol || null,
         before_value: asset.value,
         after_value: null,
+        before_units: asset.units ?? null,
+        after_units: null,
         currency: asset.currency,
         personal_context: null,
         portfolio_total: portfolioTotal,
@@ -194,6 +203,10 @@ export async function DELETE(
         { status: 200 }
       );
     }
+
+    writeSnapshot(user.id).catch((err) =>
+      console.error("Snapshot background error:", err)
+    );
 
     return NextResponse.json({ ok: true });
   } catch (err) {

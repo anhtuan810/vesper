@@ -1,31 +1,19 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { fmt, formatDate, getMonthKey, getMonthLabel, ACTION_STYLE, TYPE_COLOR } from "@/lib/utils";
+import { fmt, formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
 import type { Mutation } from "@/lib/supabase";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { AssetLogo } from "@/components/AssetLogo";
 
-// ── Asset icon ─────────────────────────────────────────────────────────────────
-function AssetIcon({ type, symbol, name }: { type: string | null; symbol: string | null; name?: string | null }) {
-  const assetType = type || "other";
-  const color = TYPE_COLOR[assetType] || TYPE_COLOR.other;
+const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 
-  const symbolMonogram = symbol
-    ? symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase()
-    : null;
-  const monogram = symbolMonogram
-    ? symbolMonogram.slice(0, 4)
-    : (name || assetType).slice(0, 3).toUpperCase();
-
-  return (
-    <div
-      className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center font-mono font-medium"
-      style={{ background: `${color}18`, color, fontSize: 7, letterSpacing: "0.02em" }}
-    >
-      {monogram}
-    </div>
-  );
+function unitNoun(assetType: string | null): string {
+  if (assetType === "crypto") return "units";
+  if (assetType === "gold") return "oz";
+  return "shares";
 }
+
 
 interface DiaryTabProps {
   mutations: Mutation[];
@@ -43,6 +31,33 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
   { key: "year", label: "This year" },
   { key: "custom", label: "Custom" },
 ];
+
+const ACTION_FILTERS: { label: string; value: string }[] = [
+  { label: "All", value: "all" },
+  { label: "Added", value: "add" },
+  { label: "Updated", value: "edit" },
+  { label: "Removed", value: "remove" },
+];
+
+const SELECT_STYLE: React.CSSProperties = {
+  appearance: "none",
+  WebkitAppearance: "none",
+  MozAppearance: "none",
+  background: "var(--surface)",
+  backgroundColor: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: "5px 24px 5px 10px",
+  fontSize: 11,
+  fontFamily: "var(--mono)",
+  color: "var(--text-dim)",
+  cursor: "pointer",
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2354545E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 8px center",
+  outline: "none",
+};
 
 function getMonthOptions(mutations: Mutation[]) {
   const dates = mutations
@@ -386,12 +401,6 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
 
   const monthOptions = getMonthOptions(mutations);
 
-  const ACTION_META = [
-    { action: "add",    label: "Added",   color: "#6BAA75", bg: "rgba(107,170,117,0.12)", border: "rgba(107,170,117,0.25)" },
-    { action: "edit",   label: "Updated", color: "#D4A574", bg: "rgba(212,165,116,0.12)", border: "rgba(212,165,116,0.25)" },
-    { action: "remove", label: "Removed", color: "#C97A6E", bg: "rgba(201,122,110,0.12)", border: "rgba(201,122,110,0.25)" },
-  ];
-
   return (
     <>
       {/* Period highlight chart */}
@@ -404,8 +413,11 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
         />
       )}
 
-      {/* Period filter */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+      {/* Row A — period chips */}
+      <div
+        className="flex items-center gap-1.5 mb-2"
+        style={{ overflowX: "auto", scrollbarWidth: "none", flexWrap: "nowrap" }}
+      >
         {PERIOD_OPTIONS.map(({ key, label }) => {
           const active = period === key;
           return (
@@ -415,11 +427,13 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
               className="font-mono transition-all"
               style={{
                 fontSize: 11,
-                padding: "6px 12px",
+                padding: "5px 10px",
                 borderRadius: 8,
                 border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
                 background: active ? "var(--surface-elev)" : "transparent",
                 color: active ? "var(--text)" : "var(--text-faint)",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
               {label}
@@ -427,12 +441,11 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
           );
         })}
         {period === "custom" && (
-          <div className="flex items-center gap-1.5 ml-1">
+          <div className="flex items-center gap-1.5 ml-1" style={{ flexShrink: 0 }}>
             <select
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="font-mono text-dim bg-surface border border-border rounded-lg outline-none cursor-pointer"
-              style={{ fontSize: 11, padding: "5px 8px" }}
+              style={SELECT_STYLE}
             >
               {monthOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -442,8 +455,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
             <select
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="font-mono text-dim bg-surface border border-border rounded-lg outline-none cursor-pointer"
-              style={{ fontSize: 11, padding: "5px 8px" }}
+              style={SELECT_STYLE}
             >
               {monthOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -453,30 +465,25 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
         )}
       </div>
 
-      {/* Action filter cards */}
-      <div className="flex gap-2 mb-6">
-        {ACTION_META.map(({ action, label, color, bg, border }) => {
-          const count = periodMutations.filter((m) => m.action === action).length;
-          const active = diaryFilter === action;
+      {/* Row B — action filter pills */}
+      <div className="flex gap-1.5 mb-6">
+        {ACTION_FILTERS.map(({ label, value }) => {
+          const active = diaryFilter === value;
           return (
             <button
-              key={action}
-              onClick={() => setDiaryFilter(active ? "all" : action)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-left"
+              key={value}
+              onClick={() => setDiaryFilter(value)}
+              className="font-mono transition-all"
               style={{
-                background: active ? bg : "transparent",
-                borderColor: active ? border : "var(--border)",
+                fontSize: 11,
+                padding: "5px 10px",
+                borderRadius: 8,
+                border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
+                background: active ? "var(--surface-elev)" : "transparent",
+                color: active ? "var(--text)" : "var(--text-faint)",
               }}
             >
-              <span
-                className="font-mono"
-                style={{ fontSize: 12, fontWeight: 600, color: active ? color : "var(--text-faint)" }}
-              >
-                {count}
-              </span>
-              <span style={{ fontSize: 12, color: active ? color : "var(--text-faint)" }}>
-                {label}
-              </span>
+              {label}
             </button>
           );
         })}
@@ -506,79 +513,109 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter }: DiaryTabPro
 
           <div>
             {grouped[monthKey].map((m) => {
-              const style = ACTION_STYLE[m.action] || ACTION_STYLE.edit;
-              const date = m.occurred_at || m.recorded_at;
-              const valueChange = m.action === "edit" && m.before_value != null && m.after_value != null
-                ? m.after_value - m.before_value : null;
-              const hasValueChange = valueChange !== null && valueChange !== 0;
-
               const mCur = m.currency ?? "EUR";
-              let valueText: string | null = null;
-              if (m.action === "add" && m.after_value != null) {
-                valueText = fmt(m.after_value, mCur);
-              } else if (m.action === "edit" && hasValueChange && m.before_value != null && m.after_value != null) {
-                valueText = `${fmt(m.before_value, mCur)} → ${fmt(m.after_value, mCur)}`;
-              } else if (m.action === "remove" && m.before_value != null) {
-                valueText = fmt(m.before_value, mCur);
+              const date = m.occurred_at || m.recorded_at;
+
+              // Unit-based display for tradeable mutations; value-based fallback for all others
+              const isUnitEligible =
+                m.asset_type != null &&
+                TRADEABLE_TYPES.has(m.asset_type) &&
+                (m.before_units != null || m.after_units != null);
+              const noun = unitNoun(m.asset_type);
+
+              let valueNode: React.ReactNode = null;
+
+              if (isUnitEligible) {
+                if (m.action === "add" && m.after_units != null) {
+                  valueNode = (
+                    <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>
+                      +{m.after_units.toLocaleString()} {noun}
+                    </span>
+                  );
+                } else if (m.action === "edit") {
+                  const unitDelta = (m.after_units ?? 0) - (m.before_units ?? 0);
+                  if (unitDelta !== 0) {
+                    valueNode = (
+                      <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: unitDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                        {unitDelta >= 0 ? "+" : ""}{unitDelta.toLocaleString()} {noun}
+                      </span>
+                    );
+                  }
+                  // zero delta falls through to value-based below
+                } else if (m.action === "remove" && m.before_units != null) {
+                  valueNode = (
+                    <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>
+                      {m.before_units.toLocaleString()} {noun}
+                    </span>
+                  );
+                }
+              }
+
+              // Value-based fallback (non-tradeable, historical without units, or edit with zero unit delta)
+              if (valueNode === null) {
+                if (m.action === "add" && m.after_value != null) {
+                  valueNode = (
+                    <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>
+                      {fmt(m.after_value, mCur)}
+                    </span>
+                  );
+                } else if (m.action === "edit") {
+                  const valDelta = m.before_value != null && m.after_value != null
+                    ? m.after_value - m.before_value : null;
+                  if (valDelta !== null && valDelta !== 0) {
+                    valueNode = (
+                      <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                        {valDelta >= 0 ? "+" : ""}{fmt(valDelta, mCur)}
+                      </span>
+                    );
+                  } else if (m.after_value != null) {
+                    valueNode = (
+                      <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>
+                        {fmt(m.after_value, mCur)}
+                      </span>
+                    );
+                  }
+                } else if (m.action === "remove" && m.before_value != null) {
+                  valueNode = (
+                    <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>
+                      {fmt(m.before_value, mCur)}
+                    </span>
+                  );
+                }
               }
 
               return (
-                <div
-                  key={m.id}
-                  className="py-3.5 border-b border-border last:border-0"
-                >
-                  {/* Top row: action tag + asset icon + date */}
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="font-mono uppercase"
-                        style={{
-                          fontSize: 9, fontWeight: 500,
-                          padding: "2px 7px", borderRadius: 4,
-                          letterSpacing: "0.1em",
-                          color: style.color, background: style.bg,
-                        }}
-                      >
-                        {style.label}
-                      </span>
-                      <AssetIcon type={m.asset_type} symbol={m.symbol} name={m.asset_name} />
-                    </div>
+                <div key={m.id} className="py-3.5 border-b border-border last:border-0">
+                  {/* ROW 1: icon · name · value · date */}
+                  <div className="flex items-center gap-3">
+                    <AssetLogo type={m.asset_type} symbol={m.symbol} name={m.asset_name} />
                     <span
-                      className="font-mono text-faint uppercase"
-                      style={{ fontSize: 10, letterSpacing: "0.12em" }}
+                      className="font-serif flex-1 min-w-0"
+                      style={{
+                        fontSize: 14, fontWeight: 400, fontVariationSettings: "'opsz' 144",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}
+                    >
+                      {m.asset_name}
+                    </span>
+                    {valueNode}
+                    <span
+                      className="font-mono uppercase"
+                      style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.12em", flexShrink: 0, marginLeft: 12 }}
                     >
                       {formatDate(date)}
                     </span>
                   </div>
 
-                  {/* Asset name — serif */}
-                  <div
-                    className="font-serif text-fg leading-snug"
-                    style={{ fontSize: 17, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
-                  >
-                    {m.asset_name}
-                  </div>
-
-                  {/* Value */}
-                  {valueText && (
-                    <div className="font-mono text-dim mt-1" style={{ fontSize: 12 }}>
-                      {valueText}
-                      {hasValueChange && valueChange !== null && (
-                        <span
-                          className="ml-2 font-medium"
-                          style={{ color: valueChange >= 0 ? "var(--positive)" : "var(--negative)" }}
-                        >
-                          {valueChange >= 0 ? "+" : ""}{fmt(valueChange, mCur)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Context — italic with left border */}
+                  {/* ROW 2: context note — single line, aligned under name */}
                   {m.personal_context && (
                     <div
-                      className="text-dim italic leading-[1.55] mt-2 border-l-2 border-border-strong pl-2.5"
-                      style={{ fontSize: 12 }}
+                      className="italic"
+                      style={{
+                        fontSize: 11, color: "var(--text-dim)", lineHeight: 1.45,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        marginTop: 3, marginLeft: 36,
+                      }}
                     >
                       {m.personal_context}
                     </div>

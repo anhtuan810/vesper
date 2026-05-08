@@ -3,18 +3,9 @@
 import Link from "next/link";
 import { fmt, pctChange } from "@/lib/utils";
 import { MiniSparkline } from "@/components/MiniSparkline";
+import { AssetLogo } from "@/components/AssetLogo";
 import { usePriceHistory } from "@/lib/hooks";
-import type { LiveAsset } from "@/lib/supabase";
-
-function monogram(asset: LiveAsset): string {
-  if (asset.symbol) {
-    return asset.symbol
-      .replace(/-[A-Z]+$/i, "")
-      .slice(0, 4)
-      .toUpperCase();
-  }
-  return asset.name.slice(0, 3).toUpperCase();
-}
+import type { LiveAsset, RealEstateAsset } from "@/lib/supabase";
 
 function subLine(asset: LiveAsset): string {
   const parts: string[] = [];
@@ -40,13 +31,13 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
   return (
     <Link href={`/asset/${asset.id}`} className="block">
       <div className="flex items-center py-3.5 border-b border-border last:border-0 gap-3">
-        {/* Monogram icon */}
-        <div
-          className="bg-surface border border-border flex items-center justify-center shrink-0 font-mono font-medium text-dim"
-          style={{ width: 38, height: 38, borderRadius: 11, fontSize: 11 }}
-        >
-          {monogram(asset)}
-        </div>
+        <AssetLogo
+          type={asset.type}
+          symbol={asset.symbol ?? null}
+          name={asset.name}
+          property_type={asset.type === "real_estate" ? (asset as RealEstateAsset).property_type ?? null : null}
+          size={38}
+        />
 
         {/* Name + sub-line */}
         <div className="flex-1 min-w-0">

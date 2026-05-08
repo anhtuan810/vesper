@@ -346,6 +346,28 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
               {mutations.slice(0, 5).map((m) => {
                 const style = ACTION_STYLE[m.action] ?? ACTION_STYLE.edit;
                 const dateStr = m.occurred_at ?? m.recorded_at;
+                const hasUnits = m.before_units != null || m.after_units != null;
+                const noun = asset.type === "crypto" ? "units" : asset.type === "gold" ? "oz" : "shares";
+
+                let activityLine: React.ReactNode = null;
+                if (hasUnits) {
+                  if (m.action === "add" && m.after_units != null) {
+                    activityLine = `+${m.after_units.toLocaleString()} ${noun}`;
+                  } else if (m.action === "edit") {
+                    const unitDelta = (m.after_units ?? 0) - (m.before_units ?? 0);
+                    if (unitDelta !== 0) {
+                      activityLine = `${unitDelta >= 0 ? "+" : ""}${unitDelta.toLocaleString()} ${noun}`;
+                    }
+                  } else if (m.action === "remove" && m.before_units != null) {
+                    activityLine = `${m.before_units.toLocaleString()} ${noun}`;
+                  }
+                }
+                if (activityLine === null && m.after_value != null) {
+                  activityLine = m.action === "add" && m.before_value != null
+                    ? `+${sym}${Math.round(m.after_value - m.before_value).toLocaleString()}`
+                    : `${sym}${Math.round(m.after_value).toLocaleString()}`;
+                }
+
                 return (
                   <div
                     key={m.id}
@@ -371,14 +393,12 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
                         {dateStr ? formatDate(dateStr) : "—"}
                       </span>
                     </div>
-                    {m.after_value != null && (
+                    {activityLine !== null && (
                       <div
                         className="font-serif text-fg"
                         style={{ fontSize: 17, fontWeight: 400, lineHeight: 1.3, marginBottom: 4 }}
                       >
-                        {m.action === "add" && m.before_value != null
-                          ? `+${sym}${Math.round(m.after_value - m.before_value).toLocaleString()}`
-                          : `${sym}${Math.round(m.after_value).toLocaleString()}`}
+                        {activityLine}
                       </div>
                     )}
                     {m.personal_context && (

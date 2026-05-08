@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
+import { NetWorthChart } from "@/components/NetWorthChart";
 import { AllocationBar } from "@/components/AllocationBar";
 import { PositionRow } from "@/components/PositionRow";
 import { formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE } from "@/lib/utils";
@@ -41,12 +42,38 @@ export function PortfolioTab({
 
   return (
     <>
-      {/* Hero: Net worth + Allocation */}
+      {/* Hero: Net worth */}
       <div className="bg-surface rounded-2xl border border-border p-5 sm:p-8 mb-4">
         <NetWorthHero netTotal={netTotal} grossTotal={grossTotal} totalDebt={totalDebt} />
-        <div className="mt-8">
-          <AllocationBar items={allocationItems} total={grossTotal} />
+      </div>
+
+      {/* Net worth chart — flush against page background, no card wrapper */}
+      {netTotal > 0 && (
+        <div className="mb-4">
+          <NetWorthChart currentNet={netTotal} />
         </div>
+      )}
+
+      {/* Allocation */}
+      <div className="bg-surface rounded-2xl border border-border p-5 sm:p-8 mb-4">
+        <div className="flex items-baseline justify-between" style={{ marginBottom: 16 }}>
+          <div
+            className="font-serif text-fg"
+            style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
+          >
+            Allocation
+          </div>
+          <button
+            onClick={() => {
+              document.getElementById("positions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="font-mono uppercase"
+            style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.04em", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+          >
+            Details
+          </button>
+        </div>
+        <AllocationBar items={allocationItems} total={grossTotal} />
       </div>
 
       {/* Milestone progress */}
@@ -172,7 +199,7 @@ export function PortfolioTab({
 
       {/* Positions list */}
       <div>
-        <div className="flex items-baseline justify-between mb-3">
+        <div id="positions" className="flex items-baseline justify-between mb-3">
           <div
             className="font-serif text-fg"
             style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}

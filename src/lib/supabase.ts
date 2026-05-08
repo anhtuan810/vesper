@@ -121,6 +121,8 @@ export interface Mutation {
   action: "add" | "edit" | "remove";
   before_value: number | null;
   after_value: number | null;
+  before_units: number | null;
+  after_units: number | null;
   currency: string | null;
   personal_context: string | null;
   market_context: string | null;
