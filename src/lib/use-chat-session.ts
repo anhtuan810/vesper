@@ -1,18 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { formatMoney, type DisplayCurrency } from "@/lib/money";
 
 export interface ChatMessage {
   from: "user" | "assistant";
   text: string;
 }
 
-export const CHAT_SUGGESTIONS = [
-  "How diversified am I?",
-  "Add €10k in S&P 500 ETF",
-  "What is my largest position?",
-  "What if markets drop 20%?",
-];
+const SUGGESTION_AMOUNT_EUR = 10_000;
+
+export function getChatSuggestions(displayCurrency: DisplayCurrency): string[] {
+  return [
+    "How diversified am I?",
+    `Add ${formatMoney(SUGGESTION_AMOUNT_EUR, displayCurrency)} in S&P 500 ETF`,
+    "What is my largest position?",
+    "What if markets drop 20%?",
+  ];
+}
 
 // Shared across ChatPopup and /chat so history persists between surfaces
 const storageKey = (uid: string) => "vesper_chat_history_" + uid;

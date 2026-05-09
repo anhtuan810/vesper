@@ -2,13 +2,15 @@
 
 import { useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/lib/hooks";
+import { useUser, useDisplayCurrency } from "@/lib/hooks";
 import { FormatText } from "@/components/FormatText";
-import { useChatSession, CHAT_SUGGESTIONS } from "@/lib/use-chat-session";
+import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 
 export default function ChatPage() {
   const router = useRouter();
   const { user } = useUser();
+  const displayCurrency = useDisplayCurrency();
+  const chatSuggestions = getChatSuggestions(displayCurrency);
   const {
     messages, input, setInput, loading, thinking, remaining,
     imagePreview, imageData, canSend, send, clearImage, handlePaste,
@@ -79,7 +81,7 @@ export default function ChatPage() {
               <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>
                 Ask about your portfolio, or paste a screenshot of your broker app.
               </div>
-              {CHAT_SUGGESTIONS.map((s) => (
+              {chatSuggestions.map((s) => (
                 <button
                   key={s}
                   className="block w-full text-left mb-1.5 transition-colors"

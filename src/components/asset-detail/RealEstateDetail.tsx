@@ -252,6 +252,8 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
               Property value
             </div>
             <InlineEdit
+              kind="money"
+              displayCurrency={displayCurrency}
               display={
                 <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
                   {formatMoney(asset.value, displayCurrency)}

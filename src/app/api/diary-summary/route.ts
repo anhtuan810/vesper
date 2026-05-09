@@ -3,12 +3,24 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { validateEnv } from "@/lib/env";
-import { currencySymbol } from "@/lib/utils";
+import { getEurRates } from "@/lib/fx";
+import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
 
 validateEnv();
 
 const anthropic = new Anthropic();
 const DAILY_LIMIT = 20;
+
+/** Format a EUR-stored value in the user's display currency using server-side rates. */
+function fmtDisplay(eurValue: number, currency: DisplayCurrency, rates: Record<string, number>): string {
+  if (currency === "EUR") {
+    return `€${Math.round(eurValue).toLocaleString("en")}`;
+  }
+  const rate = rates[currency] ?? 1;
+  const displayValue = Math.round(eurValue * rate);
+  const sym = currency === "USD" ? "$" : "£";
+  return `${sym}${displayValue.toLocaleString("en")}`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,12 +43,28 @@ export async function POST(req: NextRequest) {
 
     const text = await req.text();
     if (!text) return NextResponse.json({ error: "No input" }, { status: 400 });
-    const { mutations, startVal, endVal, periodLabel, currency } = JSON.parse(text);
-    const sym = currencySymbol(currency || "EUR");
+
+    const { mutations, startVal, endVal, periodLabel } = JSON.parse(text);
 
     if (!mutations || mutations.length === 0) {
       return NextResponse.json({ error: "No mutations" }, { status: 400 });
     }
+
+    // Resolve display currency from the user record.
+    const { data: userData } = await supabase
+      .from("users")
+      .select("display_currency")
+      .eq("id", user.id)
+      .single();
+
+    const displayCurrency: DisplayCurrency = isSupportedCurrency(userData?.display_currency)
+      ? (userData!.display_currency as DisplayCurrency)
+      : "EUR";
+
+    // Fetch live rates server-side for formatting.
+    const rates = await getEurRates();
+
+    const fmt = (v: number) => fmtDisplay(v, displayCurrency, rates);
 
     const change = endVal - startVal;
     const changePct = startVal > 0 ? ((change / startVal) * 100).toFixed(1) : "0";
@@ -51,15 +79,14 @@ export async function POST(req: NextRequest) {
       personal_context: string | null;
     }[])
       .map((m) => {
-        const mSym = currencySymbol(m.currency || currency || "EUR");
         const date = m.occurred_at ? ` (${m.occurred_at})` : "";
         const ctx = m.personal_context ? ` — "${m.personal_context}"` : "";
         if (m.action === "add")
-          return `Added ${m.asset_name}: ${mSym}${(m.after_value ?? 0).toLocaleString()}${date}${ctx}`;
+          return `Added ${m.asset_name}: ${fmt(m.after_value ?? 0)}${date}${ctx}`;
         if (m.action === "edit")
-          return `Updated ${m.asset_name}: ${mSym}${(m.before_value ?? 0).toLocaleString()} → ${mSym}${(m.after_value ?? 0).toLocaleString()}${date}${ctx}`;
+          return `Updated ${m.asset_name}: ${fmt(m.before_value ?? 0)} → ${fmt(m.after_value ?? 0)}${date}${ctx}`;
         if (m.action === "remove")
-          return `Removed ${m.asset_name}: ${mSym}${(m.before_value ?? 0).toLocaleString()}${date}${ctx}`;
+          return `Removed ${m.asset_name}: ${fmt(m.before_value ?? 0)}${date}${ctx}`;
         return null;
       })
       .filter(Boolean)
@@ -73,6 +100,7 @@ export async function POST(req: NextRequest) {
 Be direct and specific. Focus on what changed and why it matters.
 No greetings, no fluff, no emojis.
 Format: start each line with "• "
+Render all currency values in ${displayCurrency}.
 
 Examples:
 • Shifted focus toward US tech.
@@ -82,7 +110,7 @@ Examples:
         {
           role: "user",
           content: `Period: ${periodLabel}
-Portfolio: started ${sym}${(startVal).toLocaleString()}, ended ${sym}${(endVal).toLocaleString()} (${change >= 0 ? "+" : ""}${sym}${Math.abs(change).toLocaleString()}, ${change >= 0 ? "+" : ""}${changePct}%)
+Portfolio: started ${fmt(startVal)}, ended ${fmt(endVal)} (${change >= 0 ? "+" : ""}${fmt(change)}, ${change >= 0 ? "+" : ""}${changePct}%)
 
 Activity:
 ${lines}

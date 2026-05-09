@@ -2,7 +2,9 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse, after } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
-import { STATIC_SYSTEM, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
+import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
+import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
+import { toEur } from "@/lib/fx";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(10),
-      supabase.from("users").select("profile, name").eq("id", userId).single(),
+      supabase.from("users").select("profile, name, display_currency").eq("id", userId).single(),
       supabase
         .from("mutations")
         .select("*")
@@ -93,14 +95,17 @@ export async function POST(req: NextRequest) {
     const currentAssets = assets || [];
     const profile = userData?.profile || {};
     const userName = userData?.name || undefined;
+    const displayCurrency: DisplayCurrency = isSupportedCurrency(userData?.display_currency)
+      ? (userData!.display_currency as DisplayCurrency)
+      : "EUR";
     const isNewUser = currentAssets.length === 0;
 
     // --- Build system prompt ---
     const systemBlocks: Anthropic.Messages.TextBlockParam[] = isNewUser
-      ? [{ type: "text", text: buildOnboardingPrompt(), cache_control: { type: "ephemeral" } }]
+      ? [{ type: "text", text: buildOnboardingPrompt(displayCurrency), cache_control: { type: "ephemeral" } }]
       : [
-          { type: "text", text: STATIC_SYSTEM, cache_control: { type: "ephemeral" } },
-          { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], userName) },
+          { type: "text", text: buildStaticSystem(displayCurrency), cache_control: { type: "ephemeral" } },
+          { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], displayCurrency, userName) },
         ];
 
     // --- Build conversation history (last 6 messages) ---
@@ -214,10 +219,16 @@ export async function POST(req: NextRequest) {
     if (goalRaw) {
       try {
         const goal = JSON.parse(goalRaw.trim());
+        // Convert goal target from display currency to EUR for storage.
+        let targetEur: number | null = goal.target_value ?? null;
+        if (targetEur !== null && goal.currency && goal.currency !== "EUR") {
+          const converted = await toEur(targetEur, goal.currency);
+          if (converted !== null) targetEur = Math.round(converted);
+        }
         await supabase.from("goals").insert({
           user_id: userId,
           title: goal.title,
-          target_value: goal.target_value || null,
+          target_value: targetEur,
           target_date: goal.target_date || null,
         });
       } catch (err) {

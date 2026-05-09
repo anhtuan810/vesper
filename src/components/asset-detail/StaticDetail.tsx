@@ -135,6 +135,8 @@ export function StaticDetail({ asset: initialAsset }: Props) {
             Balance
           </div>
           <InlineEdit
+            kind="money"
+            displayCurrency={displayCurrency}
             display={
               <div
                 className="font-serif font-light text-fg"

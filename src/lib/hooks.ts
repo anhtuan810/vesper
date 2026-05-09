@@ -7,8 +7,11 @@ import { normalizePrice } from "@/lib/prices";
 import type { PriceResult } from "@/lib/prices-server";
 import {
   type DisplayCurrency,
+  type FxFreshness,
   isSupportedCurrency,
   setEurRate,
+  getEurRate,
+  getRateFreshness,
 } from "@/lib/money";
 
 export interface PricePoint {
@@ -246,6 +249,34 @@ export function useLivePrice(symbol: string | undefined) {
   return { livePrice, livePrev, nativePrice, nativeCurrency };
 }
 
+/**
+ * Fetches and caches the EUR→currency rate for a given display currency.
+ * Skips the fetch if a fresh rate already exists in the module-level cache.
+ * EUR always returns { rate: 1, freshness: 'fresh' } with no network call.
+ */
+export function useFxRate(currency: DisplayCurrency): { rate: number; freshness: FxFreshness } {
+  const [, tick] = useState(0);  // force re-render when fetch resolves
+
+  useEffect(() => {
+    if (currency === "EUR") return;
+    // Skip fetch if rate is already fresh
+    if (getRateFreshness(currency) === "fresh") return;
+    let cancelled = false;
+    fetch(`/api/fx?base=EUR&quote=${currency}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && typeof data.rate === "number") {
+          setEurRate(currency, data.rate);
+          tick((n) => n + 1);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currency]);
+
+  return { rate: getEurRate(currency), freshness: getRateFreshness(currency) };
+}
+
 export function useDisplayCurrency(): DisplayCurrency {
   const { user } = useUser();
   const [currency, setCurrency] = useState<DisplayCurrency>("EUR");
@@ -266,19 +297,8 @@ export function useDisplayCurrency(): DisplayCurrency {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  useEffect(() => {
-    if (currency === "EUR") return;
-    let cancelled = false;
-    fetch(`/api/fx?base=EUR&quote=${currency}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled && typeof data.rate === "number") {
-          setEurRate(currency, data.rate);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [currency]);
+  // Trigger rate fetch and populate module-level cache as a side effect.
+  useFxRate(currency);
 
   return currency;
 }

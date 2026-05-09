@@ -82,6 +82,7 @@ export function BondBlock({ asset, onUpdate }: Props) {
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Coupon</div>
           {onUpdate ? (
             <InlineEdit
+              kind="percent"
               display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{coupon_rate != null ? `${coupon_rate.toFixed(1)}%` : "—"}</span>}
               rawValue={coupon_rate != null ? String(coupon_rate) : ""}
               placeholder="e.g. 3.5"

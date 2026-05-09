@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { FormatText } from "@/components/FormatText";
-import { useChatSession, CHAT_SUGGESTIONS } from "@/lib/use-chat-session";
+import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
+import { useDisplayCurrency } from "@/lib/hooks";
 
 interface ChatPopupProps {
   userId?: string;
@@ -17,6 +18,8 @@ interface ChatPopupProps {
 export default function ChatPopup({
   userId, isOpen, hasNew, onToggle, onPortfolioUpdate, onNewMessage, onOpen,
 }: ChatPopupProps) {
+  const displayCurrency = useDisplayCurrency();
+  const chatSuggestions = getChatSuggestions(displayCurrency);
   const {
     messages, input, setInput, loading, thinking, remaining,
     imagePreview, imageData, canSend, send, clearImage, handlePaste,
@@ -185,7 +188,7 @@ export default function ChatPopup({
             <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>
               Ask about your portfolio, or paste a screenshot of your broker app.
             </div>
-            {CHAT_SUGGESTIONS.map((s) => (
+            {chatSuggestions.map((s) => (
               <button
                 key={s}
                 className="block w-full text-left mb-1.5 transition-colors"
@@ -274,7 +277,7 @@ export default function ChatPopup({
       {/* Suggestion chips — after conversation starts */}
       {messages.length > 0 && !loading && (
         <div className="px-4 pt-2 pb-1 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-          {CHAT_SUGGESTIONS.map((s) => (
+          {chatSuggestions.map((s) => (
             <button
               key={s}
               onClick={() => { setInput(s); inputRef.current?.focus(); }}

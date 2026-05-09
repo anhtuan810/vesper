@@ -139,6 +139,8 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Balance</div>
           {onUpdate ? (
             <InlineEdit
+              kind="money"
+              displayCurrency={displayCurrency}
               display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{balance != null ? formatMoney(balance!, displayCurrency) : "—"}</span>}
               rawValue={balance != null ? String(balance) : ""}
               placeholder="e.g. 250000"
@@ -164,6 +166,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Rate</div>
           {onUpdate ? (
             <InlineEdit
+              kind="percent"
               display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{rate != null ? `${rate.toFixed(2)}%` : "—"}</span>}
               rawValue={rate != null ? String(rate) : ""}
               placeholder="e.g. 3.5"
@@ -189,6 +192,8 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Monthly</div>
           {onUpdate ? (
             <InlineEdit
+              kind="money"
+              displayCurrency={displayCurrency}
               display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{payment != null ? formatMoney(payment!, displayCurrency) : "—"}</span>}
               rawValue={payment != null ? String(payment) : ""}
               placeholder="e.g. 1200"

@@ -1,11 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useFxRate } from "@/lib/hooks";
+import { convertToEur, type DisplayCurrency, type FxFreshness } from "@/lib/money";
+
+export type InlineEditKind = "money" | "number" | "percent" | "text";
 
 interface Props {
-  /** Formatted value shown in read mode (e.g. "€1,234") */
+  /** Formatted value shown in read mode (e.g. "$1,234") */
   display: React.ReactNode;
-  /** Raw value pre-filled in the input when editing opens */
+  /**
+   * Raw EUR-stored value as a string. For kind="money" InlineEdit converts
+   * this to display currency for the pre-fill and back to EUR on save.
+   * For all other kinds, the value is passed to onSave unchanged.
+   */
   rawValue: string;
   /**
    * Called on Enter / blur-out.
@@ -22,6 +30,15 @@ interface Props {
   displayClassName?: string;
   /** Show a pencil glyph in idle state to signal editability */
   affordance?: boolean;
+  /**
+   * "money"   — pre-fills in display currency, converts to EUR on save.
+   * "percent" — no conversion; value is a percentage number.
+   * "number"  — no conversion; value is any numeric string.
+   * "text"    — no conversion; default.
+   */
+  kind?: InlineEditKind;
+  /** Required when kind="money". The user's current display currency. */
+  displayCurrency?: DisplayCurrency;
 }
 
 function PencilIcon() {
@@ -44,6 +61,11 @@ function PencilIcon() {
   );
 }
 
+function freshnessNote(freshness: FxFreshness): string | null {
+  if (freshness === "stale") return "Using an approximate exchange rate — value may differ slightly.";
+  return null;
+}
+
 export function InlineEdit({
   display,
   rawValue,
@@ -53,7 +75,14 @@ export function InlineEdit({
   inputStyle,
   displayClassName,
   affordance,
+  kind = "text",
+  displayCurrency,
 }: Props) {
+  // Always call hooks unconditionally.
+  // For non-money kinds useFxRate("EUR") is a no-op (rate=1, freshness='fresh').
+  const effectiveCurrency: DisplayCurrency = (kind === "money" && displayCurrency) ? displayCurrency : "EUR";
+  const { rate, freshness } = useFxRate(effectiveCurrency);
+
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(rawValue);
   const [saving, setSaving] = useState(false);
@@ -62,24 +91,52 @@ export function InlineEdit({
   const savingRef = useRef(false);
 
   useEffect(() => {
-    if (editing) {
+    if (!editing) return;
+
+    // Pre-fill the draft with the display-currency value for money fields.
+    if (kind === "money") {
+      const eurNum = parseFloat(rawValue);
+      if (!isNaN(eurNum)) {
+        setDraft(String(Math.round(eurNum * rate)));
+      } else {
+        setDraft(rawValue);
+      }
+    } else {
       setDraft(rawValue);
-      // defer so React finishes mounting the input first
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 0);
     }
-  // rawValue excluded intentionally — draft initialises once when editing opens
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+  // rawValue and rate excluded — draft initialises once when editing opens
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
 
   const commit = async () => {
     if (savingRef.current) return;
+
+    // Block commit when rate is unavailable for money fields.
+    if (kind === "money" && freshness === "unavailable") {
+      setError("Exchange rate unavailable — try again later.");
+      return;
+    }
+
     savingRef.current = true;
     setSaving(true);
     setError(null);
-    const result = await onSave(draft);
+
+    // For money fields, convert the display-currency draft back to EUR before
+    // handing off to the parent's onSave (which expects an EUR string).
+    let saveValue = draft;
+    if (kind === "money") {
+      const displayNum = parseFloat(draft);
+      if (!isNaN(displayNum)) {
+        saveValue = String(Math.round(convertToEur(displayNum, effectiveCurrency)));
+      }
+    }
+
+    const result = await onSave(saveValue);
     savingRef.current = false;
     setSaving(false);
     if (result === null || result === "") {
@@ -126,6 +183,8 @@ export function InlineEdit({
     );
   }
 
+  const staleNote = kind === "money" ? freshnessNote(freshness) : null;
+
   return (
     <div style={{ position: "relative" }}>
       <input
@@ -156,6 +215,11 @@ export function InlineEdit({
       {error && (
         <div style={{ fontSize: 10, color: "var(--negative)", marginTop: 3, lineHeight: 1.3 }}>
           {error}
+        </div>
+      )}
+      {!error && staleNote && (
+        <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 3, lineHeight: 1.3 }}>
+          {staleNote}
         </div>
       )}
     </div>

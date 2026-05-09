@@ -24,18 +24,52 @@ const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
 };
 
 // Client-side module-level EUR→X rate cache, seeded with fallback rates.
-// Populated at runtime by useDisplayCurrency() via setEurRate().
+// Populated at runtime by useFxRate() / useDisplayCurrency() via setEurRate().
 const eurRateCache: Partial<Record<DisplayCurrency, number>> = {
   ...FALLBACK_RATES,
 };
 
+// Tracks when each rate was last written by a live fetch (not from fallback seed).
+const rateTimestamps = new Map<DisplayCurrency, number>();
+
+const FRESH_MS  = 60 * 60 * 1000;       // 1h
+const STALE_MS  = 24 * 60 * 60 * 1000;  // 24h
+
+export type FxFreshness = "fresh" | "stale" | "unavailable";
+
 export function setEurRate(currency: DisplayCurrency, rate: number): void {
   eurRateCache[currency] = rate;
+  rateTimestamps.set(currency, Date.now());
 }
 
 export function getEurRate(currency: DisplayCurrency): number {
   if (currency === "EUR") return 1;
   return eurRateCache[currency] ?? FALLBACK_RATES[currency] ?? 1;
+}
+
+export function getRateFreshness(currency: DisplayCurrency): FxFreshness {
+  if (currency === "EUR") return "fresh";
+  const ts = rateTimestamps.get(currency);
+  if (ts === undefined) {
+    // Fallback rate present but never live-fetched — treat as stale.
+    // 'unavailable' is reserved for when there is truly no rate at all.
+    return eurRateCache[currency] !== undefined ? "stale" : "unavailable";
+  }
+  const age = Date.now() - ts;
+  if (age <= FRESH_MS)  return "fresh";
+  if (age <= STALE_MS)  return "stale";
+  return "unavailable";
+}
+
+/**
+ * Converts a display-currency amount to EUR.
+ * Synchronous — reads from the in-process rate cache.
+ * Returns a fractional EUR value; callers should round as appropriate.
+ */
+export function convertToEur(displayValue: number, displayCurrency: DisplayCurrency): number {
+  if (displayCurrency === "EUR") return displayValue;
+  const rate = getEurRate(displayCurrency);
+  return displayValue / rate;
 }
 
 export interface MoneyParts {
