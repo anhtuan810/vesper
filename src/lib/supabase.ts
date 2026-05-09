@@ -1,6 +1,7 @@
 import { createBrowserClient, createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
+import type { DisplayCurrency } from "@/lib/money";
 
 // Verify the session from cookies — use in API routes instead of trusting body userId
 export async function getAuthUser(request: NextRequest) {
@@ -90,6 +91,16 @@ export type LiveAsset = Asset & {
   nativePrice?: number;    // original Yahoo price before EUR conversion
   nativeCurrency?: string; // the currency Yahoo reported (e.g. "USD")
 };
+
+// ── Users table row ───────────────────────────────────────────────────────────
+
+export interface UserRow {
+  id: string;
+  name?: string;
+  avatar_url?: string;
+  profile?: Record<string, string>;
+  display_currency: DisplayCurrency;
+}
 
 // ── Other types ────────────────────────────────────────────────────────────────
 

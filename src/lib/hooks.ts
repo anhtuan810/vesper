@@ -5,6 +5,11 @@ import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
 import type { PriceResult } from "@/lib/prices-server";
+import {
+  type DisplayCurrency,
+  isSupportedCurrency,
+  setEurRate,
+} from "@/lib/money";
 
 export interface PricePoint {
   timestamp: number;
@@ -239,6 +244,43 @@ export function useLivePrice(symbol: string | undefined) {
   }, [symbol]);
 
   return { livePrice, livePrev, nativePrice, nativeCurrency };
+}
+
+export function useDisplayCurrency(): DisplayCurrency {
+  const { user } = useUser();
+  const [currency, setCurrency] = useState<DisplayCurrency>("EUR");
+  const supabase = createBrowserSupabase();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("users")
+      .select("display_currency")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.display_currency && isSupportedCurrency(data.display_currency)) {
+          setCurrency(data.display_currency as DisplayCurrency);
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (currency === "EUR") return;
+    let cancelled = false;
+    fetch(`/api/fx?base=EUR&quote=${currency}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && typeof data.rate === "number") {
+          setEurRate(currency, data.rate);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currency]);
+
+  return currency;
 }
 
 export function useSignOut() {

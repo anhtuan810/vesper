@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useUser, useProfile, useSignOut } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { createBrowserSupabase } from "@/lib/supabase";
@@ -157,8 +158,15 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* Sign out */}
-        <div className="mt-10 flex justify-center">
+        {/* Settings + Sign out */}
+        <div className="mt-10 flex flex-col items-center gap-3">
+          <Link
+            href="/settings"
+            className="font-mono text-faint hover:text-dim border border-border hover:bg-surface transition-colors"
+            style={{ fontSize: 11, padding: "8px 20px", borderRadius: 8 }}
+          >
+            Settings
+          </Link>
           <button
             onClick={signOut}
             className="font-mono text-faint hover:text-dim border border-border hover:bg-surface transition-colors"
