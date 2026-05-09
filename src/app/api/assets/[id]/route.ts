@@ -20,6 +20,18 @@ const ALLOWED_BONDS = new Set([
   "coupon_rate", "maturity_date", "issuer", "isin",
 ]);
 
+const NUMERIC_NON_NEG = new Set([
+  "value", "units", "mortgage_balance", "mortgage_rate",
+  "monthly_payment", "buy_price", "size_sqm",
+]);
+const NUMERIC_ANY_SIGN = new Set(["latitude", "longitude"]);
+const STRING_200 = new Set(["name", "address", "symbol"]);
+const STRING_8 = new Set(["currency", "country"]);
+const DATE_FIELDS = new Set(["buy_date", "mortgage_start_date", "mortgage_end_date"]);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MORTGAGE_TYPES = new Set(["fixed", "variable", "interest_only"]);
+const PROPERTY_TYPES = new Set(["apartment", "house", "commercial", "land", "other"]);
+const TRADEABLE = new Set(["stocks", "etf", "crypto", "gold"]);
 
 export async function PATCH(
   req: NextRequest,
@@ -58,18 +70,6 @@ export async function PATCH(
     }
 
     // --- Input validation ---
-    const NUMERIC_NON_NEG = new Set([
-      "value", "units", "mortgage_balance", "mortgage_rate",
-      "monthly_payment", "buy_price", "size_sqm",
-    ]);
-    const NUMERIC_ANY_SIGN = new Set(["latitude", "longitude"]);
-    const STRING_200 = new Set(["name", "address", "symbol"]);
-    const STRING_8 = new Set(["currency", "country"]);
-    const DATE_FIELDS = new Set(["buy_date", "mortgage_start_date", "mortgage_end_date"]);
-    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-    const MORTGAGE_TYPES = new Set(["fixed", "variable", "interest_only"]);
-    const PROPERTY_TYPES = new Set(["apartment", "house", "commercial", "land", "other"]);
-
     for (const [k, v] of Object.entries(updateData)) {
       if (NUMERIC_NON_NEG.has(k)) {
         if (typeof v !== "number" || !isFinite(v) || v < 0)
@@ -100,7 +100,6 @@ export async function PATCH(
     }
 
     // Recompute value from live price when only units change on a tradeable asset
-    const TRADEABLE = new Set(["stocks", "etf", "crypto", "gold"]);
     if (
       "units" in updateData &&
       !("value" in updateData) &&

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
-import type { PriceResult } from "@/lib/prices-server";
+import type { PriceResult, PricePoint } from "@/lib/prices-server";
 import {
   type DisplayCurrency,
   type FxFreshness,
@@ -13,11 +13,6 @@ import {
   getEurRate,
   getRateFreshness,
 } from "@/lib/money";
-
-export interface PricePoint {
-  timestamp: number;
-  close: number;
-}
 
 export interface ProfileData {
   name?: string;
@@ -194,7 +189,7 @@ export function useSparklines(symbols: string[], range: string): Record<string, 
   const symbolKey = useMemo(() => [...new Set(symbols)].sort().join(","), [symbols]);
 
   useEffect(() => {
-    const unique = [...new Set(symbols)].filter(Boolean);
+    const unique = symbolKey.split(",").filter(Boolean);
     if (unique.length === 0) return;
     let cancelled = false;
 
@@ -215,8 +210,6 @@ export function useSparklines(symbols: string[], range: string): Record<string, 
       .catch(() => {});
 
     return () => { cancelled = true; };
-  // symbolKey is the stable dep for the symbols array
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbolKey, range]);
 
   return sparklines;
@@ -249,11 +242,6 @@ export function useLivePrice(symbol: string | undefined) {
   return { livePrice, livePrev, nativePrice, nativeCurrency };
 }
 
-/**
- * Fetches and caches the EUR→currency rate for a given display currency.
- * Skips the fetch if a fresh rate already exists in the module-level cache.
- * EUR always returns { rate: 1, freshness: 'fresh' } with no network call.
- */
 export function useFxRate(currency: DisplayCurrency): { rate: number; freshness: FxFreshness } {
   const [, tick] = useState(0);  // force re-render when fetch resolves
 

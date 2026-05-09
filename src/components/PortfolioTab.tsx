@@ -35,7 +35,11 @@ export function PortfolioTab({
   );
   const sparklines = useSparklines(symbols, "1W");
 
-  const countries = [...new Set(assets.map((a) => a.country).filter(Boolean))];
+  const countryCount = useMemo(
+    () => new Set(assets.map((a) => a.country).filter(Boolean)).size,
+    [assets]
+  );
+  const sortedByValue = useMemo(() => [...assets].sort((a, b) => b.value - a.value), [assets]);
   const allocationItems = sorted.map(([type, val]) => ({
     label: TYPE_LABEL[type] ?? type,
     value: val,
@@ -122,7 +126,7 @@ export function PortfolioTab({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {[
           { label: "Positions", value: assets.length },
-          { label: "Countries", value: countries.length || "—" },
+          { label: "Countries", value: countryCount || "—" },
           { label: "Asset classes", value: Object.keys(byType).length },
           {
             label: "Largest",
@@ -213,15 +217,13 @@ export function PortfolioTab({
           </div>
         </div>
         <div>
-          {[...assets]
-            .sort((a, b) => b.value - a.value)
-            .map((asset) => (
-              <PositionRow
-                key={asset.id}
-                asset={asset}
-                closes={asset.symbol ? sparklines[asset.symbol] : []}
-              />
-            ))}
+          {sortedByValue.map((asset) => (
+            <PositionRow
+              key={asset.id}
+              asset={asset}
+              closes={asset.symbol ? sparklines[asset.symbol] : []}
+            />
+          ))}
         </div>
       </div>
     </>

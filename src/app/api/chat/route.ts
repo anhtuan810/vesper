@@ -14,6 +14,7 @@ import { validatePortfolioChanges } from "@/lib/validations";
 validateEnv();
 
 const anthropic = new Anthropic();
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 const TAG_RE = /<(changes|update|context|goal)>[\s\S]*?<\/\1>/g;
 function stripTags(text: string) { return text.replace(TAG_RE, "").trim(); }
@@ -42,7 +43,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Image too large (5 MB max)" }, { status: 400 });
     }
 
-    const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
     if (imageData && !ALLOWED_IMAGE_TYPES.has(imageData.mediaType)) {
       return NextResponse.json({ error: "Unsupported image type" }, { status: 400 });
     }
@@ -110,8 +110,8 @@ export async function POST(req: NextRequest) {
 
     // --- Build conversation history (last 6 messages) ---
     const history = (recentMessages || [])
+      .slice(0, 6)
       .reverse()
-      .slice(-6)
       .map((m) => ({
         role: m.role as "user" | "assistant",
         content: stripTags(m.content),

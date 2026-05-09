@@ -21,23 +21,7 @@ function formatAmount(n: number, compact: boolean): { main: string; suf: string 
   return { main: n.toFixed(2), suf: "" };
 }
 
-/**
- * Renders a price with a superscript-style currency symbol.
- *
- * When displayCurrency is provided, uses formatMoneyParts to convert the
- * EUR-stored amount to the user's display currency (Phase B path).
- *
- * When only currency is provided, renders in that native currency (transparency
- * path — e.g. showing a stock's native price alongside the EUR hero value).
- *
- * Layout: inline-flex so the gap between symbol and number is controlled by
- * `columnGap` (em-relative) rather than `marginRight`. This makes the gap
- * immune to the parent's negative `letter-spacing`, which previously caused
- * the € to visually collide with the first digit at large font sizes.
- *
- * The suffix ("k", "M") stays inline inside the number span so it remains
- * baseline-aligned — matching the current compact display appearance.
- */
+// columnGap (not marginRight) keeps the symbol gap immune to parent's negative letter-spacing
 export function PriceDisplay({ amount, currency = "EUR", compact = false, displayCurrency }: PriceDisplayProps) {
   if (displayCurrency) {
     const parts = formatMoneyParts(amount, displayCurrency);

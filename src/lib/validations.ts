@@ -32,10 +32,7 @@ function findAsset(name: string, assets: AssetSnapshot[]): AssetSnapshot | undef
   );
 }
 
-/**
- * Returns the first validation error message, or null if all changes are valid.
- * Must run before any DB write so failures are all-or-nothing.
- */
+// Must run before any DB write — errors are all-or-nothing, no partial success.
 export function validatePortfolioChanges(
   changes: ChangeItem[],
   currentAssets: AssetSnapshot[]

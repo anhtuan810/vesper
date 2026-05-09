@@ -53,10 +53,6 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
-  /**
-   * PATCH a single field. Returns the mutation_id on success or throws.
-   * Caller is responsible for validation before calling.
-   */
   const patchField = useCallback(async (
     field: string,
     value: unknown

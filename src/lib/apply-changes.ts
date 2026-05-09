@@ -126,10 +126,6 @@ export async function applyPortfolioChanges({
         if (convVal !== null) resolvedValue = Math.round(convVal);
         if (convBal !== null) resolvedMortgageBalance = Math.round(convBal);
         if (convPmt !== null) resolvedMonthlyPayment = Math.round(convPmt);
-      } else if (!isRealEstate) {
-        // Non-real-estate assets use change.mortgage_balance as-is (null for most).
-        resolvedMortgageBalance = change.mortgage_balance ?? null;
-        resolvedMonthlyPayment = change.monthly_payment ?? null;
       }
 
       let resolvedLat: number | null = null;

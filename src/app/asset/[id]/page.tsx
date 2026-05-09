@@ -49,13 +49,9 @@ export default async function AssetPage({
     return <RealEstateDetail asset={asset as RealEstateAsset} />;
   }
 
-  if (type === "bonds") {
-    return <StaticDetail asset={asset as BondsAsset} />;
+  if (type === "bonds" || type === "cash" || type === "pension" || type === "other") {
+    return <StaticDetail asset={asset as StaticAsset | BondsAsset} />;
   }
 
-  if (type === "cash" || type === "pension" || type === "other") {
-    return <StaticDetail asset={asset as StaticAsset} />;
-  }
-
-  return null;
+  notFound();
 }

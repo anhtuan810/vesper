@@ -23,6 +23,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Symbols array required" }, { status: 400 });
   }
 
-  const results = await Promise.all(symbols.map((s: string) => fetchYahooPrice(s)));
-  return NextResponse.json({ prices: results });
+  const validSymbols = symbols.filter((s): s is string => typeof s === "string" && s.length > 0);
+  if (validSymbols.length === 0) {
+    return NextResponse.json({ error: "No valid symbols" }, { status: 400 });
+  }
+
+  const results = await Promise.allSettled(validSymbols.map((s) => fetchYahooPrice(s)));
+  const prices = results.map((r) => r.status === "fulfilled" ? r.value : null).filter(Boolean);
+  return NextResponse.json({ prices });
 }

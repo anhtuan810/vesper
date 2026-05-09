@@ -1,4 +1,4 @@
-export interface PriceResult {
+interface HistoricalPrice {
   price: number;
   currency: string;
 }
@@ -6,7 +6,7 @@ export interface PriceResult {
 export async function fetchHistoricalPrice(
   symbol: string,
   date: string | null
-): Promise<PriceResult | null> {
+): Promise<HistoricalPrice | null> {
   try {
     let url: string;
     if (date) {

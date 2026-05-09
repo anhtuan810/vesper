@@ -22,6 +22,7 @@ export function getChatSuggestions(displayCurrency: DisplayCurrency): string[] {
 // Shared across ChatPopup and /chat so history persists between surfaces
 const storageKey = (uid: string) => "vesper_chat_history_" + uid;
 const CHAT_TTL_MS = 24 * 60 * 60 * 1000;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 interface Options {
   userId: string | undefined;
@@ -108,7 +109,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
-    const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
     for (const item of items) {
       if (ALLOWED_IMAGE_TYPES.has(item.type)) {
         e.preventDefault();
