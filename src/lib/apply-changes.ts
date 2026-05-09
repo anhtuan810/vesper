@@ -54,7 +54,7 @@ export async function applyPortfolioChanges({
   currentAssets: CurrentAsset[];
   contextNote: string | null;
 }): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[] }> {
-  const currentTotal = computeNetWorth(currentAssets);
+  let runningTotal = computeNetWorth(currentAssets);
   const duplicateWarnings: string[] = [];
   const fxWarnings: string[] = [];
   let changed = false;
@@ -164,6 +164,7 @@ export async function applyPortfolioChanges({
         console.error("ADD ERROR:", error);
       } else {
         changed = true;
+        runningTotal += resolvedValue;
         await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
@@ -176,7 +177,7 @@ export async function applyPortfolioChanges({
           after_units: change.units || null,
           currency: resolvedCurrency,
           personal_context: contextNote,
-          portfolio_total: currentTotal + resolvedValue,
+          portfolio_total: runningTotal,
           occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
         });
       }
@@ -255,6 +256,8 @@ export async function applyPortfolioChanges({
           console.error("EDIT ERROR:", error);
         } else {
           changed = true;
+          const afterValue = updateData.value !== undefined ? (updateData.value as number) : existing.value;
+          runningTotal += afterValue - existing.value;
           await supabase.from("mutations").insert({
             user_id: userId,
             asset_id: existing.id,
@@ -263,12 +266,12 @@ export async function applyPortfolioChanges({
             asset_type: existing.type,
             symbol: existing.symbol || null,
             before_value: existing.value,
-            after_value: updateData.value !== undefined ? (updateData.value as number) : existing.value,
+            after_value: afterValue,
             before_units: existing.units || null,
             after_units: change.units !== undefined ? change.units : (existing.units || null),
             currency: change.currency || existing.currency || "EUR",
             personal_context: contextNote,
-            portfolio_total: currentTotal,
+            portfolio_total: runningTotal,
             occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
           });
         }
@@ -287,6 +290,7 @@ export async function applyPortfolioChanges({
           console.error("REMOVE ERROR:", error);
         } else {
           changed = true;
+          runningTotal -= existing.value;
           await supabase.from("mutations").insert({
             user_id: userId,
             asset_id: existing.id,
@@ -299,7 +303,7 @@ export async function applyPortfolioChanges({
             after_units: null,
             currency: existing.currency || "EUR",
             personal_context: contextNote,
-            portfolio_total: currentTotal - existing.value,
+            portfolio_total: runningTotal,
             occurred_at: new Date().toISOString().split("T")[0],
           });
         }

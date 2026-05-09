@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateEnv } from "@/lib/env";
+import { getAuthUser } from "@/lib/supabase";
 import { fetchYahooPrice } from "@/lib/prices-server";
 
 validateEnv();
@@ -7,6 +8,9 @@ validateEnv();
 export type { PriceResult } from "@/lib/prices-server";
 
 export async function GET(req: NextRequest) {
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const symbol = req.nextUrl.searchParams.get("symbol");
   if (!symbol) return NextResponse.json({ error: "Symbol required" }, { status: 400 });
 
@@ -18,6 +22,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { symbols } = await req.json();
   if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
     return NextResponse.json({ error: "Symbols array required" }, { status: 400 });

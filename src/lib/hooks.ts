@@ -103,13 +103,16 @@ export function useAssets(userId: string | undefined) {
       );
       if (stale.length > 0) {
         await Promise.all(
-          stale.map((asset) =>
-            supabase
+          stale.map((asset) => {
+            const p = priceMap[asset.symbol!];
+            const update: Record<string, unknown> = { currency: p.nativeCurrency };
+            if (asset.units) update.value = Math.round(p.price * asset.units);
+            return supabase
               .from("assets")
-              .update({ currency: priceMap[asset.symbol!].nativeCurrency })
+              .update(update)
               .eq("id", asset.id)
-              .then(() => undefined)
-          )
+              .then(() => undefined);
+          })
         );
         // Re-fetch so the local state reflects corrected currency tags
         await fetchAssets();

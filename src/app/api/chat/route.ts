@@ -53,18 +53,22 @@ export async function POST(req: NextRequest) {
     const DAILY_LIMIT = 50;
     const today = new Date().toISOString().slice(0, 10);
 
-    const { data: newCount } = await supabase.rpc("increment_rate_limit", {
+    const { data: newCount, error: rpcError } = await supabase.rpc("increment_rate_limit", {
       p_user_id: userId,
       p_bucket: "chat",
       p_date: today,
     });
+
+    if (rpcError || newCount == null) {
+      return NextResponse.json({ message: "Couldn't reach the assistant. Please try again." }, { status: 500 });
+    }
 
     if ((newCount as number) > DAILY_LIMIT) {
       return NextResponse.json({
         message: "You've reached today's message limit (50). Come back tomorrow!",
         assets: null,
         remaining: 0,
-      });
+      }, { status: 429 });
     }
 
     const used = (newCount as number) - 1;

@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": cached.contentType,
         "Cache-Control": "public, max-age=604800, immutable",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'",
       },
     });
   }
@@ -71,6 +73,8 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=604800, immutable",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'",
       },
     });
   } catch {

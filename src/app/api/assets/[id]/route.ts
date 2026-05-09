@@ -29,8 +29,8 @@ const STRING_200 = new Set(["name", "address", "symbol"]);
 const STRING_8 = new Set(["currency", "country"]);
 const DATE_FIELDS = new Set(["buy_date", "mortgage_start_date", "mortgage_end_date"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const MORTGAGE_TYPES = new Set(["fixed", "variable", "interest_only"]);
-const PROPERTY_TYPES = new Set(["apartment", "house", "commercial", "land", "other"]);
+const MORTGAGE_TYPES = new Set(["annuity", "linear", "interest_only"]);
+const PROPERTY_TYPES = new Set(["apartment", "house", "office", "land", "other"]);
 const TRADEABLE = new Set(["stocks", "etf", "crypto", "gold"]);
 
 export async function PATCH(

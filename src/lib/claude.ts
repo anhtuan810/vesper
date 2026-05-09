@@ -142,7 +142,9 @@ export function buildDynamicContext(
     "Note: prices shown here are EUR-equivalent. Render prose responses in " + displayCurrency + ".",
     assetList,
     "",
-    `Allocation: ${Object.entries(byType).map(([t, v]) => `${t}: ${((v / total) * 100).toFixed(0)}%`).join(", ")}`,
+    total > 0
+      ? `Allocation: ${Object.entries(byType).map(([t, v]) => `${t}: ${((v / total) * 100).toFixed(0)}%`).join(", ")}`
+      : "Allocation: (all positions pending price data)",
     `Countries: ${countries.join(", ") || "not specified"}`,
     "",
     Object.keys(profile).length > 0 ? `USER PROFILE:\n${JSON.stringify(profile, null, 2)}` : "",

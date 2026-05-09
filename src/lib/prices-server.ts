@@ -74,7 +74,7 @@ export async function fetchYahooPrice(symbol: string): Promise<PriceResult> {
   }
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     const meta = data?.chart?.result?.[0]?.meta;

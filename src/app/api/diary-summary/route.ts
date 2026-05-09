@@ -31,11 +31,15 @@ export async function POST(req: NextRequest) {
     const today = new Date().toISOString().slice(0, 10);
 
     // Atomic rate limit via upsert — prevents race conditions and leaking _diary_rate into profile
-    const { data: newCount } = await supabase.rpc("increment_rate_limit", {
+    const { data: newCount, error: rpcError } = await supabase.rpc("increment_rate_limit", {
       p_user_id: user.id,
       p_bucket: "diary",
       p_date: today,
     });
+
+    if (rpcError || newCount == null) {
+      return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 503 });
+    }
 
     if ((newCount as number) > DAILY_LIMIT) {
       return NextResponse.json({ error: "Daily limit reached" }, { status: 429 });
@@ -44,7 +48,18 @@ export async function POST(req: NextRequest) {
     const text = await req.text();
     if (!text) return NextResponse.json({ error: "No input" }, { status: 400 });
 
-    const { mutations, startVal, endVal, periodLabel } = JSON.parse(text);
+    const { mutationIds, startVal, endVal, periodLabel } = JSON.parse(text);
+
+    if (!Array.isArray(mutationIds) || mutationIds.length === 0) {
+      return NextResponse.json({ error: "No mutations" }, { status: 400 });
+    }
+
+    // Fetch mutation content from DB — never trust client-supplied mutation data to avoid prompt injection
+    const { data: mutations } = await supabase
+      .from("mutations")
+      .select("action, asset_name, before_value, after_value, currency, occurred_at, personal_context")
+      .eq("user_id", user.id)
+      .in("id", mutationIds);
 
     if (!mutations || mutations.length === 0) {
       return NextResponse.json({ error: "No mutations" }, { status: 400 });
