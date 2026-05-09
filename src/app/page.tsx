@@ -63,6 +63,25 @@ export default function Dashboard() {
     if (t !== "portfolio") router.push("/" + t);
   };
 
+  const {
+    netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, topAsset, warnings,
+  } = useMemo(() => {
+    const netTotal = computeNetWorth(assets);
+    const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
+    const byType = assets.reduce((acc, a) => {
+      acc[a.type] = (acc[a.type] || 0) + a.value;
+      return acc;
+    }, {} as Record<string, number>);
+    const sorted = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+    const liveCount = assets.filter((a) => a.livePrice).length;
+    const totalSymbols = assets.filter((a) => a.symbol).length;
+    const totalDebt = assets.reduce((sum, a) =>
+      sum + (a.type === "real_estate" ? (a.mortgage_balance ?? 0) : 0), 0);
+    const topAsset = [...assets].sort((a, b) => b.value - a.value)[0];
+    const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
+    return { netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, topAsset, warnings };
+  }, [assets]);
+
   if (userLoading || assetsLoading) {
     return (
       <div className="min-h-screen bg-bg">
@@ -112,25 +131,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const {
-    netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, topAsset, warnings,
-  } = useMemo(() => {
-    const netTotal = computeNetWorth(assets);
-    const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
-    const byType = assets.reduce((acc, a) => {
-      acc[a.type] = (acc[a.type] || 0) + a.value;
-      return acc;
-    }, {} as Record<string, number>);
-    const sorted = Object.entries(byType).sort((a, b) => b[1] - a[1]);
-    const liveCount = assets.filter((a) => a.livePrice).length;
-    const totalSymbols = assets.filter((a) => a.symbol).length;
-    const totalDebt = assets.reduce((sum, a) =>
-      sum + (a.type === "real_estate" ? (a.mortgage_balance ?? 0) : 0), 0);
-    const topAsset = [...assets].sort((a, b) => b.value - a.value)[0];
-    const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
-    return { netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, topAsset, warnings };
-  }, [assets]);
 
   return (
     <div className="min-h-screen bg-bg">
