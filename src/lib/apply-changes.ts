@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { geocodeAddress } from "./geocode";
 import { computeNetWorth } from "./utils";
+import { toEur } from "./fx";
+import { countryToCurrency } from "./country-currency";
 
 type CurrentAsset = {
   id: string;
@@ -51,9 +53,10 @@ export async function applyPortfolioChanges({
   changes: PortfolioChange[];
   currentAssets: CurrentAsset[];
   contextNote: string | null;
-}): Promise<{ changed: boolean; duplicateWarnings: string[] }> {
+}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[] }> {
   const currentTotal = computeNetWorth(currentAssets);
   const duplicateWarnings: string[] = [];
+  const fxWarnings: string[] = [];
   let changed = false;
 
   // Pre-resolve historical prices for add ops that need auto-fill, in parallel
@@ -95,7 +98,14 @@ export async function applyPortfolioChanges({
 
       let resolvedValue = change.value || 0;
       let resolvedBuyPrice: number | null = change.buy_price || null;
-      let resolvedCurrency = change.currency || "EUR";
+      const isRealEstate = (change.type || "other") === "real_estate";
+
+      // For real estate, derive native currency from country when Claude omits it.
+      // For tradeables, Yahoo overrides this below. Other types default to EUR.
+      let resolvedCurrency = change.currency || (
+        isRealEstate ? countryToCurrency(change.country) : "EUR"
+      );
+
       const resolved = resolvedPrices[i];
       if (resolved) {
         if (resolvedValue === 0) resolvedValue = resolved.value;
@@ -103,9 +113,28 @@ export async function applyPortfolioChanges({
         if (resolved.yahooCurrency) resolvedCurrency = resolved.yahooCurrency;
       }
 
+      // Real estate: convert stated value and mortgage money fields from the property's
+      // native currency to EUR. mortgage_rate is a percentage — not converted.
+      let resolvedMortgageBalance = change.mortgage_balance ?? null;
+      let resolvedMonthlyPayment = change.monthly_payment ?? null;
+      if (isRealEstate && resolvedCurrency !== "EUR") {
+        const [convVal, convBal, convPmt] = await Promise.all([
+          resolvedValue > 0 ? toEur(resolvedValue, resolvedCurrency) : Promise.resolve(0),
+          resolvedMortgageBalance != null ? toEur(resolvedMortgageBalance, resolvedCurrency) : Promise.resolve(null),
+          resolvedMonthlyPayment != null ? toEur(resolvedMonthlyPayment, resolvedCurrency) : Promise.resolve(null),
+        ]);
+        if (convVal !== null) resolvedValue = Math.round(convVal);
+        if (convBal !== null) resolvedMortgageBalance = Math.round(convBal);
+        if (convPmt !== null) resolvedMonthlyPayment = Math.round(convPmt);
+      } else if (!isRealEstate) {
+        // Non-real-estate assets use change.mortgage_balance as-is (null for most).
+        resolvedMortgageBalance = change.mortgage_balance ?? null;
+        resolvedMonthlyPayment = change.monthly_payment ?? null;
+      }
+
       let resolvedLat: number | null = null;
       let resolvedLng: number | null = null;
-      if ((change.type || "other") === "real_estate" && change.address) {
+      if (isRealEstate && change.address) {
         const geo = await geocodeAddress(change.address, change.country || null);
         if (geo) { resolvedLat = geo.latitude; resolvedLng = geo.longitude; }
       }
@@ -121,9 +150,9 @@ export async function applyPortfolioChanges({
         buy_price: resolvedBuyPrice,
         buy_date: change.buy_date || null,
         buy_price_source: change.buy_price_source || null,
-        mortgage_balance: change.mortgage_balance || null,
-        mortgage_rate: change.mortgage_rate || null,
-        monthly_payment: change.monthly_payment || null,
+        mortgage_balance: resolvedMortgageBalance,
+        mortgage_rate: change.mortgage_rate ?? null,
+        monthly_payment: resolvedMonthlyPayment,
         mortgage_type: change.mortgage_type || null,
         mortgage_start_date: change.mortgage_start_date || null,
         mortgage_end_date: change.mortgage_end_date || null,
@@ -186,6 +215,44 @@ export async function applyPortfolioChanges({
           if (geo) { updateData.latitude = geo.latitude; updateData.longitude = geo.longitude; }
         }
 
+        // Convert monetary fields from native currency to EUR for non-EUR real-estate edits.
+        // Claude states values in the property's native currency (same convention as add).
+        // mortgage_rate is a percentage — never converted.
+        if (existing.type === "real_estate" && existing.currency && existing.currency !== "EUR") {
+          const nativeCurrency = existing.currency;
+          const monetaryFields = ["value", "mortgage_balance", "monthly_payment"] as const;
+          const fieldLabels: Record<typeof monetaryFields[number], string> = {
+            value: "property value",
+            mortgage_balance: "mortgage balance",
+            monthly_payment: "monthly payment",
+          };
+          const toConvert = monetaryFields.filter((f) => updateData[f] !== undefined);
+          if (toConvert.length > 0) {
+            const conversions = await Promise.all(
+              toConvert.map((f) => toEur(updateData[f] as number, nativeCurrency))
+            );
+            const droppedLabels: string[] = [];
+            const succeededLabels: string[] = [];
+            toConvert.forEach((f, idx) => {
+              const converted = conversions[idx];
+              if (converted !== null) {
+                updateData[f] = Math.round(converted);
+                succeededLabels.push(fieldLabels[f]);
+              } else {
+                delete updateData[f];
+                droppedLabels.push(fieldLabels[f]);
+              }
+            });
+            if (droppedLabels.length > 0) {
+              const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+              const warning = succeededLabels.length === 0
+                ? `Exchange rate unavailable for ${nativeCurrency} — ${droppedLabels.join(" and ")} not updated. Try again in a moment.`
+                : `Updated ${succeededLabels.join(" and ")}. ${cap(droppedLabels.join(" and "))} not updated — exchange rate unavailable for ${nativeCurrency}.`;
+              fxWarnings.push(warning);
+            }
+          }
+        }
+
         const { error } = await supabase.from("assets").update(updateData).eq("id", existing.id);
 
         if (error) {
@@ -200,7 +267,7 @@ export async function applyPortfolioChanges({
             asset_type: existing.type,
             symbol: existing.symbol || null,
             before_value: existing.value,
-            after_value: change.value !== undefined ? change.value : existing.value,
+            after_value: updateData.value !== undefined ? (updateData.value as number) : existing.value,
             before_units: existing.units || null,
             after_units: change.units !== undefined ? change.units : (existing.units || null),
             currency: change.currency || existing.currency || "EUR",
@@ -244,5 +311,5 @@ export async function applyPortfolioChanges({
     }
   }
 
-  return { changed, duplicateWarnings };
+  return { changed, duplicateWarnings, fxWarnings };
 }

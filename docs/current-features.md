@@ -113,10 +113,19 @@
 - Files: `src/app/page.tsx` (`getWarnings`)
 
 ### Milestone Progress Bar
-- Dynamic step sizing scales with portfolio size (€1k below €10k, €5k below €50k, €10k below €100k, €50k below €500k, €100k below €1M, €500k below €5M, €1M above)
+- Dynamic step sizing scales with portfolio size (1k below 10k, 5k below 50k, 10k below 100k, 50k below 500k, 100k below 1M, 500k below 5M, 1M above)
 - Single thin progress bar — no charts, no goal editor
-- Currency-aware via `getMilestoneProgress(total, currency)`
+- Currency-aware: `getMilestoneProgress(eurTotal, displayCurrency)` converts to display currency before applying step logic and labels
 - Files: `src/lib/projection.ts`
+
+### Display Currency Parameterization (Phases A–D shipped)
+- Per-user display currency stored on `users.display_currency` (EUR / USD / GBP, default EUR). Settings route at `/settings`.
+- Storage stays EUR on every numeric column. FX pivot: EUR via frankfurter.app (ECB-backed).
+- **Phase A**: `formatMoney(eurValue, displayCurrency)`, `formatMoneyParts`, `useDisplayCurrency()`, `/settings` picker, `PATCH /api/users/me`.
+- **Phase B**: Every visible number (hero, allocation, positions, milestones, diary, all detail pages) renders in display currency via `formatMoney`. `PriceDisplay` extended with `displayCurrency` prop for editorial superscript styling. First-switch toast ("Display only — your portfolio is unchanged.") appears once, tracked in localStorage.
+- **Phase C**: Inline edit inputs accept display currency and convert to EUR at write via `convertToEur()`. FX freshness state machine (`fresh` / `stale` / `unavailable`) — `unavailable` blocks the write, `stale` warns inline but allows. `buildStaticSystem(displayCurrency)` and `buildOnboardingPrompt(displayCurrency)` parameterize Claude prompts; prose responses render in display currency, `<changes>` JSON stays native. Goal targets stated in display currency are converted to EUR before storage via server-side `toEur()`. Diary summary Haiku prompt and context lines are in display currency.
+- **Phase D**: Real estate native currency captured at add time from the property's country (NL→EUR, US→USD, UK/GB→GBP, other→EUR). `countryToCurrency()` helper in `src/lib/country-currency.ts`. For non-EUR properties, the value, `mortgage_balance`, and `monthly_payment` from Claude's `<changes>` block are converted from native to EUR before INSERT. `assets.currency` records the native currency. Property detail page shows a "Native: GBP" subtitle for transparency. Existing rows (currency='EUR' or null) are unchanged — no backfill.
+- Files: `src/lib/money.ts`, `src/lib/hooks.ts` (`useDisplayCurrency`, `useFxRate`), `src/lib/projection.ts`, `src/lib/claude.ts`, `src/lib/apply-changes.ts`, `src/lib/country-currency.ts`, `src/components/PriceDisplay.tsx`, `src/components/NetWorthHero.tsx`, `src/components/AllocationBar.tsx`, `src/components/PositionRow.tsx`, `src/components/PortfolioTab.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/components/asset-detail/{InlineEdit,BondBlock,TradeableDetail,RealEstateDetail,StaticDetail}.tsx`, `src/components/DiaryTab.tsx`, `src/app/page.tsx`, `src/app/settings/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/diary-summary/route.ts`
 
 ### Conversational Assistant
 - Mobile: full-page route at `/chat` with a 4-suggestion empty state
@@ -200,12 +209,6 @@
 - Cost: ~$0.003 per conversation
 - Risk: may be too aggressive or too conservative; needs real-user tuning
 
-### Display Currency Parameterization — Not Yet Built
-- Currently every rendered number is EUR. Storage will stay EUR after the feature ships; only the rendered string changes per user.
-- Plan in `currency-feature-spec.md`. Four phases (A: foundation, B: display swap, C: inputs + Claude prompt, D: real-estate native currency).
-- Supported currencies at launch: EUR, USD, GBP. Settings route at `/settings` will house the picker.
-- Until shipped, the app is EUR-centric — non-EUR users mentally convert.
-
 ### Logo CDN Privacy Debt
 - AssetLogo currently fetches from external CDNs (jsdelivr for crypto, FMP for stocks)
 - This leaks user portfolio holdings to those CDNs (request patterns reveal which symbols a user owns)
@@ -223,3 +226,6 @@
 - **Historical mutations have currency-implicit-EUR values** — rows logged before the currency normalization fix have `before_value` and `after_value` stored as if they were EUR even when the position was USD-priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP
 - **before_value / after_value semantic muddle** — values are stored EUR-equivalent but `currency` column is native. Pre-existing semantic inconsistency, not yet redesigned
 - **Two-write atomicity** — asset update + mutation insert is not transactional. If the asset write succeeds and the mutation write fails, the diary skips an entry. Sentry captures the failure. Acceptable for MVP
+- **Money input round-trip rounding** — a user typing $5,000 may see $4,999 after save when the FX rate doesn't divide evenly. We display the actual stored EUR-equivalent rather than caching the typed input. Acceptable for MVP.
+- **Goal targets drift with FX** — goal `target_value` is stored in EUR at the rate active when the goal was set. As FX drifts, a user who set a $1,000,000 goal may see the displayed target shift slightly (e.g. $999,xxx or $1,001,xxx). The economic intent — the EUR amount stated at goal-setting time — is preserved.
+- **Diary banker's notes render in the currency they were written in** — `personal_context` strings in `mutations` are rendered as stored. A user who switches display currency will see old entries in the previous currency's symbol. Intentional per the spec's no-retroactive-rewriting rule; diary entries are historical record.

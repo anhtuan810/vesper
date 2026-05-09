@@ -158,3 +158,23 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 - No analytics (PostHog/Mixpanel) — defer until user count justifies it
 - Compound index on `messages (user_id, created_at DESC)` would optimize the chat history fallback fetch (`GET /api/messages`). Not blocking at current scale (hundreds of messages per user). File for a future migration when query latency becomes measurable
 - Chat history mapper silently coerces unknown `role` values to `"assistant"` (`from: m.role`). Acceptable given the schema only ever writes `"user"` or `"assistant"`, but a `continue` in the mapper would be more defensive against future schema drift
+
+---
+
+## Post-MVP / Future
+
+### Adding a fourth currency
+
+EUR/USD/GBP share the same milestone step pattern (1k/5k/10k/50k/100k/500k/1M/5M).
+Adding a currency outside that pattern (JPY, SEK, INR, etc.) requires:
+
+- Extend `SUPPORTED_CURRENCIES` in `src/lib/money.ts` with the new ISO code, symbol, and locale.
+- Extend `getMilestoneProgress` in `src/lib/projection.ts` with currency-specific step magnitudes
+  (e.g. JPY: 100k/500k/1M/5M/10M/50M/100M).
+- Extend `COUNTRY_TO_CURRENCY` in `src/lib/country-currency.ts` with relevant country codes.
+- Verify `/api/fx` serves the new pair (frankfurter.app supports most majors).
+- Add a hardcoded fallback rate in `money.ts` for the offline path.
+- Update few-shot examples in `src/lib/claude.ts` if the currency is common enough to warrant
+  one (otherwise the EUR/USD/GBP examples are sufficient pattern-teaching).
+
+The architecture supports this without a refactor.

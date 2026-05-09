@@ -129,8 +129,17 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
   const CELL = { padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 };
   const LABEL_STYLE = { fontSize: 9, letterSpacing: "0.16em" as const, marginBottom: 8 };
 
+  const nativeCurrency = asset.currency ?? "EUR";
+
   return (
     <>
+      {/* Native currency label — transparency alongside the property-level subtitle */}
+      {nativeCurrency !== "EUR" && (
+        <div className="font-mono text-faint px-4 mb-2" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          Mortgage in {nativeCurrency} equivalent
+        </div>
+      )}
+
       {/* 2×2 stat grid */}
       <div className="grid grid-cols-2 gap-2 px-4">
 

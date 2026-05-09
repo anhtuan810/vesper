@@ -113,7 +113,7 @@ Configured in `vercel.json`:
 - **Two prompt variants**: `buildOnboardingPrompt` (zero assets) and `buildSystemPrompt` (existing portfolio)
 - **Conversation history**: last 6 messages from `messages` table, with `<changes>`/`<context>`/`<goal>` tags stripped
 - **Image input**: base64 passed through as a content block when user pastes a screenshot
-- **Currency in prompt**: parameterized — `value` field description uses native-currency language; few-shot examples carry the correct currencies (`"currency":"USD"` for US tickers); `buildDynamicContext` shows per-asset currency and appends a `currency:USD` hint for non-EUR assets. **Phase C of the currency feature** (see `currency-feature-spec.md`) extends this to also accept the user's `display_currency` and instruct Claude to render prose totals in it; the `<changes>` JSON remains native.
+- **Currency in prompt**: `buildStaticSystem(displayCurrency)` and `buildOnboardingPrompt(displayCurrency)` inject a display-currency rendering directive into every prompt. Claude renders prose totals in the user's display currency; the `<changes>` JSON stays native (Yahoo's reported currency for tradeables, country-derived for real estate). The dynamic context block (`buildDynamicContext`) shows EUR-equivalent values with a note telling Claude to render prose in the display currency. Real-estate adds include the `currency` field (NL→EUR, US→USD, UK→GBP) in the few-shot examples. Goal targets stated in display currency include a `currency` field in `<goal>` JSON; the route converts to EUR via `toEur()` before storage. See `currency-feature-spec.md` for full phasing details.
 - **`<context>` instruction**: explicitly bans scaffolding language ("auto-filled", "live data", "Yahoo Finance", implementation mechanics). Frames the context as a private banker's ledger note
 - **Renaming support**: edit action accepts a `new_name` field separate from the matching `name` field. System prompt explicitly documents this pattern.
 
@@ -224,8 +224,7 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 
 ## Known Technical Debt
 
-- **Display currency is hardcoded EUR until the currency feature ships**. `users.display_currency`, `formatMoney`, and the `/settings` route do not exist yet. Plan and phasing in `currency-feature-spec.md`. Until then, every rendered number is EUR regardless of user preference.
-- **Historical mutations have currency-implicit-EUR values**. Cannot be retroactively converted without historical FX rates per `occurred_at`.
+- **Historical mutations have currency-implicit-EUR values**. Rows logged before the currency normalization fix have `before_value` and `after_value` stored as if EUR even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP.
 - **`before_value` / `after_value` semantic muddle on mutations**. Stored as EUR-equivalents but `currency` is native. Pre-existing inconsistency, separate redesign needed.
 - **System prompt is verbose**. At 50+ assets, ~50% token compression is achievable. Not yet implemented.
 - **AssetLogo CDN privacy debt**. Loading from external CDNs leaks user holdings. Fix: proxy through `/api/logo`.

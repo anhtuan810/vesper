@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: validationError, assets: null, remaining: DAILY_LIMIT - used });
           }
 
-          const { changed, duplicateWarnings } = await applyPortfolioChanges({
+          const { changed, duplicateWarnings, fxWarnings } = await applyPortfolioChanges({
             supabase,
             userId,
             changes,
@@ -197,6 +197,10 @@ export async function POST(req: NextRequest) {
           portfolioChanged = changed;
           if (duplicateWarnings.length > 0) {
             const suffix = duplicateWarnings.join(" ");
+            displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
+          }
+          if (fxWarnings.length > 0) {
+            const suffix = fxWarnings.join(" ");
             displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
           }
         }

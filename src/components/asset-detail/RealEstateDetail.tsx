@@ -243,6 +243,11 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
               }}
             />
           </div>
+
+          {/* Native currency — transparency, captured at add time, not editable */}
+          <div className="font-mono text-faint" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 5 }}>
+            Native: {asset.currency ?? "EUR"}
+          </div>
         </div>
 
         {/* Property value (editable) + Equity */}
