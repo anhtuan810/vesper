@@ -200,6 +200,12 @@
 - Cost: ~$0.003 per conversation
 - Risk: may be too aggressive or too conservative; needs real-user tuning
 
+### Display Currency Parameterization — Not Yet Built
+- Currently every rendered number is EUR. Storage will stay EUR after the feature ships; only the rendered string changes per user.
+- Plan in `currency-feature-spec.md`. Four phases (A: foundation, B: display swap, C: inputs + Claude prompt, D: real-estate native currency).
+- Supported currencies at launch: EUR, USD, GBP. Settings route at `/settings` will house the picker.
+- Until shipped, the app is EUR-centric — non-EUR users mentally convert.
+
 ### Logo CDN Privacy Debt
 - AssetLogo currently fetches from external CDNs (jsdelivr for crypto, FMP for stocks)
 - This leaks user portfolio holdings to those CDNs (request patterns reveal which symbols a user owns)

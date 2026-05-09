@@ -37,15 +37,17 @@ Auto-populated on signup via Supabase Auth trigger.
 - `id` (uuid, PK, references auth.users)
 - `email`, `name`, `avatar_url`
 - `profile` (jsonb) — investor profile fields built by `profile-extractor.ts`
+- `display_currency` (text, default `'EUR'`, check `in ('EUR', 'USD', 'GBP')`) — per-user display preference. Storage stays EUR-equivalent; this column drives only the rendered string. See `currency-feature-spec.md`. **Added in Phase A of the currency parameterization work; not present until then.**
 - `created_at`, `updated_at`
 
 ### assets
 Core portfolio table. One row per position.
 - `id` (uuid, PK), `user_id` (uuid, FK)
 - `name`, `type` (stocks | etf | crypto | bonds | gold | real_estate | cash | pension | other)
-- `value` (numeric, EUR — converted server-side from Yahoo's native currency for live-priced assets), `currency` (ISO code, self-healed from Yahoo)
+- `value` (numeric, EUR-equivalent — for tradeables, server-converted from Yahoo's native currency in `/api/prices`; for non-tradeables, converted at write from the user's display currency. EUR is the canonical storage unit; rendering is per-user via `users.display_currency`. See `currency-feature-spec.md`)
+- `currency` (ISO code) — the asset's **native** currency. For tradeables, self-healed from Yahoo. For real estate, captured from property location at add time (Phase D of the currency feature: NL → EUR, US → USD, UK → GBP). For cash / pension / bonds / other, user-stated. Used only as transparency metadata and for FX context — math always runs against `value` in EUR.
 - `country` (ISO2), `symbol` (Yahoo Finance ticker), `units`, `buy_price`, `buy_date`, `buy_price_source`
-- Real estate fields: `mortgage_balance`, `mortgage_rate`, `monthly_payment`, `mortgage_type`, `mortgage_start_date`, `mortgage_end_date`
+- Real estate fields: `mortgage_balance`, `mortgage_rate`, `monthly_payment`, `mortgage_type`, `mortgage_start_date`, `mortgage_end_date` (mortgage values are EUR-equivalent in storage, in the same currency as the parent property's `value`)
 - Property fields: `address`, `latitude`, `longitude`, `photo_url`, `property_type`, `size_sqm`
 - Bond fields: `coupon_rate`, `maturity_date`, `issuer`, `isin`
 - `created_at`, `updated_at`
@@ -111,7 +113,7 @@ Configured in `vercel.json`:
 - **Two prompt variants**: `buildOnboardingPrompt` (zero assets) and `buildSystemPrompt` (existing portfolio)
 - **Conversation history**: last 6 messages from `messages` table, with `<changes>`/`<context>`/`<goal>` tags stripped
 - **Image input**: base64 passed through as a content block when user pastes a screenshot
-- **Currency in prompt**: parameterized — `value` field description uses native-currency language; few-shot examples carry the correct currencies (`"currency":"USD"` for US tickers); `buildDynamicContext` shows per-asset currency and appends a `currency:USD` hint for non-EUR assets
+- **Currency in prompt**: parameterized — `value` field description uses native-currency language; few-shot examples carry the correct currencies (`"currency":"USD"` for US tickers); `buildDynamicContext` shows per-asset currency and appends a `currency:USD` hint for non-EUR assets. **Phase C of the currency feature** (see `currency-feature-spec.md`) extends this to also accept the user's `display_currency` and instruct Claude to render prose totals in it; the `<changes>` JSON remains native.
 - **`<context>` instruction**: explicitly bans scaffolding language ("auto-filled", "live data", "Yahoo Finance", implementation mechanics). Frames the context as a private banker's ledger note
 - **Renaming support**: edit action accepts a `new_name` field separate from the matching `name` field. System prompt explicitly documents this pattern.
 
@@ -140,8 +142,19 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
   - Single asset type > 60% of gross
   - Cash > 30% of gross
   - Only one asset class with multiple positions
-- **Milestone steps** scale dynamically: €1k below €10k, €5k below €50k, €10k below €100k, €50k below €500k, €100k below €1M, €500k below €5M, €1M above
-- All sums assume `value` is in EUR. Live-priced assets are converted server-side; manual values (real estate, cash, etc.) are entered in EUR by the user
+- **Milestone steps** scale dynamically against `users.display_currency`. Same numeric pattern across EUR / USD / GBP at launch (1k below 10k, 5k below 50k, 10k below 100k, 50k below 500k, 100k below 1M, 500k below 5M, 1M above) — the symbol changes, the step magnitudes do not. `getMilestoneProgress` takes EUR input and returns display-currency labels. See `currency-feature-spec.md` Phase B.
+- All sums assume `value` is in EUR. Live-priced assets are converted server-side in `/api/prices`; manual values (real estate, cash, etc.) are converted at write from the user's display currency to EUR (Phase C of the currency feature). EUR is the canonical storage and math unit; display currency only affects the rendered string.
+
+## Currency Rules
+
+- **Storage**: EUR-equivalent on every numeric column in `assets`, `snapshots`, `mutations`, `goals`. Non-negotiable.
+- **FX pivot**: EUR. `fx_rates.base = 'EUR'` always. frankfurter.app is ECB-anchored, EUR is the natural pivot. All conversions go `native → EUR` at write and `EUR → display` at render.
+- **Display**: per-user via `users.display_currency` (EUR / USD / GBP at launch). Every component renders money via `formatMoney(eurValue, displayCurrency)` from `src/lib/money.ts` (added in Phase A).
+- **Inputs**: manual entries (inline edits on detail pages, mortgage fields, goal targets) accept display currency and convert to EUR at write client-side. Server stays EUR-only.
+- **Real estate native currency**: each property carries its native currency on `assets.currency` (NL → EUR, US → USD, UK → GBP). Stored as transparency metadata; math always runs against the EUR-equivalent `value`. Captured at add time in Phase D.
+- **Math**: allocation percentages, concentration thresholds (40% / 60% / 30%), snapshot totals, mutation values, milestone math — all in EUR. Display currency never enters the math layer.
+- **Claude prompts**: `buildSystemPrompt` and `buildOnboardingPrompt` are parameterized with `displayCurrency` (Phase C). Prose responses render in display currency; `<changes>` JSON stays native. Banker's-note `<context>` strings are written in display currency.
+- **Existing user default**: `EUR`. No retroactive rewriting of past Claude responses or diary entries when display currency changes.
 
 ## Snapshot Calculation Rules
 
@@ -211,6 +224,7 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 
 ## Known Technical Debt
 
+- **Display currency is hardcoded EUR until the currency feature ships**. `users.display_currency`, `formatMoney`, and the `/settings` route do not exist yet. Plan and phasing in `currency-feature-spec.md`. Until then, every rendered number is EUR regardless of user preference.
 - **Historical mutations have currency-implicit-EUR values**. Cannot be retroactively converted without historical FX rates per `occurred_at`.
 - **`before_value` / `after_value` semantic muddle on mutations**. Stored as EUR-equivalents but `currency` is native. Pre-existing inconsistency, separate redesign needed.
 - **System prompt is verbose**. At 50+ assets, ~50% token compression is achievable. Not yet implemented.

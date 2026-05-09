@@ -14,7 +14,7 @@ A single web dashboard where a user can:
 - See their full net worth in one number, including real estate equity
 - See net worth trajectory over time on a daily-snapshot chart
 - Add, edit, and remove assets through natural conversation OR direct inline edits on detail pages
-- See real-time prices for tradeable assets, converted to EUR for unified totals
+- See real-time prices for tradeable assets, converted to a single canonical unit for unified totals (EUR in storage; user's display currency at render — see `currency-feature-spec.md`)
 - Browse a chronological diary of every portfolio change with reasoning notes
 - Drill into any position via a dedicated detail page (with a property hub for real estate, including map, mortgage projection, and value composition)
 - See an AI-built profile of themselves that grows over time
@@ -129,6 +129,7 @@ docs/
     main-screens.html           Canonical visual reference for Portfolio / Diary / Chat
     real-estate-detail.html     Real Estate detail page anatomy
   redesign-brief.md             Source of truth for the redesign (Phases 1–6)
+  currency-feature-spec.md      Source of truth for display currency parameterization (Phases A–D)
   vesper-project-handoff.md     This file
   current-features.md           What is built and what is fragile
   technical-decisions.md        Stack, schema, patterns
@@ -144,7 +145,7 @@ docs/
 5. **Memory matters**. The investor profile builds itself over time. Every conversation makes the assistant smarter about the user.
 6. **Backend is source of truth**. AI parses and explains. Deterministic code calculates and validates.
 7. **Privacy over community**. No social features. No portfolio sharing. Like a private banker, not a forum.
-8. **EUR is the user-facing display currency**. Native currency is shown as transparency on detail pages but never as the primary number.
+8. **Display currency is per-user**. Storage is EUR-equivalent (canonical unit, FX pivot). Each user picks a display currency (EUR / USD / GBP at launch); every rendered number reflects it. Real estate carries its own native currency by location for transparency. The detailed plan lives in `currency-feature-spec.md`.
 9. **Decisions over numbers**. The diary is a log of decisions and reasoning, not just a transaction history. Unit-based deltas for trades, value-based for everything else, optional notes on every mutation.
 
 ## What Vesper Is NOT Trying to Be Yet

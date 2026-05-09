@@ -29,38 +29,34 @@ This order: fix the currency display gap that limits the app to EUR-centric user
 
 ## 1. Display Currency Parameterization
 
-### Motivation
-The current EUR-only display is an MVP shortcut, not a design decision. Vesper's target users span multiple currencies — a USD or GBP user shouldn't have to mentally convert their net worth every time they open the app.
+**Source of truth: `currency-feature-spec.md`.** Read it before starting any phase.
 
-### Architectural principle
-EUR-equivalent in storage, target currency at display only. No data migrations needed. User preference stored in `users.display_currency` (ISO code, default `EUR`). All number formatting flows through a single `formatMoney(eurValue, targetCurrency)` utility. System prompt to Claude is parameterized so responses come back in the user's currency. Math (allocation %, concentration, milestones, snapshots) stays in EUR — only the rendered number changes.
+### Summary
 
-### Currency list at launch
-EUR, USD, GBP, CHF, CAD, AUD, SEK, NOK, DKK, SGD, JPY. Approximately 10 majors covering the target market.
+Vesper currently renders every number in EUR. The plan parameterizes display currency per-user (EUR / USD / GBP at launch) while keeping EUR as the canonical storage and math unit. Real estate gains a native currency by location for transparency. A `/settings` route houses the picker.
 
-### Tradeoffs to address during build
-- Goals stored in EUR, displayed in current currency (re-converts every render — simplest, goal doesn't drift with FX)
-- Currency switch UX needs a one-line note that the underlying portfolio is unchanged, only display
-- Historical mutations have currency-implicit-EUR values; non-EUR display uses today's FX rate over those, with the same precision caveats already documented
-- Milestone step sizing scales per currency (€1k → $1k → £1k → ¥150k, round-number-equivalent per currency)
+### Decisions (all settled)
 
-### Phasing (to be confirmed by audit pass)
-- **Foundation** — schema column, `formatMoney` utility, `useDisplayCurrency` hook, profile page setting. No visible UI changes
-- **Display swap** — every component starts using `formatMoney` instead of hardcoded `€`. Visible everywhere
-- **Input flows + Claude prompt** — manual entries convert at write time, system prompt parameterizes display currency, milestone scaling
+- **Storage**: EUR-equivalent on every numeric column. Non-negotiable.
+- **FX pivot**: EUR (frankfurter.app is ECB-anchored).
+- **Display options at launch**: EUR, USD, GBP. More currencies later.
+- **Real estate**: native currency per asset, captured at add time from country (NL → EUR, US → USD, UK → GBP).
+- **Settings**: new `/settings` route, currency picker only for now, scaffolded for future settings.
+- **Default for existing users**: EUR (no surprise switching).
+- **Milestones**: scale to display currency. EUR/USD/GBP share the same step pattern (`1k / 5k / 10k / 50k / 100k / 500k / 1M / 5M`).
+
+### Phases (one chat per phase)
+
+- **Phase A — Foundation**. Schema column, `formatMoney` utility, `useDisplayCurrency` hook, `/settings` route. No visible change.
+- **Phase B — Display swap**. Every callsite swapped from `fmt()` / hardcoded `€` to `formatMoney`. App fully renders in user's display currency.
+- **Phase C — Inputs + Claude prompt**. Manual inputs convert at write to EUR. System prompt parameterized with `displayCurrency`.
+- **Phase D — Real-estate native currency**. Per-property native currency captured at add time.
+
+Phases A–C run in order; Phase D can run after C or in parallel with C cleanup.
 
 ### Process
-Audit comes first as a separate chat (read-only, produces a written report of every formatting callsite and FX dependency) before any code is written.
 
-### Database Impact
-- `users.display_currency` column (ISO code, e.g. `USD`, `GBP`, `SEK`) — default `EUR`
-
-### Files Likely to Change
-- `src/lib/utils.ts` — `formatMoney` utility replaces or wraps `fmt()`
-- `src/lib/claude.ts` — system prompt parameterized with display currency
-- `src/app/api/fx/route.ts` — may need to serve rates for the display currency, not just EUR base
-- Every component that calls `fmt()` or formats EUR values directly
-- `src/app/profile/page.tsx` or settings surface — currency preference picker
+Read `currency-feature-spec.md`, run the named phase, ship, review, merge. Do not chain phases in one session.
 
 ---
 
