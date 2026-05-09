@@ -193,9 +193,12 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 
 - Shared `AssetLogo` component handles all logo rendering across DiaryTab and PositionRow
 - Three-tier resolution:
-  1. **Crypto**: cryptocurrency-icons via jsdelivr CDN (`https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/{base}.svg`). Symbol mapping strips `-USD` / `-EUR` suffixes.
-  2. **Stocks/ETFs**: Financial Modeling Prep image endpoint (`https://images.financialmodelingprep.com/symbol/{symbol}.png`). Free, no API key.
+  1. **Crypto**: client points at `/api/logo?type=crypto&symbol={base}` (symbol strips `-USD` / `-EUR` suffixes). Server fetches from `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/{base}.svg`.
+  2. **Stocks/ETFs**: client points at `/api/logo?type=stock&symbol={symbol}`. Server fetches from `https://images.financialmodelingprep.com/symbol/{symbol}.png`. ETF and stock collapse into the same `type=stock` proxy path — FMP serves both from the same endpoint.
   3. **Real estate**: hand-rolled inline SVG icons by `property_type` (house, apartment, office, land, other). Stroke-based, matches design tokens.
+- `/api/logo` route: validates `type` (must be `crypto` or `stock`) and `symbol` (regex `/^[A-Za-z0-9.\-]+$/`, max 16 chars) — rejects with 400 on bad input, blocking path-traversal and SSRF. Fetches upstream with a 5-second AbortController timeout. On non-2xx or timeout, returns 404; `AssetLogo.onError` falls back to monogram.
+- In-process cache: `Map<string, { bytes, contentType, fetchedAt }>` at module scope. TTL 7 days. FIFO eviction at 500 entries (Map insertion order, delete oldest on overflow). Logos are essentially immutable — LRU bookkeeping is overkill.
+- `Cache-Control: public, max-age=604800, immutable` on every proxy response — browser caches locally, proxy hit is minimal after first fetch per logo.
 - Fallback: existing colored monogram badge for any image load failure or asset types without logo coverage (gold, bonds, cash, pension, other)
 - Wrapper: rounded square with bg-surface and border. Border dropped for crypto and stock variants.
 - onError handler swaps to monogram via React state. No retry.
@@ -227,7 +230,6 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the currency normalization fix have `before_value` and `after_value` stored as if EUR even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP.
 - **`before_value` / `after_value` semantic muddle on mutations**. Stored as EUR-equivalents but `currency` is native. Pre-existing inconsistency, separate redesign needed.
 - **System prompt is verbose**. At 50+ assets, ~50% token compression is achievable. Not yet implemented.
-- **AssetLogo CDN privacy debt**. Loading from external CDNs leaks user holdings. Fix: proxy through `/api/logo`.
 - **Cosmetic warnings** in dev mode: middleware deprecation, multiple lockfiles. Functional, can be ignored.
 - **No tests**. Zero unit, integration, or E2E coverage. Acceptable for MVP, will become a problem as feature surface grows.
 - **No analytics**. No PostHog, no Mixpanel. No usage data being captured. Defer until user count justifies it.

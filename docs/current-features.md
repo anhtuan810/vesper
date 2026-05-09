@@ -99,10 +99,11 @@
 
 ### Asset Logos
 - Shared `AssetLogo` component used in both DiaryTab and PositionRow
-- Three-tier resolution: crypto via cryptocurrency-icons CDN (jsdelivr), stocks/ETFs via Financial Modeling Prep image endpoint, real estate via inline SVG icons by property_type (house, apartment, office, land, other)
-- Falls back to colored monogram badge on any image load failure or asset types without logo coverage (gold, bonds, cash, pension)
+- Three-tier resolution: crypto and stocks/ETFs fetched via `/api/logo?type=...&symbol=...` proxy (server fetches from upstream once and serves cached bytes thereafter); real estate via inline SVG icons by property_type (house, apartment, office, land, other)
+- Proxy route caches responses in-process for 7 days, FIFO eviction at 500 entries. Upstream sources: jsdelivr cryptocurrency-icons for crypto, Financial Modeling Prep for stocks/ETFs. CDN sees Vercel's edge IP, not the user's IP.
+- Falls back to colored monogram badge on any image load failure (proxy returns 404 on upstream error) or asset types without logo coverage (gold, bonds, cash, pension)
 - Wrapper: rounded square with bg-surface and border (border dropped for crypto and stock variants since their logos carry their own visual weight)
-- Files: `src/components/AssetLogo.tsx`
+- Files: `src/components/AssetLogo.tsx`, `src/app/api/logo/route.ts`
 
 ### Concentration Warnings
 - Single position > 40% of gross
@@ -207,12 +208,6 @@
 - Has not been verified to consistently produce useful extractions
 - Cost: ~$0.003 per conversation
 - Risk: may be too aggressive or too conservative; needs real-user tuning
-
-### Logo CDN Privacy Debt
-- AssetLogo currently fetches from external CDNs (jsdelivr for crypto, FMP for stocks)
-- This leaks user portfolio holdings to those CDNs (request patterns reveal which symbols a user owns)
-- Fix path: proxy through `/api/logo?symbol=...` with server-side caching
-- Acceptable for MVP scale, becomes important as user count grows
 
 ---
 

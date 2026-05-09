@@ -15,15 +15,14 @@ This is the prioritized roadmap for Vesper. MVP-focused. Avoid enterprise archit
 - **Portfolio change validation**. `src/lib/validations.ts` invoked from `/api/chat` before any DB write. All-or-nothing: any negative-unit or negative-value result rejects the full turn. Banker's-tone error messages saved as the assistant reply. Float tolerance `1e-9` for fractional crypto. `edit` mutations now propagate user-stated `buy_date` to `mutations.occurred_at` (was always writing today).
 - **BottomNav on /chat + layout hardening**. Restored mobile bottom navigation on the chat route. `height: 100dvh` + `padding-bottom: calc(64px + env(safe-area-inset-bottom))` contains the flex column to the viewport. `scrollbar-gutter: stable` on body prevents position:fixed elements from shifting when page-level scrollbars appear. `overflow-wrap: break-word` on message bubbles prevents horizontal page overflow from long URLs.
 - **DB-backed chat history fallback**. New `GET /api/messages?limit=20` endpoint (authenticated, DESC fetch reversed to ASC for display, capped at 50). `useChatSession` now falls back to a single DB fetch when localStorage is absent, expired, or empty — resolves the "returning user after 24h sees empty chat while Claude references their conversation" trust gap. Works cross-device. Fetched history is written back to localStorage to warm the cache.
+- **Logo proxy** (CDN privacy debt). `src/app/api/logo/route.ts` proxies all logo fetches — crypto via jsdelivr, stocks/ETFs via FMP. Symbol validated with `/^[A-Za-z0-9.\-]+$/` (≤16 chars) to block path traversal. In-process 7-day cache, FIFO eviction at 500 entries. `Cache-Control: public, max-age=604800, immutable`. `AssetLogo.tsx` updated to point at `/api/logo?...`.
 
 ## Build Order
 
-1. **Display currency parameterization** (EUR-equivalent storage, per-user display preference, single formatting utility, system prompt parameterized)
-2. **Logo proxy** (privacy debt — proxy CDN logos through `/api/logo?symbol=...`)
-3. **Dashboard highlights** (market events, milestones, reflections — unblocked now diary improvements shipped)
-4. **Scenario analysis UI**
+1. **Dashboard highlights** (market events, milestones, reflections — unblocked now diary improvements shipped)
+2. **Scenario analysis UI**
 
-This order: fix the currency display gap that limits the app to EUR-centric users, clear the CDN privacy debt, then add new top-level surfaces.
+This order: fix the currency display gap that limits the app to EUR-centric users, clear the CDN privacy debt (shipped), then add new top-level surfaces.
 
 ---
 
@@ -59,25 +58,6 @@ Phases A–C run in order; Phase D can run after C or in parallel with C cleanup
 Read `currency-feature-spec.md`, run the named phase, ship, review, merge. Do not chain phases in one session.
 
 ---
-
-## 2. Logo Proxy
-
-### Goal
-AssetLogo currently fetches from external CDNs (jsdelivr for crypto, FMP for stocks), which leaks user holdings to those CDNs. Build a proxy at `/api/logo?type=...&symbol=...` that fetches once, caches in-process, serves to the client.
-
-### Expected behavior
-- Client-side AssetLogo component points at `/api/logo?...` instead of the CDN URLs directly
-- Server-side route fetches from the appropriate upstream, caches the bytes in-process, and serves with appropriate cache headers
-- Long cache lifetime acceptable — logos rarely change
-- Falls back to monogram on upstream failure
-
-### Database Impact
-- None — pure server-side caching
-
-### Files Likely to Change
-- `src/components/AssetLogo.tsx` — swap CDN URLs for proxy URLs
-- New: `src/app/api/logo/route.ts`
-- Optional: add a stale-while-revalidate header strategy
 
 ---
 

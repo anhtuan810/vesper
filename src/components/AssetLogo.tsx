@@ -103,9 +103,9 @@ export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Prop
   if (!imgFailed && symbol) {
     if (type === "crypto") {
       const base = symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toLowerCase();
-      imgUrl = `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${base}.svg`;
+      imgUrl = `/api/logo?type=crypto&symbol=${encodeURIComponent(base)}`;
     } else if (type === "stocks" || type === "etf") {
-      imgUrl = `https://images.financialmodelingprep.com/symbol/${symbol}.png`;
+      imgUrl = `/api/logo?type=stock&symbol=${encodeURIComponent(symbol)}`;
     }
   }
 
