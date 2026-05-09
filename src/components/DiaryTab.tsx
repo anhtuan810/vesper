@@ -179,8 +179,6 @@ function NoteEditor({
 
 interface DiaryTabProps {
   mutations: Mutation[];
-  diaryFilter: string;
-  setDiaryFilter: (filter: string) => void;
   hasMore?: boolean;
   onLoadMore?: () => void;
 }
@@ -188,19 +186,12 @@ interface DiaryTabProps {
 type PeriodKey = "all" | "week" | "month" | "3months" | "year" | "custom";
 
 const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
-  { key: "all", label: "All time" },
-  { key: "week", label: "This week" },
-  { key: "month", label: "This month" },
-  { key: "3months", label: "Last 3M" },
-  { key: "year", label: "This year" },
+  { key: "all", label: "ALL" },
+  { key: "week", label: "1W" },
+  { key: "month", label: "1M" },
+  { key: "3months", label: "3M" },
+  { key: "year", label: "1Y" },
   { key: "custom", label: "Custom" },
-];
-
-const ACTION_FILTERS: { label: string; value: string }[] = [
-  { label: "All", value: "all" },
-  { label: "Added", value: "add" },
-  { label: "Updated", value: "edit" },
-  { label: "Removed", value: "remove" },
 ];
 
 const SELECT_STYLE: React.CSSProperties = {
@@ -400,7 +391,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLoadMore }: DiaryTabProps) {
+export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const displayCurrency = useDisplayCurrency();
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -438,7 +429,6 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
   const trimmedQuery = searchQuery.trim().toLowerCase();
 
   const filteredMutations = periodMutations
-    .filter((m) => diaryFilter === "all" || m.action === diaryFilter)
     .filter((m) => {
       if (!trimmedQuery) return true;
       return (
@@ -452,7 +442,6 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
     if (!inTimeline) {
       flushSync(() => {
         setPeriod("all");
-        setDiaryFilter("all");
         setSearchQuery("");
       });
     }
@@ -547,7 +536,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
 
       {/* Row A — period chips */}
       <div
-        className="flex items-center gap-1.5 mb-2"
+        className="flex items-center gap-1.5 mb-2 [&::-webkit-scrollbar]:hidden"
         style={{ overflowX: "auto", scrollbarWidth: "none", flexWrap: "nowrap" }}
       >
         {PERIOD_OPTIONS.map(({ key, label }) => {
@@ -572,54 +561,32 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
             </button>
           );
         })}
-        {period === "custom" && (
-          <div className="flex items-center gap-1.5 ml-1" style={{ flexShrink: 0 }}>
-            <select
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              style={SELECT_STYLE}
-            >
-              {monthOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-            <span className="font-mono text-faint" style={{ fontSize: 11 }}>to</span>
-            <select
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              style={SELECT_STYLE}
-            >
-              {monthOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
-      {/* Row B — action filter pills */}
-      <div className="flex gap-1.5 mb-6">
-        {ACTION_FILTERS.map(({ label, value }) => {
-          const active = diaryFilter === value;
-          return (
-            <button
-              key={value}
-              onClick={() => setDiaryFilter(value)}
-              className="font-mono transition-all"
-              style={{
-                fontSize: 11,
-                padding: "5px 10px",
-                borderRadius: 8,
-                border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
-                background: active ? "var(--surface-elev)" : "transparent",
-                color: active ? "var(--text)" : "var(--text-faint)",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Custom date range picker — shown below chips when Custom is active */}
+      {period === "custom" && (
+        <div className="flex items-center gap-1.5 mb-2" style={{ paddingLeft: 2 }}>
+          <select
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            style={SELECT_STYLE}
+          >
+            {monthOptions.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <span className="font-mono text-faint" style={{ fontSize: 11 }}>to</span>
+          <select
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            style={SELECT_STYLE}
+          >
+            {monthOptions.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <style>{`
         @keyframes diaryHighlight {
@@ -687,7 +654,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
           ) : (
             <>
               <div className="text-sm text-dim mb-2">No entries for this period</div>
-              <p className="text-faint text-xs">Try a different time range or filter.</p>
+              <p className="text-faint text-xs">Try a different time range.</p>
             </>
           )}
         </div>

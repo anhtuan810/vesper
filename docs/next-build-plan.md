@@ -146,6 +146,29 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 - Tax features — never, not Vesper's lane
 - Broker sync / bank integrations — never for MVP, manual + AI-driven is the differentiator
 
+- ### Portfolio insight cards (replacement for removed stat cards)
+
+The four stat cards (Positions / Countries / Asset classes / Largest) were
+removed because raw counts don't drive decisions. The space they occupied
+should eventually carry one or two genuine portfolio insights — the kind a
+private banker would surface during a quarterly review.
+
+Candidates worth considering:
+- Concentration depth (not just "X% in real estate" but "your top 3 positions
+  are 84% of the portfolio")
+- Drift from target allocation (when target allocations exist)
+- Risk-adjusted return signal (Sharpe-like, but readable)
+- Time-weighted vs money-weighted return divergence (signals timing impact)
+- Cash drag estimate (when cash > 20% and has been for >3 months)
+- Currency exposure (when display currency ≠ asset native currencies)
+- Mortgage payoff trajectory vs portfolio growth (real estate users)
+
+The bar to clear: each insight must change a decision. "You have 7 positions"
+does not. "Your top position has been over 40% for 8 weeks running" does.
+
+Build when there's enough portfolio history per user (3+ months of snapshots)
+and enough users to test which insights actually land.
+
 ---
 
 ## Tech Debts
@@ -178,3 +201,4 @@ Adding a currency outside that pattern (JPY, SEK, INR, etc.) requires:
   one (otherwise the EUR/USD/GBP examples are sufficient pattern-teaching).
 
 The architecture supports this without a refactor.
+

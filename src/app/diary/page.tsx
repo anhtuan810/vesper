@@ -18,7 +18,6 @@ export default function DiaryPage() {
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  const [diaryFilter, setDiaryFilter] = useState("all");
   const [backfillDone, setBackfillDone] = useState(false);
   const loadedRef = useRef(0);
 
@@ -108,8 +107,6 @@ export default function DiaryPage() {
       <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-24 md:pb-10">
         <DiaryTab
           mutations={enrichedMutations}
-          diaryFilter={diaryFilter}
-          setDiaryFilter={setDiaryFilter}
           hasMore={hasMore}
           onLoadMore={loadMore}
         />

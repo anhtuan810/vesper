@@ -1,14 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useUser, useAssets } from "@/lib/hooks";
+import { useUser, useAssets, useDisplayCurrency } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getWarnings, computeNetWorth } from "@/lib/utils";
-import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 
@@ -64,7 +63,7 @@ export default function Dashboard() {
   };
 
   const {
-    netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, topAsset, warnings,
+    netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, warnings,
   } = useMemo(() => {
     const netTotal = computeNetWorth(assets);
     const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
@@ -77,9 +76,8 @@ export default function Dashboard() {
     const totalSymbols = assets.filter((a) => a.symbol).length;
     const totalDebt = assets.reduce((sum, a) =>
       sum + (a.type === "real_estate" ? (a.mortgage_balance ?? 0) : 0), 0);
-    const topAsset = [...assets].sort((a, b) => b.value - a.value)[0];
     const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
-    return { netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, topAsset, warnings };
+    return { netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, warnings };
   }, [assets]);
 
   if (userLoading || assetsLoading) {
@@ -184,7 +182,6 @@ export default function Dashboard() {
             grossTotal={grossTotal}
             netTotal={netTotal}
             totalDebt={totalDebt}
-            topAsset={topAsset as LiveAsset}
             warnings={warnings}
             mutations={enrichedMutations}
             onViewDiary={() => router.push("/diary")}

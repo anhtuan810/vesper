@@ -18,7 +18,6 @@ interface PortfolioTabProps {
   grossTotal: number;
   netTotal: number;
   totalDebt: number;
-  topAsset: LiveAsset | undefined;
   warnings: string[];
   mutations: Mutation[];
   onViewDiary: () => void;
@@ -26,7 +25,7 @@ interface PortfolioTabProps {
 
 export function PortfolioTab({
   assets, sorted, byType, grossTotal, netTotal, totalDebt,
-  topAsset, warnings, mutations, onViewDiary,
+  warnings, mutations, onViewDiary,
 }: PortfolioTabProps) {
   const displayCurrency = useDisplayCurrency();
   const symbols = useMemo(
@@ -35,10 +34,6 @@ export function PortfolioTab({
   );
   const sparklines = useSparklines(symbols, "1W");
 
-  const countryCount = useMemo(
-    () => new Set(assets.map((a) => a.country).filter(Boolean)).size,
-    [assets]
-  );
   const sortedByValue = useMemo(() => [...assets].sort((a, b) => b.value - a.value), [assets]);
   const allocationItems = sorted.map(([type, val]) => ({
     label: TYPE_LABEL[type] ?? type,
@@ -121,35 +116,6 @@ export function PortfolioTab({
           ))}
         </div>
       )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        {[
-          { label: "Positions", value: assets.length },
-          { label: "Countries", value: countryCount || "—" },
-          { label: "Asset classes", value: Object.keys(byType).length },
-          {
-            label: "Largest",
-            value: topAsset ? topAsset.name : "—",
-            sub: topAsset ? `${((topAsset.value / grossTotal) * 100).toFixed(0)}%` : undefined,
-          },
-        ].map(({ label, value, sub }) => (
-          <div key={label} className="bg-surface rounded-xl p-4 border border-border">
-            <div
-              className="font-mono text-faint uppercase mb-2"
-              style={{ fontSize: 9, letterSpacing: "0.18em" }}
-            >
-              {label}
-            </div>
-            <div className="font-mono text-fg truncate" style={{ fontSize: 17, fontWeight: 500 }}>
-              {value}
-            </div>
-            {sub && (
-              <div className="font-mono text-dim mt-1" style={{ fontSize: 10 }}>{sub}</div>
-            )}
-          </div>
-        ))}
-      </div>
 
       {/* Recent diary entries — preview */}
       {mutations.length > 0 && (
