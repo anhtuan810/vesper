@@ -21,7 +21,7 @@
 - Files: `src/app/page.tsx`, `src/app/diary/page.tsx`, `src/app/chat/page.tsx`, `src/app/profile/page.tsx`, `src/app/asset/[id]/page.tsx`, `src/components/BottomNav.tsx`
 
 ### Portfolio Dashboard
-- Header strip with `Vesper` wordmark + status dot (green/amber/faint based on price-fetch health) + refresh button
+- Header: Vesper icon (serif "V" placeholder in a rounded box — `// TODO: replace with proper icon asset`) on the left, user name next to it (pulled from Supabase auth metadata, falls back to email prefix before `@`, hidden if neither is available — never "User" or "Anonymous"); refresh button with an integrated 4 px status dot (green = all prices live, amber = partial, faint = none) and a settings gear linking to `/settings`, both on the right
 - Net worth hero in serif (Fraunces) with intentionally dimmed currency prefix per design spec
 - Change pill on the hero showing % and EUR delta vs 1 month ago — only renders when historical snapshot data exists
 - Net worth over time chart between hero and allocation cards — range pills (1W / 1M / 3M / 1Y / ALL), smooth bezier line, amber up / coral down, today marker, 7-snapshot empty state
@@ -30,7 +30,7 @@
 - Gross / debt subtitle on hero when mortgages exist
 - Concentration warning card (amber outline) when triggered
 - Milestone progress bar with dynamic step sizing
-- Stat cards (Positions, Countries, Asset classes, Largest)
+- Stat cards (Positions, Countries, Asset classes, Largest) — removed; data was either noise (raw counts) or already conveyed by the allocation bar. See next-build-plan.md Post-MVP / Future for the replacement plan
 - Recent activity preview (last 3 mutations)
 - Files: `src/app/page.tsx`, `src/components/PortfolioTab.tsx`, `src/components/NetWorthHero.tsx`, `src/components/NetWorthChart.tsx`, `src/components/AllocationBar.tsx`, `src/components/PositionRow.tsx`, `src/components/MiniSparkline.tsx`
 
@@ -167,13 +167,12 @@
 - Compact two-line entry layout: icon + name + delta + date on row 1, optional context note on row 2 (line-clamped)
 - Real asset logos via AssetLogo (crypto from cryptocurrency-icons, stocks from FMP, real estate by property type, monogram fallback)
 - Action signaling now comes from value pattern itself (no action tag pill): green for adds, signed delta for edits, strikethrough for removes
-- Filter section: thin period chip row + thin action filter pill row (Added / Updated / Removed) — no count cards, no big numbers
-- Custom date range picker uses styled selects matching the chip aesthetic
+- Filter section: period chip row with abbreviated labels matching the chart range selectors (ALL / 1W / 1M / 3M / 1Y / Custom) — no action filter pills, no count cards, no big numbers. When Custom is selected, the date range picker renders on a sub-row directly below the chips (styled selects, same chip aesthetic) rather than inline with the pills
 - Period title shown above filters when a non-"all" period is selected
 - AI summary card (slimmed from former PeriodHighlight) at top of timeline — pulsing V mark while loading, 3 bullet points + activity counts when loaded
 - Recent activity preview (last 3) on Portfolio tab
 - **Inline expandable notes**: each entry row is tappable; tap expands an inline editor below the row pre-filled with the full `personal_context`; Save calls `PATCH /api/mutations/[id]` with optimistic update and rollback on error; "+ Add note" affordance shown when context is empty; only one editor open at a time — tapping a second entry collapses the first
-- **Search**: text input above the period filter chips; case-insensitive substring match on `asset_name` OR `personal_context` (including locally-edited notes); combines with period and action filters via AND; client-side, no server round-trip; empty state adapts to "No entries match {query}"
+- **Search**: text input above the period filter chips; case-insensitive substring match on `asset_name` OR `personal_context` (including locally-edited notes); combines with period filter via AND; client-side, no server round-trip; empty state adapts to "No entries match {query}"
 - **"On this day" callout**: rendered above the timeline, independent of all filters; conditions — `occurred_at` shares today's month and day, is in a prior year, and is at least 30 days ago; oldest match wins when multiple qualify; displays a read-only entry-style row with a relative label ("1 year ago", "3 months ago"); tap clears active filters if the row is hidden, then smooth-scrolls to the matching entry in the timeline and plays a 1.5s amber ring highlight; uses browser-local date parsing to avoid UTC-offset drift
 - Files: `src/app/diary/page.tsx`, `src/components/DiaryTab.tsx`, `src/app/api/chat/route.ts` (write), `src/app/api/assets/[id]/route.ts` (write), `src/app/api/diary-summary/route.ts` (AI summary), `src/app/api/mutations/[id]/route.ts` (note PATCH)
 
@@ -183,7 +182,7 @@
 - Fields: goal, risk_behaviour, investment_style, life_context, concerns, preferences, blind_spots, decision_patterns, interests
 - Never overwrites — only adds or refines
 - Visible at `/profile`. Avatar uses `users.avatar_url` (from Google OAuth) when present, falls back to two-letter initials in a `surface-elev` circle
-- Sign-out button at the bottom of the Profile page
+- Sign-out button at the bottom of the Profile page. Settings (display currency, etc.) is no longer linked from `/profile` — it is reachable via the gear icon in the Portfolio page header
 - Skipped for new-user onboarding conversations
 - Files: `src/lib/profile-extractor.ts`, called from `src/app/api/chat/route.ts`, rendered inline in `src/app/profile/page.tsx`
 
