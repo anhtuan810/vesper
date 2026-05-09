@@ -69,7 +69,7 @@ export default function ProfilePage() {
         refreshing={false}
         refreshPrices={() => {}}
       />
-      <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-24 md:pb-10">
+      <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-4 pb-24 md:pb-10">
         {/* Profile card */}
         <div className="bg-surface rounded-2xl border border-border p-8 mb-4">
           <div className="flex items-start gap-4 mb-6">

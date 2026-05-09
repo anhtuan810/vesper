@@ -50,7 +50,7 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
         style={{
           fontSize: "clamp(40px, 9vw, 56px)",
           letterSpacing: "-0.035em",
-          fontVariationSettings: "'opsz' 144",
+          fontVariationSettings: "'opsz' 72",
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.12em" }}>

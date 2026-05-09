@@ -18,7 +18,7 @@ export default function Dashboard() {
   const { user, loading: userLoading } = useUser();
   const {
     assets, loading: assetsLoading, error: assetsError, refreshing,
-    refreshPrices, refetchAssets,
+    refreshPrices, refetchAssets, pricesLoaded,
   } = useAssets(user?.id);
   const displayCurrency = useDisplayCurrency();
   const [chatOpen, setChatOpen] = useState(false);
@@ -80,7 +80,9 @@ export default function Dashboard() {
     return { netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, warnings };
   }, [assets]);
 
-  if (userLoading || assetsLoading) {
+  const hasTradeables = assets.some(a => a.symbol);
+
+  if (userLoading || assetsLoading || (hasTradeables && !pricesLoaded)) {
     return (
       <div className="min-h-screen bg-bg">
         <div className="h-14 bg-surface border-b border-border" />
@@ -142,7 +144,7 @@ export default function Dashboard() {
         refreshPrices={refreshPrices}
       />
 
-      <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-10 pb-36">
+      <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-4 pb-36">
         {assets.length === 0 ? (
           <div className="flex flex-col items-center pt-24 text-center">
             <div

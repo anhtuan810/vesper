@@ -9,7 +9,7 @@ import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
 validateEnv();
 
 const anthropic = new Anthropic();
-const DAILY_LIMIT = 20;
+const DAILY_LIMIT = 100;
 
 /** Format a EUR-stored value in the user's display currency using server-side rates. */
 function fmtDisplay(eurValue: number, currency: DisplayCurrency, rates: Record<string, number>): string {

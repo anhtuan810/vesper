@@ -84,13 +84,8 @@ export default function SettingsPage() {
           ← Profile
         </Link>
         <h1
-          className="font-serif text-fg flex-1 text-center"
-          style={{
-            fontSize: 17,
-            fontWeight: 400,
-            letterSpacing: "-0.01em",
-            fontVariationSettings: "'opsz' 144",
-          }}
+          className="font-mono uppercase text-fg flex-1 text-center"
+          style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em" }}
         >
           Settings
         </h1>
@@ -125,10 +120,10 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span
-                      className="font-serif"
+                      className="font-mono"
                       style={{
-                        fontSize: 22,
-                        fontWeight: 400,
+                        fontSize: 18,
+                        fontWeight: 500,
                         color: isActive ? "var(--accent)" : "var(--text-dim)",
                         width: 24,
                         textAlign: "center",

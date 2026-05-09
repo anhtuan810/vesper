@@ -58,6 +58,7 @@ export function useAssets(userId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pricesLoaded, setPricesLoaded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const supabase = createBrowserSupabase();
 
@@ -71,6 +72,10 @@ export function useAssets(userId: string | undefined) {
     if (error) { setError(true); setLoading(false); return; }
     setAssets(data || []);
     setLoading(false);
+    // No tradeable assets means fetchPrices will never fire — mark prices as loaded immediately
+    if (!(data || []).some((a) => a.symbol)) {
+      setPricesLoaded(true);
+    }
   }, [userId]);
 
   const fetchPrices = useCallback(async () => {
@@ -78,6 +83,8 @@ export function useAssets(userId: string | undefined) {
     if (symbols.length === 0) return;
 
     setRefreshing(true);
+    // Safety net: if Yahoo doesn't respond within 3 s, render the dashboard with DB values
+    const timer = setTimeout(() => setPricesLoaded(true), 3000);
     try {
       const res = await fetch("/api/prices", {
         method: "POST",
@@ -120,7 +127,9 @@ export function useAssets(userId: string | undefined) {
     } catch {
       // Prices stay as manual values
     } finally {
+      clearTimeout(timer);
       setRefreshing(false);
+      setPricesLoaded(true);
     }
   }, [assets, fetchAssets, supabase]);
 
@@ -157,6 +166,7 @@ export function useAssets(userId: string | undefined) {
     loading,
     error,
     refreshing,
+    pricesLoaded,
     lastUpdated,
     refreshPrices: fetchPrices,
     refetchAssets: fetchAssets,

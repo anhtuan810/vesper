@@ -293,6 +293,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
 }) {
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const summaryKey = useMemo(() => mutations.map((m) => m.id).join(","), [mutations]);
   const periodLabel = getPeriodLabel(period, customFrom, customTo);
@@ -302,6 +303,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
     setSummary(null);
+    setSummaryError(null);
     setSummaryLoading(true);
 
     fetch("/api/diary-summary", {
@@ -315,16 +317,36 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
         periodLabel,
       }),
     })
-      .then((r) => r.json())
-      .then((d) => { clearTimeout(timeout); if (!controller.signal.aborted) { setSummary(d.summary || null); setSummaryLoading(false); } })
-      .catch(() => { clearTimeout(timeout); if (!controller.signal.aborted) setSummaryLoading(false); });
+      .then(async (r) => {
+        if (!r.ok) {
+          if (r.status === 429) throw new Error("rate-limit");
+          throw new Error("fetch-failed");
+        }
+        return r.json();
+      })
+      .then((d) => {
+        clearTimeout(timeout);
+        if (controller.signal.aborted) return;
+        setSummary(d.summary || null);
+        setSummaryLoading(false);
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        if (controller.signal.aborted) return;
+        if (err.message === "rate-limit") {
+          setSummaryError("Daily summary limit reached. Resets tomorrow.");
+        } else if (err.message !== "AbortError") {
+          setSummaryError("Couldn't generate summary right now.");
+        }
+        setSummaryLoading(false);
+      });
 
     return () => { controller.abort(); clearTimeout(timeout); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryKey]);
 
   if (mutations.length === 0) return null;
-  if (!summaryLoading && !summary) return null;
+  if (!summaryLoading && !summary && !summaryError) return null;
 
   const adds = mutations.filter((m) => m.action === "add").length;
   const edits = mutations.filter((m) => m.action === "edit").length;
@@ -360,6 +382,10 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
           <span className="font-mono text-faint italic" style={{ fontSize: 10, letterSpacing: "0.04em" }}>
             Reading the period...
           </span>
+        </div>
+      ) : summaryError ? (
+        <div className="font-mono text-faint italic" style={{ fontSize: 11, lineHeight: 1.4, padding: "4px 0" }}>
+          {summaryError}
         </div>
       ) : (
         <>
@@ -606,8 +632,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 name={anniversaryEntry.mutation.asset_name}
               />
               <span
-                className="font-serif flex-1 min-w-0"
-                style={{ fontSize: 14, fontWeight: 400, fontVariationSettings: "'opsz' 144", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                className="font-sans flex-1 min-w-0"
+                style={{ fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
               >
                 {anniversaryEntry.mutation.asset_name}
               </span>
@@ -654,15 +680,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       {/* Timeline */}
       {monthKeys.map((monthKey) => (
         <div key={monthKey} className="mb-8">
-          {/* Month header — italic serif */}
-          <div
-            className="font-serif text-dim italic mb-3"
-            style={{ fontSize: 13, fontVariationSettings: "'opsz' 144" }}
-          >
-            {getMonthLabel(monthKey)}
-            <span className="font-mono not-italic text-faint ml-3" style={{ fontSize: 10 }}>
-              {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
-            </span>
+          <div className="font-mono uppercase text-faint mb-3" style={{ fontSize: 10, letterSpacing: "0.18em" }}>
+            {getMonthLabel(monthKey)} · {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
           </div>
 
           <div>
@@ -696,9 +715,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                     <div className="flex items-center gap-3">
                       <AssetLogo type={m.asset_type} symbol={m.symbol} name={m.asset_name} />
                       <span
-                        className="font-serif flex-1 min-w-0"
+                        className="font-sans flex-1 min-w-0"
                         style={{
-                          fontSize: 14, fontWeight: 400, fontVariationSettings: "'opsz' 144",
+                          fontSize: 14, fontWeight: 500,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}
                       >
