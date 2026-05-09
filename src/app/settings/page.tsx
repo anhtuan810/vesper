@@ -16,12 +16,15 @@ const CURRENCY_DISPLAY: Record<DisplayCurrency, { symbol: string; label: string 
   GBP: { symbol: "£", label: "British Pound" },
 };
 
+const TOAST_KEY = "vesper.currency.toastSeen";
+
 export default function SettingsPage() {
   const router = useRouter();
   const { user } = useUser();
   const [selected, setSelected] = useState<DisplayCurrency>("EUR");
   const [loadingCard, setLoadingCard] = useState<DisplayCurrency | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -52,6 +55,11 @@ export default function SettingsPage() {
         setError(data.error ?? "Failed to update currency");
       } else {
         setSelected(currency);
+        if (currency !== "EUR" && !localStorage.getItem(TOAST_KEY)) {
+          localStorage.setItem(TOAST_KEY, "1");
+          setToastVisible(true);
+          setTimeout(() => setToastVisible(false), 4000);
+        }
         router.refresh();
       }
     } catch {
@@ -172,6 +180,30 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {toastVisible && (
+        <div
+          className="font-mono"
+          style={{
+            position: "fixed",
+            bottom: 88,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "var(--surface)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: 10,
+            padding: "10px 18px",
+            fontSize: 12,
+            color: "var(--text-dim)",
+            letterSpacing: "0.02em",
+            whiteSpace: "nowrap",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            zIndex: 50,
+          }}
+        >
+          Display only — your portfolio is unchanged.
+        </div>
+      )}
     </div>
   );
 }

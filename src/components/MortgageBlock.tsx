@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { projectMortgage, formatTimeRemaining, formatPayoffDate } from "@/lib/mortgage";
-import { fmtAmount } from "@/lib/utils";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import type { RealEstateAsset } from "@/lib/supabase";
 
@@ -71,6 +72,7 @@ function buildPayoffPath(
 }
 
 export function MortgageBlock({ asset, onUpdate }: Props) {
+  const displayCurrency = useDisplayCurrency();
   const {
     mortgage_balance: balance,
     mortgage_rate: rate,
@@ -78,7 +80,6 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
     mortgage_type: type,
     mortgage_start_date: startStr,
     mortgage_end_date: endStr,
-    currency,
   } = asset;
 
   const hasMortgage = balance != null && balance > 0;
@@ -138,7 +139,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Balance</div>
           {onUpdate ? (
             <InlineEdit
-              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{balance != null ? fmtAmount(balance, currency) : "—"}</span>}
+              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{balance != null ? formatMoney(balance!, displayCurrency) : "—"}</span>}
               rawValue={balance != null ? String(balance) : ""}
               placeholder="e.g. 250000"
               affordance
@@ -153,7 +154,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
             />
           ) : (
             <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {balance != null ? fmtAmount(balance, currency) : "—"}
+              {balance != null ? formatMoney(balance!, displayCurrency) : "—"}
             </div>
           )}
         </div>
@@ -188,7 +189,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Monthly</div>
           {onUpdate ? (
             <InlineEdit
-              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{payment != null ? fmtAmount(payment, currency) : "—"}</span>}
+              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{payment != null ? formatMoney(payment!, displayCurrency) : "—"}</span>}
               rawValue={payment != null ? String(payment) : ""}
               placeholder="e.g. 1200"
               affordance
@@ -203,7 +204,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
             />
           ) : (
             <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {payment != null ? fmtAmount(payment, currency) : "—"}
+              {payment != null ? formatMoney(payment!, displayCurrency) : "—"}
             </div>
           )}
         </div>
@@ -316,8 +317,8 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px", marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             {[
-              { label: "Paid to date", value: fmtAmount(projection.principalPaid, currency) },
-              { label: "Interest paid", value: fmtAmount(projection.totalInterestPaid, currency) },
+              { label: "Paid to date", value: formatMoney(projection.principalPaid, displayCurrency) },
+              { label: "Interest paid", value: formatMoney(projection.totalInterestPaid, displayCurrency) },
               { label: "Time remaining", value: formatTimeRemaining(projection.remainingMonths) },
               { label: "Mortgage-free", value: formatPayoffDate(projection.payoffDate), accent: projection.payoffDate != null },
             ].map(({ label, value, accent }) => (

@@ -1,6 +1,7 @@
 "use client";
 
-import { fmt } from "@/lib/utils";
+import { formatMoney } from "@/lib/money";
+import { useDisplayCurrency } from "@/lib/hooks";
 
 export interface AllocationItem {
   label: string;
@@ -14,6 +15,8 @@ interface AllocationBarProps {
 }
 
 export function AllocationBar({ items, total }: AllocationBarProps) {
+  const displayCurrency = useDisplayCurrency();
+
   if (items.length === 0 || total === 0) return null;
 
   return (
@@ -47,7 +50,7 @@ export function AllocationBar({ items, total }: AllocationBarProps) {
               <div className="flex items-center gap-3">
                 <span className="font-mono text-[12px] text-dim">{pct.toFixed(0)}%</span>
                 <span className="font-mono text-[13px] font-medium text-fg" style={{ minWidth: 60, textAlign: "right" }}>
-                  {fmt(value, "EUR")}
+                  {formatMoney(value, displayCurrency)}
                 </span>
               </div>
             </div>

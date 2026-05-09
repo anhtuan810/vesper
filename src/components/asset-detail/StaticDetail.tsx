@@ -8,7 +8,9 @@ import { BondBlock } from "@/components/asset-detail/BondBlock";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
 import { ContextNotePrompt } from "@/components/asset-detail/ContextNotePrompt";
-import { ACTION_STYLE, currencySymbol, formatDate, TYPE_LABEL } from "@/lib/utils";
+import { ACTION_STYLE, formatDate, TYPE_LABEL } from "@/lib/utils";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import type { StaticAsset, BondsAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
@@ -61,8 +63,8 @@ export function StaticDetail({ asset: initialAsset }: Props) {
     }
   }, [patchField, fetchMutations]);
 
+  const displayCurrency = useDisplayCurrency();
   const monogram = asset.name.slice(0, 3).toUpperCase();
-  const sym = currencySymbol(asset.currency);
 
   const nameEqualsType = asset.name.toLowerCase() === asset.type.toLowerCase();
   const subLine = nameEqualsType
@@ -138,7 +140,7 @@ export function StaticDetail({ asset: initialAsset }: Props) {
                 className="font-serif font-light text-fg"
                 style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}
               >
-                <PriceDisplay amount={asset.value} currency={asset.currency} />
+                <PriceDisplay amount={asset.value} displayCurrency={displayCurrency} />
               </div>
             }
             rawValue={String(asset.value)}
@@ -243,8 +245,8 @@ export function StaticDetail({ asset: initialAsset }: Props) {
                     {m.after_value != null && (
                       <div className="font-serif text-fg" style={{ fontSize: 14, fontWeight: 400, lineHeight: 1.3, margin: "3px 0 2px" }}>
                         {m.action === "add" && m.before_value != null
-                          ? `+${sym}${Math.round(m.after_value - m.before_value).toLocaleString()}`
-                          : `${sym}${Math.round(m.after_value).toLocaleString()}`}
+                          ? `+${formatMoney(m.after_value - m.before_value, displayCurrency)}`
+                          : formatMoney(m.after_value, displayCurrency)}
                       </div>
                     )}
                     {m.personal_context && (

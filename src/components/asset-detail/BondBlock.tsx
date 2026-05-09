@@ -1,6 +1,8 @@
 "use client";
 
-import { currencySymbol, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import type { BondsAsset } from "@/lib/supabase";
 
@@ -32,8 +34,8 @@ function computeTimeToMaturity(maturityDateStr: string): string {
 }
 
 export function BondBlock({ asset, onUpdate }: Props) {
-  const { issuer, coupon_rate, maturity_date, isin, value, currency } = asset;
-  const sym = currencySymbol(currency);
+  const displayCurrency = useDisplayCurrency();
+  const { issuer, coupon_rate, maturity_date, isin, value } = asset;
   const annualIncome = coupon_rate != null ? value * (coupon_rate / 100) : null;
   const timeToMaturity = maturity_date ? computeTimeToMaturity(maturity_date) : null;
 
@@ -165,7 +167,7 @@ export function BondBlock({ asset, onUpdate }: Props) {
       >
         {[
           { label: "Time to maturity", value: timeToMaturity ?? "—" },
-          { label: "Annual income", value: annualIncome != null ? `${sym}${Math.round(annualIncome).toLocaleString("en")}` : "—" },
+          { label: "Annual income", value: annualIncome != null ? formatMoney(annualIncome, displayCurrency) : "—" },
         ].map(({ label, value }) => (
           <div key={label}>
             <div className="font-mono uppercase text-faint" style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 4 }}>{label}</div>

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { flushSync } from "react-dom";
-import { fmt, formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
+import { formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import type { Mutation } from "@/lib/supabase";
 import { AssetLogo } from "@/components/AssetLogo";
 
@@ -18,8 +20,7 @@ function hasContent(m: Mutation): boolean {
   return m.before_value != null || m.after_value != null || !!m.personal_context;
 }
 
-function buildValueNode(m: Mutation): React.ReactNode {
-  const mCur = m.currency ?? "EUR";
+function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.ReactNode {
   const isUnitEligible =
     m.asset_type != null &&
     TRADEABLE_TYPES.has(m.asset_type) &&
@@ -40,15 +41,15 @@ function buildValueNode(m: Mutation): React.ReactNode {
   }
 
   if (m.action === "add" && m.after_value != null) {
-    return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>{fmt(m.after_value, mCur)}</span>;
+    return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>{formatMoney(m.after_value, displayCurrency)}</span>;
   }
   if (m.action === "edit") {
     const valDelta = m.before_value != null && m.after_value != null ? m.after_value - m.before_value : null;
-    if (valDelta !== null && valDelta !== 0) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>{valDelta >= 0 ? "+" : ""}{fmt(valDelta, mCur)}</span>;
-    if (m.after_value != null) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>{fmt(m.after_value, mCur)}</span>;
+    if (valDelta !== null && valDelta !== 0) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>{valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, displayCurrency)}</span>;
+    if (m.after_value != null) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>{formatMoney(m.after_value, displayCurrency)}</span>;
   }
   if (m.action === "remove" && m.before_value != null) {
-    return <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>{fmt(m.before_value, mCur)}</span>;
+    return <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>{formatMoney(m.before_value, displayCurrency)}</span>;
   }
   return null;
 }
@@ -400,6 +401,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLoadMore }: DiaryTabProps) {
+  const displayCurrency = useDisplayCurrency();
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [period, setPeriod] = useState<PeriodKey>("all");
@@ -651,7 +653,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
               >
                 {anniversaryEntry.mutation.asset_name}
               </span>
-              {buildValueNode(anniversaryEntry.mutation)}
+              {buildValueNode(anniversaryEntry.mutation, displayCurrency)}
               <span
                 className="font-mono uppercase"
                 style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.12em", flexShrink: 0, marginLeft: 12 }}
@@ -708,7 +710,7 @@ export function DiaryTab({ mutations, diaryFilter, setDiaryFilter, hasMore, onLo
           <div>
             {grouped[monthKey].map((m) => {
               const date = m.occurred_at || m.recorded_at;
-              const valueNode = buildValueNode(m);
+              const valueNode = buildValueNode(m, displayCurrency);
               const context = getContext(m);
               const isExpanded = expandedId === m.id;
 

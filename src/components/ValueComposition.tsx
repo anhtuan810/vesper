@@ -1,14 +1,15 @@
 "use client";
 
-import { fmtAmount } from "@/lib/utils";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 
 interface Props {
   propertyValue: number;
   mortgageBalance: number;
-  currency: string;
 }
 
-export function ValueComposition({ propertyValue, mortgageBalance, currency }: Props) {
+export function ValueComposition({ propertyValue, mortgageBalance }: Props) {
+  const displayCurrency = useDisplayCurrency();
   const equity = Math.max(0, propertyValue - mortgageBalance);
   const equityPct = propertyValue > 0 ? (equity / propertyValue) * 100 : 100;
   const mortgagePct = 100 - equityPct;
@@ -62,7 +63,7 @@ export function ValueComposition({ propertyValue, mortgageBalance, currency }: P
             <span style={{ fontSize: 12, color: "var(--text)" }}>Equity</span>
           </div>
           <span className="font-mono" style={{ fontSize: 11, color: "var(--text)" }}>
-            {fmtAmount(equity, currency)}
+            {formatMoney(equity, displayCurrency)}
           </span>
         </div>
 
@@ -74,7 +75,7 @@ export function ValueComposition({ propertyValue, mortgageBalance, currency }: P
             <span style={{ fontSize: 12, color: "var(--text)" }}>Mortgage owed</span>
           </div>
           <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
-            {fmtAmount(mortgageBalance, currency)}
+            {formatMoney(mortgageBalance, displayCurrency)}
           </span>
         </div>
 
@@ -88,7 +89,7 @@ export function ValueComposition({ propertyValue, mortgageBalance, currency }: P
         >
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Property value</span>
           <span className="font-mono" style={{ fontSize: 11, color: "var(--text)" }}>
-            {fmtAmount(propertyValue, currency)}
+            {formatMoney(propertyValue, displayCurrency)}
           </span>
         </div>
       </div>

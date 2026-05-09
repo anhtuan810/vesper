@@ -6,9 +6,10 @@ import { NetWorthChart } from "@/components/NetWorthChart";
 import { AllocationBar } from "@/components/AllocationBar";
 import { PositionRow } from "@/components/PositionRow";
 import { formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE } from "@/lib/utils";
-import { useSparklines } from "@/lib/hooks";
+import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { getMilestoneProgress, fmtRemaining } from "@/lib/projection";
+import type { DisplayCurrency } from "@/lib/money";
 
 interface PortfolioTabProps {
   assets: LiveAsset[];
@@ -27,6 +28,7 @@ export function PortfolioTab({
   assets, sorted, byType, grossTotal, netTotal, totalDebt,
   topAsset, warnings, mutations, onViewDiary,
 }: PortfolioTabProps) {
+  const displayCurrency = useDisplayCurrency();
   const symbols = useMemo(
     () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
     [assets]
@@ -78,7 +80,7 @@ export function PortfolioTab({
 
       {/* Milestone progress */}
       {netTotal > 0 && (() => {
-        const m = getMilestoneProgress(netTotal, "EUR");
+        const m = getMilestoneProgress(netTotal, displayCurrency as DisplayCurrency);
         return (
           <div className="bg-surface rounded-xl border border-border px-5 py-4 mb-4">
             <div className="flex items-center justify-between mb-2">
@@ -95,7 +97,7 @@ export function PortfolioTab({
             </div>
             <div className="flex items-center justify-between">
               <div className="font-mono text-faint" style={{ fontSize: 10 }}>{m.progress.toFixed(0)}% there</div>
-              <div className="font-mono text-faint" style={{ fontSize: 10 }}>{fmtRemaining(m.remaining, "EUR")} to go</div>
+              <div className="font-mono text-faint" style={{ fontSize: 10 }}>{fmtRemaining(m.remaining, displayCurrency)} to go</div>
             </div>
           </div>
         );

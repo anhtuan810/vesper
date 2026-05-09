@@ -23,15 +23,18 @@ export function currencySymbol(code: string): string {
   return CURRENCY_SYMBOL[code?.toUpperCase()] ?? code;
 }
 
-export function fmt(n: number, currency = "EUR"): string {
-  const sym = currencySymbol(currency);
+// Migration wrapper — callers being swapped to formatMoney(value, displayCurrency).
+// Kept during Phase B to avoid breaking any callsite missed in the sweep.
+export function fmt(n: number, _currency = "EUR"): string {
+  const sym = currencySymbol("EUR");
   if (n >= 1000000) return `${sym}${(n / 1000000).toFixed(2)}M`;
   if (n >= 1000) return `${sym}${(n / 1000).toFixed(1)}k`;
   return `${sym}${Math.round(n)}`;
 }
 
-export function fmtAmount(n: number, currency: string): string {
-  const sym = currencySymbol(currency);
+// Migration wrapper — callers swapped to formatMoney(value, displayCurrency).
+export function fmtAmount(n: number, _currency: string): string {
+  const sym = currencySymbol("EUR");
   if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1000) return `${sym}${Math.round(n).toLocaleString("en")}`;
   return `${sym}${Math.round(n)}`;

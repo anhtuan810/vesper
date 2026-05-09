@@ -10,7 +10,9 @@ import { PriceDisplay } from "@/components/PriceDisplay";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
 import { ContextNotePrompt } from "@/components/asset-detail/ContextNotePrompt";
-import { ACTION_STYLE, currencySymbol, fmt, formatDate } from "@/lib/utils";
+import { ACTION_STYLE, formatDate } from "@/lib/utils";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset, Mutation } from "@/lib/supabase";
 
 const PROP_TYPE_SELECT_STYLE: React.CSSProperties = {
@@ -110,9 +112,9 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
     }
   }, [patchField, fetchMutations]);
 
+  const displayCurrency = useDisplayCurrency();
   const equity = asset.value - (asset.mortgage_balance ?? 0);
   const hasMortgage = (asset.mortgage_balance ?? 0) > 0;
-  const sym = currencySymbol(asset.currency);
 
   return (
     <div className="min-h-screen bg-bg">
@@ -252,7 +254,7 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
             <InlineEdit
               display={
                 <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-                  {fmt(asset.value, asset.currency)}
+                  {formatMoney(asset.value, displayCurrency)}
                 </span>
               }
               rawValue={String(asset.value)}
@@ -288,7 +290,7 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
             Equity
           </div>
           <div className="font-serif font-light text-fg" style={{ fontSize: 42, letterSpacing: "-0.035em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}>
-            <PriceDisplay amount={equity} currency={asset.currency} />
+            <PriceDisplay amount={equity} displayCurrency={displayCurrency} />
           </div>
         </div>
 
@@ -298,7 +300,6 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
             <ValueComposition
               propertyValue={asset.value}
               mortgageBalance={asset.mortgage_balance!}
-              currency={asset.currency}
             />
           </div>
         )}
@@ -356,8 +357,8 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
                   {m.after_value != null && (
                     <div className="font-serif text-fg" style={{ fontSize: 14, fontWeight: 400, lineHeight: 1.3, margin: "3px 0 2px" }}>
                       {m.action === "add" && m.before_value != null
-                        ? `+${sym}${Math.round(m.after_value - m.before_value).toLocaleString()}`
-                        : `${sym}${Math.round(m.after_value).toLocaleString()}`}
+                        ? `+${formatMoney(m.after_value - m.before_value, displayCurrency)}`
+                        : formatMoney(m.after_value, displayCurrency)}
                     </div>
                   )}
                   {m.personal_context && (

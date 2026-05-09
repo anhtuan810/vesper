@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { fmt, pctChange } from "@/lib/utils";
+import { pctChange } from "@/lib/utils";
 import { MiniSparkline } from "@/components/MiniSparkline";
 import { AssetLogo } from "@/components/AssetLogo";
-import { usePriceHistory } from "@/lib/hooks";
+import { usePriceHistory, useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import type { LiveAsset, RealEstateAsset } from "@/lib/supabase";
 
 function subLine(asset: LiveAsset): string {
@@ -27,6 +28,7 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
   const chg = pctChange(asset.livePrice, asset.livePrev);
   const up = chg !== null && chg >= 0;
   const sub = subLine(asset);
+  const displayCurrency = useDisplayCurrency();
 
   return (
     <Link href={`/asset/${asset.id}`} className="block">
@@ -59,7 +61,7 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
 
         {/* Value + change */}
         <div className="text-right shrink-0">
-          <div className="font-mono text-[13px] font-medium text-fg">{fmt(asset.value, "EUR")}</div>
+          <div className="font-mono text-[13px] font-medium text-fg">{formatMoney(asset.value, displayCurrency)}</div>
           {chg !== null ? (
             <div
               className={`font-mono mt-0.5 ${up ? "text-positive" : "text-negative"}`}

@@ -11,6 +11,8 @@ import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
 import { ContextNotePrompt } from "@/components/asset-detail/ContextNotePrompt";
 import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL, currencySymbol } from "@/lib/utils";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import type { TradeableAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
@@ -88,6 +90,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
       : null;
 
   const sym = currencySymbol(asset.currency);
+  const displayCurrency = useDisplayCurrency();
 
   const typeLabel = TYPE_LABEL[asset.type] ?? asset.type;
   const showCountry = asset.type !== "crypto";
@@ -166,7 +169,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             className="font-serif font-light text-fg"
             style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}
           >
-            <PriceDisplay amount={currentValue} currency={asset.currency} />
+            <PriceDisplay amount={currentValue} displayCurrency={displayCurrency} />
           </div>
 
           {/* Change pill */}
@@ -186,7 +189,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
                 </span>
                 {dailyAbs !== null && (
                   <span className="text-dim" style={{ fontSize: 12 }}>
-                    {dailyAbs >= 0 ? "+" : ""}{currencySymbol(asset.currency)}{Math.abs(dailyAbs).toLocaleString("en", { maximumFractionDigits: 0 })} today
+                    {dailyAbs >= 0 ? "+" : ""}{formatMoney(dailyAbs, displayCurrency)} today
                   </span>
                 )}
               </>
@@ -259,7 +262,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             <InlineEdit
               display={
                 <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-                  {asset.buy_price != null ? `€${fmtPrice(asset.buy_price)}` : "—"}
+                  {asset.buy_price != null ? `${sym}${fmtPrice(asset.buy_price)}` : "—"}
                 </span>
               }
               rawValue={asset.buy_price != null ? String(asset.buy_price) : ""}
@@ -295,7 +298,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
               Live price
             </div>
             <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {livePrice != null ? `€${fmtPrice(livePrice)}` : "—"}
+              {livePrice != null ? formatMoney(livePrice, displayCurrency) : "—"}
             </div>
           </div>
 
@@ -364,8 +367,8 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
                 }
                 if (activityLine === null && m.after_value != null) {
                   activityLine = m.action === "add" && m.before_value != null
-                    ? `+${sym}${Math.round(m.after_value - m.before_value).toLocaleString()}`
-                    : `${sym}${Math.round(m.after_value).toLocaleString()}`;
+                    ? `+${formatMoney(m.after_value - m.before_value, displayCurrency)}`
+                    : formatMoney(m.after_value, displayCurrency);
                 }
 
                 return (

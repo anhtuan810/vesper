@@ -7,7 +7,9 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { getWarnings, fmt, computeNetWorth } from "@/lib/utils";
+import { getWarnings, computeNetWorth } from "@/lib/utils";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
@@ -19,6 +21,7 @@ export default function Dashboard() {
     assets, loading: assetsLoading, error: assetsError, refreshing,
     refreshPrices, refetchAssets,
   } = useAssets(user?.id);
+  const displayCurrency = useDisplayCurrency();
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
@@ -154,7 +157,7 @@ export default function Dashboard() {
               className="font-serif font-light text-fg leading-none mb-3"
               style={{ fontSize: 48, letterSpacing: "-0.035em", fontVariationSettings: "'opsz' 144" }}
             >
-              {fmt(0, "EUR")}
+              {formatMoney(0, displayCurrency)}
             </div>
             <div className="text-sm text-dim mb-2">No positions yet</div>
             <p className="text-faint text-xs max-w-xs leading-relaxed mb-8">
