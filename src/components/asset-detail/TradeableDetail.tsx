@@ -97,7 +97,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
 
         {/* Back */}
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.back()}
           className="flex items-center gap-2 font-mono text-dim mb-2"
           style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", paddingBottom: 8 }}
         >
@@ -220,7 +220,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
               rawValue={asset.units != null ? String(asset.units) : ""}
               placeholder="e.g. 10.5"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%", justifyContent: "space-between", alignItems: "center" }}
+              displayStyle={{ minHeight: 40, width: "100%", justifyContent: "space-between", alignItems: "center" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 if (raw.trim() === "") return "";      // silent revert
@@ -264,7 +264,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
               rawValue={asset.buy_price != null ? String(asset.buy_price) : ""}
               placeholder="e.g. 150.00"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%", justifyContent: "space-between", alignItems: "center" }}
+              displayStyle={{ minHeight: 40, width: "100%", justifyContent: "space-between", alignItems: "center" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 const trimmed = raw.trim();
@@ -422,7 +422,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
         {/* CTAs */}
         <div className="pt-4 pb-2">
           <button
-            onClick={() => router.push("/chat")}
+            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Tell me about my ${asset.name} position`)}`)}
             className="w-full font-mono text-center"
             style={{
               padding: "11px 0", borderRadius: 12,

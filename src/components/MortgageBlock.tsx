@@ -26,7 +26,7 @@ const TYPE_SELECT_STYLE: React.CSSProperties = {
   backgroundRepeat: "no-repeat",
   backgroundPosition: "right 6px center",
   outline: "none",
-  minHeight: 32,
+  minHeight: 40,
   width: "100%",
 };
 
@@ -154,7 +154,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
               rawValue={balance != null ? String(balance) : ""}
               placeholder="e.g. 250000"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 if (raw.trim() === "") return "";
@@ -180,7 +180,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
               rawValue={rate != null ? String(rate) : ""}
               placeholder="e.g. 3.5"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 if (raw.trim() === "") return "";
@@ -207,7 +207,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
               rawValue={payment != null ? String(payment) : ""}
               placeholder="e.g. 1200"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 if (raw.trim() === "") return "";
@@ -254,7 +254,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
               rawValue={startStr ?? ""}
               placeholder="YYYY-MM-DD"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 13, fontWeight: 500 }}
               onSave={async (raw) => {
                 const t = raw.trim();
@@ -272,7 +272,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
               rawValue={endStr ?? ""}
               placeholder="YYYY-MM-DD"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 13, fontWeight: 500 }}
               onSave={async (raw) => {
                 const t = raw.trim();

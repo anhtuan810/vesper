@@ -253,11 +253,13 @@ function isInPeriod(m: Mutation, period: PeriodKey, customFrom: string, customTo
     case "3months": return date >= new Date(now.getFullYear(), now.getMonth() - 3, 1);
     case "year": return date.getFullYear() === now.getFullYear();
     case "custom": {
-      if (customFrom && date < new Date(customFrom + "-01")) return false;
-      if (customTo) {
-        const to = new Date(customTo + "-01");
-        to.setMonth(to.getMonth() + 1);
-        if (date >= to) return false;
+      let from = customFrom, to = customTo;
+      if (from && to && from > to) [from, to] = [to, from];
+      if (from && date < new Date(from + "-01")) return false;
+      if (to) {
+        const toDate = new Date(to + "-01");
+        toDate.setMonth(toDate.getMonth() + 1);
+        if (date >= toDate) return false;
       }
       return true;
     }
@@ -276,8 +278,10 @@ function getPeriodLabel(period: PeriodKey, customFrom: string, customTo: string)
     }
     case "year": return String(now.getFullYear());
     case "custom": {
-      const f = customFrom ? fmtDate(new Date(customFrom + "-01"), { month: "short", year: "numeric" }) : "";
-      const t = customTo ? fmtDate(new Date(customTo + "-01"), { month: "short", year: "numeric" }) : "";
+      let from = customFrom, to = customTo;
+      if (from && to && from > to) [from, to] = [to, from];
+      const f = from ? fmtDate(new Date(from + "-01"), { month: "short", year: "numeric" }) : "";
+      const t = to ? fmtDate(new Date(to + "-01"), { month: "short", year: "numeric" }) : "";
       return f === t ? f : `${f} – ${t}`;
     }
     default: return "";
@@ -624,11 +628,22 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       {/* On this day */}
       {anniversaryEntry && (
         <div className="bg-surface rounded-2xl border border-border p-4 mb-6">
-          <div
-            className="font-serif italic text-dim mb-3"
-            style={{ fontSize: 13, fontVariationSettings: "'opsz' 144" }}
-          >
-            On this day
+          <div className="flex items-center justify-between mb-3">
+            <div
+              className="font-serif italic text-dim"
+              style={{ fontSize: 13, fontVariationSettings: "'opsz' 144" }}
+            >
+              On this day
+            </div>
+            <div
+              className="flex items-center gap-1 font-mono uppercase text-accent"
+              style={{ fontSize: 9, letterSpacing: "0.14em" }}
+            >
+              Jump to entry
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
           </div>
           <button
             onClick={() => jumpToEntry(anniversaryEntry.mutation)}

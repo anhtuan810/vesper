@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, useDisplayCurrency } from "@/lib/hooks";
+import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { FormatText } from "@/components/FormatText";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 
@@ -10,7 +10,9 @@ export default function ChatPage() {
   const router = useRouter();
   const { user } = useUser();
   const displayCurrency = useDisplayCurrency();
-  const chatSuggestions = getChatSuggestions(displayCurrency);
+  const { assets } = useAssets(user?.id);
+  const hasPortfolio = assets.length > 0;
+  const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
   const {
     messages, input, setInput, loading, thinking, remaining,
     imagePreview, imageData, canSend, send, clearImage, handlePaste, handleFile,
@@ -80,7 +82,9 @@ export default function ChatPage() {
           {messages.length === 0 && (
             <div>
               <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>
-                Ask about your portfolio, or paste a screenshot of your broker app.
+                {hasPortfolio
+                  ? "Ask about your portfolio, or paste a screenshot of your broker app."
+                  : "Welcome. Tell me what you own — stocks, property, savings, anything. List them out, or paste a screenshot of your broker app."}
               </div>
               {chatSuggestions.map((s) => (
                 <button
@@ -132,7 +136,26 @@ export default function ChatPage() {
                   minWidth: 0,
                 }}
               >
-                {msg.from === "assistant" ? <FormatText text={msg.text} /> : msg.text}
+                {msg.from === "assistant" ? (
+                  <FormatText text={msg.text} />
+                ) : (
+                  <>
+                    {msg.imagePreview && (
+                      <img
+                        src={msg.imagePreview}
+                        alt=""
+                        style={{
+                          display: "block",
+                          maxWidth: "100%",
+                          maxHeight: 200,
+                          borderRadius: 10,
+                          marginBottom: msg.text && msg.text !== "Screenshot uploaded" ? 8 : 0,
+                        }}
+                      />
+                    )}
+                    {(!msg.imagePreview || (msg.text && msg.text !== "Screenshot uploaded")) && msg.text}
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -180,6 +203,17 @@ export default function ChatPage() {
               {remaining === 0 ? "Limit reached" : `${remaining} messages left today`}
             </div>
           )}
+          {input.length >= 400 && (
+            <div
+              className="absolute font-mono"
+              style={{
+                top: -20, left: 16, fontSize: 10,
+                color: input.length >= 500 ? "var(--negative)" : "var(--accent)",
+              }}
+            >
+              {input.length}/500
+            </div>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -214,7 +248,14 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }}
             onPaste={handlePaste}
-            placeholder={imageData ? "Add a note or send..." : "Ask or paste a screenshot..."}
+            maxLength={500}
+            placeholder={
+              remaining === 0
+                ? "Daily limit reached — back tomorrow"
+                : imageData
+                ? "Add a note or send..."
+                : "Ask or paste a screenshot..."
+            }
             className="flex-1 outline-none"
             style={{
               background: "var(--surface-elev)",

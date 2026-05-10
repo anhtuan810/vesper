@@ -44,12 +44,6 @@ export function NavBar({
     user?.email?.split("@")[0] ||
     null;
 
-  const dotColor =
-    totalSymbols > 0 && liveCount === totalSymbols
-      ? "var(--positive)"
-      : liveCount > 0
-      ? "var(--accent)"
-      : "var(--text-faint)";
 
   return (
     <nav
@@ -60,21 +54,28 @@ export function NavBar({
         {/* Left: icon · name · desktop tabs */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 min-w-0">
-            {/* TODO: replace with proper Vesper icon asset */}
             <div
-              className="font-serif text-fg flex items-center justify-center shrink-0"
+              className="flex items-center justify-center shrink-0"
               style={{
-                width: 26,
-                height: 26,
-                borderRadius: 6,
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                fontSize: 14,
-                fontWeight: 400,
-                fontVariationSettings: "'opsz' 144",
+                width: 26, height: 26, borderRadius: 6,
+                background: "var(--accent-soft)",
+                border: "1px solid rgba(212,165,116,0.18)",
+                position: "relative",
               }}
             >
-              V
+              <span
+                className="font-serif text-accent"
+                style={{ fontSize: 14, fontWeight: 400, fontVariationSettings: "'opsz' 144", lineHeight: 1 }}
+              >
+                V
+              </span>
+              <span
+                style={{
+                  position: "absolute", top: 5, right: 5,
+                  width: 3, height: 3, borderRadius: "50%",
+                  background: "var(--accent)", boxShadow: "0 0 4px var(--accent)",
+                }}
+              />
             </div>
             {displayName && (
               <span
@@ -153,17 +154,25 @@ export function NavBar({
               <polyline points="1 20 1 14 7 14" />
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
-            <span
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 4,
-                width: 4,
-                height: 4,
-                borderRadius: "50%",
-                background: dotColor,
-              }}
-            />
+            {(() => {
+              const dotState = totalSymbols > 0 && liveCount === totalSymbols
+                ? { color: "var(--positive)", label: `All ${totalSymbols} prices live` }
+                : liveCount > 0
+                ? { color: "var(--accent)", label: `${liveCount} of ${totalSymbols} prices live` }
+                : { color: "var(--text-faint)", label: "Prices unavailable" };
+              return (
+                <span
+                  title={dotState.label}
+                  aria-label={dotState.label}
+                  role="status"
+                  style={{
+                    position: "absolute", top: 4, right: 4,
+                    width: 4, height: 4, borderRadius: "50%",
+                    background: dotState.color,
+                  }}
+                />
+              );
+            })()}
           </button>
 
           <Link

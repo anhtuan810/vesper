@@ -95,11 +95,12 @@ export async function POST(req: NextRequest) {
       ...zeroDeltaOnes.map((m) => backfillMutation(m, true)),
     ]);
 
-    await supabase
-      .from("users")
-      .update({ last_backfill_at: new Date().toISOString() })
-      .eq("id", userId);
-
+    if (updated > 0) {
+      await supabase
+        .from("users")
+        .update({ last_backfill_at: new Date().toISOString() })
+        .eq("id", userId);
+    }
     return NextResponse.json({ updated });
   } catch (err) {
     console.error("Backfill error:", err);

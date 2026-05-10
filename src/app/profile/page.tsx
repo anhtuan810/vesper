@@ -177,7 +177,7 @@ export default function ProfilePage() {
                     rawValue={profileData[key] ?? ""}
                     placeholder="(empty)"
                     affordance
-                    displayStyle={{ minHeight: 32, width: "100%" }}
+                    displayStyle={{ minHeight: 40, width: "100%" }}
                     inputStyle={{ fontSize: 13 }}
                     onSave={async (raw) => {
                       const trimmed = raw.trim();

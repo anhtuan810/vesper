@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { useUser } from "@/lib/hooks";
+import { useUser, useSignOut } from "@/lib/hooks";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
 
@@ -21,6 +21,7 @@ const TOAST_KEY = "vesper.currency.toastSeen";
 export default function SettingsPage() {
   const router = useRouter();
   const { user } = useUser();
+  const signOut = useSignOut();
   const [selected, setSelected] = useState<DisplayCurrency>("EUR");
   const [loadingCard, setLoadingCard] = useState<DisplayCurrency | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -174,6 +175,16 @@ export default function SettingsPage() {
             {error}
           </div>
         )}
+
+        <div className="mt-12 flex justify-center">
+          <button
+            onClick={signOut}
+            className="font-mono text-faint hover:text-dim border border-border hover:bg-surface transition-colors"
+            style={{ fontSize: 11, padding: "8px 20px", borderRadius: 8 }}
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       {toastVisible && (

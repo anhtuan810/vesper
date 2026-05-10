@@ -181,38 +181,40 @@ export function PropertyMap({ asset }: Props) {
 
   // No lat/lng: empty placeholder with "Add address" CTA
   if (!asset.latitude || !asset.longitude) {
+    const hasAddress = !!asset.address?.trim();
     return (
       <div
         style={{
           ...containerStyle,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: 12,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexDirection: "column", gap: 12,
         }}
       >
         <div
           className="font-mono"
-          style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em" }}
+          style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em", textAlign: "center", padding: "0 24px" }}
         >
-          No address on file
+          {hasAddress
+            ? "Couldn't locate this address on the map"
+            : "No address on file"}
         </div>
+        {hasAddress && (
+          <div className="font-mono text-faint" style={{ fontSize: 10, padding: "0 24px", textAlign: "center" }}>
+            {asset.address}
+          </div>
+        )}
         <button
-          onClick={() => router.push("/chat")}
+          onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Update the address for ${asset.name}`)}`)}
           style={{
-            background: "none",
-            border: "1px solid var(--border-strong)",
-            borderRadius: 8,
-            padding: "5px 14px",
-            cursor: "pointer",
+            background: "none", border: "1px solid var(--border-strong)",
+            borderRadius: 8, padding: "5px 14px", cursor: "pointer",
           }}
         >
           <span
             className="font-mono"
             style={{ fontSize: 9, color: "var(--accent)", letterSpacing: "0.12em", textTransform: "uppercase" }}
           >
-            Add address
+            {hasAddress ? "Update address" : "Add address"}
           </span>
         </button>
         {photoHint}

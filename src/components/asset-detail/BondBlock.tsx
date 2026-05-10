@@ -59,7 +59,7 @@ export function BondBlock({ asset, onUpdate }: Props) {
               rawValue={issuer ?? ""}
               placeholder="e.g. Netherlands"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 13 }}
               onSave={async (raw) => {
                 const v = raw.trim() || null;
@@ -83,7 +83,7 @@ export function BondBlock({ asset, onUpdate }: Props) {
               rawValue={coupon_rate != null ? String(coupon_rate) : ""}
               placeholder="e.g. 3.5"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 14, fontWeight: 500 }}
               onSave={async (raw) => {
                 const t = raw.trim();
@@ -110,7 +110,7 @@ export function BondBlock({ asset, onUpdate }: Props) {
               rawValue={maturity_date ?? ""}
               placeholder="YYYY-MM-DD"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 13, fontWeight: 500 }}
               onSave={async (raw) => {
                 const t = raw.trim();
@@ -135,7 +135,7 @@ export function BondBlock({ asset, onUpdate }: Props) {
               rawValue={isin ?? ""}
               placeholder="e.g. NL0009446418"
               affordance
-              displayStyle={{ minHeight: 32, width: "100%" }}
+              displayStyle={{ minHeight: 40, width: "100%" }}
               inputStyle={{ fontSize: 11, fontWeight: 500 }}
               onSave={async (raw) => {
                 const v = raw.trim().toUpperCase() || null;

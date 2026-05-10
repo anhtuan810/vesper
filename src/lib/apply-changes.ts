@@ -243,8 +243,8 @@ export async function applyPortfolioChanges({
             if (droppedLabels.length > 0) {
               const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
               const warning = succeededLabels.length === 0
-                ? `Exchange rate unavailable for ${nativeCurrency} — ${droppedLabels.join(" and ")} not updated. Try again in a moment.`
-                : `Updated ${succeededLabels.join(" and ")}. ${cap(droppedLabels.join(" and "))} not updated — exchange rate unavailable for ${nativeCurrency}.`;
+                ? `${cap(droppedLabels.join(" and "))} not updated — couldn't get a current ${nativeCurrency} rate. Try again in a moment.`
+                : `Updated ${succeededLabels.join(" and ")}. ${cap(droppedLabels.join(" and "))} not updated — ${nativeCurrency} rate unavailable. Try again in a moment.`;
               fxWarnings.push(warning);
             }
           }

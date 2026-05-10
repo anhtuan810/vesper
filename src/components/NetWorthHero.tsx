@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { formatMoney, formatMoneyParts } from "@/lib/money";
-import { useDisplayCurrency } from "@/lib/hooks";
+import { useDisplayCurrencyState } from "@/lib/hooks";
 
 interface NetWorthHeroProps {
   netTotal: number;
@@ -32,10 +32,27 @@ function useMonthlyChange(currentNet: number) {
 }
 
 export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroProps) {
-  const displayCurrency = useDisplayCurrency();
+  const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
   const change = useMonthlyChange(netTotal);
   const up = change ? change.pct >= 0 : true;
   const parts = formatMoneyParts(netTotal, displayCurrency);
+
+  if (!currencyLoaded) {
+    return (
+      <div>
+        <div
+          className="font-mono uppercase text-faint mb-3"
+          style={{ fontSize: 10, letterSpacing: "0.2em" }}
+        >
+          Net worth
+        </div>
+        <div
+          className="bg-surface-elev rounded-lg animate-pulse"
+          style={{ height: 56, width: "60%", maxWidth: 280 }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -54,11 +71,12 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.12em" }}>
+          {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
           <span
             className="text-dim"
             style={{ fontSize: "0.55em", lineHeight: 1, paddingTop: "0.07em" }}
           >
-            {parts.sign}{parts.symbol}
+            {parts.symbol}
           </span>
           <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
         </span>

@@ -85,7 +85,7 @@ export function NetWorthChart({ currentNet }: Props) {
       ? H - pad - ((values[values.length - 1] - min) / vRange) * (H - pad * 2)
       : H / 2;
 
-  const showEmpty = !loading && series.length < 7;
+  const showEmpty = !loading && series.length < 2;
 
   return (
     <div>
@@ -128,24 +128,22 @@ export function NetWorthChart({ currentNet }: Props) {
           <div
             style={{
               height: H,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 4,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              gap: 6,
             }}
           >
             <div
               className="font-mono"
               style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: "0.04em" }}
             >
-              Building your history
+              Day one
             </div>
             <div
               className="font-mono"
-              style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", maxWidth: 240 }}
+              style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}
             >
-              Vesper logs your net worth daily. Your trend will appear here in a few days.
+              Vesper logs your net worth daily. Your trajectory will plot here as snapshots accumulate.
             </div>
           </div>
         ) : loading ? (

@@ -81,7 +81,7 @@ export function StaticDetail({ asset: initialAsset }: Props) {
 
         {/* Back */}
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.back()}
           className="flex items-center gap-2 font-mono text-dim mb-2"
           style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", paddingBottom: 8 }}
         >
@@ -114,7 +114,7 @@ export function StaticDetail({ asset: initialAsset }: Props) {
                 rawValue={asset.name}
                 placeholder="e.g. Emergency fund"
                 affordance
-                displayStyle={{ minHeight: 32 }}
+                displayStyle={{ minHeight: 40 }}
                 inputStyle={{ fontSize: 18, fontFamily: "var(--serif)" }}
                 onSave={async (raw) => {
                   const v = raw.trim();
@@ -270,7 +270,7 @@ export function StaticDetail({ asset: initialAsset }: Props) {
         {/* CTAs */}
         <div style={{ paddingTop: 22 }}>
           <button
-            onClick={() => router.push("/chat")}
+            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Tell me about ${asset.name}`)}`)}
             className="font-mono text-center"
             style={{ width: "100%", padding: "11px 0", borderRadius: 12, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", background: "var(--accent)", color: "var(--bg)", border: "none", cursor: "pointer" }}
           >

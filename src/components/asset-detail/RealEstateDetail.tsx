@@ -123,14 +123,14 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
         {/* Top bar */}
         <div className="flex justify-between items-center px-4" style={{ paddingBottom: 14 }}>
           <button
-            onClick={() => router.push('/')}
-            className="flex items-center gap-1.5 font-mono text-dim"
+            onClick={() => router.back()}
+            className="flex items-center gap-2 font-mono text-dim"
             style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M15 18l-6-6 6-6" />
             </svg>
-            Property
+            Back
           </button>
           <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -155,7 +155,7 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
             rawValue={asset.name}
             placeholder="e.g. Eindhoven"
             affordance
-            displayStyle={{ minHeight: 32 }}
+            displayStyle={{ minHeight: 40 }}
             inputStyle={{ fontSize: 18, fontFamily: "var(--serif)" }}
             onSave={async (raw) => {
               const v = raw.trim();
@@ -386,7 +386,7 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
         {/* CTAs */}
         <div style={{ padding: "22px 22px 4px" }}>
           <button
-            onClick={() => router.push("/chat")}
+            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Tell me about my property in ${asset.name}`)}`)}
             className="font-mono text-center"
             style={{ width: "100%", padding: "11px 0", borderRadius: 12, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", background: "var(--accent)", color: "var(--bg)", border: "none", cursor: "pointer" }}
           >

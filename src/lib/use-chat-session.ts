@@ -6,14 +6,36 @@ import { formatMoney, type DisplayCurrency } from "@/lib/money";
 export interface ChatMessage {
   from: "user" | "assistant";
   text: string;
+  imagePreview?: string;
 }
 
-const SUGGESTION_AMOUNT_EUR = 10_000;
+const ROUND_AMOUNT: Record<DisplayCurrency, number> = {
+  EUR: 10_000,
+  USD: 10_000,
+  GBP: 10_000,
+};
 
-export function getChatSuggestions(displayCurrency: DisplayCurrency): string[] {
+const ROUND_SYMBOL: Record<DisplayCurrency, string> = {
+  EUR: "€", USD: "$", GBP: "£",
+};
+
+export function getChatSuggestions(
+  displayCurrency: DisplayCurrency,
+  hasPortfolio: boolean,
+): string[] {
+  if (!hasPortfolio) {
+    return [
+      "List the stocks I own",
+      "Add a property",
+      "I have €25,000 in savings",
+      "Paste a broker screenshot",
+    ];
+  }
+  const sym = ROUND_SYMBOL[displayCurrency];
+  const amt = ROUND_AMOUNT[displayCurrency].toLocaleString("en");
   return [
     "How diversified am I?",
-    `Add ${formatMoney(SUGGESTION_AMOUNT_EUR, displayCurrency)} in S&P 500 ETF`,
+    `Add ${sym}${amt} in S&P 500 ETF`,
     "What is my largest position?",
     "What if markets drop 20%?",
   ];
@@ -98,7 +120,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
   useEffect(() => {
     if (!userId) return;
-    try { localStorage.setItem(storageKey(userId), JSON.stringify({ messages, ts: Date.now() })); } catch {}
+    try {
+      const stripped = messages.map(({ from, text }) => ({ from, text }));
+      localStorage.setItem(storageKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
+    } catch {}
   }, [messages, userId]);
 
   const clearImage = useCallback(() => {
@@ -143,10 +168,13 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     if ((!text && !imageData) || loading || !userId) return;
 
     const displayText = text || "Screenshot uploaded";
+    const userMsg: ChatMessage = { from: "user", text: displayText };
+    if (imagePreview) userMsg.imagePreview = imagePreview;
+
     setInput("");
     setLoading(true);
     setThinking(true);
-    setMessages((prev) => [...prev, { from: "user", text: displayText }]);
+    setMessages((prev) => [...prev, userMsg]);
 
     const payload: { message: string; imageData?: { base64: string; mediaType: string } } = { message: text };
     if (imageData) payload.imageData = imageData;
@@ -164,7 +192,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       if (!res.ok) {
         const errText = res.status === 401
           ? "Session expired. Please refresh the page."
-          : data.message || "Something went wrong. Please try again.";
+          : data.message || data.error || "Something went wrong. Please try again.";
         setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
         setLoading(false);
         return;
@@ -193,7 +221,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     remaining,
     imagePreview,
     imageData,
-    canSend: !loading && !!(input.trim() || imageData),
+    canSend: !loading && !!(input.trim() || imageData) && (remaining === null || remaining > 0),
     send,
     clearImage,
     handlePaste,

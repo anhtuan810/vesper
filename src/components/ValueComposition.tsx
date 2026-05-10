@@ -10,9 +10,13 @@ interface Props {
 
 export function ValueComposition({ propertyValue, mortgageBalance }: Props) {
   const displayCurrency = useDisplayCurrency();
-  const equity = Math.max(0, propertyValue - mortgageBalance);
-  const equityPct = propertyValue > 0 ? (equity / propertyValue) * 100 : 100;
-  const mortgagePct = 100 - equityPct;
+  const equity = propertyValue - mortgageBalance;
+  const isNegative = equity < 0;
+
+  const equityPctVisual = propertyValue > 0
+    ? Math.max(0, Math.min(100, (equity / propertyValue) * 100))
+    : 100;
+  const mortgagePctVisual = 100 - equityPctVisual;
 
   return (
     <div
@@ -20,7 +24,7 @@ export function ValueComposition({ propertyValue, mortgageBalance }: Props) {
       style={{
         padding: "14px 16px",
         background: "var(--surface)",
-        border: "1px solid var(--border)",
+        border: `1px solid ${isNegative ? "rgba(201,122,110,0.25)" : "var(--border)"}`,
         borderRadius: 14,
       }}
     >
@@ -29,23 +33,33 @@ export function ValueComposition({ propertyValue, mortgageBalance }: Props) {
         style={{ fontSize: 9, letterSpacing: "0.18em", marginBottom: 10 }}
       >
         Value composition
+        {isNegative && (
+          <span
+            className="font-mono"
+            style={{
+              marginLeft: 8, padding: "1px 6px", borderRadius: 3,
+              background: "rgba(201,122,110,0.12)", color: "var(--negative)",
+              letterSpacing: "0.12em",
+            }}
+          >
+            Underwater
+          </span>
+        )}
       </div>
 
-      {/* Stacked bar */}
       <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", gap: 2 }}>
         <div
           style={{
-            width: `${equityPct}%`,
+            width: `${equityPctVisual}%`,
             height: "100%",
-            background: "var(--accent)",
+            background: isNegative ? "var(--negative)" : "var(--accent)",
             borderRadius: "3px 0 0 3px",
           }}
         />
-        {mortgagePct > 0 && (
+        {mortgagePctVisual > 0 && (
           <div
             style={{
-              flex: 1,
-              height: "100%",
+              flex: 1, height: "100%",
               background: "rgba(255,255,255,0.08)",
               borderRadius: "0 3px 3px 0",
             }}
@@ -53,17 +67,26 @@ export function ValueComposition({ propertyValue, mortgageBalance }: Props) {
         )}
       </div>
 
-      {/* Rows */}
       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 7 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <span
-              style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }}
+              style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: isNegative ? "var(--negative)" : "var(--accent)",
+                display: "inline-block",
+              }}
             />
             <span style={{ fontSize: 12, color: "var(--text)" }}>Equity</span>
           </div>
-          <span className="font-mono" style={{ fontSize: 11, color: "var(--text)" }}>
-            {formatMoney(equity, displayCurrency)}
+          <span
+            className="font-mono"
+            style={{
+              fontSize: 11,
+              color: isNegative ? "var(--negative)" : "var(--text)",
+            }}
+          >
+            {isNegative ? "−" : ""}{formatMoney(Math.abs(equity), displayCurrency)}
           </span>
         </div>
 
@@ -82,9 +105,7 @@ export function ValueComposition({ propertyValue, mortgageBalance }: Props) {
         <div
           style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
-            paddingTop: 6,
-            borderTop: "1px solid var(--border)",
-            marginTop: 2,
+            paddingTop: 6, borderTop: "1px solid var(--border)", marginTop: 2,
           }}
         >
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Property value</span>

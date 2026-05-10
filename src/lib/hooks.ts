@@ -289,12 +289,18 @@ export function useFxRate(currency: DisplayCurrency): { rate: number; freshness:
 }
 
 export function useDisplayCurrency(): DisplayCurrency {
-  const { user } = useUser();
+  return useDisplayCurrencyState().currency;
+}
+
+export function useDisplayCurrencyState(): { currency: DisplayCurrency; loaded: boolean } {
+  const { user, loading: userLoading } = useUser();
   const [currency, setCurrency] = useState<DisplayCurrency>("EUR");
+  const [loaded, setLoaded] = useState(false);
   const supabase = createBrowserSupabase();
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (userLoading) return;
+    if (!user?.id) { setLoaded(true); return; }
     supabase
       .from("users")
       .select("display_currency")
@@ -304,14 +310,16 @@ export function useDisplayCurrency(): DisplayCurrency {
         if (data?.display_currency && isSupportedCurrency(data.display_currency)) {
           setCurrency(data.display_currency as DisplayCurrency);
         }
+        setLoaded(true);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, userLoading]);
 
-  // Trigger rate fetch and populate module-level cache as a side effect.
-  useFxRate(currency);
+  const { freshness } = useFxRate(currency);
 
-  return currency;
+  const fullyLoaded = loaded && (currency === "EUR" || freshness !== "unavailable");
+
+  return { currency, loaded: fullyLoaded };
 }
 
 export function useSignOut() {

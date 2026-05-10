@@ -27,15 +27,12 @@ export function PriceDisplay({ amount, currency = "EUR", compact = false, displa
     const parts = formatMoneyParts(amount, displayCurrency);
     return (
       <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.12em" }}>
+        {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
         <span
           className="text-dim"
-          style={{
-            fontSize: "0.55em",
-            lineHeight: 1,
-            paddingTop: "0.07em",
-          }}
+          style={{ fontSize: "0.55em", lineHeight: 1, paddingTop: "0.07em" }}
         >
-          {parts.sign}{parts.symbol}
+          {parts.symbol}
         </span>
         <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
       </span>

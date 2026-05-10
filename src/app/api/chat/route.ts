@@ -31,20 +31,20 @@ export async function POST(req: NextRequest) {
     const { message, imageData } = await req.json();
 
     if (!message && !imageData) {
-      return NextResponse.json({ error: "No message provided" }, { status: 400 });
+      return NextResponse.json({ message: "No message provided" }, { status: 400 });
     }
 
     if (message && message.length > 500) {
-      return NextResponse.json({ error: "Message too long (500 char max)" }, { status: 400 });
+      return NextResponse.json({ message: "Message is too long — keep it under 500 characters." }, { status: 400 });
     }
 
     // ~7 MB base64 ≈ 5 MB binary — matches the client-side paste limit
     if (imageData?.base64 && imageData.base64.length > 7_000_000) {
-      return NextResponse.json({ error: "Image too large (5 MB max)" }, { status: 400 });
+      return NextResponse.json({ message: "Screenshot is too large — under 5 MB please." }, { status: 400 });
     }
 
     if (imageData && !ALLOWED_IMAGE_TYPES.has(imageData.mediaType)) {
-      return NextResponse.json({ error: "Unsupported image type" }, { status: 400 });
+      return NextResponse.json({ message: "That image format isn't supported. Try PNG, JPG, GIF, or WebP." }, { status: 400 });
     }
 
     const supabase = createServerSupabase();
