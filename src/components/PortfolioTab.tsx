@@ -57,22 +57,30 @@ export function PortfolioTab({
 
       {/* Allocation */}
       <div className="bg-surface rounded-2xl border border-border p-5 sm:p-8 mb-4">
-        <div className="flex items-baseline justify-between" style={{ marginBottom: 16 }}>
-          <div
-            className="font-serif text-fg"
-            style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
-          >
-            Allocation
+        <div style={{ marginBottom: 16 }}>
+          <div className="flex items-baseline justify-between">
+            <div
+              className="font-serif text-fg"
+              style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
+            >
+              Gross allocation
+            </div>
+            <button
+              onClick={() => {
+                document.getElementById("positions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="font-mono uppercase"
+              style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.04em", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+            >
+              Details
+            </button>
           </div>
-          <button
-            onClick={() => {
-              document.getElementById("positions")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            className="font-mono uppercase"
-            style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.04em", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+          <div
+            className="font-mono mt-1"
+            style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.04em" }}
           >
-            Details
-          </button>
+            By position value, before mortgages
+          </div>
         </div>
         <AllocationBar items={allocationItems} total={grossTotal} />
       </div>

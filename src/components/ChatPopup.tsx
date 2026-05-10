@@ -22,13 +22,14 @@ export default function ChatPopup({
   const chatSuggestions = getChatSuggestions(displayCurrency);
   const {
     messages, input, setInput, loading, thinking, remaining,
-    imagePreview, imageData, canSend, send, clearImage, handlePaste,
+    imagePreview, imageData, canSend, send, clearImage, handlePaste, handleFile,
   } = useChatSession({ userId, onPortfolioUpdate, onNewMessage });
 
   const [size, setSize] = useState({ width: 400, height: 560 });
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -309,6 +310,34 @@ export default function ChatPopup({
             {remaining === 0 ? "Limit reached" : `${remaining} messages left today`}
           </div>
         )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+            e.target.value = "";
+          }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Attach image"
+          className="flex items-center justify-center shrink-0 transition-colors text-faint hover:text-dim"
+          style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="M21 15l-5-5L5 21" />
+          </svg>
+        </button>
         <input
           ref={inputRef}
           value={input}

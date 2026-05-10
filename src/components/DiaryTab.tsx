@@ -450,6 +450,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       if (!trimmedQuery) return true;
       return (
         (m.asset_name ?? "").toLowerCase().includes(trimmedQuery) ||
+        (m.symbol ?? "").toLowerCase().includes(trimmedQuery) ||
         getContext(m).toLowerCase().includes(trimmedQuery)
       );
     });

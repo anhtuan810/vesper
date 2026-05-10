@@ -136,11 +136,13 @@ export default function ProfilePage() {
         {/* Stat cards */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Conversations", value: mutationCount },
+            { label: "Activity entries", value: mutationCount },
             { label: "Profile fields", value: Object.keys(profileData).length },
             {
               label: "Member since",
-              value: new Date().toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
+              value: user?.created_at
+                ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+                : "—",
             },
           ].map(({ label, value }) => (
             <div key={label} className="bg-surface rounded-xl p-4 border border-border">

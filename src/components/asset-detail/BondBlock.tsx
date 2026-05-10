@@ -1,8 +1,6 @@
 "use client";
 
 import { formatDate } from "@/lib/utils";
-import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney } from "@/lib/money";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import type { BondsAsset } from "@/lib/supabase";
 
@@ -34,9 +32,7 @@ function computeTimeToMaturity(maturityDateStr: string): string {
 }
 
 export function BondBlock({ asset, onUpdate }: Props) {
-  const displayCurrency = useDisplayCurrency();
-  const { issuer, coupon_rate, maturity_date, isin, value } = asset;
-  const annualIncome = coupon_rate != null ? value * (coupon_rate / 100) : null;
+  const { issuer, coupon_rate, maturity_date, isin } = asset;
   const timeToMaturity = maturity_date ? computeTimeToMaturity(maturity_date) : null;
 
   const CELL = { padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 };
@@ -161,20 +157,10 @@ export function BondBlock({ asset, onUpdate }: Props) {
           background: "var(--surface)",
           border: "1px solid var(--border)",
           borderRadius: 12,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "14px 18px",
         }}
       >
-        {[
-          { label: "Time to maturity", value: timeToMaturity ?? "—" },
-          { label: "Annual income", value: annualIncome != null ? formatMoney(annualIncome, displayCurrency) : "—" },
-        ].map(({ label, value }) => (
-          <div key={label}>
-            <div className="font-mono uppercase text-faint" style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 4 }}>{label}</div>
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{value}</div>
-          </div>
-        ))}
+        <div className="font-mono uppercase text-faint" style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 4 }}>Time to maturity</div>
+        <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{timeToMaturity ?? "—"}</div>
       </div>
     </div>
   );

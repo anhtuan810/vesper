@@ -26,7 +26,8 @@ const NUMERIC_NON_NEG = new Set([
 ]);
 const NUMERIC_ANY_SIGN = new Set(["latitude", "longitude"]);
 const STRING_200 = new Set(["name", "address", "symbol"]);
-const STRING_8 = new Set(["currency", "country"]);
+const SUPPORTED_CURRENCIES = new Set(["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "HKD"]);
+const STRING_8 = new Set(["country"]);
 const DATE_FIELDS = new Set(["buy_date", "mortgage_start_date", "mortgage_end_date"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MORTGAGE_TYPES = new Set(["annuity", "linear", "interest_only"]);
@@ -80,6 +81,13 @@ export async function PATCH(
       } else if (STRING_200.has(k)) {
         if (typeof v !== "string" || v.trim().length === 0 || v.trim().length > 200)
           return NextResponse.json({ error: `${k} must be a non-empty string (max 200 chars)` }, { status: 400 });
+      } else if (k === "currency") {
+        if (typeof v !== "string")
+          return NextResponse.json({ error: `currency must be one of: ${[...SUPPORTED_CURRENCIES].join(", ")}` }, { status: 400 });
+        const normalized = v.trim().toUpperCase();
+        if (!SUPPORTED_CURRENCIES.has(normalized))
+          return NextResponse.json({ error: `currency must be one of: ${[...SUPPORTED_CURRENCIES].join(", ")}` }, { status: 400 });
+        updateData[k] = normalized;
       } else if (STRING_8.has(k)) {
         if (typeof v !== "string" || v.trim().length === 0 || v.trim().length > 8)
           return NextResponse.json({ error: `${k} must be a non-empty string (max 8 chars)` }, { status: 400 });

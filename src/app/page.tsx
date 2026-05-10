@@ -169,7 +169,7 @@ export default function Dashboard() {
               Tell the assistant what you own — stocks, real estate, cash — and it will build your portfolio automatically.
             </p>
             <button
-              onClick={() => setChatOpen(true)}
+              onClick={() => router.push('/chat')}
               className="font-mono text-bg bg-accent hover:opacity-90 transition-opacity"
               style={{ fontSize: 12, padding: "10px 20px", borderRadius: 12, letterSpacing: "0.06em" }}
             >

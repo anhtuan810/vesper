@@ -97,7 +97,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
 
         {/* Back */}
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push('/')}
           className="flex items-center gap-2 font-mono text-dim mb-2"
           style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", paddingBottom: 8 }}
         >
@@ -244,7 +244,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             />
           </div>
 
-          {/* Avg buy price — inline-editable */}
+          {/* Last buy price — inline-editable */}
           <div
             className="border border-border rounded-xl"
             style={{ background: "var(--surface)", padding: "12px 14px" }}
@@ -253,7 +253,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
               className="font-mono text-faint uppercase mb-2"
               style={{ fontSize: 9, letterSpacing: "0.16em" }}
             >
-              Avg buy price
+              Last buy price
             </div>
             <InlineEdit
               display={

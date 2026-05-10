@@ -106,6 +106,18 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setImageData(null);
   }, []);
 
+  const handleFile = useCallback((file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) return;
+    if (file.size > 5 * 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setImageData({ base64: result.split(",")[1], mediaType: file.type });
+      setImagePreview(result);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -185,5 +197,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     send,
     clearImage,
     handlePaste,
+    handleFile,
   };
 }

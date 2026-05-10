@@ -123,7 +123,7 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
         {/* Top bar */}
         <div className="flex justify-between items-center px-4" style={{ paddingBottom: 14 }}>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/')}
             className="flex items-center gap-1.5 font-mono text-dim"
             style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}
           >

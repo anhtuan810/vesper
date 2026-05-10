@@ -81,7 +81,7 @@ export function StaticDetail({ asset: initialAsset }: Props) {
 
         {/* Back */}
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push('/')}
           className="flex items-center gap-2 font-mono text-dim mb-2"
           style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", paddingBottom: 8 }}
         >
