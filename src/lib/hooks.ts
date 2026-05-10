@@ -12,6 +12,7 @@ import {
   setEurRate,
   getEurRate,
   getRateFreshness,
+  fetchEurRate,
 } from "@/lib/money";
 
 export interface ProfileData {
@@ -60,6 +61,7 @@ export function useAssets(userId: string | undefined) {
   const [refreshing, setRefreshing] = useState(false);
   const [pricesLoaded, setPricesLoaded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [priceHealth, setPriceHealth] = useState<"healthy" | "degraded" | null>(null);
   const supabase = createBrowserSupabase();
 
   const fetchAssets = useCallback(async () => {
@@ -98,6 +100,9 @@ export function useAssets(userId: string | undefined) {
       });
       setPrices(priceMap);
       setLastUpdated(new Date());
+      const successCount = Object.keys(priceMap).length;
+      const healthRatio = symbols.length > 0 ? successCount / symbols.length : 1;
+      setPriceHealth(healthRatio < 0.5 ? "degraded" : "healthy");
 
       // Self-heal: if Yahoo's reported currency differs from what the DB has stored,
       // update both currency AND value so they stay coherent.
@@ -125,7 +130,7 @@ export function useAssets(userId: string | undefined) {
         await fetchAssets();
       }
     } catch {
-      // Prices stay as manual values
+      setPriceHealth("degraded");
     } finally {
       clearTimeout(timer);
       setRefreshing(false);
@@ -139,6 +144,16 @@ export function useAssets(userId: string | undefined) {
   const symbolKey = assets.map((a) => a.symbol ?? "").join(",");
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (assets.length > 0) fetchPrices(); }, [symbolKey, fetchPrices]);
+
+  useEffect(() => {
+    if (assets.length === 0) return;
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchPrices();
+      }
+    }, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [fetchPrices, assets.length]);
 
   const liveAssets = useMemo<LiveAsset[]>(
     () => assets.map((a) => {
@@ -168,6 +183,7 @@ export function useAssets(userId: string | undefined) {
     refreshing,
     pricesLoaded,
     lastUpdated,
+    priceHealth,
     refreshPrices: fetchPrices,
     refetchAssets: fetchAssets,
     setAssets,
@@ -263,15 +279,9 @@ export function useFxRate(currency: DisplayCurrency): { rate: number; freshness:
     // Skip fetch if rate is already fresh
     if (getRateFreshness(currency) === "fresh") return;
     let cancelled = false;
-    fetch(`/api/fx?base=EUR&quote=${currency}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled && typeof data.rate === "number") {
-          setEurRate(currency, data.rate);
-          tick((n) => n + 1);
-        }
-      })
-      .catch(() => {});
+    fetchEurRate(currency).then((rate) => {
+      if (!cancelled && rate !== null) tick((n) => n + 1);
+    });
     return () => { cancelled = true; };
   }, [currency]);
 

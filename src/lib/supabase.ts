@@ -100,6 +100,7 @@ export interface UserRow {
   avatar_url?: string;
   profile?: Record<string, string>;
   display_currency: DisplayCurrency;
+  last_backfill_at?: string | null;
 }
 
 // ── Other types ────────────────────────────────────────────────────────────────

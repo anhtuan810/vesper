@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import { NetWorthChart } from "@/components/NetWorthChart";
 import { AllocationBar } from "@/components/AllocationBar";
 import { PositionRow } from "@/components/PositionRow";
-import { formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE } from "@/lib/utils";
+import { formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE, type Warning } from "@/lib/utils";
 import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { getMilestoneProgress, fmtRemaining } from "@/lib/projection";
@@ -18,7 +18,7 @@ interface PortfolioTabProps {
   grossTotal: number;
   netTotal: number;
   totalDebt: number;
-  warnings: string[];
+  warnings: Warning[];
   mutations: Mutation[];
   onViewDiary: () => void;
 }
@@ -28,6 +28,33 @@ export function PortfolioTab({
   warnings, mutations, onViewDiary,
 }: PortfolioTabProps) {
   const displayCurrency = useDisplayCurrency();
+  const [dismissed, setDismissed] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("vesper.dismissed_warnings");
+      if (raw) setDismissed(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
+  const visibleWarnings = warnings.filter((w) => {
+    const ts = dismissed[w.key];
+    if (!ts) return true;
+    return Date.now() - new Date(ts).getTime() >= NINETY_DAYS_MS;
+  });
+
+  const dismissWarning = (key: string) => {
+    setDismissed((prev) => {
+      const next = { ...prev, [key]: new Date().toISOString() };
+      try {
+        localStorage.setItem("vesper.dismissed_warnings", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const symbols = useMemo(
     () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
     [assets]
@@ -111,7 +138,7 @@ export function PortfolioTab({
       })()}
 
       {/* Warnings */}
-      {warnings.length > 0 && (
+      {visibleWarnings.length > 0 && (
         <div
           className="rounded-xl px-5 py-3 mb-4"
           style={{
@@ -119,8 +146,29 @@ export function PortfolioTab({
             border: "1px solid rgba(212,165,116,0.18)",
           }}
         >
-          {warnings.map((w, i) => (
-            <div key={i} className="text-xs text-accent leading-relaxed">{w}</div>
+          {visibleWarnings.map((w, i) => (
+            <div
+              key={w.key}
+              className="flex items-start justify-between"
+              style={{ paddingTop: i > 0 ? 6 : 0 }}
+            >
+              <div className="text-xs text-accent leading-relaxed">{w.text}</div>
+              <button
+                onClick={() => dismissWarning(w.key)}
+                aria-label="Dismiss"
+                className="text-accent hover:opacity-60 transition-opacity ml-3 shrink-0"
+                style={{
+                  fontSize: 14,
+                  lineHeight: 1,
+                  padding: "0 4px",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
+            </div>
           ))}
         </div>
       )}

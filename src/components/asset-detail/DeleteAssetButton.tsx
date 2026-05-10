@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import type { Asset } from "@/lib/supabase";
 
 interface Props {
-  assetId: string;
+  asset: Asset;
 }
 
-export function DeleteAssetButton({ assetId }: Props) {
+export function DeleteAssetButton({ asset }: Props) {
   const router = useRouter();
   const [step, setStep] = useState<"idle" | "confirm">("idle");
   const [deleting, setDeleting] = useState(false);
@@ -37,13 +38,21 @@ export function DeleteAssetButton({ assetId }: Props) {
     setError(null);
 
     try {
-      const res = await fetch(`/api/assets/${assetId}`, { method: "DELETE" });
+      sessionStorage.setItem(
+        "vesper.recently_deleted",
+        JSON.stringify({ asset, deleted_at: new Date().toISOString() }),
+      );
+    } catch {}
+
+    try {
+      const res = await fetch(`/api/assets/${asset.id}`, { method: "DELETE" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Delete failed");
       }
       router.push("/");
     } catch (e) {
+      try { sessionStorage.removeItem("vesper.recently_deleted"); } catch {}
       setDeleting(false);
       setStep("idle");
       setError(e instanceof Error ? e.message : "Delete failed");

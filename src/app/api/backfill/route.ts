@@ -10,6 +10,20 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerSupabase();
 
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("last_backfill_at")
+      .eq("id", userId)
+      .single();
+
+    if (userRow?.last_backfill_at) {
+      const ageMs = Date.now() - new Date(userRow.last_backfill_at).getTime();
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      if (ageMs < THIRTY_DAYS_MS) {
+        return NextResponse.json({ updated: 0, skipped: true });
+      }
+    }
+
     // Load all user assets once
     const { data: allAssets } = await supabase
       .from("assets")
@@ -80,6 +94,11 @@ export async function POST(req: NextRequest) {
       ...(zeroAdds || []).map((m) => backfillMutation(m, false)),
       ...zeroDeltaOnes.map((m) => backfillMutation(m, true)),
     ]);
+
+    await supabase
+      .from("users")
+      .update({ last_backfill_at: new Date().toISOString() })
+      .eq("id", userId);
 
     return NextResponse.json({ updated });
   } catch (err) {

@@ -249,6 +249,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
           <div style={CELL}>
             <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Start date</div>
             <InlineEdit
+              kind="date"
               display={<span className="font-mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{startStr ?? "—"}</span>}
               rawValue={startStr ?? ""}
               placeholder="YYYY-MM-DD"
@@ -266,6 +267,7 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
           <div style={CELL}>
             <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>End date</div>
             <InlineEdit
+              kind="date"
               display={<span className="font-mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{endStr ?? "—"}</span>}
               rawValue={endStr ?? ""}
               placeholder="YYYY-MM-DD"

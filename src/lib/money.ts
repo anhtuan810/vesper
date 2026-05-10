@@ -94,6 +94,37 @@ export function formatMoney(
   return `${sign}${symbol}${amount}`;
 }
 
+const inFlightFetches = new Map<DisplayCurrency, Promise<number | null>>();
+
+/**
+ * Fetches the latest EUR→currency rate, deduping concurrent calls.
+ * If a fetch for the same currency is already in flight, all callers await
+ * the same Promise.
+ */
+export function fetchEurRate(currency: DisplayCurrency): Promise<number | null> {
+  if (currency === "EUR") return Promise.resolve(1);
+
+  const existing = inFlightFetches.get(currency);
+  if (existing) return existing;
+
+  const promise = fetch(`/api/fx?base=EUR&quote=${currency}`)
+    .then((r) => r.json())
+    .then((data) => {
+      if (typeof data.rate === "number") {
+        setEurRate(currency, data.rate);
+        return data.rate as number;
+      }
+      return null;
+    })
+    .catch(() => null)
+    .finally(() => {
+      inFlightFetches.delete(currency);
+    });
+
+  inFlightFetches.set(currency, promise);
+  return promise;
+}
+
 export function formatMoneyParts(
   eurValue: number,
   displayCurrency: DisplayCurrency

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useFxRate } from "@/lib/hooks";
 import { convertToEur, type DisplayCurrency, type FxFreshness } from "@/lib/money";
 
-export type InlineEditKind = "money" | "number" | "percent" | "text";
+export type InlineEditKind = "money" | "number" | "percent" | "text" | "date";
 
 interface Props {
   /** Formatted value shown in read mode (e.g. "$1,234") */
@@ -189,6 +189,7 @@ export function InlineEdit({
     <div style={{ position: "relative" }}>
       <input
         ref={inputRef}
+        type={kind === "date" ? "date" : "text"}
         value={draft}
         onChange={(e) => { setDraft(e.target.value); setError(null); }}
         onBlur={commit}

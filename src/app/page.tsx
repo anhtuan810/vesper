@@ -18,7 +18,7 @@ export default function Dashboard() {
   const { user, loading: userLoading } = useUser();
   const {
     assets, loading: assetsLoading, error: assetsError, refreshing,
-    refreshPrices, refetchAssets, pricesLoaded,
+    refreshPrices, refetchAssets, pricesLoaded, lastUpdated, priceHealth,
   } = useAssets(user?.id);
   const displayCurrency = useDisplayCurrency();
   const [chatOpen, setChatOpen] = useState(false);
@@ -57,6 +57,15 @@ export default function Dashboard() {
   }, [user?.id]);
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
+
+  useEffect(() => {
+    const handler = () => {
+      refetchAssets();
+      fetchMutations();
+    };
+    window.addEventListener("vesper:asset-restored", handler);
+    return () => window.removeEventListener("vesper:asset-restored", handler);
+  }, [refetchAssets, fetchMutations]);
 
   const setTab = (t: "portfolio" | "diary" | "profile") => {
     if (t !== "portfolio") router.push("/" + t);
@@ -142,9 +151,42 @@ export default function Dashboard() {
         totalSymbols={totalSymbols}
         refreshing={refreshing}
         refreshPrices={refreshPrices}
+        lastUpdated={lastUpdated}
       />
 
       <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-4 pb-36">
+        {priceHealth === "degraded" && (
+          <div
+            className="rounded-xl px-5 py-3 mb-4 flex items-center justify-between"
+            style={{
+              background: "rgba(201,122,110,0.10)",
+              border: "1px solid rgba(201,122,110,0.25)",
+            }}
+          >
+            <span
+              className="leading-relaxed"
+              style={{ fontSize: 12, color: "var(--negative)" }}
+            >
+              Live prices unavailable. Showing last known values.
+            </span>
+            <button
+              onClick={refreshPrices}
+              disabled={refreshing}
+              className="font-mono uppercase shrink-0 ml-3"
+              style={{
+                fontSize: 10,
+                color: "var(--negative)",
+                letterSpacing: "0.1em",
+                background: "none",
+                border: "none",
+                cursor: refreshing ? "default" : "pointer",
+                opacity: refreshing ? 0.5 : 1,
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {assets.length === 0 ? (
           <div className="flex flex-col items-center pt-24 text-center">
             <div

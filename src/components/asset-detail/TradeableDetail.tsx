@@ -433,7 +433,7 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
           >
             Discuss
           </button>
-          <DeleteAssetButton assetId={asset.id} />
+          <DeleteAssetButton asset={asset} />
         </div>
 
       </div>

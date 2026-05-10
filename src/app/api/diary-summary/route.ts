@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
@@ -22,77 +23,85 @@ function fmtDisplay(eurValue: number, currency: DisplayCurrency, rates: Record<s
   return `${sym}${displayValue.toLocaleString("en")}`;
 }
 
+type MutationRow = {
+  action: string;
+  asset_name: string;
+  before_value: number | null;
+  after_value: number | null;
+  currency: string | null;
+  occurred_at: string | null;
+  personal_context: string | null;
+};
+
 export async function POST(req: NextRequest) {
   try {
+    // 1. Auth
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const supabase = createServerSupabase();
-    const today = new Date().toISOString().slice(0, 10);
 
-    // Atomic rate limit via upsert — prevents race conditions and leaking _diary_rate into profile
-    const { data: newCount, error: rpcError } = await supabase.rpc("increment_rate_limit", {
-      p_user_id: user.id,
-      p_bucket: "diary",
-      p_date: today,
-    });
-
-    if (rpcError || newCount == null) {
-      return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 503 });
-    }
-
-    if ((newCount as number) > DAILY_LIMIT) {
-      return NextResponse.json({ error: "Daily limit reached" }, { status: 429 });
-    }
-
+    // 2. Parse body
     const text = await req.text();
     if (!text) return NextResponse.json({ error: "No input" }, { status: 400 });
+    const { mutations, startVal, endVal, periodLabel } = JSON.parse(text);
 
-    const { mutationIds, startVal, endVal, periodLabel } = JSON.parse(text);
-
-    if (!Array.isArray(mutationIds) || mutationIds.length === 0) {
-      return NextResponse.json({ error: "No mutations" }, { status: 400 });
-    }
-
-    // Fetch mutation content from DB — never trust client-supplied mutation data to avoid prompt injection
-    const { data: mutations } = await supabase
-      .from("mutations")
-      .select("action, asset_name, before_value, after_value, currency, occurred_at, personal_context")
-      .eq("user_id", user.id)
-      .in("id", mutationIds);
-
+    // 3. Bail on invalid
     if (!mutations || mutations.length === 0) {
       return NextResponse.json({ error: "No mutations" }, { status: 400 });
     }
 
-    // Resolve display currency from the user record.
+    // 4. Fetch user (display currency)
     const { data: userData } = await supabase
       .from("users")
       .select("display_currency")
       .eq("id", user.id)
       .single();
-
     const displayCurrency: DisplayCurrency = isSupportedCurrency(userData?.display_currency)
       ? (userData!.display_currency as DisplayCurrency)
       : "EUR";
 
-    // Fetch live rates server-side for formatting.
-    const rates = await getEurRates();
+    // 5. Compute cache key
+    const mutationsForHash = (mutations as MutationRow[])
+      .map((m) =>
+        `${m.action}|${m.asset_name}|${m.before_value}|${m.after_value}|${m.currency}|${m.occurred_at}|${m.personal_context ?? ""}`
+      )
+      .sort()
+      .join("::");
+    const cacheKey = createHash("sha256")
+      .update(`${displayCurrency}|${periodLabel}|${startVal}|${endVal}|${mutationsForHash}`)
+      .digest("hex");
 
+    // 6. Cache lookup
+    const { data: cached } = await supabase
+      .from("diary_summaries")
+      .select("summary")
+      .eq("user_id", user.id)
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
+    if (cached?.summary) {
+      return NextResponse.json({ summary: cached.summary });
+    }
+
+    // 7. Rate limit (only when missing cache)
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: newCount } = await supabase.rpc("increment_rate_limit", {
+      p_user_id: user.id,
+      p_bucket: "diary",
+      p_date: today,
+    });
+    if ((newCount as number) > DAILY_LIMIT) {
+      return NextResponse.json({ error: "Daily limit reached" }, { status: 429 });
+    }
+
+    // 8. Build prompt + call Claude
+    const rates = await getEurRates();
     const fmt = (v: number) => fmtDisplay(v, displayCurrency, rates);
 
     const change = endVal - startVal;
     const changePct = startVal > 0 ? ((change / startVal) * 100).toFixed(1) : "0";
 
-    const lines = (mutations as {
-      action: string;
-      asset_name: string;
-      before_value: number | null;
-      after_value: number | null;
-      currency: string | null;
-      occurred_at: string | null;
-      personal_context: string | null;
-    }[])
+    const lines = (mutations as MutationRow[])
       .map((m) => {
         const date = m.occurred_at ? ` (${m.occurred_at})` : "";
         const ctx = m.personal_context ? ` — "${m.personal_context}"` : "";
@@ -140,6 +149,15 @@ Give 3 bullet-point insights.`,
       .join("")
       .trim();
 
+    // 9. Save to cache (best-effort)
+    await supabase
+      .from("diary_summaries")
+      .upsert(
+        { user_id: user.id, cache_key: cacheKey, summary },
+        { onConflict: "user_id,cache_key" }
+      );
+
+    // 10. Return
     return NextResponse.json({ summary });
   } catch (err) {
     Sentry.captureException(err, { tags: { route: "POST /api/diary-summary" } });

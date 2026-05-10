@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useUser } from "@/lib/hooks";
 
 type Tab = "portfolio" | "diary" | "profile";
@@ -13,11 +14,28 @@ interface NavBarProps {
   totalSymbols: number;
   refreshing: boolean;
   refreshPrices: () => void;
+  lastUpdated?: Date | null;
+}
+
+function formatRelativeTime(date: Date): string {
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export function NavBar({
-  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices,
+  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated,
 }: NavBarProps) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const { user } = useUser();
 
   const displayName: string | null =
@@ -101,6 +119,14 @@ export function NavBar({
 
         {/* Right: refresh (status dot as badge) · settings gear */}
         <div className="flex items-center gap-2">
+          {lastUpdated && (
+            <span
+              className="font-mono text-faint hidden sm:inline"
+              style={{ fontSize: 10, letterSpacing: "0.04em" }}
+            >
+              {formatRelativeTime(lastUpdated)}
+            </span>
+          )}
           <button
             onClick={refreshPrices}
             disabled={refreshing}

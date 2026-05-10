@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useProfile, useSignOut } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
+import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import { createBrowserSupabase } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
@@ -32,6 +33,41 @@ export default function ProfilePage() {
   const profile = useProfile(user?.id);
   const signOut = useSignOut();
   const [mutationCount, setMutationCount] = useState(0);
+  const [profileData, setProfileData] = useState<Record<string, string>>({});
+  const [pageError, setPageError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile?.profile) setProfileData(profile.profile);
+  }, [profile]);
+
+  const updateField = useCallback(async (key: string, value: string | null): Promise<string | null> => {
+    setPageError(null);
+    try {
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: { [key]: value } }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return data.error ?? "Save failed";
+      }
+      setProfileData((prev) => {
+        const next = { ...prev };
+        if (value === null) delete next[key];
+        else next[key] = value;
+        return next;
+      });
+      return null;
+    } catch {
+      return "Save failed";
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (key: string) => {
+    const error = await updateField(key, null);
+    if (error) setPageError(`Failed to remove ${key}: ${error}`);
+  }, [updateField]);
 
   const fetchMutationCount = useCallback(async () => {
     if (!user?.id) return;
@@ -55,8 +91,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const profileData = profile?.profile ?? {};
 
   return (
     <div className="min-h-screen bg-bg">
@@ -111,15 +145,47 @@ export default function ProfilePage() {
                   className="pb-4 last:pb-0"
                   style={{ borderBottom: "1px solid var(--border)" }}
                 >
-                  <div
-                    className="font-mono text-faint uppercase mb-1.5"
-                    style={{ fontSize: 9, letterSpacing: "0.18em" }}
-                  >
-                    {label}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div
+                      className="font-mono text-faint uppercase"
+                      style={{ fontSize: 9, letterSpacing: "0.18em" }}
+                    >
+                      {label}
+                    </div>
+                    <button
+                      onClick={() => handleDelete(key)}
+                      aria-label={`Remove ${label}`}
+                      className="text-faint hover:text-negative transition-colors"
+                      style={{
+                        fontSize: 16,
+                        lineHeight: 1,
+                        padding: "2px 6px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ×
+                    </button>
                   </div>
-                  <div className="text-fg leading-relaxed" style={{ fontSize: 13 }}>
-                    {profileData[key]}
-                  </div>
+                  <InlineEdit
+                    display={
+                      <span className="text-fg leading-relaxed" style={{ fontSize: 13 }}>
+                        {profileData[key]}
+                      </span>
+                    }
+                    rawValue={profileData[key] ?? ""}
+                    placeholder="(empty)"
+                    affordance
+                    displayStyle={{ minHeight: 32, width: "100%" }}
+                    inputStyle={{ fontSize: 13 }}
+                    onSave={async (raw) => {
+                      const trimmed = raw.trim();
+                      if (trimmed.length > 200) return "Max 200 characters";
+                      if (trimmed === (profileData[key] ?? "")) return "";
+                      return updateField(key, trimmed === "" ? null : trimmed);
+                    }}
+                  />
                 </div>
               ))}
             </div>
@@ -132,6 +198,20 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {pageError && (
+          <div
+            className="rounded-xl px-4 py-2 mb-3"
+            style={{
+              background: "rgba(201,122,110,0.08)",
+              border: "1px solid rgba(201,122,110,0.2)",
+              color: "var(--negative)",
+              fontSize: 11,
+            }}
+          >
+            {pageError}
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-3 gap-3">

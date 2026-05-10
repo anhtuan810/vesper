@@ -105,6 +105,7 @@ export function BondBlock({ asset, onUpdate }: Props) {
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Maturity</div>
           {onUpdate ? (
             <InlineEdit
+              kind="date"
               display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{maturity_date ? formatDate(maturity_date) : "—"}</span>}
               rawValue={maturity_date ?? ""}
               placeholder="YYYY-MM-DD"

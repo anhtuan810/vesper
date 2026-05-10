@@ -311,7 +311,15 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        mutationIds: mutations.map((m) => m.id),
+        mutations: mutations.map((m) => ({
+          action: m.action,
+          asset_name: m.asset_name,
+          before_value: m.before_value,
+          after_value: m.after_value,
+          currency: m.currency,
+          occurred_at: m.occurred_at,
+          personal_context: m.personal_context,
+        })),
         startVal: 0,
         endVal: 0,
         periodLabel,
