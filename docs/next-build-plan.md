@@ -2,72 +2,51 @@
 
 This is the prioritized roadmap for Vesper. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
 
-## What just shipped
+## What just shipped — Redesign migration (PR 1 → PR 21)
 
-- **Phase 3a — Daily snapshots cron**. Vercel cron writes one row per user per day to `snapshots`. Trigger also fires fire-and-forget on every successful mutation (chat API, asset PATCH, asset DELETE). Idempotent via unique index on `(user_id, date)`. Secured via `CRON_SECRET` header. Shared `writeSnapshot` helper in `src/lib/snapshot.ts`.
-- **Phase 3b — Net worth chart + change pill**. `/api/snapshots` GET endpoint, `NetWorthChart` component on Portfolio tab between hero and allocation cards, range pills (1W / 1M / 3M / 1Y / ALL), 7-snapshot empty state, today marker. Hero now shows a change pill (% + EUR delta vs 1 month ago) when historical data exists. Allocation moved to its own card with header + DETAILS scroll-to-positions.
-- **Diary cleanup pass**. Filter section compressed to two thin pill rows (period + action), counts removed, custom date range styled. Entry layout compressed to two lines (icon + name + delta + date, optional context note). Date format drops year for current-year entries. Real asset logos shipped via shared `AssetLogo` component (cryptocurrency-icons CDN, FMP for stocks, inline SVG for real estate, monogram fallback). Used in both `DiaryTab` and `PositionRow`.
-- **Mutation unit tracking**. `mutations` table gained `before_units` / `after_units` columns. Chat API and asset PATCH/DELETE log unit changes. Diary and TradeableDetail recent activity show "+N shares / units / oz" deltas for tradeable mutations, fall back to value-based for real estate / cash / bonds / pension.
-- **Phase 2b — Inline edit + delete for RealEstateDetail and StaticDetail**. Full CRUD parity with TradeableDetail. RealEstate inline-editable: name, address (re-geocodes server-side), property_type, size_sqm, country, value, all 6 mortgage fields. Static inline-editable: name, value, currency, plus all bond fields. ContextNotePrompt fires on >5% value change. EDIT button stopgap removed everywhere. `name` added to ALLOWED_COMMON. Address field decoupled from name display.
-- **Cleanup A — Rename via chat**. Chat API edit action accepts `new_name` field. System prompt updated. Users can rename any asset by saying "Rename X to Y".
-- **Cleanup B — Diary AI summary slimmed**. PeriodHighlight chart card removed (redundant with Portfolio chart). AI summary kept and demoted to lightweight card with pulsing V mark while loading. Period title moved above filter chips.
-- **Diary improvements**. Inline expandable notes (tap entry → edit `personal_context` → PATCH save with optimistic update). Search input above filter chips (case-insensitive substring on `asset_name` OR `personal_context`, AND-combined with period and action filters). "On this day" callout (same MM-DD in a prior year, ≥30-day floor, oldest match, scroll-and-amber-highlight on tap, filter-independent). All in `src/components/DiaryTab.tsx`.
-- **Portfolio change validation**. `src/lib/validations.ts` invoked from `/api/chat` before any DB write. All-or-nothing: any negative-unit or negative-value result rejects the full turn. Banker's-tone error messages saved as the assistant reply. Float tolerance `1e-9` for fractional crypto. `edit` mutations now propagate user-stated `buy_date` to `mutations.occurred_at` (was always writing today).
-- **BottomNav on /chat + layout hardening**. Restored mobile bottom navigation on the chat route. `height: 100dvh` + `padding-bottom: calc(64px + env(safe-area-inset-bottom))` contains the flex column to the viewport. `scrollbar-gutter: stable` on body prevents position:fixed elements from shifting when page-level scrollbars appear. `overflow-wrap: break-word` on message bubbles prevents horizontal page overflow from long URLs.
-- **DB-backed chat history fallback**. New `GET /api/messages?limit=20` endpoint (authenticated, DESC fetch reversed to ASC for display, capped at 50). `useChatSession` now falls back to a single DB fetch when localStorage is absent, expired, or empty — resolves the "returning user after 24h sees empty chat while Claude references their conversation" trust gap. Works cross-device. Fetched history is written back to localStorage to warm the cache.
-- **Logo proxy** (CDN privacy debt). `src/app/api/logo/route.ts` proxies all logo fetches — crypto via jsdelivr, stocks/ETFs via FMP. Symbol validated with `/^[A-Za-z0-9.\-]+$/` (≤16 chars) to block path traversal. In-process 7-day cache, FIFO eviction at 500 entries. `Cache-Control: public, max-age=604800, immutable`. `AssetLogo.tsx` updated to point at `/api/logo?...`.
+A multi-chat migration moved Vesper from the old amber/Fraunces dark-only design to the locked redesign — cream/ink in light mode, warm-black/cream in dark, single accent green (`#4A7C5E`), Source Serif 4 + Albert Sans typography. Beyond the visual swap, the migration enforced the 11 locked decisions in `redesign-decisions.md` and absorbed all manual edit paths into chat.
+
+### Foundations
+- **PR 1 — Theme infrastructure.** `users.theme` column (auto/light/dark), `ThemeProvider`, cookie-based SSR, `PATCH /api/users/me` with field allowlist `{ theme, display_currency, avatar_url }`. Light + dark CSS variable sets in `globals.css`.
+- **PR 2 — Design tokens + font swap.** Cream/ink palette, green accent, Source Serif 4 + Albert Sans + Geist Mono (sparingly). All tokens flow through CSS variables and Tailwind utilities; TypeScript mirror in `src/lib/tokens.ts`.
+- **PR 3 — Settings → Profile (Decision 5).** `/settings` route deleted; preferences (currency + theme) live on Profile.
+
+### Behavioural decisions
+- **PR 4 — Asset detail read-only (Decision 8).** Deleted `PATCH /api/assets/[id]`, `DELETE /api/assets/[id]`, `InlineEdit.tsx`, `DeleteAssetButton.tsx`, `ContextNotePrompt.tsx`. All three asset detail variants render read-only. Chat tab on bottom nav becomes context-aware when over `/asset/[id]`.
+- **PR 5 — Diary immutability + JOIN (Decisions 1, 2, 4).** Deleted `PATCH /api/mutations/[id]`. Pure renames update the asset row but skip the mutation insert. Diary fetch joins to `assets.name` with `mutations.asset_name` as deleted-asset fallback. Same JOIN in `/api/diary-summary` and the search predicate.
+- **PR 6 — Chat single thread (Decision 3).** Removed all "new chat" / "history" / "session list" affordances. Added cursor pagination to `GET /api/messages` (`before=<id>&limit=20`). IntersectionObserver sentinel in both chat surfaces.
+- **PR 7 — Avatar upload + fingerprint (Decisions 6, 7).** `user-avatars` Supabase Storage bucket. Tap-to-upload on Profile. `users.fingerprint` text column. Extractor extended to emit a 12–18 word italic-serif characterization.
+- **PR 8 — Mortgage auto-amortization + map-only + cash pots (Decisions 9, 10, 11).** `assets.mortgage_balance_recorded_at` anchor column. `computeCurrentBalance(asset, asOf)` helper in `src/lib/mortgage.ts`. All read sites route through the helper. PropertyMap is sole real-estate visual; photo upload removed. Cash/pension → wallet SVG icon; bonds → certificate SVG icon.
+
+### Visual parity
+- **PR 9 — Portfolio restyle.** NetWorthHero, NetWorthChart, PositionRow, badges, HR rules — all matched to the locked mockup.
+- **PR 10 — Diary restyle.** Search bar, period chips, entry rows, "Worth knowing" callout, immutable static notes.
+- **PR 11 — Chat restyle + desktop context-aware seed.** ChatPopup pre-fills `Tell me about my <name>.` when opened over an asset detail page.
+- **PR 12 — Profile + Asset Detail restyle.** Caught a missed cleanup from PR 8: PropertyMap photo-upload affordance removed.
+- **PR 13 — Post-migration polish.** Light map style added (`src/styles/map-light.json`); theme-aware MapLibre. NavBar overlap fix. Activity rows, change pill, position rows, chat HR refinements.
+- **PR 14 — Holdings grouping.** Semantic categories: Property / Public markets / Reserves. `HoldingsGroup.tsx` with proportional bars in headers, rotating chevrons, all expanded by default.
+- **PR 15 — Mockup parity round 2.** NavBar identity (avatar + first name, no Vesper wordmark). `AllocationBar.tsx` deleted (proportional bars in HoldingsGroup carry the same information). 1D pill added to range selector. No gross/debt subtitle on hero.
+- **PR 16 — AI insight band + tab icons + EU formatting + Recent Activity removed.** `/api/insight` route with Haiku generator, 24h cache via `highlights` table, italic-serif "WORTH KNOWING" band. Bottom-nav icons extracted from mockup. Number formatting forced to `nl-NL` locale across all currencies.
+- **PR 17 — Mockup parity sweep.** Diary/Chat/Profile/Asset Detail small-drift fixes — anniversary band "Worth knowing" rewording, chat user-message line-height, equity pill `+€X since YEAR`, mortgage chart spacing.
+- **PR 18 — Profile context read-only.** `InlineEdit.tsx` deleted entirely. Context fields render as static rows; corrections happen through chat → next extraction refresh.
+- **PR 19 — Profile context fields reduced 9 → 6.** Removed `goal`, `risk_behaviour`, `interests` per the mockup. Labels in sentence case (`Investment style`, not `Investment Style`).
+- **PR 20 — Avatar / icon size audit.** Confirmed code matched mockup values verbatim. No changes.
+- **PR 21 — Deliberate downsize from mockup.** NavBar avatar 34→28px; BottomNav icons 26→24px, stroke-width 14→10. The mockup's flat-color "AT" badge reads lighter than a real uploaded image; the stroke-14 icons read chunkier in actual use than in static preview. Documented in code as an intentional deviation.
 
 ## Build Order
 
-- PR 1 · Schema migration + theme infrastructure
-- PR 2 · Design tokens + font swap
-- PR 3 · Settings → Profile move
-- PR 4 · Asset detail read-only
-- PR 5 · Diary immutability + name join
-- PR 6 · Chat single thread
-- PR 7 · Avatar upload + investor fingerprint
-- PR 8 · Mortgage auto-amortization + map-only property + cash pots
-- PR 9 · Portfolio restyle
-- PR 10 · Diary restyle
-- PR 11 · Chat restyle
-- PR 12 · Profile + Asset Detail restyle
+1. **Scenario analysis UI** (largest remaining feature on the original roadmap)
+2. **Portfolio insight cards** (replacement for the removed stat cards — when there's enough portfolio history per user)
 
 ---
 
-## Post-redesign roadmap
-
-## Dashboard Highlights
-
-### Goal
-The original tech spec's launch feature #9 — daily highlights surfaced on the Portfolio tab. Three types: market events affecting holdings (Claude-filtered), portfolio milestones (deterministic from snapshots + dynamic step sizing), personal reflections (anniversary-style from mutation history).
-
-### Expected UI
-- Horizontal card carousel between net worth hero and allocation card on Portfolio tab
-- Max 3 cards, section hidden entirely when no highlights
-- Each card: type icon, title (one line), detail (one sentence), impact amount if applicable
-- Highlights expire: market events 24h, milestones 7d, reflections 3d
-
-### Database Impact
-- The `highlights` table already exists in schema. No data being written yet
-- Reads from: `assets`, `snapshots`, `mutations`
-
-### Files Likely to Change
-- `src/app/api/cron/highlights/route.ts` (new) — three sub-jobs for the three highlight types
-- `src/lib/milestones.ts` (new) — dynamic step detection
-- `src/lib/reflections.ts` (new) — anniversary checks
-- `src/components/HighlightsCarousel.tsx` (new)
-- `src/app/page.tsx` or `src/components/PortfolioTab.tsx` — mount the carousel
-- `vercel.json` — add the highlights cron job
-
----
-
-## Scenario Analysis UI
+## 1. Scenario Analysis UI
 
 ### Goal
 Let users explore "what if" questions visually, not just conversationally. Examples: "what if I sell my apartment", "what if NVIDIA doubles", "what if I add €50k to ETFs".
 
 ### Expected UI
-- A "Scenarios" entry point on the Portfolio tab
+- A "Scenarios" entry point on the Portfolio surface
 - User can clone the current portfolio and modify it: change values, remove positions, add hypothetical ones
 - Side-by-side comparison: Current vs Scenario (net worth, allocation, concentration)
 - "Save scenario" to persist
@@ -87,6 +66,27 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 ### Notes
 - The chat assistant already handles scenarios conversationally — this UI complements, not replaces it
 - Don't over-design. Two columns (current + scenario), a few editable fields, one comparison panel
+- Honour the "chat is sole modification surface" principle: scenario clone-and-modify is local UI state, not a write path. Saving a scenario writes a snapshot row, not asset rows.
+
+---
+
+## 2. Portfolio insight cards (replacement for removed stat cards)
+
+The four stat cards (Positions / Countries / Asset classes / Largest) were removed because raw counts don't drive decisions. The space they occupied should eventually carry one or two genuine portfolio insights — the kind a private banker would surface during a quarterly review. The AI insight band shipped in PR 16 covers one slot of this idea; deterministic insight cards would complement it.
+
+### Candidates worth considering
+- Concentration depth ("your top 3 positions are 84% of the portfolio")
+- Drift from target allocation (when target allocations exist)
+- Risk-adjusted return signal (Sharpe-like, but readable)
+- Time-weighted vs money-weighted return divergence
+- Cash drag estimate (when cash > 20% and has been for >3 months)
+- Currency exposure (when display currency ≠ asset native currencies)
+- Mortgage payoff trajectory vs portfolio growth (real estate users)
+
+### Bar to clear
+Each insight must change a decision. "You have 7 positions" does not. "Your top position has been over 40% for 8 weeks running" does.
+
+Build when there's enough portfolio history per user (3+ months of snapshots) and enough users to test which insights actually land.
 
 ---
 
@@ -99,43 +99,24 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 - Shareable portfolio report — growth feature, not retention
 - Mobile native app — web-first
 - Tax features — never, not Vesper's lane
-- Broker sync / bank integrations — never for MVP, manual + AI-driven is the differentiator
-
-- ### Portfolio insight cards (replacement for removed stat cards)
-
-The four stat cards (Positions / Countries / Asset classes / Largest) were
-removed because raw counts don't drive decisions. The space they occupied
-should eventually carry one or two genuine portfolio insights — the kind a
-private banker would surface during a quarterly review.
-
-Candidates worth considering:
-- Concentration depth (not just "X% in real estate" but "your top 3 positions
-  are 84% of the portfolio")
-- Drift from target allocation (when target allocations exist)
-- Risk-adjusted return signal (Sharpe-like, but readable)
-- Time-weighted vs money-weighted return divergence (signals timing impact)
-- Cash drag estimate (when cash > 20% and has been for >3 months)
-- Currency exposure (when display currency ≠ asset native currencies)
-- Mortgage payoff trajectory vs portfolio growth (real estate users)
-
-The bar to clear: each insight must change a decision. "You have 7 positions"
-does not. "Your top position has been over 40% for 8 weeks running" does.
-
-Build when there's enough portfolio history per user (3+ months of snapshots)
-and enough users to test which insights actually land.
+- Broker sync / bank integrations — never for MVP; manual + AI-driven is the differentiator
+- Dashboard highlights cards (market events, milestones, reflections) as originally specified — partially superseded by the AI insight band shipped in PR 16. Revisit if user research shows the single-sentence band isn't enough.
 
 ---
 
 ## Tech Debts
 
 - The `before_value` / `after_value` columns on `mutations` are EUR-equivalents but `currency` is native — pre-existing semantic muddle, separate task to design properly
-- No type validation on `personal_context` body — fine for MVP, revisit if API ever goes public
+- No type validation on chat input body — fine for MVP, revisit if API ever goes public
 - Two-write atomicity (asset update + mutation insert) is not transactional — if this becomes a real reliability issue, move both writes into a Postgres function via Supabase RPC
 - Hardcoded FX fallback rates drift over time — review annually if the cache and frankfurter.app both fail
-- No tests — accepted for MVP, will become a problem as feature surface grows
+- No tests — accepted for MVP. See `testing-strategies.md` for the activation plan.
 - No analytics (PostHog/Mixpanel) — defer until user count justifies it
-- Compound index on `messages (user_id, created_at DESC)` would optimize the chat history fallback fetch (`GET /api/messages`). Not blocking at current scale (hundreds of messages per user). File for a future migration when query latency becomes measurable
-- Chat history mapper silently coerces unknown `role` values to `"assistant"` (`from: m.role`). Acceptable given the schema only ever writes `"user"` or `"assistant"`, but a `continue` in the mapper would be more defensive against future schema drift
+- Compound index on `messages (user_id, created_at DESC)` would optimize the cursor-paginated `/api/messages` fetch. Not blocking at current scale (hundreds of messages per user). File for a future migration when query latency becomes measurable.
+- Chat history mapper silently coerces unknown `role` values to `"assistant"`. Acceptable given the schema only ever writes `"user"` or `"assistant"`, but a `continue` in the mapper would be more defensive against future schema drift.
+- AAPL logo intermittently 404s from FMP — falls back to monogram. Display-only.
+- Safari OAuth on localhost — Google sign-in on localhost via Safari redirects to production due to Safari + ITP third-party cookie blocking. Works in Chrome and other browsers; production unaffected.
+- `users.fingerprint` extraction reliability — for any active user where `users.fingerprint` stays null, check Sentry for failed extraction calls. The Profile slot hides cleanly when null, so this is not user-visible — but it should populate within one or two conversations.
 
 ---
 
@@ -152,8 +133,15 @@ Adding a currency outside that pattern (JPY, SEK, INR, etc.) requires:
 - Extend `COUNTRY_TO_CURRENCY` in `src/lib/country-currency.ts` with relevant country codes.
 - Verify `/api/fx` serves the new pair (frankfurter.app supports most majors).
 - Add a hardcoded fallback rate in `money.ts` for the offline path.
-- Update few-shot examples in `src/lib/claude.ts` if the currency is common enough to warrant
-  one (otherwise the EUR/USD/GBP examples are sufficient pattern-teaching).
+- Update few-shot examples in `src/lib/claude.ts` if the currency is common enough to warrant one.
+- Consider whether the forced `nl-NL` formatting (PR 16) still reads right for the new currency, or whether the new currency warrants its own locale override.
 
 The architecture supports this without a refactor.
 
+### Auto-WOZ valuation for Dutch properties
+
+Currently the property `value` is whatever was last stated via chat. A periodic WOZ lookup for NL properties (annual cadence aligned with WOZ updates) would write a fresh value automatically and log a single mutation per year per property. Equivalent for other countries via market-data APIs is a much larger project; WOZ is the cheap, well-defined first step.
+
+### Test activation
+
+See `testing-strategies.md` for the layered plan (math-layer unit tests → `apply-changes.ts` fixtures → Playwright smoke → LLM-as-user). Triggers: first paying user, first silent regression reaching a user, refactor velocity slowing.

@@ -36,13 +36,13 @@ Five or six flows that exercise the deterministic skeleton. Nothing AI-related.
 Suggested flows:
 - New user signup → empty dashboard renders → BottomNav visible
 - Signed-in user → /diary → entries render
-- Signed-in user → /settings → switch to USD → reload → still USD
-- Signed-in user → asset detail → inline-edit static value → persists after reload
+- Signed-in user → /profile → switch to USD → reload → still USD
+- Signed-in user → asset detail → renders read-only
 - Signed-in user → click DISCUSS on asset → chat opens with context
 
 Effort: half a day.
 Maintenance: low if scoped to skeleton; high if it tries to assert on AI output.
-What it catches: routing breakage, broken auth, components that fail to render, form submissions that don't fire.
+What it catches: routing breakage, broken auth, components that fail to render.
 What it misses: AI quality, latency feel, copy tone, anything subjective.
 
 ### Layer 2: Integration tests for `apply-changes.ts` (highest-stakes file)

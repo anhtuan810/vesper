@@ -75,17 +75,17 @@ export function NavBar({
                 src={avatarUrl}
                 alt={firstName ?? "User"}
                 style={{
-                  width: 34, height: 34, borderRadius: "50%",
+                  width: 28, height: 28, borderRadius: "50%",
                   objectFit: "cover", flexShrink: 0,
                 }}
               />
             ) : initials ? (
               <div
                 style={{
-                  width: 34, height: 34, borderRadius: "50%",
+                  width: 28, height: 28, borderRadius: "50%",
                   background: "var(--accent)", color: "var(--bg)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13, fontWeight: 500, letterSpacing: "0.01em",
+                  fontSize: 11, fontWeight: 500, letterSpacing: "0.01em",
                   flexShrink: 0,
                 }}
               >
