@@ -258,22 +258,26 @@ export async function applyPortfolioChanges({
           changed = true;
           const afterValue = updateData.value !== undefined ? (updateData.value as number) : existing.value;
           runningTotal += afterValue - existing.value;
-          await supabase.from("mutations").insert({
-            user_id: userId,
-            asset_id: existing.id,
-            asset_name: change.new_name || name,
-            action: "edit",
-            asset_type: existing.type,
-            symbol: existing.symbol || null,
-            before_value: existing.value,
-            after_value: afterValue,
-            before_units: existing.units || null,
-            after_units: change.units !== undefined ? change.units : (existing.units || null),
-            currency: change.currency || existing.currency || "EUR",
-            personal_context: contextNote,
-            portfolio_total: runningTotal,
-            occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
-          });
+
+          const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
+          if (!onlyNameChanged) {
+            await supabase.from("mutations").insert({
+              user_id: userId,
+              asset_id: existing.id,
+              asset_name: change.new_name || name,
+              action: "edit",
+              asset_type: existing.type,
+              symbol: existing.symbol || null,
+              before_value: existing.value,
+              after_value: afterValue,
+              before_units: existing.units || null,
+              after_units: change.units !== undefined ? change.units : (existing.units || null),
+              currency: change.currency || existing.currency || "EUR",
+              personal_context: contextNote,
+              portfolio_total: runningTotal,
+              occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
+            });
+          }
         }
       }
 

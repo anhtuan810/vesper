@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { FormatText } from "@/components/FormatText";
@@ -10,7 +10,7 @@ export default function ChatPage() {
   const router = useRouter();
   const { user } = useUser();
   const displayCurrency = useDisplayCurrency();
-  const { assets } = useAssets(user?.id);
+  const { assets, loading: assetsLoading } = useAssets(user?.id);
   const hasPortfolio = assets.length > 0;
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
   const {
@@ -22,6 +22,9 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Asset id from ?asset= param, consumed once assets have loaded.
+  const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinking]);
@@ -30,17 +33,34 @@ export default function ChatPage() {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  // Apply seed pre-fill from ?seed= query param (set by Edit buttons on detail pages).
   // Reads window.location.search directly to avoid the Suspense requirement of useSearchParams.
   // Runs once on mount; replaces the URL to prevent re-trigger on back-nav.
   useEffect(() => {
-    const seed = new URLSearchParams(window.location.search).get("seed");
-    if (!seed) return;
-    setInput(decodeURIComponent(seed));
-    router.replace("/chat");
-    setTimeout(() => inputRef.current?.focus(), 100);
+    const params = new URLSearchParams(window.location.search);
+    const assetId = params.get("asset");
+    const seed = params.get("seed");
+    if (assetId) {
+      setPendingAssetId(assetId);
+      router.replace("/chat", { scroll: false });
+    } else if (seed) {
+      setInput(decodeURIComponent(seed));
+      router.replace("/chat", { scroll: false });
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When assets finish loading and we have a pending asset id, pre-fill the input.
+  useEffect(() => {
+    if (!pendingAssetId || assetsLoading) return;
+    const found = assets.find((a) => a.id === pendingAssetId);
+    setPendingAssetId(null);
+    if (found) {
+      setInput(`Tell me about my ${found.name}.`);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAssetId, assetsLoading]);
 
   return (
     <>

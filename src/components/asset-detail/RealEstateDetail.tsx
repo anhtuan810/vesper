@@ -7,33 +7,17 @@ import { PropertyMap } from "@/components/PropertyMap";
 import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
 import { PriceDisplay } from "@/components/PriceDisplay";
-import { InlineEdit } from "@/components/asset-detail/InlineEdit";
-import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
-import { ContextNotePrompt } from "@/components/asset-detail/ContextNotePrompt";
 import { ACTION_STYLE, formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset, Mutation } from "@/lib/supabase";
 
-const PROP_TYPE_SELECT_STYLE: React.CSSProperties = {
-  appearance: "none",
-  WebkitAppearance: "none",
-  MozAppearance: "none",
-  background: "transparent",
-  border: "none",
-  padding: "0 14px 0 0",
-  fontSize: 10,
-  fontFamily: "var(--mono)",
-  color: "var(--text-dim)",
-  cursor: "pointer",
-  letterSpacing: "0.05em",
-  textTransform: "uppercase" as const,
-  backgroundImage:
-    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%2354545E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 2px center",
-  backgroundSize: "8px",
-  outline: "none",
+const PROP_TYPE_LABEL: Record<string, string> = {
+  house: "House",
+  apartment: "Apartment",
+  office: "Office",
+  land: "Land",
+  other: "Other",
 };
 
 interface Props {
@@ -66,12 +50,10 @@ function FutureSlot({ title, description }: { title: string; description: string
   );
 }
 
-export function RealEstateDetail({ asset: initialAsset }: Props) {
+export function RealEstateDetail({ asset }: Props) {
   const router = useRouter();
-  const [asset, setAsset] = useState<RealEstateAsset>(initialAsset);
   const supabase = createBrowserSupabase();
   const [mutations, setMutations] = useState<Mutation[]>([]);
-  const [pendingNote, setPendingNote] = useState<string | null>(null);
 
   const fetchMutations = useCallback(async () => {
     const { data } = await supabase
@@ -85,42 +67,16 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
-  const patchField = useCallback(async (
-    field: string,
-    value: unknown
-  ): Promise<{ asset: RealEstateAsset; mutation_id: string | null }> => {
-    const res = await fetch(`/api/assets/${asset.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "Save failed");
-    }
-    return res.json();
-  }, [asset.id]);
-
-  const handleUpdate = useCallback(async (field: string, value: unknown): Promise<string | null> => {
-    try {
-      const { asset: updated } = await patchField(field, value);
-      setAsset(updated);
-      fetchMutations();
-      return null;
-    } catch (e) {
-      return e instanceof Error ? e.message : "Save failed";
-    }
-  }, [patchField, fetchMutations]);
-
   const displayCurrency = useDisplayCurrency();
   const equity = asset.value - (asset.mortgage_balance ?? 0);
   const hasMortgage = (asset.mortgage_balance ?? 0) > 0;
+  const propTypeLabel = asset.property_type ? PROP_TYPE_LABEL[asset.property_type] ?? asset.property_type : null;
 
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-[600px] mx-auto pt-4 pb-32">
 
-        {/* Top bar */}
+        {/* Top bar: back only */}
         <div className="flex justify-between items-center px-4" style={{ paddingBottom: 14 }}>
           <button
             onClick={() => router.back()}
@@ -132,11 +88,6 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
             </svg>
             Back
           </button>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
-            </svg>
-          </div>
         </div>
 
         {/* Map */}
@@ -145,149 +96,42 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
         {/* Address block */}
         <div style={{ padding: "20px 22px 4px" }}>
 
-          {/* ROW 1: Name */}
-          <InlineEdit
-            display={
-              <span className="font-serif text-fg" style={{ fontSize: 18, fontWeight: 400, lineHeight: 1.3, fontVariationSettings: "'opsz' 144" }}>
-                {asset.name}
-              </span>
-            }
-            rawValue={asset.name}
-            placeholder="e.g. Eindhoven"
-            affordance
-            displayStyle={{ minHeight: 40 }}
-            inputStyle={{ fontSize: 18, fontFamily: "var(--serif)" }}
-            onSave={async (raw) => {
-              const v = raw.trim();
-              if (!v) return "Name cannot be empty";
-              return handleUpdate("name", v);
-            }}
-          />
-
-          {/* ROW 2: Address + Street View button */}
-          <div className="flex items-center" style={{ marginTop: 4, gap: 8 }}>
-            <InlineEdit
-              display={
-                asset.address
-                  ? <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em" }}>{asset.address}</span>
-                  : <span className="font-mono" style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: "0.04em" }}>+ Add address</span>
-              }
-              rawValue={asset.address ?? ""}
-              placeholder="e.g. Burg. Hoffmanplein 12, Eindhoven"
-              affordance
-              displayStyle={{ minHeight: 22, flex: 1 }}
-              inputStyle={{ fontSize: 11, fontFamily: "var(--mono)" }}
-              onSave={async (raw) => {
-                const v = raw.trim() || null;
-                try {
-                  const { asset: updated } = await patchField("address", v);
-                  setAsset(updated);
-                  fetchMutations();
-                  return null;
-                } catch (e) {
-                  return e instanceof Error ? e.message : "Save failed";
-                }
-              }}
-            />
+          {/* Name */}
+          <div className="font-serif text-fg" style={{ fontSize: 18, fontWeight: 400, lineHeight: 1.3, fontVariationSettings: "'opsz' 144" }}>
+            {asset.name}
           </div>
 
-          {/* ROW 3: country · property_type · size_sqm */}
-          <div className="flex items-center gap-1" style={{ marginTop: 6 }}>
-            <InlineEdit
-              display={
-                <span className="font-mono text-dim" style={{ fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                  {asset.country ?? "??"}
-                </span>
-              }
-              rawValue={asset.country ?? ""}
-              placeholder="NL"
-              affordance
-              displayStyle={{ minHeight: 22 }}
-              inputStyle={{ fontSize: 10, width: 52 }}
-              onSave={async (raw) => {
-                const v = raw.trim().toUpperCase().slice(0, 3) || null;
-                return handleUpdate("country", v);
-              }}
-            />
-            <span className="text-faint" style={{ fontSize: 10 }}>·</span>
-            <select
-              value={asset.property_type ?? ""}
-              onChange={(e) => handleUpdate("property_type", e.target.value || null)}
-              style={PROP_TYPE_SELECT_STYLE}
-            >
-              <option value="">type</option>
-              <option value="house">House</option>
-              <option value="apartment">Apartment</option>
-              <option value="office">Office</option>
-              <option value="land">Land</option>
-              <option value="other">Other</option>
-            </select>
-            <span className="text-faint" style={{ fontSize: 10 }}>·</span>
-            <InlineEdit
-              display={
-                <span className="font-mono text-dim" style={{ fontSize: 10, letterSpacing: "0.05em" }}>
-                  {asset.size_sqm ? `${asset.size_sqm} m²` : "size"}
-                </span>
-              }
-              rawValue={asset.size_sqm != null ? String(asset.size_sqm) : ""}
-              placeholder="e.g. 120"
-              affordance
-              displayStyle={{ minHeight: 22 }}
-              inputStyle={{ fontSize: 10, width: 72 }}
-              onSave={async (raw) => {
-                const t = raw.trim();
-                if (t === "") return handleUpdate("size_sqm", null);
-                const n = parseFloat(t);
-                if (isNaN(n) || n <= 0) return "Must be a positive number";
-                return handleUpdate("size_sqm", n);
-              }}
-            />
+          {/* Address */}
+          {asset.address && (
+            <div className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em", marginTop: 4 }}>
+              {asset.address}
+            </div>
+          )}
+
+          {/* country · property_type · size_sqm */}
+          <div className="flex items-center gap-1 font-mono text-dim" style={{ fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 6 }}>
+            {asset.country && <span>{asset.country}</span>}
+            {asset.country && (propTypeLabel || asset.size_sqm) && <span style={{ color: "var(--text-faint)" }}>·</span>}
+            {propTypeLabel && <span>{propTypeLabel}</span>}
+            {propTypeLabel && asset.size_sqm && <span style={{ color: "var(--text-faint)" }}>·</span>}
+            {asset.size_sqm && <span>{asset.size_sqm} m²</span>}
           </div>
 
-          {/* Native currency — transparency, captured at add time, not editable */}
+          {/* Native currency */}
           <div className="font-mono text-faint" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 5 }}>
             Native: {asset.currency ?? "EUR"}
           </div>
         </div>
 
-        {/* Property value (editable) + Equity */}
+        {/* Property value + Equity */}
         <div style={{ padding: "16px 22px 0", borderBottom: "1px solid var(--border)", marginBottom: 0 }}>
           <div className="flex items-center justify-between" style={{ paddingBottom: 16 }}>
             <div className="font-mono uppercase text-faint" style={{ fontSize: 10, letterSpacing: "0.2em" }}>
               Property value
             </div>
-            <InlineEdit
-              kind="money"
-              displayCurrency={displayCurrency}
-              display={
-                <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-                  {formatMoney(asset.value, displayCurrency)}
-                </span>
-              }
-              rawValue={String(asset.value)}
-              placeholder="e.g. 350000"
-              affordance
-              displayStyle={{ minHeight: 28 }}
-              inputStyle={{ fontSize: 14, fontWeight: 500, width: 120, textAlign: "right" }}
-              onSave={async (raw) => {
-                if (raw.trim() === "") return "";
-                const n = parseFloat(raw);
-                if (isNaN(n) || n <= 0) return "Must be a positive number";
-                try {
-                  const prevValue = asset.value;
-                  const { asset: updated, mutation_id } = await patchField("value", n);
-                  setAsset(updated);
-                  fetchMutations();
-                  if (prevValue > 0 && mutation_id) {
-                    const delta = Math.abs(n - prevValue) / prevValue;
-                    if (delta > 0.05) setPendingNote(mutation_id);
-                  }
-                  return null;
-                } catch (e) {
-                  return e instanceof Error ? e.message : "Save failed";
-                }
-              }}
-            />
+            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+              {formatMoney(asset.value, displayCurrency)}
+            </div>
           </div>
         </div>
 
@@ -311,13 +155,6 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
           </div>
         )}
 
-        {/* Context note prompt after significant value change */}
-        {pendingNote && (
-          <div style={{ padding: "0 22px" }}>
-            <ContextNotePrompt mutationId={pendingNote} onDismiss={() => setPendingNote(null)} />
-          </div>
-        )}
-
         {/* Mortgage section */}
         {hasMortgage && (
           <div style={{ paddingTop: 28 }}>
@@ -326,7 +163,7 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
                 Mortgage
               </div>
             </div>
-            <MortgageBlock asset={asset} onUpdate={handleUpdate} />
+            <MortgageBlock asset={asset} />
           </div>
         )}
 
@@ -383,20 +220,7 @@ export function RealEstateDetail({ asset: initialAsset }: Props) {
           </div>
         )}
 
-        {/* CTAs */}
-        <div style={{ padding: "22px 22px 4px" }}>
-          <button
-            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Tell me about my property in ${asset.name}`)}`)}
-            className="font-mono text-center"
-            style={{ width: "100%", padding: "11px 0", borderRadius: 12, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", background: "var(--accent)", color: "var(--bg)", border: "none", cursor: "pointer" }}
-          >
-            Discuss
-          </button>
-          <DeleteAssetButton asset={asset} />
-        </div>
-
       </div>
     </div>
   );
 }
-

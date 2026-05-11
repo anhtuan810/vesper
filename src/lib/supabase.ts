@@ -129,6 +129,7 @@ export interface Mutation {
   user_id: string;
   asset_id: string | null;
   asset_name: string | null;
+  asset?: { name: string } | null;
   asset_type: string | null;
   symbol: string | null;
   action: "add" | "edit" | "remove";

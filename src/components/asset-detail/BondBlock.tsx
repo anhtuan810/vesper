@@ -1,12 +1,10 @@
 "use client";
 
 import { formatDate } from "@/lib/utils";
-import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import type { BondsAsset } from "@/lib/supabase";
 
 interface Props {
   asset: BondsAsset;
-  onUpdate?: (field: string, value: unknown) => Promise<string | null>;
 }
 
 function parseLocalDate(str: string): Date {
@@ -31,7 +29,7 @@ function computeTimeToMaturity(maturityDateStr: string): string {
   return `${years}yr ${months}mo`;
 }
 
-export function BondBlock({ asset, onUpdate }: Props) {
+export function BondBlock({ asset }: Props) {
   const { issuer, coupon_rate, maturity_date, isin } = asset;
   const timeToMaturity = maturity_date ? computeTimeToMaturity(maturity_date) : null;
 
@@ -47,110 +45,39 @@ export function BondBlock({ asset, onUpdate }: Props) {
         Bond details
       </div>
 
-      {/* Primary stats — 2×2 grid */}
+      {/* Primary stats — 2×2 grid, all read-only */}
       <div className="grid grid-cols-2 gap-2">
 
-        {/* Issuer */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Issuer</div>
-          {onUpdate ? (
-            <InlineEdit
-              display={<span className="font-serif" style={{ fontSize: 13, fontWeight: 400, color: "var(--text)", fontVariationSettings: "'opsz' 144" }}>{issuer ?? "—"}</span>}
-              rawValue={issuer ?? ""}
-              placeholder="e.g. Netherlands"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 13 }}
-              onSave={async (raw) => {
-                const v = raw.trim() || null;
-                return onUpdate("issuer", v);
-              }}
-            />
-          ) : (
-            <div className="font-serif" style={{ fontSize: 13, fontWeight: 400, color: "var(--text)", fontVariationSettings: "'opsz' 144" }}>
-              {issuer ?? "—"}
-            </div>
-          )}
+          <div className="font-serif" style={{ fontSize: 13, fontWeight: 400, color: "var(--text)", fontVariationSettings: "'opsz' 144" }}>
+            {issuer ?? "—"}
+          </div>
         </div>
 
-        {/* Coupon */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Coupon</div>
-          {onUpdate ? (
-            <InlineEdit
-              kind="percent"
-              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{coupon_rate != null ? `${coupon_rate.toFixed(1)}%` : "—"}</span>}
-              rawValue={coupon_rate != null ? String(coupon_rate) : ""}
-              placeholder="e.g. 3.5"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 14, fontWeight: 500 }}
-              onSave={async (raw) => {
-                const t = raw.trim();
-                if (t === "") return onUpdate("coupon_rate", null);
-                const n = parseFloat(t);
-                if (isNaN(n) || n < 0) return "Must be a non-negative number";
-                return onUpdate("coupon_rate", n);
-              }}
-            />
-          ) : (
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {coupon_rate != null ? `${coupon_rate.toFixed(1)}%` : "—"}
-            </div>
-          )}
+          <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+            {coupon_rate != null ? `${coupon_rate.toFixed(1)}%` : "—"}
+          </div>
         </div>
 
-        {/* Maturity */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Maturity</div>
-          {onUpdate ? (
-            <InlineEdit
-              kind="date"
-              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{maturity_date ? formatDate(maturity_date) : "—"}</span>}
-              rawValue={maturity_date ?? ""}
-              placeholder="YYYY-MM-DD"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 13, fontWeight: 500 }}
-              onSave={async (raw) => {
-                const t = raw.trim();
-                if (t === "") return onUpdate("maturity_date", null);
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return "Use YYYY-MM-DD";
-                return onUpdate("maturity_date", t);
-              }}
-            />
-          ) : (
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {maturity_date ? formatDate(maturity_date) : "—"}
-            </div>
-          )}
+          <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+            {maturity_date ? formatDate(maturity_date) : "—"}
+          </div>
         </div>
 
-        {/* ISIN */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>ISIN</div>
-          {onUpdate ? (
-            <InlineEdit
-              display={<span className="font-mono" style={{ fontSize: 11, fontWeight: 500, color: "var(--text)", wordBreak: "break-all" }}>{isin ?? "—"}</span>}
-              rawValue={isin ?? ""}
-              placeholder="e.g. NL0009446418"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 11, fontWeight: 500 }}
-              onSave={async (raw) => {
-                const v = raw.trim().toUpperCase() || null;
-                return onUpdate("isin", v);
-              }}
-            />
-          ) : (
-            <div className="font-mono" style={{ fontSize: 11, fontWeight: 500, color: "var(--text)", wordBreak: "break-all" }}>
-              {isin ?? "—"}
-            </div>
-          )}
+          <div className="font-mono" style={{ fontSize: 11, fontWeight: 500, color: "var(--text)", wordBreak: "break-all" }}>
+            {isin ?? "—"}
+          </div>
         </div>
       </div>
 
-      {/* Computed stats */}
+      {/* Computed stat */}
       <div
         style={{
           marginTop: 8,

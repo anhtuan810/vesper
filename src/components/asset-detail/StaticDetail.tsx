@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { BondBlock } from "@/components/asset-detail/BondBlock";
-import { InlineEdit } from "@/components/asset-detail/InlineEdit";
-import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
-import { ContextNotePrompt } from "@/components/asset-detail/ContextNotePrompt";
 import { ACTION_STYLE, formatDate, TYPE_LABEL } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
@@ -17,12 +14,10 @@ interface Props {
   asset: StaticAsset | BondsAsset;
 }
 
-export function StaticDetail({ asset: initialAsset }: Props) {
+export function StaticDetail({ asset }: Props) {
   const router = useRouter();
-  const [asset, setAsset] = useState<StaticAsset | BondsAsset>(initialAsset);
   const supabase = createBrowserSupabase();
   const [mutations, setMutations] = useState<Mutation[]>([]);
-  const [pendingNote, setPendingNote] = useState<string | null>(null);
 
   const fetchMutations = useCallback(async () => {
     const { data } = await supabase
@@ -35,33 +30,6 @@ export function StaticDetail({ asset: initialAsset }: Props) {
   }, [asset.id]);
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
-
-  const patchField = useCallback(async (
-    field: string,
-    value: unknown
-  ): Promise<{ asset: StaticAsset | BondsAsset; mutation_id: string | null }> => {
-    const res = await fetch(`/api/assets/${asset.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "Save failed");
-    }
-    return res.json();
-  }, [asset.id]);
-
-  const handleUpdate = useCallback(async (field: string, value: unknown): Promise<string | null> => {
-    try {
-      const { asset: updated } = await patchField(field, value);
-      setAsset(updated);
-      fetchMutations();
-      return null;
-    } catch (e) {
-      return e instanceof Error ? e.message : "Save failed";
-    }
-  }, [patchField, fetchMutations]);
 
   const displayCurrency = useDisplayCurrency();
   const monogram = asset.name.slice(0, 3).toUpperCase();
@@ -101,27 +69,12 @@ export function StaticDetail({ asset: initialAsset }: Props) {
               {monogram}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              {/* Name — inline-editable */}
-              <InlineEdit
-                display={
-                  <span
-                    className="font-serif text-fg"
-                    style={{ fontSize: 22, fontWeight: 400, lineHeight: 1.2, fontVariationSettings: "'opsz' 144" }}
-                  >
-                    {asset.name}
-                  </span>
-                }
-                rawValue={asset.name}
-                placeholder="e.g. Emergency fund"
-                affordance
-                displayStyle={{ minHeight: 40 }}
-                inputStyle={{ fontSize: 18, fontFamily: "var(--serif)" }}
-                onSave={async (raw) => {
-                  const v = raw.trim();
-                  if (!v) return "Name cannot be empty";
-                  return handleUpdate("name", v);
-                }}
-              />
+              <div
+                className="font-serif text-fg"
+                style={{ fontSize: 22, fontWeight: 400, lineHeight: 1.2, fontVariationSettings: "'opsz' 144" }}
+              >
+                {asset.name}
+              </div>
               {subLine && (
                 <div className="font-mono text-dim mt-0.5" style={{ fontSize: 10, letterSpacing: "0.05em" }}>
                   {subLine}
@@ -130,71 +83,28 @@ export function StaticDetail({ asset: initialAsset }: Props) {
             </div>
           </div>
 
-          {/* Balance hero — inline-editable */}
+          {/* Balance hero — read-only */}
           <div className="font-mono uppercase text-faint" style={{ fontSize: 10, letterSpacing: "0.2em", marginBottom: 10 }}>
             Balance
           </div>
-          <InlineEdit
-            kind="money"
-            displayCurrency={displayCurrency}
-            display={
-              <div
-                className="font-serif font-light text-fg"
-                style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}
-              >
-                <PriceDisplay amount={asset.value} displayCurrency={displayCurrency} />
-              </div>
-            }
-            rawValue={String(asset.value)}
-            placeholder="e.g. 25000"
-            affordance
-            displayStyle={{ minHeight: 44, display: "block" }}
-            inputStyle={{ fontSize: 24, fontFamily: "var(--mono)", fontWeight: 500 }}
-            onSave={async (raw) => {
-              if (raw.trim() === "") return "";
-              const n = parseFloat(raw);
-              if (isNaN(n) || n < 0) return "Must be a non-negative number";
-              try {
-                const prevValue = asset.value;
-                const { asset: updated, mutation_id } = await patchField("value", n);
-                setAsset(updated);
-                fetchMutations();
-                if (prevValue > 0 && mutation_id) {
-                  const delta = Math.abs(n - prevValue) / prevValue;
-                  if (delta > 0.05) setPendingNote(mutation_id);
-                }
-                return null;
-              } catch (e) {
-                return e instanceof Error ? e.message : "Save failed";
-              }
-            }}
-          />
+          <div
+            className="font-serif font-light text-fg"
+            style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}
+          >
+            <PriceDisplay amount={asset.value} displayCurrency={displayCurrency} />
+          </div>
 
-          {/* Currency — inline-editable pill */}
+          {/* Currency */}
           <div className="flex items-center gap-2 mt-3">
             <span className="font-mono text-faint" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               Currency
             </span>
-            <InlineEdit
-              display={
-                <span
-                  className="font-mono"
-                  style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 5, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
-                >
-                  {asset.currency ?? "EUR"}
-                </span>
-              }
-              rawValue={asset.currency ?? "EUR"}
-              placeholder="EUR"
-              affordance
-              displayStyle={{ minHeight: 24 }}
-              inputStyle={{ fontSize: 11, width: 64, fontFamily: "var(--mono)" }}
-              onSave={async (raw) => {
-                const v = raw.trim().toUpperCase();
-                if (!v) return "Cannot be empty";
-                return handleUpdate("currency", v);
-              }}
-            />
+            <span
+              className="font-mono"
+              style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 5, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
+            >
+              {asset.currency ?? "EUR"}
+            </span>
           </div>
 
           {/* Optional rate — cash and pension only */}
@@ -210,14 +120,9 @@ export function StaticDetail({ asset: initialAsset }: Props) {
           )}
         </div>
 
-        {/* Context note prompt after significant value change */}
-        {pendingNote && (
-          <ContextNotePrompt mutationId={pendingNote} onDismiss={() => setPendingNote(null)} />
-        )}
-
-        {/* Bond block — only for bonds, with inline edits */}
+        {/* Bond block — read-only for bonds */}
         {asset.type === "bonds" && (
-          <BondBlock asset={asset as BondsAsset} onUpdate={handleUpdate} />
+          <BondBlock asset={asset as BondsAsset} />
         )}
 
         {/* Activity */}
@@ -265,18 +170,6 @@ export function StaticDetail({ asset: initialAsset }: Props) {
               <div className="font-mono text-faint" style={{ fontSize: 11 }}>No activity yet.</div>
             </div>
           )}
-        </div>
-
-        {/* CTAs */}
-        <div style={{ paddingTop: 22 }}>
-          <button
-            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Tell me about ${asset.name}`)}`)}
-            className="font-mono text-center"
-            style={{ width: "100%", padding: "11px 0", borderRadius: 12, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", background: "var(--accent)", color: "var(--bg)", border: "none", cursor: "pointer" }}
-          >
-            Discuss
-          </button>
-          <DeleteAssetButton asset={asset} />
         </div>
 
       </div>

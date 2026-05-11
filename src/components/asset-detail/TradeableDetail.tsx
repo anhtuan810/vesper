@@ -3,22 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { useLivePrice } from "@/lib/hooks";
 import { PriceChart } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
-import { InlineEdit } from "@/components/asset-detail/InlineEdit";
-import { DeleteAssetButton } from "@/components/asset-detail/DeleteAssetButton";
-import { ContextNotePrompt } from "@/components/asset-detail/ContextNotePrompt";
 import { pctChange, formatDate, ACTION_STYLE, TYPE_LABEL, currencySymbol } from "@/lib/utils";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
+import { normalizePrice } from "@/lib/prices";
 import type { TradeableAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
   asset: TradeableAsset;
 }
-
 
 function fmtPrice(n: number): string {
   return n >= 1000
@@ -33,13 +29,30 @@ function monogram(asset: TradeableAsset): string {
   return asset.name.slice(0, 3).toUpperCase();
 }
 
-export function TradeableDetail({ asset: initialAsset }: Props) {
+export function TradeableDetail({ asset }: Props) {
   const router = useRouter();
-  const [asset, setAsset] = useState<TradeableAsset>(initialAsset);
-  const { livePrice, livePrev, nativePrice, nativeCurrency: _nativeCurrency } = useLivePrice(asset.symbol);
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [livePrev, setLivePrev] = useState<number | null>(null);
+  const [nativePrice, setNativePrice] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [mutations, setMutations] = useState<Mutation[]>([]);
-  const [pendingNote, setPendingNote] = useState<string | null>(null);
   const supabase = createBrowserSupabase();
+
+  useEffect(() => {
+    if (!asset.symbol) return;
+    let cancelled = false;
+    fetch(`/api/prices?symbol=${encodeURIComponent(asset.symbol)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && !data.error) {
+          setLivePrice(normalizePrice(data.price, data.nativeCurrency));
+          setLivePrev(data.previousClose ?? null);
+          setNativePrice(data.nativePrice ?? null);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [asset.symbol, refreshKey]);
 
   const fetchMutations = useCallback(async () => {
     const { data } = await supabase
@@ -52,22 +65,6 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
   }, [asset.id]);
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
-
-  const patchField = useCallback(async (
-    field: string,
-    value: unknown
-  ): Promise<{ asset: TradeableAsset; mutation_id: string | null }> => {
-    const res = await fetch(`/api/assets/${asset.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "Save failed");
-    }
-    return res.json();
-  }, [asset.id]);
 
   const currentValue = livePrice != null && asset.units
     ? Math.round(livePrice * asset.units)
@@ -87,7 +84,6 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
 
   const sym = currencySymbol(asset.currency);
   const displayCurrency = useDisplayCurrency();
-
   const typeLabel = TYPE_LABEL[asset.type] ?? asset.type;
   const showCountry = asset.type !== "crypto";
 
@@ -95,17 +91,37 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
     <div className="min-h-screen bg-bg">
       <div className="max-w-[600px] mx-auto px-4 sm:px-6 pt-4 pb-32">
 
-        {/* Back */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 font-mono text-dim mb-2"
-          style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", paddingBottom: 8 }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          Back
-        </button>
+        {/* Top bar: back + refresh */}
+        <div className="flex items-center justify-between mb-2" style={{ paddingBottom: 8 }}>
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 font-mono text-dim"
+            style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back
+          </button>
+          {asset.symbol && (
+            <button
+              onClick={() => setRefreshKey((k) => k + 1)}
+              style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "var(--surface)", border: "1px solid var(--border)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "var(--text-dim)", cursor: "pointer",
+              }}
+              aria-label="Refresh price"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            </button>
+          )}
+        </div>
 
         {/* Header */}
         <div style={{ paddingBottom: 16 }}>
@@ -127,31 +143,9 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
                 className="font-mono text-dim mt-0.5 flex items-center gap-1"
                 style={{ fontSize: 10, letterSpacing: "0.05em" }}
               >
-                {showCountry && (
+                {showCountry && asset.country && (
                   <>
-                    <InlineEdit
-                      display={
-                        <span>{asset.country ?? <span style={{ color: "var(--text-faint)" }}>??</span>}</span>
-                      }
-                      rawValue={asset.country ?? ""}
-                      placeholder="US"
-                      affordance
-                      displayStyle={{ minHeight: 28, fontSize: 10, letterSpacing: "0.05em" }}
-                      inputStyle={{ fontSize: 10, width: 52, padding: "2px 6px", minHeight: 28 }}
-                      onSave={async (raw) => {
-                        const trimmed = raw.trim().toUpperCase().slice(0, 3);
-                        const value = trimmed === "" ? null : trimmed;
-                        if (value !== null && value.length > 3) return "Max 3 characters";
-                        try {
-                          const { asset: updated } = await patchField("country", value);
-                          setAsset(updated);
-                          fetchMutations();
-                          return null;
-                        } catch (e) {
-                          return e instanceof Error ? e.message : "Save failed";
-                        }
-                      }}
-                    />
+                    <span>{asset.country}</span>
                     <span style={{ color: "var(--text-faint)" }}>·</span>
                   </>
                 )}
@@ -198,99 +192,37 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
         {/* Chart */}
         {asset.symbol && <PriceChart symbol={asset.symbol} defaultRange="3M" />}
 
-        {/* Metric grid */}
+        {/* Metric grid — read-only */}
         <div className="grid grid-cols-2 gap-2 py-4">
-          {/* Units — inline-editable */}
           <div
             className="border border-border rounded-xl"
             style={{ background: "var(--surface)", padding: "12px 14px" }}
           >
-            <div
-              className="font-mono text-faint uppercase mb-2"
-              style={{ fontSize: 9, letterSpacing: "0.16em" }}
-            >
+            <div className="font-mono text-faint uppercase mb-2" style={{ fontSize: 9, letterSpacing: "0.16em" }}>
               Units
             </div>
-            <InlineEdit
-              display={
-                <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-                  {asset.units != null ? asset.units.toLocaleString("en") : "—"}
-                </span>
-              }
-              rawValue={asset.units != null ? String(asset.units) : ""}
-              placeholder="e.g. 10.5"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%", justifyContent: "space-between", alignItems: "center" }}
-              inputStyle={{ fontSize: 14, fontWeight: 500 }}
-              onSave={async (raw) => {
-                if (raw.trim() === "") return "";      // silent revert
-                const n = parseFloat(raw);
-                if (isNaN(n) || n <= 0) return "Must be a positive number";
-                try {
-                  const prevUnits = asset.units ?? 0;
-                  const { asset: updated, mutation_id } = await patchField("units", n);
-                  setAsset(updated);
-                  fetchMutations();
-                  // Offer context note when value changes by more than 5%
-                  if (prevUnits > 0 && mutation_id) {
-                    const delta = Math.abs(n - prevUnits) / prevUnits;
-                    if (delta > 0.05) setPendingNote(mutation_id);
-                  }
-                  return null;
-                } catch (e) {
-                  return e instanceof Error ? e.message : "Save failed";
-                }
-              }}
-            />
+            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+              {asset.units != null ? asset.units.toLocaleString("en") : "—"}
+            </div>
           </div>
 
-          {/* Last buy price — inline-editable */}
           <div
             className="border border-border rounded-xl"
             style={{ background: "var(--surface)", padding: "12px 14px" }}
           >
-            <div
-              className="font-mono text-faint uppercase mb-2"
-              style={{ fontSize: 9, letterSpacing: "0.16em" }}
-            >
+            <div className="font-mono text-faint uppercase mb-2" style={{ fontSize: 9, letterSpacing: "0.16em" }}>
               Last buy price
             </div>
-            <InlineEdit
-              display={
-                <span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-                  {asset.buy_price != null ? `${sym}${fmtPrice(asset.buy_price)}` : "—"}
-                </span>
-              }
-              rawValue={asset.buy_price != null ? String(asset.buy_price) : ""}
-              placeholder="e.g. 150.00"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%", justifyContent: "space-between", alignItems: "center" }}
-              inputStyle={{ fontSize: 14, fontWeight: 500 }}
-              onSave={async (raw) => {
-                const trimmed = raw.trim();
-                const value = trimmed === "" ? null : parseFloat(trimmed);
-                if (value !== null && (isNaN(value) || value < 0)) return "Must be a non-negative number";
-                try {
-                  const { asset: updated } = await patchField("buy_price", value);
-                  setAsset(updated);
-                  fetchMutations();
-                  return null;
-                } catch (e) {
-                  return e instanceof Error ? e.message : "Save failed";
-                }
-              }}
-            />
+            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+              {asset.buy_price != null ? `${sym}${fmtPrice(asset.buy_price)}` : "—"}
+            </div>
           </div>
 
-          {/* Live price — read-only */}
           <div
             className="border border-border rounded-xl"
             style={{ background: "var(--surface)", padding: "12px 14px" }}
           >
-            <div
-              className="font-mono text-faint uppercase mb-2"
-              style={{ fontSize: 9, letterSpacing: "0.16em" }}
-            >
+            <div className="font-mono text-faint uppercase mb-2" style={{ fontSize: 9, letterSpacing: "0.16em" }}>
               Live price
             </div>
             <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
@@ -298,15 +230,11 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             </div>
           </div>
 
-          {/* Total return — read-only */}
           <div
             className="border border-border rounded-xl"
             style={{ background: "var(--surface)", padding: "12px 14px" }}
           >
-            <div
-              className="font-mono text-faint uppercase mb-2"
-              style={{ fontSize: 9, letterSpacing: "0.16em" }}
-            >
+            <div className="font-mono text-faint uppercase mb-2" style={{ fontSize: 9, letterSpacing: "0.16em" }}>
               Total return
             </div>
             <div
@@ -320,14 +248,6 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             </div>
           </div>
         </div>
-
-        {/* Context note prompt after significant units change */}
-        {pendingNote && (
-          <ContextNotePrompt
-            mutationId={pendingNote}
-            onDismiss={() => setPendingNote(null)}
-          />
-        )}
 
         {/* Crypto volatility */}
         <CryptoVolatilityBlock asset={asset} />
@@ -418,23 +338,6 @@ export function TradeableDetail({ asset: initialAsset }: Props) {
             </div>
           </>
         )}
-
-        {/* CTAs */}
-        <div className="pt-4 pb-2">
-          <button
-            onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Tell me about my ${asset.name} position`)}`)}
-            className="w-full font-mono text-center"
-            style={{
-              padding: "11px 0", borderRadius: 12,
-              fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
-              background: "var(--accent)", color: "var(--bg)",
-              border: "none", cursor: "pointer",
-            }}
-          >
-            Discuss
-          </button>
-          <DeleteAssetButton asset={asset} />
-        </div>
 
       </div>
     </div>

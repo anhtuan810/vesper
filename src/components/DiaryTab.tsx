@@ -62,119 +62,8 @@ function relativeAge(past: Date, now: Date): string {
   return `${months} months ago`;
 }
 
-// ── Inline note editor ─────────────────────────────────────────────────────────
-function NoteEditor({
-  mutationId,
-  initialNote,
-  onOptimistic,
-  onSaved,
-  onRevert,
-  onCancel,
-}: {
-  mutationId: string;
-  initialNote: string;
-  onOptimistic: (note: string) => void;
-  onSaved: () => void;
-  onRevert: (prevNote: string) => void;
-  onCancel: () => void;
-}) {
-  const [draft, setDraft] = useState(initialNote);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSave() {
-    const prevNote = initialNote;
-    setSaving(true);
-    setError(null);
-    onOptimistic(draft);
-    try {
-      const res = await fetch(`/api/mutations/${mutationId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personal_context: draft }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Save failed");
-      }
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
-      onRevert(prevNote);
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div style={{ marginLeft: 36, paddingBottom: 14 }}>
-      <textarea
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        disabled={saving}
-        placeholder="Add a personal note…"
-        rows={3}
-        style={{
-          width: "100%",
-          background: "var(--surface-elev)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          padding: "6px 8px",
-          fontSize: 11,
-          fontStyle: "italic",
-          color: "var(--text-dim)",
-          lineHeight: 1.45,
-          resize: "vertical",
-          outline: "none",
-          boxSizing: "border-box",
-          fontFamily: "inherit",
-          opacity: saving ? 0.6 : 1,
-        }}
-      />
-      {error && (
-        <div
-          className="font-mono"
-          style={{ fontSize: 10, color: "var(--negative)", marginTop: 4 }}
-        >
-          {error}
-        </div>
-      )}
-      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="font-mono transition-all"
-          style={{
-            fontSize: 11,
-            padding: "4px 10px",
-            borderRadius: 6,
-            border: "1px solid var(--border-strong)",
-            background: "var(--surface-elev)",
-            color: saving ? "var(--text-faint)" : "var(--text)",
-            cursor: saving ? "default" : "pointer",
-          }}
-        >
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button
-          onClick={onCancel}
-          disabled={saving}
-          className="font-mono transition-all"
-          style={{
-            fontSize: 11,
-            padding: "4px 10px",
-            borderRadius: 6,
-            border: "1px solid var(--border)",
-            background: "transparent",
-            color: "var(--text-faint)",
-            cursor: saving ? "default" : "pointer",
-          }}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
+function displayName(m: Mutation): string {
+  return m.asset?.name ?? m.asset_name ?? "";
 }
 
 interface DiaryTabProps {
@@ -317,7 +206,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
       body: JSON.stringify({
         mutations: mutations.map((m) => ({
           action: m.action,
-          asset_name: m.asset_name,
+          asset_name: m.asset?.name ?? m.asset_name,
           before_value: m.before_value,
           after_value: m.after_value,
           currency: m.currency,
@@ -427,14 +316,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [customFrom, setCustomFrom] = useState(thisMonth);
   const [customTo, setCustomTo] = useState(thisMonth);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [localContexts, setLocalContexts] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-
-  function getContext(m: Mutation): string {
-    return m.id in localContexts ? localContexts[m.id] : (m.personal_context ?? "");
-  }
 
   // Anniversary: same MM-DD as today, at least 30 days in the past, oldest wins
   const anniversaryEntry = (() => {
@@ -461,9 +344,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
     .filter((m) => {
       if (!trimmedQuery) return true;
       return (
-        (m.asset_name ?? "").toLowerCase().includes(trimmedQuery) ||
+        displayName(m).toLowerCase().includes(trimmedQuery) ||
         (m.symbol ?? "").toLowerCase().includes(trimmedQuery) ||
-        getContext(m).toLowerCase().includes(trimmedQuery)
+        (m.personal_context ?? "").toLowerCase().includes(trimmedQuery)
       );
     });
 
@@ -653,13 +536,13 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               <AssetLogo
                 type={anniversaryEntry.mutation.asset_type}
                 symbol={anniversaryEntry.mutation.symbol}
-                name={anniversaryEntry.mutation.asset_name}
+                name={displayName(anniversaryEntry.mutation)}
               />
               <span
                 className="font-sans flex-1 min-w-0"
                 style={{ fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
               >
-                {anniversaryEntry.mutation.asset_name}
+                {displayName(anniversaryEntry.mutation)}
               </span>
               {buildValueNode(anniversaryEntry.mutation, displayCurrency)}
               <span
@@ -669,12 +552,12 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 {formatDate(anniversaryEntry.mutation.occurred_at || anniversaryEntry.mutation.recorded_at)}
               </span>
             </div>
-            {getContext(anniversaryEntry.mutation) && (
+            {anniversaryEntry.mutation.personal_context && (
               <div
                 className="italic"
                 style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3, marginLeft: 36 }}
               >
-                {getContext(anniversaryEntry.mutation)}
+                {anniversaryEntry.mutation.personal_context}
               </div>
             )}
           </button>
@@ -712,8 +595,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             {grouped[monthKey].map((m) => {
               const date = m.occurred_at || m.recorded_at;
               const valueNode = buildValueNode(m, displayCurrency);
-              const context = getContext(m);
-              const isExpanded = expandedId === m.id;
+              const name = displayName(m);
 
               return (
                 <div
@@ -722,22 +604,10 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                   className="border-b border-border last:border-0"
                   style={highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : undefined}
                 >
-                  {/* Clickable row — tap to toggle note editor */}
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : m.id)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      background: "none",
-                      border: "none",
-                      padding: "14px 0",
-                      cursor: "pointer",
-                    }}
-                  >
+                  <div style={{ padding: "14px 0" }}>
                     {/* ROW 1: icon · name · value · date */}
                     <div className="flex items-center gap-3">
-                      <AssetLogo type={m.asset_type} symbol={m.symbol} name={m.asset_name} />
+                      <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} />
                       <span
                         className="font-sans flex-1 min-w-0"
                         style={{
@@ -745,7 +615,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}
                       >
-                        {m.asset_name}
+                        {name}
                       </span>
                       {valueNode}
                       <span
@@ -756,8 +626,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                       </span>
                     </div>
 
-                    {/* ROW 2: context note or "+ Add note" affordance */}
-                    {context ? (
+                    {/* ROW 2: context note — static, read-only */}
+                    {m.personal_context && (
                       <div
                         className="italic"
                         style={{
@@ -766,36 +636,10 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                           marginTop: 3, marginLeft: 36,
                         }}
                       >
-                        {context}
-                      </div>
-                    ) : (
-                      <div
-                        className="font-mono"
-                        style={{
-                          fontSize: 10, color: "var(--text-faint)",
-                          marginTop: 3, marginLeft: 36, letterSpacing: "0.04em",
-                        }}
-                      >
-                        + Add note
+                        {m.personal_context}
                       </div>
                     )}
-                  </button>
-
-                  {/* Inline editor — rendered below the row when expanded */}
-                  {isExpanded && (
-                    <NoteEditor
-                      mutationId={m.id}
-                      initialNote={context}
-                      onOptimistic={(note) =>
-                        setLocalContexts((prev) => ({ ...prev, [m.id]: note }))
-                      }
-                      onSaved={() => setExpandedId(null)}
-                      onRevert={(prevNote) =>
-                        setLocalContexts((prev) => ({ ...prev, [m.id]: prevNote }))
-                      }
-                      onCancel={() => setExpandedId(null)}
-                    />
-                  )}
+                  </div>
                 </div>
               );
             })}

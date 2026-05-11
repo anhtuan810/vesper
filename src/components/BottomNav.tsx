@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const TABS = [
+const STATIC_TABS = [
   {
     label: "Portfolio",
     href: "/",
@@ -51,6 +51,9 @@ export function BottomNav() {
 
   if (pathname === "/login") return null;
 
+  const assetIdMatch = pathname.match(/^\/asset\/([^/]+)$/);
+  const chatHref = assetIdMatch ? `/chat?asset=${assetIdMatch[1]}` : "/chat";
+
   return (
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border"
@@ -61,12 +64,13 @@ export function BottomNav() {
       }}
     >
       <div className="flex items-center h-16">
-        {TABS.map(({ label, href, icon }) => {
+        {STATIC_TABS.map(({ label, href, icon }) => {
+          const resolvedHref = label === "Chat" ? chatHref : href;
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link
               key={href}
-              href={href}
+              href={resolvedHref}
               className="flex flex-col items-center justify-center gap-1 flex-1 h-full"
               style={{ color: active ? "var(--accent)" : "var(--text-faint)" }}
             >

@@ -4,35 +4,10 @@ import { useMemo } from "react";
 import { projectMortgage, formatTimeRemaining, formatPayoffDate } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
-import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import type { RealEstateAsset } from "@/lib/supabase";
-
-const TYPE_SELECT_STYLE: React.CSSProperties = {
-  appearance: "none",
-  WebkitAppearance: "none",
-  MozAppearance: "none",
-  background: "var(--surface-elev)",
-  backgroundColor: "var(--surface-elev)",
-  border: "1px solid var(--border-strong)",
-  borderRadius: 6,
-  padding: "4px 24px 4px 8px",
-  fontSize: 14,
-  fontFamily: "var(--mono)",
-  fontWeight: 500,
-  color: "var(--text)",
-  cursor: "pointer",
-  backgroundImage:
-    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2354545E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 6px center",
-  outline: "none",
-  minHeight: 40,
-  width: "100%",
-};
 
 interface Props {
   asset: RealEstateAsset;
-  onUpdate?: (field: string, value: unknown) => Promise<string | null>;
 }
 
 function buildPayoffPath(
@@ -71,7 +46,7 @@ function buildPayoffPath(
   return { line: strokeLine, area, todayX: pts[ti].x, todayY: pts[ti].y };
 }
 
-export function MortgageBlock({ asset, onUpdate }: Props) {
+export function MortgageBlock({ asset }: Props) {
   const displayCurrency = useDisplayCurrency();
   const {
     mortgage_balance: balance,
@@ -133,157 +108,56 @@ export function MortgageBlock({ asset, onUpdate }: Props) {
 
   return (
     <>
-      {/* Native currency label — transparency alongside the property-level subtitle */}
+      {/* Native currency label */}
       {nativeCurrency !== "EUR" && (
         <div className="font-mono text-faint px-4 mb-2" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" }}>
           Mortgage in {nativeCurrency} equivalent
         </div>
       )}
 
-      {/* 2×2 stat grid */}
+      {/* 2×2 stat grid — all read-only */}
       <div className="grid grid-cols-2 gap-2 px-4">
 
-        {/* Balance */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Balance</div>
-          {onUpdate ? (
-            <InlineEdit
-              kind="money"
-              displayCurrency={displayCurrency}
-              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{balance != null ? formatMoney(balance!, displayCurrency) : "—"}</span>}
-              rawValue={balance != null ? String(balance) : ""}
-              placeholder="e.g. 250000"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 14, fontWeight: 500 }}
-              onSave={async (raw) => {
-                if (raw.trim() === "") return "";
-                const n = parseFloat(raw);
-                if (isNaN(n) || n < 0) return "Must be a non-negative number";
-                return onUpdate("mortgage_balance", n);
-              }}
-            />
-          ) : (
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {balance != null ? formatMoney(balance!, displayCurrency) : "—"}
-            </div>
-          )}
+          <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+            {balance != null ? formatMoney(balance, displayCurrency) : "—"}
+          </div>
         </div>
 
-        {/* Rate */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Rate</div>
-          {onUpdate ? (
-            <InlineEdit
-              kind="percent"
-              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{rate != null ? `${rate.toFixed(2)}%` : "—"}</span>}
-              rawValue={rate != null ? String(rate) : ""}
-              placeholder="e.g. 3.5"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 14, fontWeight: 500 }}
-              onSave={async (raw) => {
-                if (raw.trim() === "") return "";
-                const n = parseFloat(raw);
-                if (isNaN(n) || n < 0) return "Must be a non-negative number";
-                return onUpdate("mortgage_rate", n);
-              }}
-            />
-          ) : (
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {rate != null ? `${rate.toFixed(2)}%` : "—"}
-            </div>
-          )}
+          <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+            {rate != null ? `${rate.toFixed(2)}%` : "—"}
+          </div>
         </div>
 
-        {/* Monthly payment */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Monthly</div>
-          {onUpdate ? (
-            <InlineEdit
-              kind="money"
-              displayCurrency={displayCurrency}
-              display={<span className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{payment != null ? formatMoney(payment!, displayCurrency) : "—"}</span>}
-              rawValue={payment != null ? String(payment) : ""}
-              placeholder="e.g. 1200"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 14, fontWeight: 500 }}
-              onSave={async (raw) => {
-                if (raw.trim() === "") return "";
-                const n = parseFloat(raw);
-                if (isNaN(n) || n < 0) return "Must be a non-negative number";
-                return onUpdate("monthly_payment", n);
-              }}
-            />
-          ) : (
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {payment != null ? formatMoney(payment!, displayCurrency) : "—"}
-            </div>
-          )}
+          <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
+            {payment != null ? formatMoney(payment, displayCurrency) : "—"}
+          </div>
         </div>
 
-        {/* Type */}
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Type</div>
-          {onUpdate ? (
-            <select
-              value={type ?? ""}
-              onChange={(e) => onUpdate("mortgage_type", e.target.value || null)}
-              style={TYPE_SELECT_STYLE}
-            >
-              <option value="">—</option>
-              <option value="annuity">Annuity</option>
-              <option value="linear">Linear</option>
-              <option value="interest_only">Interest only</option>
-            </select>
-          ) : (
-            <div className="font-serif" style={{ fontSize: 16, fontWeight: 400, color: "var(--text)" }}>{typeLabel}</div>
-          )}
+          <div className="font-serif" style={{ fontSize: 16, fontWeight: 400, color: "var(--text)" }}>{typeLabel}</div>
+        </div>
+
+        <div style={CELL}>
+          <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Start date</div>
+          <div className="font-mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+            {startStr ?? "—"}
+          </div>
+        </div>
+
+        <div style={CELL}>
+          <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>End date</div>
+          <div className="font-mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+            {endStr ?? "—"}
+          </div>
         </div>
       </div>
-
-      {/* Date fields — only shown in edit mode */}
-      {onUpdate && (
-        <div className="grid grid-cols-2 gap-2 px-4" style={{ marginTop: 8 }}>
-          <div style={CELL}>
-            <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Start date</div>
-            <InlineEdit
-              kind="date"
-              display={<span className="font-mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{startStr ?? "—"}</span>}
-              rawValue={startStr ?? ""}
-              placeholder="YYYY-MM-DD"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 13, fontWeight: 500 }}
-              onSave={async (raw) => {
-                const t = raw.trim();
-                if (t === "") return onUpdate("mortgage_start_date", null);
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return "Use YYYY-MM-DD";
-                return onUpdate("mortgage_start_date", t);
-              }}
-            />
-          </div>
-          <div style={CELL}>
-            <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>End date</div>
-            <InlineEdit
-              kind="date"
-              display={<span className="font-mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{endStr ?? "—"}</span>}
-              rawValue={endStr ?? ""}
-              placeholder="YYYY-MM-DD"
-              affordance
-              displayStyle={{ minHeight: 40, width: "100%" }}
-              inputStyle={{ fontSize: 13, fontWeight: 500 }}
-              onSave={async (raw) => {
-                const t = raw.trim();
-                if (t === "") return onUpdate("mortgage_end_date", null);
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return "Use YYYY-MM-DD";
-                return onUpdate("mortgage_end_date", t);
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Payoff chart */}
       {projection && curve.length >= 2 && (
