@@ -25,6 +25,7 @@ export default function ChatPopup({
   const {
     messages, input, setInput, loading, thinking, remaining,
     imagePreview, imageData, canSend, send, clearImage, handlePaste, handleFile,
+    loadMore, hasMore, isLoadingMore,
   } = useChatSession({ userId, onPortfolioUpdate, onNewMessage });
 
   const [size, setSize] = useState({ width: 400, height: 560 });
@@ -33,6 +34,7 @@ export default function ChatPopup({
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,6 +46,17 @@ export default function ChatPopup({
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !isLoadingMore) loadMore(); },
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, loadMore]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -186,6 +199,12 @@ export default function ChatPopup({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4" style={{ scrollbarWidth: "none" }}>
+        <div ref={sentinelRef} />
+        {isLoadingMore && (
+          <div className="text-center font-mono text-faint" style={{ fontSize: 11, paddingBottom: 4 }}>
+            Loading older messages...
+          </div>
+        )}
         {messages.length === 0 && (
           <div>
             <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>

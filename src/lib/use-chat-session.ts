@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 
 export interface ChatMessage {
+  id?: string;
   from: "user" | "assistant";
   text: string;
   imagePreview?: string;
@@ -45,6 +46,7 @@ export function getChatSuggestions(
 const storageKey = (uid: string) => "vesper_chat_history_" + uid;
 const CHAT_TTL_MS = 24 * 60 * 60 * 1000;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const LOAD_LIMIT = 20;
 
 interface Options {
   userId: string | undefined;
@@ -60,6 +62,9 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const [remaining, setRemaining] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageData, setImageData] = useState<{ base64: string; mediaType: string } | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreInFlight = useRef(false);
 
   // Use refs for callbacks so send() doesn't recreate when parent re-renders
   const onPortfolioUpdateRef = useRef(onPortfolioUpdate);
@@ -97,20 +102,23 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     } catch {}
 
     // DB fallback: fires only when localStorage had no usable messages.
-    // setMessages() here triggers the write effect, which caches the result
-    // automatically with a fresh timestamp — no explicit localStorage.setItem needed.
     if (!hasHistory) {
-      fetch("/api/messages?limit=20", { signal: controller.signal })
+      fetch(`/api/messages?limit=${LOAD_LIMIT}`, { signal: controller.signal })
         .then((r) => r.json())
         .then((data) => {
-          if (!Array.isArray(data?.messages) || data.messages.length === 0) return;
+          if (!Array.isArray(data?.messages) || data.messages.length === 0) {
+            setHasMore(false);
+            return;
+          }
           const mapped: ChatMessage[] = data.messages.map(
-            (m: { role: "user" | "assistant"; content: string }) => ({
+            (m: { id: string; role: "user" | "assistant"; content: string }) => ({
+              id: m.id,
               from: m.role,
               text: m.content,
             })
           );
           setMessages(mapped);
+          if (data.messages.length < LOAD_LIMIT) setHasMore(false);
         })
         .catch(() => {});
     }
@@ -118,13 +126,51 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     return () => { controller.abort(); };
   }, [userId]);
 
+  // Write only the latest LOAD_LIMIT messages to localStorage — older paginated history stays out of the cache.
   useEffect(() => {
     if (!userId) return;
     try {
-      const stripped = messages.map(({ from, text }) => ({ from, text }));
+      const latest = messages.slice(-LOAD_LIMIT);
+      const stripped = latest.map(({ id, from, text }) => ({ id, from, text }));
       localStorage.setItem(storageKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
     } catch {}
   }, [messages, userId]);
+
+  const loadMore = useCallback(async () => {
+    if (!userId || loadMoreInFlight.current || !hasMore) return;
+    const oldestId = messages.find((m) => m.id)?.id;
+    if (!oldestId) return;
+
+    loadMoreInFlight.current = true;
+    setIsLoadingMore(true);
+
+    try {
+      const res = await fetch(`/api/messages?limit=${LOAD_LIMIT}&before=${oldestId}`);
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data?.messages)) return;
+
+      if (data.messages.length === 0) {
+        setHasMore(false);
+        return;
+      }
+
+      const older: ChatMessage[] = data.messages.map(
+        (m: { id: string; role: "user" | "assistant"; content: string }) => ({
+          id: m.id,
+          from: m.role,
+          text: m.content,
+        })
+      );
+
+      setMessages((prev) => [...older, ...prev]);
+      if (data.messages.length < LOAD_LIMIT) setHasMore(false);
+    } catch {
+      // silently fail
+    } finally {
+      loadMoreInFlight.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [userId, hasMore, messages]);
 
   const clearImage = useCallback(() => {
     setImagePreview(null);
@@ -226,5 +272,8 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     clearImage,
     handlePaste,
     handleFile,
+    loadMore,
+    hasMore,
+    isLoadingMore,
   };
 }

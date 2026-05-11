@@ -10,22 +10,39 @@ export async function GET(request: NextRequest) {
 
   const raw = parseInt(request.nextUrl.searchParams.get("limit") ?? "", 10);
   const limit = Math.min(isNaN(raw) || raw < 1 ? DEFAULT_LIMIT : raw, MAX_LIMIT);
+  const before = request.nextUrl.searchParams.get("before");
 
   const supabase = createServerSupabase();
 
-  // Fetch DESC to get the most recent N rows, then reverse for ascending display order.
-  const { data, error } = await supabase
+  let query = supabase
     .from("messages")
-    .select("role, content")
+    .select("id, role, content")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (before) {
+    const { data: pivot, error: pivotError } = await supabase
+      .from("messages")
+      .select("created_at")
+      .eq("id", before)
+      .eq("user_id", user.id)
+      .single();
+
+    if (pivotError || !pivot) {
+      return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+    }
+
+    query = query.lt("created_at", pivot.created_at);
+  }
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const messages = (data ?? [])
     .reverse()
-    .map(({ role, content }) => ({ role, content }));
+    .map(({ id, role, content }) => ({ id, role, content }));
 
   return NextResponse.json({ messages });
 }

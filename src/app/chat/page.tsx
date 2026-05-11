@@ -16,11 +16,13 @@ export default function ChatPage() {
   const {
     messages, input, setInput, loading, thinking, remaining,
     imagePreview, imageData, canSend, send, clearImage, handlePaste, handleFile,
+    loadMore, hasMore, isLoadingMore,
   } = useChatSession({ userId: user?.id });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Asset id from ?asset= param, consumed once assets have loaded.
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
@@ -49,6 +51,17 @@ export default function ChatPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !isLoadingMore) loadMore(); },
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, loadMore]);
 
   // When assets finish loading and we have a pending asset id, pre-fill the input.
   useEffect(() => {
@@ -99,6 +112,12 @@ export default function ChatPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 flex flex-col gap-4" style={{ scrollbarWidth: "none", scrollbarGutter: "stable" }}>
+          <div ref={sentinelRef} />
+          {isLoadingMore && (
+            <div className="text-center font-mono text-faint" style={{ fontSize: 11, paddingBottom: 4 }}>
+              Loading older messages...
+            </div>
+          )}
           {messages.length === 0 && (
             <div>
               <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>
