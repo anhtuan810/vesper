@@ -58,6 +58,9 @@ export function NavBar({
     (user?.user_metadata?.avatar_url as string | undefined) ||
     null;
 
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => { setImgFailed(false); }, [avatarUrl]);
+
   const initials = fullName ? getInitials(fullName) : null;
 
   return (
@@ -70,10 +73,11 @@ export function NavBar({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-[11px] min-w-0">
             {/* Avatar or initials circle — no "V" wordmark */}
-            {avatarUrl ? (
+            {avatarUrl && !imgFailed ? (
               <img
                 src={avatarUrl}
                 alt={firstName ?? "User"}
+                onError={() => setImgFailed(true)}
                 style={{
                   width: 28, height: 28, borderRadius: "50%",
                   objectFit: "cover", flexShrink: 0,

@@ -2,12 +2,13 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const CSP = [
   "default-src 'self'",
-  // Next.js injects inline scripts for hydration; unsafe-inline required
-  "script-src 'self' 'unsafe-inline'",
+  // Next.js injects inline scripts for hydration; unsafe-inline required.
+  // unsafe-eval is needed by React dev-mode call stack reconstruction only.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   // Tailwind uses inline styles throughout
   "style-src 'self' 'unsafe-inline'",
-  // Supabase storage for avatars and property photos
-  "img-src 'self' data: blob: https://*.supabase.co",
+  // Supabase storage (avatars, property photos) + OAuth avatar CDNs
+  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com",
   // MapLibre web workers run in blob: URLs
   "worker-src blob:",
   "font-src 'self'",
