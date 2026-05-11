@@ -46,6 +46,10 @@ export function getMonthKey(dateStr: string): string {
 export function getMonthLabel(key: string): string {
   const [year, month] = key.split("-");
   const d = new Date(+year, +month - 1);
+  const currentYear = new Date().getFullYear();
+  if (+year === currentYear) {
+    return d.toLocaleDateString("en-GB", { month: "long" });
+  }
   return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 

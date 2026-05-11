@@ -29,27 +29,55 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
 
   if (isUnitEligible) {
     if (m.action === "add" && m.after_units != null) {
-      return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>+{m.after_units.toLocaleString()} {noun}</span>;
+      return (
+        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
+          +{m.after_units.toLocaleString()} {noun}
+        </span>
+      );
     }
     if (m.action === "edit") {
       const delta = (m.after_units ?? 0) - (m.before_units ?? 0);
-      if (delta !== 0) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: delta >= 0 ? "var(--positive)" : "var(--negative)" }}>{delta >= 0 ? "+" : ""}{delta.toLocaleString()} {noun}</span>;
+      if (delta !== 0) return (
+        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: delta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
+          {delta >= 0 ? "+" : ""}{delta.toLocaleString()} {noun}
+        </span>
+      );
     }
     if (m.action === "remove" && m.before_units != null) {
-      return <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>{m.before_units.toLocaleString()} {noun}</span>;
+      return (
+        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
+          {m.before_units.toLocaleString()} {noun}
+        </span>
+      );
     }
   }
 
   if (m.action === "add" && m.after_value != null) {
-    return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--positive)" }}>{formatMoney(m.after_value, displayCurrency)}</span>;
+    return (
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
+        +{formatMoney(m.after_value, displayCurrency)}
+      </span>
+    );
   }
   if (m.action === "edit") {
     const valDelta = m.before_value != null && m.after_value != null ? m.after_value - m.before_value : null;
-    if (valDelta !== null && valDelta !== 0) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive)" : "var(--negative)" }}>{valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, displayCurrency)}</span>;
-    if (m.after_value != null) return <span className="font-mono" style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>{formatMoney(m.after_value, displayCurrency)}</span>;
+    if (valDelta !== null && valDelta !== 0) return (
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
+        {valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, displayCurrency)}
+      </span>
+    );
+    if (m.after_value != null) return (
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>
+        {formatMoney(m.after_value, displayCurrency)}
+      </span>
+    );
   }
   if (m.action === "remove" && m.before_value != null) {
-    return <span className="font-mono" style={{ fontSize: 11, flexShrink: 0, color: "var(--negative)", textDecoration: "line-through" }}>{formatMoney(m.before_value, displayCurrency)}</span>;
+    return (
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
+        {formatMoney(m.before_value, displayCurrency)}
+      </span>
+    );
   }
   return null;
 }
@@ -75,7 +103,7 @@ interface DiaryTabProps {
 type PeriodKey = "all" | "week" | "month" | "3months" | "year" | "custom";
 
 const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
-  { key: "all", label: "ALL" },
+  { key: "all", label: "All" },
   { key: "week", label: "1W" },
   { key: "month", label: "1M" },
   { key: "3months", label: "3M" },
@@ -92,8 +120,8 @@ const SELECT_STYLE: React.CSSProperties = {
   border: "1px solid var(--border)",
   borderRadius: 8,
   padding: "5px 24px 5px 10px",
-  fontSize: 11,
-  fontFamily: "var(--mono)",
+  fontSize: 13,
+  fontFamily: "var(--font-sans)",
   color: "var(--text-dim)",
   cursor: "pointer",
   backgroundImage:
@@ -177,7 +205,7 @@ function getPeriodLabel(period: PeriodKey, customFrom: string, customTo: string)
   }
 }
 
-// ── Period highlight — AI summary only ────────────────────────────────────────
+// ── AI Summary card ────────────────────────────────────────────────────────────
 function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   mutations: Mutation[];
   period: PeriodKey;
@@ -259,7 +287,10 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
   ].filter(Boolean).join(" · ");
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-4 mb-4">
+    <div
+      className="bg-surface rounded-2xl border border-border mb-5"
+      style={{ padding: "16px 20px" }}
+    >
       <style>{`
         @keyframes vesperPulse {
           0%, 100% { opacity: 0.4; }
@@ -268,37 +299,50 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
       `}</style>
 
       {summaryLoading ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "4px 0" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "8px 0" }}>
           <div
             style={{
-              width: 28, height: 28, borderRadius: 8,
+              width: 32, height: 32, borderRadius: 9,
               background: "var(--accent-soft)",
-              border: "1px solid rgba(212,165,116,0.18)",
+              border: "1px solid var(--border)",
               display: "flex", alignItems: "center", justifyContent: "center",
               animation: "vesperPulse 1.6s ease-in-out infinite",
             }}
           >
-            <span className="font-serif text-accent" style={{ fontSize: 16, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}>V</span>
+            <span
+              className="font-serif text-accent"
+              style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144", lineHeight: 1 }}
+            >
+              V
+            </span>
           </div>
-          <span className="font-mono text-faint italic" style={{ fontSize: 10, letterSpacing: "0.04em" }}>
-            Reading the period...
+          <span
+            style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.04em" }}
+          >
+            Reading the period…
           </span>
         </div>
       ) : summaryError ? (
-        <div className="font-mono text-faint italic" style={{ fontSize: 11, lineHeight: 1.4, padding: "4px 0" }}>
+        <div style={{ fontSize: 13, color: "var(--text-faint)", lineHeight: 1.5, padding: "4px 0" }}>
           {summaryError}
         </div>
       ) : (
         <>
-          <ul className="space-y-1">
+          <ul style={{ paddingLeft: 0, listStyle: "none" }}>
             {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i) => (
-              <li key={i} className="text-dim leading-snug" style={{ fontSize: 12 }}>
+              <li
+                key={i}
+                style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: i < (summary ?? "").split("\n").filter(l => l.trim()).length - 1 ? 6 : 0 }}
+              >
                 {line.replace(/^•\s*/, "• ")}
               </li>
             ))}
           </ul>
           {activityStr && (
-            <div className="font-mono uppercase text-faint mt-2" style={{ fontSize: 10, letterSpacing: "0.12em" }}>
+            <div
+              className="font-mono uppercase"
+              style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.14em", marginTop: 12 }}
+            >
               {activityStr}
             </div>
           )}
@@ -386,60 +430,79 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
 
   return (
     <>
-      {/* Period highlight chart */}
-      {period !== "all" && (
-        <PeriodHighlight
-          mutations={periodMutations}
-          period={period}
-          customFrom={customFrom}
-          customTo={customTo}
-        />
-      )}
+      <style>{`
+        @keyframes diaryHighlight {
+          0%   { outline: 2px solid rgba(212,165,116,0.75); outline-offset: 2px; border-radius: 6px; }
+          100% { outline: 2px solid rgba(212,165,116,0);    outline-offset: 2px; border-radius: 6px; }
+        }
+      `}</style>
 
-      {/* Period label */}
-      {period !== "all" && (
-        <div className="font-mono uppercase text-faint" style={{ fontSize: 10, letterSpacing: "0.18em", marginBottom: 8 }}>
-          {getPeriodLabel(period, customFrom, customTo)}
-        </div>
-      )}
+      {/* Page title */}
+      <div style={{ marginBottom: 18 }}>
+        <h1
+          className="font-serif"
+          style={{
+            fontSize: 38, fontWeight: 500, letterSpacing: "-0.025em",
+            color: "var(--hero)", lineHeight: 1,
+            fontVariationSettings: "'opsz' 60",
+          }}
+        >
+          Diary
+        </h1>
+      </div>
 
       {/* Search input */}
-      <div style={{ position: "relative", marginBottom: 8 }}>
+      <div style={{ position: "relative", marginBottom: 18 }}>
+        <svg
+          viewBox="0 0 256 256"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="14"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            position: "absolute", top: "50%", left: 14,
+            transform: "translateY(-50%)",
+            width: 18, height: 18,
+            color: "var(--text-faint)",
+            pointerEvents: "none",
+          }}
+        >
+          <circle cx="116" cy="116" r="84" />
+          <line x1="175.39" y1="175.39" x2="224" y2="224" />
+        </svg>
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search entries"
-          className="font-mono"
+          placeholder="Search asml, april, removed…"
           style={{
             width: "100%",
             boxSizing: "border-box",
-            background: "transparent",
+            background: "var(--surface)",
             border: "1px solid var(--border)",
-            borderRadius: 8,
-            padding: "5px 28px 5px 10px",
-            fontSize: 11,
+            borderRadius: 12,
+            padding: "12px 36px 12px 42px",
+            fontSize: 15,
+            fontFamily: "var(--font-sans)",
             color: "var(--text)",
             outline: "none",
             caretColor: "var(--accent)",
+            transition: "border-color 0.15s",
           }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
             aria-label="Clear search"
             style={{
-              position: "absolute",
-              right: 8,
-              top: "50%",
+              position: "absolute", right: 12, top: "50%",
               transform: "translateY(-50%)",
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "var(--text-faint)",
-              fontSize: 14,
-              lineHeight: 1,
+              background: "none", border: "none", padding: 0,
+              cursor: "pointer", color: "var(--text-faint)",
+              fontSize: 16, lineHeight: 1,
             }}
           >
             ×
@@ -447,7 +510,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         )}
       </div>
 
-      {/* Row A — period chips */}
+      {/* Period chip row */}
       <div
         className="flex items-center gap-1.5 mb-2 [&::-webkit-scrollbar]:hidden"
         style={{ overflowX: "auto", scrollbarWidth: "none", flexWrap: "nowrap" }}
@@ -458,16 +521,18 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             <button
               key={key}
               onClick={() => setPeriod(key)}
-              className="font-mono transition-all"
               style={{
-                fontSize: 11,
-                padding: "5px 10px",
-                borderRadius: 8,
+                fontSize: 13,
+                padding: "6px 14px",
+                borderRadius: 999,
                 border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
                 background: active ? "var(--surface-elev)" : "transparent",
                 color: active ? "var(--text)" : "var(--text-faint)",
                 whiteSpace: "nowrap",
                 flexShrink: 0,
+                fontFamily: "var(--font-sans)",
+                cursor: "pointer",
+                transition: "all 0.15s",
               }}
             >
               {label}
@@ -476,9 +541,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         })}
       </div>
 
-      {/* Custom date range picker — shown below chips when Custom is active */}
+      {/* Custom date range picker */}
       {period === "custom" && (
-        <div className="flex items-center gap-1.5 mb-2" style={{ paddingLeft: 2 }}>
+        <div className="flex items-center gap-1.5 mb-3" style={{ paddingLeft: 2 }}>
           <select
             value={customFrom}
             onChange={(e) => setCustomFrom(e.target.value)}
@@ -488,7 +553,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <span className="font-mono text-faint" style={{ fontSize: 11 }}>to</span>
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>to</span>
           <select
             value={customTo}
             onChange={(e) => setCustomTo(e.target.value)}
@@ -501,70 +566,90 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         </div>
       )}
 
-      <style>{`
-        @keyframes diaryHighlight {
-          0%   { outline: 2px solid rgba(212,165,116,0.75); outline-offset: 1px; }
-          100% { outline: 2px solid rgba(212,165,116,0);    outline-offset: 1px; }
-        }
-      `}</style>
+      {/* AI summary card — shown when a non-all period is active */}
+      {period !== "all" && (
+        <>
+          {/* Period label */}
+          <div
+            className="font-mono uppercase"
+            style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--text-faint)", marginTop: 4, marginBottom: 10 }}
+          >
+            {getPeriodLabel(period, customFrom, customTo)}
+          </div>
+          <PeriodHighlight
+            mutations={periodMutations}
+            period={period}
+            customFrom={customFrom}
+            customTo={customTo}
+          />
+        </>
+      )}
 
-      {/* On this day */}
+      {/* On this day — full-bleed accent-soft band */}
       {anniversaryEntry && (
-        <div className="bg-surface rounded-2xl border border-border p-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => jumpToEntry(anniversaryEntry.mutation)}
+          className="-mx-4 sm:-mx-8 mb-[18px]"
+          style={{
+            display: "block",
+            textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer",
+            position: "relative", width: "auto",
+          }}
+        >
+          <div
+            style={{ position: "relative", background: "var(--accent-soft)" }}
+            className="px-4 sm:px-8 py-[14px]"
+          >
             <div
-              className="font-serif italic text-dim"
-              style={{ fontSize: 13, fontVariationSettings: "'opsz' 144" }}
+              style={{
+                fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+                textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
+                marginBottom: 6,
+              }}
             >
               On this day
             </div>
             <div
-              className="flex items-center gap-1 font-mono uppercase text-accent"
-              style={{ fontSize: 9, letterSpacing: "0.14em" }}
+              className="font-serif"
+              style={{
+                fontSize: 16, fontWeight: 400, lineHeight: 1.35,
+                color: "var(--text)", fontVariationSettings: "'opsz' 18",
+              }}
             >
-              Jump to entry
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              <span>{relativeAge(anniversaryEntry.date, now)} you </span>
+              <span>{anniversaryEntry.mutation.action === "add" ? "added" : anniversaryEntry.mutation.action === "remove" ? "removed" : "edited"} </span>
+              <span style={{ fontStyle: "italic" }}>{displayName(anniversaryEntry.mutation)}</span>
+              {anniversaryEntry.mutation.personal_context && (
+                <span style={{ fontStyle: "italic", color: "var(--text-dim)" }}> — {anniversaryEntry.mutation.personal_context}</span>
+              )}
             </div>
-          </div>
-          <button
-            onClick={() => jumpToEntry(anniversaryEntry.mutation)}
-            style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-          >
-            <div className="flex items-center gap-3">
-              <AssetLogo
-                type={anniversaryEntry.mutation.asset_type}
-                symbol={anniversaryEntry.mutation.symbol}
-                name={displayName(anniversaryEntry.mutation)}
-              />
-              <span
-                className="font-sans flex-1 min-w-0"
-                style={{ fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-              >
-                {displayName(anniversaryEntry.mutation)}
-              </span>
-              {buildValueNode(anniversaryEntry.mutation, displayCurrency)}
-              <span
-                className="font-mono uppercase"
-                style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.12em", flexShrink: 0, marginLeft: 12 }}
-              >
-                {formatDate(anniversaryEntry.mutation.occurred_at || anniversaryEntry.mutation.recorded_at)}
-              </span>
+            <div
+              style={{
+                fontSize: 10, color: "var(--accent-text)", opacity: 0.7,
+                marginTop: 8, fontFamily: "var(--font-mono)",
+                letterSpacing: "0.1em", textTransform: "uppercase",
+              }}
+            >
+              Tap to jump
             </div>
-            {anniversaryEntry.mutation.personal_context && (
-              <div
-                className="italic"
-                style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3, marginLeft: 36 }}
-              >
-                {anniversaryEntry.mutation.personal_context}
-              </div>
-            )}
-          </button>
-          <div className="font-mono uppercase text-faint mt-3" style={{ fontSize: 10, letterSpacing: "0.12em" }}>
-            {relativeAge(anniversaryEntry.date, now)}
+            {/* Chevron */}
+            <svg
+              viewBox="0 0 256 256"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="20"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                position: "absolute", top: 18, right: 20,
+                width: 12, height: 12,
+                color: "var(--accent-text)", opacity: 0.5,
+              }}
+            >
+              <polyline points="96 48 176 128 96 208" />
+            </svg>
           </div>
-        </div>
+        </button>
       )}
 
       {/* Empty state */}
@@ -572,25 +657,45 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         <div className="text-center pt-16">
           {trimmedQuery ? (
             <>
-              <div className="text-sm text-dim mb-2">No entries match &ldquo;{searchQuery.trim()}&rdquo;</div>
-              <p className="text-faint text-xs">Try a different search term.</p>
+              <div style={{ fontSize: 14, color: "var(--text-dim)", marginBottom: 8 }}>
+                No entries match &ldquo;{searchQuery.trim()}&rdquo;
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Try a different search term.</p>
             </>
           ) : (
             <>
-              <div className="text-sm text-dim mb-2">No entries for this period</div>
-              <p className="text-faint text-xs">Try a different time range.</p>
+              <div style={{ fontSize: 14, color: "var(--text-dim)", marginBottom: 8 }}>No entries for this period</div>
+              <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Try a different time range.</p>
             </>
           )}
         </div>
       )}
 
-      {/* Timeline */}
+      {/* Timeline — month-bucketed entry list */}
       {monthKeys.map((monthKey) => (
-        <div key={monthKey} className="mb-8">
-          <div className="font-mono uppercase text-faint mb-3" style={{ fontSize: 10, letterSpacing: "0.18em" }}>
-            {getMonthLabel(monthKey)} · {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
+        <div key={monthKey}>
+          {/* Month header */}
+          <div
+            style={{
+              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+              margin: "22px 0 12px",
+            }}
+          >
+            <div
+              className="font-serif"
+              style={{
+                fontSize: 22, fontWeight: 500, color: "var(--text)",
+                letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 24",
+              }}
+            >
+              {getMonthLabel(monthKey)}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+              {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
+            </div>
           </div>
 
+          {/* Entry rows */}
           <div>
             {grouped[monthKey].map((m) => {
               const date = m.occurred_at || m.recorded_at;
@@ -601,44 +706,53 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 <div
                   key={m.id}
                   id={`diary-entry-${m.id}`}
-                  className="border-b border-border last:border-0"
-                  style={highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : undefined}
+                  style={{
+                    borderBottom: "0.5px solid var(--border)",
+                    ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
+                  }}
+                  className="last:border-0"
                 >
-                  <div style={{ padding: "14px 0" }}>
-                    {/* ROW 1: icon · name · value · date */}
-                    <div className="flex items-center gap-3">
-                      <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} />
-                      <span
-                        className="font-sans flex-1 min-w-0"
-                        style={{
-                          fontSize: 14, fontWeight: 500,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}
-                      >
-                        {name}
-                      </span>
-                      {valueNode}
-                      <span
-                        className="font-mono uppercase"
-                        style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.12em", flexShrink: 0, marginLeft: 12 }}
-                      >
-                        {formatDate(date)}
-                      </span>
-                    </div>
-
-                    {/* ROW 2: context note — static, read-only */}
-                    {m.personal_context && (
-                      <div
-                        className="italic"
-                        style={{
-                          fontSize: 11, color: "var(--text-dim)", lineHeight: 1.45,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          marginTop: 3, marginLeft: 36,
-                        }}
-                      >
-                        {m.personal_context}
+                  <div style={{ display: "flex", gap: 10, padding: "8px 0", alignItems: "flex-start" }}>
+                    <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Row 1: name · delta · date */}
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
+                        <span
+                          style={{
+                            fontSize: 15, fontWeight: 500, color: "var(--text)",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {name}
+                        </span>
+                        <span style={{ flex: 1 }}>{valueNode}</span>
+                        <span
+                          style={{
+                            fontSize: 12, color: "var(--text-faint)",
+                            fontFeatureSettings: '"tnum" 1',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {formatDate(date)}
+                        </span>
                       </div>
-                    )}
+
+                      {/* Row 2: context note — serif italic, line-clamped */}
+                      {m.personal_context && (
+                        <div
+                          className="font-serif"
+                          style={{
+                            fontStyle: "italic", fontSize: 13,
+                            color: "var(--text-dim)", lineHeight: 1.4,
+                            overflow: "hidden", display: "-webkit-box",
+                            WebkitBoxOrient: "vertical", WebkitLineClamp: 2,
+                            fontVariationSettings: "'opsz' 14",
+                          }}
+                        >
+                          {m.personal_context}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -646,12 +760,16 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
           </div>
         </div>
       ))}
+
+      {/* Load more */}
       {hasMore && onLoadMore && (
         <div className="pt-4 pb-8 flex justify-center">
           <button
             onClick={onLoadMore}
-            className="font-mono text-faint hover:text-dim transition-colors"
-            style={{ fontSize: 11, letterSpacing: "0.08em" }}
+            style={{
+              fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--font-sans)",
+              background: "none", border: "none", cursor: "pointer",
+            }}
           >
             Load more
           </button>
