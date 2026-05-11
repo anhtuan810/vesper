@@ -320,33 +320,6 @@ export default function ChatPopup({
         </div>
       )}
 
-      {/* Suggestion chips — after conversation starts */}
-      {messages.length > 0 && !loading && (
-        <div
-          className="px-4 pt-2 pb-1 flex gap-2 overflow-x-auto shrink-0"
-          style={{ scrollbarWidth: "none" }}
-        >
-          {chatSuggestions.map((s) => (
-            <button
-              key={s}
-              onClick={() => sendText(s)}
-              className="shrink-0 whitespace-nowrap"
-              style={{
-                fontSize: 12,
-                padding: "6px 12px",
-                borderRadius: 999,
-                background: "var(--accent-soft)",
-                color: "var(--accent-text)",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Input bar */}
       <div
         className="px-4 py-3 shrink-0"

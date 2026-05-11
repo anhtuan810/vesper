@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useProfile, useSignOut, useTheme } from "@/lib/hooks";
-import { NavBar } from "@/components/NavBar";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { uploadAvatar } from "@/lib/avatar-upload";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
@@ -150,15 +149,9 @@ export default function ProfilePage() {
     }
   }, [displayCurrency, currencyLoading, router]);
 
-  const setTab = (t: "portfolio" | "diary" | "profile") => {
-    router.push(t === "portfolio" ? "/" : "/" + t);
-  };
-
   if (userLoading) {
     return (
-      <div className="min-h-screen bg-bg">
-        <div className="h-14 bg-surface border-b border-border" />
-      </div>
+      <div className="min-h-screen bg-bg" />
     );
   }
 
@@ -168,15 +161,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <NavBar
-        tab="profile"
-        setTab={setTab}
-        mutationCount={mutationCount}
-        liveCount={0}
-        totalSymbols={0}
-        refreshing={false}
-        refreshPrices={() => {}}
-      />
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 22px 110px" }}>
 
         {/* Page title */}

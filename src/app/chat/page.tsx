@@ -25,6 +25,7 @@ export default function ChatPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,6 +41,8 @@ export default function ChatPage() {
     const params = new URLSearchParams(window.location.search);
     const assetId = params.get("asset");
     const seed = params.get("seed");
+    const src = params.get("source");
+    if (src) setSource(src);
     if (assetId) {
       setPendingAssetId(assetId);
       router.replace("/chat", { scroll: false });
@@ -147,11 +150,26 @@ export default function ChatPage() {
             </div>
           )}
 
-          {messages.map((msg, i) => (
+          {messages.map((msg, i) => {
+            const firstAssistant = source === "portfolio" && msg.from === "assistant" && !messages.slice(0, i).some((m) => m.from === "assistant");
+            return (
             <div
               key={i}
-              className={`chat-msg flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}
+              className={`chat-msg flex flex-col ${msg.from === "user" ? "items-end" : "items-start"}`}
             >
+              {firstAssistant && (
+                <div style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  color: "var(--accent-text)",
+                  opacity: 0.7,
+                  marginBottom: 6,
+                }}>
+                  From Portfolio
+                </div>
+              )}
               <div
                 style={{
                   maxWidth: msg.from === "user" ? "78%" : "92%",
@@ -189,7 +207,8 @@ export default function ChatPage() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {thinking && (
             <div className="flex items-center gap-0.5 py-1">

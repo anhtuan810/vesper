@@ -21,7 +21,7 @@
 
 ### Portfolio Dashboard
 - Header (`NavBar`): user's avatar (28px, from `users.avatar_url` if present, else initials on accent background) + first name (`name.split(' ')[0]`) on the left; refresh button with integrated 4px status dot (green = all prices live, amber = partial, faint = none) on the right. No Vesper wordmark, no settings gear.
-- Net worth hero in serif (Source Serif 4) at 54px, with editorial dimmed currency prefix per the mockup. No gross/debt subtitle even when mortgages exist.
+- Net worth hero in serif (Source Serif 4) at 54px, monochrome currency. Asset-detail heroes use the editorial dimmed currency prefix at their smaller (44–48px) sizes. No gross/debt subtitle even when mortgages exist.
 - Change pill on the hero: percentage + EUR delta vs 1 month ago, with explicit `+`/`−` signs and `accent-soft` / `negative-soft` background. Renders only when at least 7 historical snapshots exist.
 - Net worth chart between hero and Holdings — range pills `1D / 1W / 1M / 3M / 1Y / All`, smooth bezier line in accent green, end-point dot, today marker, axis labels rendered below the chart in a separate row (no overlap with the curve), empty state until 7 snapshots exist. 1D shows the latest snapshot + the live current value as two points.
 - WORTH KNOWING insight band (in the slot the milestone bar previously occupied) — Claude-generated single italic-serif sentence, accent-soft tinted band, chevron right, tap navigates to `/chat`. Renders nothing when the API returns `{ detail: null }`.

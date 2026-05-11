@@ -31,10 +31,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 // CSS variable references — resolved at paint time, respects light/dark theme
 const CATEGORY_COLOR: Record<string, string> = {
-  property: "var(--accent)",
+  property: "var(--category-property)",
   markets:  "var(--category-public-markets)",
   reserves: "var(--category-reserves)",
 };
+
+const ALL_CATEGORIES = ["property", "markets", "reserves"] as const;
 
 interface PortfolioTabProps {
   assets: LiveAsset[];
@@ -96,10 +98,35 @@ export function PortfolioTab({
       .sort((a, b) => b.total - a.total);
   }, [assets]);
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const isExpanded = (cat: string) => expanded[cat] !== false;
-  const toggleGroup = (cat: string) =>
-    setExpanded((prev) => ({ ...prev, [cat]: !isExpanded(cat) }));
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(
+    Object.fromEntries(ALL_CATEGORIES.map((c) => [c, false]))
+  );
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("vesper.holdings.expanded");
+      if (raw) {
+        const keys: string[] = JSON.parse(raw);
+        setExpanded((prev) => {
+          const next = { ...prev };
+          for (const k of keys) next[k] = true;
+          return next;
+        });
+      }
+    } catch {}
+  }, []);
+
+  const isExpanded = (cat: string) => expanded[cat] === true;
+  const toggleGroup = (cat: string) => {
+    setExpanded((prev) => {
+      const next = { ...prev, [cat]: !prev[cat] };
+      try {
+        const expandedKeys = Object.entries(next).filter(([, v]) => v).map(([k]) => k);
+        sessionStorage.setItem("vesper.holdings.expanded", JSON.stringify(expandedKeys));
+      } catch {}
+      return next;
+    });
+  };
 
   return (
     <>

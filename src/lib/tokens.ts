@@ -42,4 +42,5 @@ export const CATEGORY_COLOR_TOKENS = {
   property: "#4A7C5E",
   markets:  "#6B8AA6",
   reserves: "#B89968",
+  crypto:   "#B5564B",
 } as const;

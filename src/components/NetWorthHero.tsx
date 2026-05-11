@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { formatMoney, formatMoneyParts } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 
 interface NetWorthHeroProps {
@@ -33,7 +33,6 @@ export function NetWorthHero({ netTotal }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
   const change = useMonthlyChange(netTotal);
   const up = change ? change.pct >= 0 : true;
-  const parts = formatMoneyParts(netTotal, displayCurrency);
 
   if (!currencyLoaded) {
     return (
@@ -55,7 +54,7 @@ export function NetWorthHero({ netTotal }: NetWorthHeroProps) {
         Total net worth
       </div>
 
-      {/* Hero number — serif, editorial dimmed prefix */}
+      {/* Hero number — serif, monochrome */}
       <div
         className="font-serif leading-none"
         style={{
@@ -66,16 +65,7 @@ export function NetWorthHero({ netTotal }: NetWorthHeroProps) {
           fontVariationSettings: "'opsz' 60",
         }}
       >
-        <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.12em" }}>
-          {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
-          <span
-            className="text-dim"
-            style={{ fontSize: "0.55em", lineHeight: 1, paddingTop: "0.07em" }}
-          >
-            {parts.symbol}
-          </span>
-          <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
-        </span>
+        <span>{formatMoney(netTotal, displayCurrency)}</span>
       </div>
 
       {/* Change pill — only after 7 snapshots */}

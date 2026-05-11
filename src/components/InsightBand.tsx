@@ -31,10 +31,10 @@ export function InsightBand() {
         background: "var(--accent-soft)",
         cursor: "pointer",
       }}
-      onClick={() => router.push("/chat")}
+      onClick={() => router.push("/chat?source=portfolio")}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/chat"); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/chat?source=portfolio"); }}
     >
       {/* Eyebrow */}
       <div
