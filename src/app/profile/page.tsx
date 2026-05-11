@@ -26,15 +26,12 @@ const THEME_OPTIONS = [
 const TOAST_KEY = "vesper.currency.toastSeen";
 
 const PROFILE_FIELDS = [
-  { key: "goal", label: "Financial Goal" },
-  { key: "risk_behaviour", label: "Risk Behaviour" },
-  { key: "investment_style", label: "Investment Style" },
-  { key: "life_context", label: "Life Context" },
+  { key: "investment_style", label: "Investment style" },
+  { key: "life_context", label: "Life context" },
   { key: "concerns", label: "Concerns" },
   { key: "preferences", label: "Preferences" },
-  { key: "blind_spots", label: "Blind Spots" },
-  { key: "decision_patterns", label: "Decision Patterns" },
-  { key: "interests", label: "Interests" },
+  { key: "blind_spots", label: "Blind spots" },
+  { key: "decision_patterns", label: "Decision patterns" },
 ] as const;
 
 function getInitials(name: string): string {

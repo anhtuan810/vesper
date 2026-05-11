@@ -25,25 +25,22 @@ ${JSON.stringify(currentProfile, null, 2)}
 RULES:
 - Only extract facts that are worth remembering long-term.
 - Skip transactional details (adding 10 shares is not a profile fact).
-- Focus on: financial goals, risk attitude, life situation, concerns, preferences, decision patterns, and investment philosophy.
+- Focus on: life situation, investment style, concerns, preferences, decision patterns, blind spots, and investment philosophy.
 - Return ONLY a JSON object with fields to add or update. Return {} if nothing new was learned.
 - Never remove existing profile data — only add or refine.
 - Be conservative. One conversation rarely reveals more than 1-2 facts.
 - Use concise language. Each value should be one short sentence max.
 
 EXAMPLE OUTPUT:
-{"risk_behaviour": "comfortable with tech stocks, cautious with crypto", "goal": "building toward early retirement", "life_context": "has two properties in Netherlands", "fingerprint": "A cautious, long-horizon investor with diversified exposure across equities and real estate."}
+{"investment_style": "buy-and-hold, prefers quality compounders", "life_context": "has two properties in Netherlands", "fingerprint": "A cautious, long-horizon investor with diversified exposure across equities and real estate."}
 
 PROFILE FIELDS YOU CAN USE (all optional):
-- risk_behaviour: how they approach risk
-- investment_style: trading vs buy-and-hold, active vs passive
-- goal: what they're working toward
+- investment_style: trading vs buy-and-hold, active vs passive, philosophy
 - life_context: relevant life situation (family, career, location)
 - concerns: what worries them financially
 - preferences: communication style, what they care about
 - blind_spots: patterns they might not notice
 - decision_patterns: how they tend to make financial decisions
-- interests: asset types or markets they follow closely
 
 FINGERPRINT FIELD (always attempt):
 - fingerprint: a single sentence, 12–18 words, characterising the investor. Third person, present tense. No proper names, no hedging ("seems", "appears"), no emojis. Plain text only, no quotes. Captures risk posture, investment philosophy, life context. Example: "A measured, long-horizon investor with concentrated tech conviction balanced by stabilising real estate."
