@@ -1,26 +1,29 @@
 import type { Metadata } from "next";
-import { Fraunces, Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { Source_Serif_4, Albert_Sans, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { UndoDeleteToast } from "@/components/UndoDeleteToast";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
-const fraunces = Fraunces({
+const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
   axes: ["opsz"],
-  variable: "--font-fraunces",
+  variable: "--font-serif",
+  display: "swap",
 });
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const albertSans = Albert_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-plus-jakarta-sans",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -45,7 +48,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={resolved}
-      className={`${fraunces.variable} ${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${sourceSerif.variable} ${albertSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
         <ThemeProvider initialTheme={theme}>

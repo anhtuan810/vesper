@@ -1,45 +1,87 @@
 @import "tailwindcss";
 
+/* Font stacks — theme-independent, reference Next.js-injected CSS vars */
 :root {
-  --bg: #0A0A0B;
-  --surface: #14141A;
-  --surface-elev: #1C1C24;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.10);
-  --text: #F5F4EE;
-  --text-dim: #8A8A93;
-  --text-faint: #7A7A82;
-  --accent: #D4A574;
-  --accent-soft: rgba(212, 165, 116, 0.12);
-  --positive: #6BAA75;
-  --negative: #C97A6E;
-  --serif: var(--font-fraunces), Georgia, serif;
-  --sans: var(--font-plus-jakarta-sans), system-ui, sans-serif;
-  --mono: var(--font-geist-mono), "SF Mono", monospace;
+  --serif: var(--font-serif), Georgia, serif;
+  --sans:  var(--font-sans), system-ui, sans-serif;
+  --mono:  var(--font-mono), "SF Mono", monospace;
+}
+
+:root,
+[data-theme="light"] {
+  --bg:            #F5F1EA;
+  --surface:       #FFFFFF;
+  --surface-elev:  #EBE4D6;
+  --border:        rgba(26, 31, 46, 0.08);
+  --border-strong: rgba(26, 31, 46, 0.16);
+  --text:          #1A1F2E;
+  --text-dim:      #6B7280;
+  --text-faint:    #9CA3AF;
+  --hero:          #0B0F18;
+  --accent:        #4A7C5E;
+  --accent-soft:   #DDEBE1;
+  --accent-text:   #2D5340;
+  --positive:      #4A7C5E;
+  --positive-soft: #DDEBE1;
+  --positive-text: #2D5340;
+  --negative:      #B5564B;
+  --negative-soft: #F4DDD9;
+  --negative-text: #8B3D33;
+  --nav-surface:   rgba(245, 241, 234, 0.92);
+}
+
+[data-theme="dark"] {
+  --bg:            #14110D;
+  --surface:       #1E1B17;
+  --surface-elev:  #2A2620;
+  --border:        rgba(250, 246, 235, 0.08);
+  --border-strong: rgba(250, 246, 235, 0.14);
+  --text:          #FAF6EB;
+  --text-dim:      #9B9486;
+  --text-faint:    #6B6557;
+  --hero:          #FFFCF2;
+  --accent:        #6FAD8A;
+  --accent-soft:   rgba(111, 173, 138, 0.16);
+  --accent-text:   #8FCAA8;
+  --positive:      #6FAD8A;
+  --positive-soft: rgba(111, 173, 138, 0.16);
+  --positive-text: #8FCAA8;
+  --negative:      #D88A7E;
+  --negative-soft: rgba(216, 138, 126, 0.14);
+  --negative-text: #ECA59B;
+  --nav-surface:   rgba(20, 17, 13, 0.92);
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-elev: var(--surface-elev);
-  --color-fg: var(--text);
-  --color-dim: var(--text-dim);
-  --color-faint: var(--text-faint);
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-positive: var(--positive);
-  --color-negative: var(--negative);
-  --color-border: var(--border);
+  --color-bg:            var(--bg);
+  --color-surface:       var(--surface);
+  --color-surface-elev:  var(--surface-elev);
+  --color-fg:            var(--text);
+  --color-dim:           var(--text-dim);
+  --color-faint:         var(--text-faint);
+  --color-hero:          var(--hero);
+  --color-accent:        var(--accent);
+  --color-accent-soft:   var(--accent-soft);
+  --color-accent-text:   var(--accent-text);
+  --color-positive:      var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-positive-text: var(--positive-text);
+  --color-negative:      var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-negative-text: var(--negative-text);
+  --color-border:        var(--border);
   --color-border-strong: var(--border-strong);
-  --font-serif: var(--serif);
-  --font-sans: var(--sans);
-  --font-mono: var(--mono);
+  --color-nav-surface:   var(--nav-surface);
+  --font-serif:          var(--serif);
+  --font-sans:           var(--sans);
+  --font-mono:           var(--mono);
 }
 
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
+  font-feature-settings: "tnum" 1;
   /* Reserve scrollbar gutter at the page level so position:fixed elements
      never shift when a vertical scrollbar appears or disappears. */
   scrollbar-gutter: stable;
