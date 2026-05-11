@@ -157,7 +157,7 @@ System prompt tells Claude to refuse off-topic requests with a fixed redirect me
   - Single asset type > 60% of gross
   - Cash > 30% of gross
   - Only one asset class with multiple positions
-- **Holdings grouping** (PR 14): positions grouped into Property (`real_estate`), Public markets (`stocks` / `etf` / `crypto`), Reserves (`cash` / `pension` / `bonds` / `gold` / `other`). Group order by total value descending. All expanded by default, tap-to-collapse.
+- **Holdings grouping** (PR 14, updated PR 23): positions grouped into four groups — Property (`real_estate`), Public markets (`stocks` / `etf`), Reserves (`cash` / `pension` / `bonds` / `gold` / `other`), Crypto (`crypto`). Gold and bonds remain in Reserves. Group order by total value descending. All collapsed by default, tap to expand, session-persisted.
 
 ## Mortgage Auto-Amortization
 

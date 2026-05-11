@@ -278,3 +278,9 @@ Data model
 This file. If anything in `current-features.md`, `technical-decisions.md`, `currency-feature-spec.md`, or `next-build-plan.md` contradicts the rules above, those docs are stale.
 
 Supersedes the earlier `diary-note-immutability-decision.md`.
+
+---
+
+## Subsequent amendments
+
+Holdings grouping later expanded to four groups: Property, Public markets, Reserves, Crypto. See current-features.md for current state.

@@ -10,12 +10,12 @@ import { type Warning } from "@/lib/utils";
 import { useSparklines } from "@/lib/hooks";
 import type { LiveAsset } from "@/lib/supabase";
 
-// Semantic category mapping — 3 groups, regardless of how many asset types exist
+// Semantic category mapping — 4 groups, regardless of how many asset types exist
 const CATEGORY_MAP: Record<string, string> = {
   real_estate: "property",
   stocks:      "markets",
   etf:         "markets",
-  crypto:      "markets",
+  crypto:      "crypto",
   cash:        "reserves",
   pension:     "reserves",
   bonds:       "reserves",
@@ -27,6 +27,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   property: "Property",
   markets:  "Public markets",
   reserves: "Reserves",
+  crypto:   "Crypto",
 };
 
 // CSS variable references — resolved at paint time, respects light/dark theme
@@ -34,9 +35,10 @@ const CATEGORY_COLOR: Record<string, string> = {
   property: "var(--category-property)",
   markets:  "var(--category-public-markets)",
   reserves: "var(--category-reserves)",
+  crypto:   "var(--category-crypto)",
 };
 
-const ALL_CATEGORIES = ["property", "markets", "reserves"] as const;
+const ALL_CATEGORIES = ["property", "markets", "reserves", "crypto"] as const;
 
 interface PortfolioTabProps {
   assets: LiveAsset[];
@@ -178,7 +180,7 @@ export function PortfolioTab({
         </div>
       )}
 
-      {/* Holdings list — 3 semantic categories */}
+      {/* Holdings list — 4 semantic categories */}
       <div>
         <div className="flex items-baseline justify-between mb-3">
           <div
