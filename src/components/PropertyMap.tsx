@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { streetViewUrlForAsset } from "@/lib/maps";
+import { useTheme } from "@/lib/hooks";
 import type { RealEstateAsset } from "@/lib/supabase";
 import type { StyleSpecification } from "maplibre-gl";
-import mapStyleJson from "@/styles/map-dark.json";
+import mapDarkJson from "@/styles/map-dark.json";
+import mapLightJson from "@/styles/map-light.json";
 
 interface Props {
   asset: RealEstateAsset;
@@ -53,8 +55,23 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
 export function PropertyMap({ asset }: Props) {
   const router = useRouter();
   const supabase = createBrowserSupabase();
-  const [cachedUrl, setCachedUrl] = useState(asset.photo_url ?? null);
+  const { resolvedTheme } = useTheme();
+
+  // Compute the per-theme cache path and URL synchronously
+  const themeCachePath = `${asset.user_id}/${asset.id}-${resolvedTheme}.png`;
+  const { data: { publicUrl: themeCacheUrl } } = supabase.storage
+    .from("property-photos")
+    .getPublicUrl(themeCachePath);
+
+  const [cachedUrl, setCachedUrl] = useState<string | null>(themeCacheUrl);
   const photoFailedRef = useRef(false);
+
+  // When theme changes, try the new theme's cached URL
+  useEffect(() => {
+    photoFailedRef.current = false;
+    setCachedUrl(themeCacheUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedTheme]);
 
   const handleImgError = useCallback(() => {
     photoFailedRef.current = true;
@@ -122,26 +139,28 @@ interface MapLibreMapProps {
 function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
   const supabase = createBrowserSupabase();
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<{ setStyle: (s: unknown) => void; remove: () => void } | null>(null);
   const hasUploadedRef = useRef(false);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     if (!containerRef.current || !asset.latitude || !asset.longitude) return;
-    let mapInstance: { remove: () => void } | null = null;
 
     const init = async () => {
       const ml = await import("maplibre-gl");
       await import("maplibre-gl/dist/maplibre-gl.css");
       if (!containerRef.current) return;
 
+      const styleJson = resolvedTheme === "dark" ? mapDarkJson : mapLightJson;
       const map = new ml.Map({
         container: containerRef.current,
-        style: mapStyleJson as unknown as StyleSpecification,
+        style: styleJson as unknown as StyleSpecification,
         center: [asset.longitude!, asset.latitude!],
         zoom: 15,
         interactive: false,
         attributionControl: false,
       });
-      mapInstance = map;
+      mapRef.current = map;
 
       // Accent green pin matching the mockup
       const el = document.createElement("div");
@@ -163,7 +182,8 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
           const blob = await new Promise<Blob>((resolve, reject) => {
             canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error("canvas toBlob failed")); }, "image/png");
           });
-          const path = `${asset.user_id}/${asset.id}-map.png`;
+          const theme = resolvedTheme === "dark" ? "dark" : "light";
+          const path = `${asset.user_id}/${asset.id}-${theme}.png`;
           const { error } = await supabase.storage.from("property-photos").upload(path, blob, { upsert: true, contentType: "image/png" });
           if (error) return;
           const { data: { publicUrl } } = supabase.storage.from("property-photos").getPublicUrl(path);
@@ -176,9 +196,16 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
     };
 
     init();
-    return () => { mapInstance?.remove(); };
+    return () => { mapRef.current?.remove(); mapRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Hot-swap the map style when the theme changes after mount
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const styleJson = resolvedTheme === "dark" ? mapDarkJson : mapLightJson;
+    mapRef.current.setStyle(styleJson as unknown as StyleSpecification);
+  }, [resolvedTheme]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: MAP_HEIGHT, borderRadius: 14, overflow: "hidden" }}>
