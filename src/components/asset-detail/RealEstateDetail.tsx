@@ -6,48 +6,26 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { PropertyMap } from "@/components/PropertyMap";
 import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
-import { PriceDisplay } from "@/components/PriceDisplay";
-import { ACTION_STYLE, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, formatMoneyParts } from "@/lib/money";
 import type { RealEstateAsset, Mutation } from "@/lib/supabase";
-
-const PROP_TYPE_LABEL: Record<string, string> = {
-  house: "House",
-  apartment: "Apartment",
-  office: "Office",
-  land: "Land",
-  other: "Other",
-};
 
 interface Props {
   asset: RealEstateAsset;
 }
 
-function FutureSlot({ title, description }: { title: string; description: string }) {
+function HeroPrice({ amount, displayCurrency }: { amount: number; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
+  const parts = formatMoneyParts(amount, displayCurrency);
   return (
-    <div
-      style={{
-        margin: "12px 16px 0",
-        padding: "14px 16px",
-        background: "var(--surface)",
-        border: "1px dashed var(--border-strong)",
-        borderRadius: 14,
-        opacity: 0.65,
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div className="font-serif" style={{ fontSize: 14, fontWeight: 400 }}>{title}</div>
-        <span
-          className="font-mono text-faint"
-          style={{ fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", padding: "3px 7px", border: "1px solid var(--border-strong)", borderRadius: 4 }}
-        >
-          Soon
-        </span>
-      </div>
-      <div style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.5 }}>{description}</div>
-    </div>
+    <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.1em" }}>
+      {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
+      <span style={{ fontSize: "0.52em", lineHeight: 1, paddingTop: "0.08em", color: "var(--text-faint)", fontWeight: 500 }}>
+        {parts.symbol}
+      </span>
+      <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
+    </span>
   );
 }
 
@@ -72,153 +50,225 @@ export function RealEstateDetail({ asset }: Props) {
   const currentBalance = computeCurrentBalance(asset);
   const equity = asset.value - currentBalance;
   const hasMortgage = currentBalance > 0;
-  const propTypeLabel = asset.property_type ? PROP_TYPE_LABEL[asset.property_type] ?? asset.property_type : null;
+
+  // Compute equity gain from purchase mutation
+  const purchaseMutation = mutations.slice().reverse().find(m => m.action === "add");
+  const purchaseValue = purchaseMutation?.after_value ?? null;
+  const purchaseYear = purchaseMutation?.occurred_at
+    ? new Date(purchaseMutation.occurred_at).getFullYear()
+    : null;
+
+  // Property detail rows
+  const purchaseDate = purchaseMutation?.occurred_at
+    ? new Date(purchaseMutation.occurred_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+    : null;
+  const purchaseDateObj = purchaseMutation?.occurred_at
+    ? new Date(purchaseMutation.occurred_at)
+    : null;
+  const yearsOwned = purchaseDateObj != null
+    ? ((Date.now() - purchaseDateObj.getTime()) / (365.25 * 24 * 3600 * 1000)).toFixed(1).replace(/\.0$/, "")
+    : null;
+
+  const propertyRows = [
+    { label: "Value", value: formatMoney(asset.value, displayCurrency), meta: null },
+    asset.size_sqm ? { label: "Size", value: `${asset.size_sqm} m²`, meta: null } : null,
+    purchaseDate ? { label: "Owned since", value: purchaseDate, meta: yearsOwned != null ? `${yearsOwned} years` : null } : null,
+  ].filter(Boolean) as { label: string; value: string; meta: string | null }[];
 
   return (
     <div className="min-h-screen bg-bg">
-      <div className="max-w-[600px] mx-auto pt-4 pb-32">
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "0 22px 110px" }}>
 
         {/* Top bar: back only */}
-        <div className="flex justify-between items-center px-4" style={{ paddingBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", padding: "14px 0 14px" }}>
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 font-mono text-dim"
-            style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}
+            style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -8, color: "var(--text)", background: "none", border: "none", cursor: "pointer" }}
+            aria-label="Back"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M15 18l-6-6 6-6" />
+            <svg width="22" height="22" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="160 208 80 128 160 48" />
             </svg>
-            Back
           </button>
         </div>
 
         {/* Map */}
-        <PropertyMap asset={asset} />
-
-        {/* Address block */}
-        <div style={{ padding: "20px 22px 4px" }}>
-
-          {/* Name */}
-          <div className="font-serif text-fg" style={{ fontSize: 18, fontWeight: 400, lineHeight: 1.3, fontVariationSettings: "'opsz' 144" }}>
-            {asset.name}
-          </div>
-
-          {/* Address */}
-          {asset.address && (
-            <div className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em", marginTop: 4 }}>
-              {asset.address}
-            </div>
-          )}
-
-          {/* country · property_type · size_sqm */}
-          <div className="flex items-center gap-1 font-mono text-dim" style={{ fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 6 }}>
-            {asset.country && <span>{asset.country}</span>}
-            {asset.country && (propTypeLabel || asset.size_sqm) && <span style={{ color: "var(--text-faint)" }}>·</span>}
-            {propTypeLabel && <span>{propTypeLabel}</span>}
-            {propTypeLabel && asset.size_sqm && <span style={{ color: "var(--text-faint)" }}>·</span>}
-            {asset.size_sqm && <span>{asset.size_sqm} m²</span>}
-          </div>
-
-          {/* Native currency */}
-          <div className="font-mono text-faint" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 5 }}>
-            Native: {asset.currency ?? "EUR"}
-          </div>
+        <div style={{ marginBottom: 18 }}>
+          <PropertyMap asset={asset} />
         </div>
 
-        {/* Property value + Equity */}
-        <div style={{ padding: "16px 22px 0", borderBottom: "1px solid var(--border)", marginBottom: 0 }}>
-          <div className="flex items-center justify-between" style={{ paddingBottom: 16 }}>
-            <div className="font-mono uppercase text-faint" style={{ fontSize: 10, letterSpacing: "0.2em" }}>
-              Property value
-            </div>
-            <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-              {formatMoney(asset.value, displayCurrency)}
-            </div>
+        {/* Identity */}
+        <div style={{ marginBottom: 22 }}>
+          <div style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: 24,
+            fontWeight: 500,
+            color: "var(--hero)",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.05,
+            fontVariationSettings: "'opsz' 24",
+            marginBottom: 4,
+          }}>
+            {asset.name}
           </div>
+          {asset.address && (
+            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{asset.address}</div>
+          )}
         </div>
 
         {/* Equity hero */}
-        <div style={{ padding: "16px 22px 4px" }}>
-          <div className="font-mono uppercase text-faint" style={{ fontSize: 10, letterSpacing: "0.2em", marginBottom: 10 }}>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "var(--text-faint)",
+            marginBottom: 8,
+          }}>
             Equity
           </div>
-          <div className="font-serif font-light text-fg" style={{ fontSize: 42, letterSpacing: "-0.035em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}>
-            <PriceDisplay amount={equity} displayCurrency={displayCurrency} />
+          <div style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: 44,
+            fontWeight: 600,
+            letterSpacing: "-0.03em",
+            color: "var(--hero)",
+            lineHeight: 1,
+            fontVariationSettings: "'opsz' 60",
+            marginBottom: 10,
+          }}>
+            <HeroPrice amount={equity} displayCurrency={displayCurrency} />
           </div>
+          {purchaseValue != null && purchaseYear != null && (
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "4px 10px",
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 500,
+              fontFeatureSettings: '"tnum" 1',
+              background: "var(--positive-soft)",
+              color: "var(--positive-text)",
+            }}>
+              <svg width="11" height="11" viewBox="0 0 256 256" fill="currentColor">
+                <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" />
+              </svg>
+              since {purchaseYear}
+            </div>
+          )}
         </div>
 
-        {/* Value composition */}
+        {/* Value composition bar */}
         {hasMortgage && (
-          <div style={{ padding: "22px 0 4px" }}>
-            <ValueComposition
-              propertyValue={asset.value}
-              mortgageBalance={currentBalance}
-            />
+          <div style={{ marginBottom: 28 }}>
+            <ValueComposition propertyValue={asset.value} mortgageBalance={currentBalance} />
           </div>
+        )}
+
+        {/* Property section */}
+        {propertyRows.length > 0 && (
+          <>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+              Property
+            </div>
+            <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 26 }}>
+              {propertyRows.map((row, idx) => (
+                <div key={row.label} style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 16px",
+                  borderBottom: idx < propertyRows.length - 1 ? "0.5px solid var(--border)" : "none",
+                  gap: 14,
+                }}>
+                  <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                    <span style={{ fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18", lineHeight: 1.1 }}>
+                      {row.value}
+                    </span>
+                    {row.meta && (
+                      <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em" }}>
+                        {row.meta}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Mortgage section */}
         {hasMortgage && (
-          <div style={{ paddingTop: 28 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 22px", marginBottom: 14 }}>
-              <div className="font-serif text-fg" style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}>
-                Mortgage
-              </div>
+          <>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+              Mortgage
             </div>
             <MortgageBlock asset={asset} />
-          </div>
+          </>
         )}
 
-        {/* Future slots */}
-        <div style={{ marginTop: hasMortgage ? 12 : 28 }}>
-          <FutureSlot title="Valuation history" description="WOZ value · market estimate · track value drift over time" />
-          <FutureSlot title="Cash flow" description="Rent income · mortgage outflow · maintenance · net monthly" />
-        </div>
-
         {/* Activity */}
-        <div style={{ padding: "28px 22px 0" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
-            <div className="font-serif text-fg" style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}>
+        {mutations.length > 0 && (
+          <div style={{ marginTop: 26 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Activity
             </div>
-            <span className="font-mono" style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.04em" }}>ALL</span>
-          </div>
-        </div>
-
-        {mutations.length > 0 ? (
-          <div style={{ padding: "0 22px", borderTop: "1px solid var(--border)" }}>
             {mutations.map((m) => {
-              const style = ACTION_STYLE[m.action] ?? ACTION_STYLE.edit;
               const dateStr = m.occurred_at ?? m.recorded_at;
+              let delta: string | null = null;
+              let deltaPositive = true;
+              let deltaNeutral = false;
+
+              if (m.after_value != null) {
+                if (m.action === "add" && m.before_value == null) {
+                  delta = `Bought ${formatMoney(m.after_value, displayCurrency)}`; deltaNeutral = true;
+                } else if (m.action === "add" && m.before_value != null) {
+                  const d = m.after_value - m.before_value;
+                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                } else if (m.action === "edit" && m.before_value != null) {
+                  const d = m.after_value - m.before_value;
+                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                } else {
+                  delta = formatMoney(m.after_value, displayCurrency); deltaNeutral = true;
+                }
+              }
+
               return (
-                <div key={m.id} className="border-b border-border last:border-0" style={{ padding: "14px 0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                    <span className="font-mono" style={{ fontSize: 9, fontWeight: 500, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.1em", textTransform: "uppercase", color: style.color, background: style.bg }}>
-                      {style.label}
-                    </span>
-                    <span className="font-mono text-faint" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                      {dateStr ? formatDate(dateStr) : "—"}
-                    </span>
+                <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                    {dateStr ? formatDate(dateStr) : "—"}
                   </div>
-                  {m.after_value != null && (
-                    <div className="font-serif text-fg" style={{ fontSize: 14, fontWeight: 400, lineHeight: 1.3, margin: "3px 0 2px" }}>
-                      {m.action === "add" && m.before_value != null
-                        ? `+${formatMoney(m.after_value - m.before_value, displayCurrency)}`
-                        : formatMoney(m.after_value, displayCurrency)}
-                    </div>
-                  )}
-                  {m.personal_context && (
-                    <div className="text-dim italic" style={{ fontSize: 11, lineHeight: 1.5, borderLeft: "2px solid var(--border-strong)", paddingLeft: 9 }}>
-                      &quot;{m.personal_context}&quot;
-                    </div>
-                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {delta && (
+                      <div style={{
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
+                        marginBottom: 2,
+                      }}>
+                        {delta}
+                      </div>
+                    )}
+                    {m.personal_context && (
+                      <div style={{
+                        fontFamily: "var(--font-serif)",
+                        fontStyle: "italic",
+                        fontSize: 13,
+                        color: "var(--text-dim)",
+                        lineHeight: 1.4,
+                        fontVariationSettings: "'opsz' 14",
+                      }}>
+                        {m.personal_context}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
-          </div>
-        ) : (
-          <div style={{ padding: "0 22px 14px" }}>
-            <div className="font-mono text-faint" style={{ fontSize: 11 }}>No activity yet.</div>
           </div>
         )}
 

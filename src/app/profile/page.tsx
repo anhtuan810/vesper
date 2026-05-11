@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useProfile, useSignOut, useTheme } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
-import { InlineEdit } from "@/components/asset-detail/InlineEdit";
+import { InlineEdit } from "@/components/InlineEdit";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { uploadAvatar } from "@/lib/avatar-upload";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
@@ -44,6 +44,18 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+function ChevronRight() {
+  return (
+    <svg
+      width="14" height="14" viewBox="0 0 256 256" fill="none"
+      stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round"
+      style={{ color: "var(--text-faint)", flexShrink: 0 }}
+    >
+      <polyline points="96 48 176 128 96 208" />
+    </svg>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
@@ -52,7 +64,6 @@ export default function ProfilePage() {
   const { theme: currentTheme, setTheme } = useTheme();
   const [mutationCount, setMutationCount] = useState(0);
   const [profileData, setProfileData] = useState<Record<string, string>>({});
-  const [pageError, setPageError] = useState<string | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("EUR");
   const [currencyLoading, setCurrencyLoading] = useState<DisplayCurrency | null>(null);
   const [currencyError, setCurrencyError] = useState<string | null>(null);
@@ -60,6 +71,7 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [expandedPref, setExpandedPref] = useState<"currency" | "theme" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,7 +79,6 @@ export default function ProfilePage() {
   }, [profile]);
 
   const updateField = useCallback(async (key: string, value: string | null): Promise<string | null> => {
-    setPageError(null);
     try {
       const res = await fetch("/api/users/me", {
         method: "PATCH",
@@ -89,11 +100,6 @@ export default function ProfilePage() {
       return "Save failed";
     }
   }, []);
-
-  const handleDelete = useCallback(async (key: string) => {
-    const error = await updateField(key, null);
-    if (error) setPageError(`Failed to remove ${key}: ${error}`);
-  }, [updateField]);
 
   const handleAvatarFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,6 +167,7 @@ export default function ProfilePage() {
         setCurrencyError(data.error ?? "Failed to update currency");
       } else {
         setDisplayCurrency(currency);
+        setExpandedPref(null);
         if (currency !== "EUR" && !localStorage.getItem(TOAST_KEY)) {
           localStorage.setItem(TOAST_KEY, "1");
           setToastVisible(true);
@@ -187,6 +194,10 @@ export default function ProfilePage() {
     );
   }
 
+  const displayedAvatar = avatarUrl !== undefined ? avatarUrl : profile?.avatar_url;
+  const currencyLabel = `${CURRENCY_DISPLAY[displayCurrency].label} (${CURRENCY_DISPLAY[displayCurrency].symbol})`;
+  const themeLabel = THEME_OPTIONS.find(o => o.value === currentTheme)?.label ?? "Auto";
+
   return (
     <div className="min-h-screen bg-bg">
       <NavBar
@@ -198,341 +209,411 @@ export default function ProfilePage() {
         refreshing={false}
         refreshPrices={() => {}}
       />
-      <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-4 pb-24 md:pb-10">
-        {/* Profile card */}
-        <div className="bg-surface rounded-2xl border border-border p-8 mb-4">
-          <div className="flex items-start gap-4 mb-6">
-            {/* Avatar: tappable, shows photo or initials */}
+      <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 22px 110px" }}>
+
+        {/* Page title */}
+        <div style={{ marginBottom: 26, paddingTop: 32 }}>
+          <div style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: 38,
+            fontWeight: 500,
+            letterSpacing: "-0.025em",
+            color: "var(--hero)",
+            lineHeight: 1,
+            fontVariationSettings: "'opsz' 60",
+          }}>
+            Profile
+          </div>
+        </div>
+
+        {/* Identity block */}
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "14px 0 22px",
+          borderBottom: "0.5px solid var(--border)",
+          marginBottom: 22,
+        }}>
+          {/* Avatar */}
+          <div style={{ position: "relative", width: 78, height: 78, marginBottom: 14 }}>
             <button
               type="button"
               aria-label="Change avatar"
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarUploading}
-              className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-              style={{ background: "var(--surface-elev)", cursor: "pointer", border: "none", padding: 0 }}
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                background: "var(--accent)",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+                flexShrink: 0,
+              }}
             >
-              {(() => {
-                const displayed = avatarUrl !== undefined ? avatarUrl : profile?.avatar_url;
-                return displayed ? (
-                  <img
-                    src={displayed}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    style={{ opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.15s" }}
-                  />
-                ) : (
-                  <span
-                    className="font-mono text-dim"
-                    style={{ fontSize: 18, fontWeight: 500, opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.15s" }}
-                  >
-                    {getInitials(profile?.name || "?")}
-                  </span>
-                );
-              })()}
+              {displayedAvatar ? (
+                <img
+                  src={displayedAvatar}
+                  alt=""
+                  style={{ width: "100%", height: "100%", objectFit: "cover", opacity: avatarUploading ? 0.4 : 1 }}
+                />
+              ) : (
+                <span style={{
+                  fontFamily: "var(--font-serif)",
+                  fontSize: 26,
+                  fontWeight: 500,
+                  color: "var(--bg)",
+                  opacity: avatarUploading ? 0.4 : 1,
+                  fontVariationSettings: "'opsz' 24",
+                  userSelect: "none",
+                }}>
+                  {getInitials(profile?.name || "?")}
+                </span>
+              )}
               {avatarUploading && (
-                <div
-                  className="absolute inset-0 flex items-center justify-center"
-                  style={{ pointerEvents: "none" }}
-                >
-                  <div
-                    className="animate-spin"
-                    style={{
-                      width: 16,
-                      height: 16,
-                      border: "2px solid var(--border)",
-                      borderTopColor: "var(--accent)",
-                      borderRadius: "50%",
-                    }}
-                  />
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+                  <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
                 </div>
               )}
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarFileChange}
-            />
-            <div>
-              <div
-                className="font-serif text-fg"
-                style={{ fontSize: 22, fontWeight: 400, letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 144" }}
-              >
-                {profile?.name || "Investor"}
-              </div>
-              {profile?.fingerprint && (
-                <div
-                  className="font-serif text-dim mt-1"
-                  style={{ fontSize: 13, fontStyle: "italic" }}
-                >
-                  {profile.fingerprint}
-                </div>
-              )}
-              {!profile?.fingerprint && (
-                <div className="font-mono text-faint mt-1" style={{ fontSize: 10, letterSpacing: "0.1em" }}>
-                  What Vesper knows about you
-                </div>
-              )}
-              {avatarError && (
-                <div className="font-mono mt-1" style={{ fontSize: 11, color: "var(--negative)" }}>
-                  {avatarError}
-                </div>
-              )}
+            {/* Camera badge */}
+            <div style={{
+              position: "absolute",
+              right: -2,
+              bottom: -2,
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              background: "var(--bg)",
+              border: "1.5px solid var(--surface-elev)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--text-dim)",
+              pointerEvents: "none",
+            }}>
+              <svg width="13" height="13" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Z"/>
+                <circle cx="128" cy="132" r="36"/>
+              </svg>
             </div>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleAvatarFileChange}
+          />
 
-          <div className="text-dim leading-relaxed mb-6" style={{ fontSize: 12 }}>
-            This profile builds automatically from your conversations. The more you use Vesper, the better it understands your financial situation and preferences.
+          {/* Name */}
+          <div style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: 22,
+            fontWeight: 500,
+            color: "var(--hero)",
+            letterSpacing: "-0.01em",
+            marginBottom: 4,
+            fontVariationSettings: "'opsz' 24",
+          }}>
+            {profile?.name || "Investor"}
           </div>
 
-          {Object.keys(profileData).length > 0 ? (
-            <div className="space-y-4">
-              {PROFILE_FIELDS.filter(({ key }) => profileData[key]).map(({ key, label }) => (
-                <div
-                  key={key}
-                  className="pb-4 last:pb-0"
-                  style={{ borderBottom: "1px solid var(--border)" }}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div
-                      className="font-mono text-faint uppercase"
-                      style={{ fontSize: 9, letterSpacing: "0.18em" }}
-                    >
-                      {label}
-                    </div>
-                    <button
-                      onClick={() => handleDelete(key)}
-                      aria-label={`Remove ${label}`}
-                      className="text-faint hover:text-negative transition-colors"
-                      style={{
-                        fontSize: 16,
-                        lineHeight: 1,
-                        padding: "2px 6px",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <InlineEdit
-                    display={
-                      <span className="text-fg leading-relaxed" style={{ fontSize: 13 }}>
-                        {profileData[key]}
-                      </span>
-                    }
-                    rawValue={profileData[key] ?? ""}
-                    placeholder="(empty)"
-                    affordance
-                    displayStyle={{ minHeight: 40, width: "100%" }}
-                    inputStyle={{ fontSize: 13 }}
-                    onSave={async (raw) => {
-                      const trimmed = raw.trim();
-                      if (trimmed.length > 200) return "Max 200 characters";
-                      if (trimmed === (profileData[key] ?? "")) return "";
-                      return updateField(key, trimmed === "" ? null : trimmed);
-                    }}
-                  />
-                </div>
-              ))}
+          {/* Email */}
+          <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: profile?.fingerprint ? 14 : 0 }}>
+            {user?.email}
+          </div>
+
+          {/* Fingerprint */}
+          {profile?.fingerprint && (
+            <div style={{
+              fontFamily: "var(--font-serif)",
+              fontStyle: "italic",
+              fontSize: 14,
+              color: "var(--text-dim)",
+              lineHeight: 1.45,
+              textAlign: "center",
+              maxWidth: 280,
+              fontVariationSettings: "'opsz' 16",
+            }}>
+              {profile.fingerprint}
             </div>
-          ) : (
-            <div className="text-center py-10">
-              <div className="text-sm text-dim mb-2">No profile data yet</div>
-              <div className="text-faint leading-relaxed max-w-sm mx-auto" style={{ fontSize: 12 }}>
-                Start chatting with the assistant about your investments, goals, and concerns. Vesper will gradually learn about your financial profile.
-              </div>
+          )}
+
+          {avatarError && (
+            <div style={{ fontSize: 11, color: "var(--negative)", marginTop: 8 }}>
+              {avatarError}
             </div>
           )}
         </div>
 
-        {pageError && (
-          <div
-            className="rounded-xl px-4 py-2 mb-3"
-            style={{
-              background: "rgba(201,122,110,0.08)",
-              border: "1px solid rgba(201,122,110,0.2)",
-              color: "var(--negative)",
-              fontSize: 11,
-            }}
-          >
-            {pageError}
-          </div>
-        )}
-
-        {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Activity entries", value: mutationCount },
-            { label: "Profile fields", value: Object.keys(profileData).length },
-            {
-              label: "Member since",
-              value: user?.created_at
-                ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
-                : "—",
-            },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-surface rounded-xl p-4 border border-border">
-              <div
-                className="font-mono text-faint uppercase mb-2"
-                style={{ fontSize: 9, letterSpacing: "0.18em" }}
-              >
-                {label}
-              </div>
-              <div className="font-mono text-fg" style={{ fontSize: 17, fontWeight: 500 }}>
-                {value}
-              </div>
-            </div>
-          ))}
+        {/* Context section */}
+        <div style={{
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "var(--text-faint)",
+          marginBottom: 10,
+        }}>
+          Context
+        </div>
+        <div style={{
+          background: "var(--surface)",
+          border: "0.5px solid var(--border)",
+          borderRadius: 14,
+          marginBottom: 24,
+          overflow: "hidden",
+        }}>
+          {PROFILE_FIELDS.map(({ key, label }, idx) => {
+            const value = profileData[key] ?? null;
+            const isLast = idx === PROFILE_FIELDS.length - 1;
+            return (
+              <InlineEdit
+                key={key}
+                display={
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "14px 16px",
+                    borderBottom: isLast ? "none" : "0.5px solid var(--border)",
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: "var(--font-serif)",
+                        fontSize: 16,
+                        fontWeight: 500,
+                        color: "var(--text)",
+                        marginBottom: 3,
+                        fontVariationSettings: "'opsz' 18",
+                      }}>
+                        {label}
+                      </div>
+                      <div style={{
+                        fontSize: 13,
+                        color: value ? "var(--text-dim)" : "var(--text-faint)",
+                        fontStyle: value ? "normal" : "italic",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        lineHeight: 1.35,
+                      }}>
+                        {value || "Not yet shared"}
+                      </div>
+                    </div>
+                    <ChevronRight />
+                  </div>
+                }
+                rawValue={value ?? ""}
+                displayStyle={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
+                onSave={async (raw) => {
+                  const trimmed = raw.trim();
+                  if (trimmed.length > 500) return "Max 500 characters";
+                  if (trimmed === (profileData[key] ?? "")) return "";
+                  return updateField(key, trimmed === "" ? null : trimmed);
+                }}
+              />
+            );
+          })}
         </div>
 
-        {/* Preferences */}
-        <div className="bg-surface rounded-2xl border border-border p-6 mt-4">
-          <div
-            className="font-mono text-faint uppercase mb-4"
-            style={{ fontSize: 9, letterSpacing: "0.18em" }}
-          >
-            Preferences
-          </div>
-
-          {/* Display currency */}
-          <div className="mb-4 pb-4" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div
-              className="font-mono text-faint uppercase mb-3"
-              style={{ fontSize: 9, letterSpacing: "0.18em" }}
+        {/* Preferences section */}
+        <div style={{
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "var(--text-faint)",
+          marginBottom: 10,
+        }}>
+          Preferences
+        </div>
+        <div style={{
+          background: "var(--surface)",
+          border: "0.5px solid var(--border)",
+          borderRadius: 14,
+          marginBottom: 24,
+          overflow: "hidden",
+        }}>
+          {/* Display currency row */}
+          <div style={{ borderBottom: "0.5px solid var(--border)" }}>
+            <button
+              onClick={() => setExpandedPref(expandedPref === "currency" ? null : "currency")}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "14px 16px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
             >
-              Display currency
-            </div>
-            <div className="space-y-2">
-              {SUPPORTED_CURRENCIES.map((currency) => {
-                const { symbol, label } = CURRENCY_DISPLAY[currency];
-                const isActive = displayCurrency === currency;
-                const isLoading = currencyLoading === currency;
-                return (
-                  <button
-                    key={currency}
-                    onClick={() => handleCurrencySelect(currency)}
-                    disabled={!!currencyLoading}
-                    className="w-full text-left bg-bg rounded-xl p-4 transition-colors"
-                    style={{
-                      border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="font-mono"
-                          style={{
-                            fontSize: 18,
-                            fontWeight: 500,
-                            color: isActive ? "var(--accent)" : "var(--text-dim)",
-                            width: 24,
-                            textAlign: "center",
-                          }}
-                        >
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontFamily: "var(--font-serif)",
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: "var(--text)",
+                  fontVariationSettings: "'opsz' 18",
+                }}>
+                  Display currency
+                </div>
+              </div>
+              <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, flexShrink: 0 }}>
+                {currencyLabel}
+              </span>
+              <ChevronRight />
+            </button>
+            {expandedPref === "currency" && (
+              <div style={{ padding: "0 16px 14px" }}>
+                {SUPPORTED_CURRENCIES.map((currency) => {
+                  const { symbol, label } = CURRENCY_DISPLAY[currency];
+                  const isActive = displayCurrency === currency;
+                  const isLoading = currencyLoading === currency;
+                  return (
+                    <button
+                      key={currency}
+                      onClick={() => handleCurrencySelect(currency)}
+                      disabled={!!currencyLoading}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                        background: isActive ? "var(--accent-soft)" : "var(--bg)",
+                        cursor: currencyLoading ? "default" : "pointer",
+                        marginBottom: 6,
+                        textAlign: "left",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 16, fontWeight: 500, color: isActive ? "var(--accent-text)" : "var(--text-dim)", width: 20, textAlign: "center" }}>
                           {symbol}
                         </span>
-                        <div>
-                          <div
-                            className="font-mono"
-                            style={{
-                              fontSize: 13,
-                              color: isActive ? "var(--accent)" : "var(--text)",
-                            }}
-                          >
-                            {label}
-                          </div>
-                          <div
-                            className="font-mono text-faint"
-                            style={{ fontSize: 10, letterSpacing: "0.08em", marginTop: 2 }}
-                          >
-                            {currency}
-                          </div>
-                        </div>
+                        <span style={{ fontSize: 13, color: isActive ? "var(--accent-text)" : "var(--text)" }}>
+                          {label}
+                        </span>
                       </div>
                       {isLoading ? (
-                        <div className="font-mono text-faint" style={{ fontSize: 10 }}>
-                          Saving…
-                        </div>
+                        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Saving…</span>
                       ) : isActive ? (
-                        <div
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ background: "var(--accent)" }}
-                        />
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />
                       ) : null}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {currencyError && (
-              <div className="font-mono mt-2" style={{ fontSize: 12, color: "var(--negative)" }}>
-                {currencyError}
+                    </button>
+                  );
+                })}
+                {currencyError && (
+                  <div style={{ fontSize: 11, color: "var(--negative)", marginTop: 4 }}>{currencyError}</div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Theme */}
+          {/* Theme row */}
           <div>
-            <div
-              className="font-mono text-faint uppercase mb-3"
-              style={{ fontSize: 9, letterSpacing: "0.18em" }}
+            <button
+              onClick={() => setExpandedPref(expandedPref === "theme" ? null : "theme")}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "14px 16px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
             >
-              Theme
-            </div>
-            <div className="space-y-2">
-              {THEME_OPTIONS.map(({ value, label }) => {
-                const isActive = currentTheme === value;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => setTheme(value)}
-                    className="w-full text-left bg-bg rounded-xl p-4 transition-colors"
-                    style={{
-                      border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div
-                        className="font-mono"
-                        style={{
-                          fontSize: 13,
-                          color: isActive ? "var(--accent)" : "var(--text)",
-                        }}
-                      >
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontFamily: "var(--font-serif)",
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: "var(--text)",
+                  fontVariationSettings: "'opsz' 18",
+                }}>
+                  Theme
+                </div>
+              </div>
+              <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, flexShrink: 0 }}>
+                {themeLabel}
+              </span>
+              <ChevronRight />
+            </button>
+            {expandedPref === "theme" && (
+              <div style={{ padding: "0 16px 14px" }}>
+                {THEME_OPTIONS.map(({ value, label }) => {
+                  const isActive = currentTheme === value;
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => { setTheme(value); setExpandedPref(null); }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                        background: isActive ? "var(--accent-soft)" : "var(--bg)",
+                        cursor: "pointer",
+                        marginBottom: 6,
+                        textAlign: "left",
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: isActive ? "var(--accent-text)" : "var(--text)" }}>
                         {label}
-                      </div>
+                      </span>
                       {isActive && (
-                        <div
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ background: "var(--accent)" }}
-                        />
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />
                       )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Sign out */}
-        <div className="mt-10 flex flex-col items-center">
+        <div style={{ display: "flex", justifyContent: "center", padding: "18px 0 8px" }}>
           <button
             onClick={signOut}
-            className="font-mono text-faint hover:text-dim border border-border hover:bg-surface transition-colors"
-            style={{ fontSize: 11, padding: "8px 20px", borderRadius: 8 }}
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "var(--negative)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "var(--font-sans)",
+            }}
           >
             Sign out
           </button>
         </div>
+
       </div>
 
       {toastVisible && (
         <div
-          className="font-mono"
           style={{
             position: "fixed",
             bottom: 88,
@@ -544,10 +625,10 @@ export default function ProfilePage() {
             padding: "10px 18px",
             fontSize: 12,
             color: "var(--text-dim)",
-            letterSpacing: "0.02em",
             whiteSpace: "nowrap",
             boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
             zIndex: 50,
+            fontFamily: "var(--font-sans)",
           }}
         >
           Display only — your portfolio is unchanged.

@@ -23,7 +23,6 @@ function buildPath(closes: number[], W: number, H: number): { line: string; area
   const toX = (i: number) => (i / (closes.length - 1)) * W;
   const toY = (v: number) => H - pad - ((v - min) / range) * (H - pad * 2);
 
-  // smooth path via quadratic bezier through midpoints
   const pts = closes.map((c, i) => ({ x: toX(i), y: toY(c) }));
   let line = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -33,10 +32,7 @@ function buildPath(closes: number[], W: number, H: number): { line: string; area
   }
   line += ` L ${pts[pts.length - 1].x.toFixed(2)} ${pts[pts.length - 1].y.toFixed(2)}`;
 
-  const area =
-    line +
-    ` L ${pts[pts.length - 1].x.toFixed(2)} ${H} L 0 ${H} Z`;
-
+  const area = line + ` L ${pts[pts.length - 1].x.toFixed(2)} ${H} L 0 ${H} Z`;
   return { line, area };
 }
 
@@ -44,7 +40,6 @@ export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
   const router = useRouter();
   const [range, setRange] = useState<Range>(defaultRange);
 
-  // Reads window.location.search directly to avoid the Suspense requirement of useSearchParams.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const r = new URLSearchParams(window.location.search).get("range") ?? "";
@@ -53,8 +48,8 @@ export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
 
   const { closes, loading } = usePriceHistory(symbol, range);
 
-  const W = 280;
-  const H = 110;
+  const W = 320;
+  const H = 90;
   const strokeColor = "var(--accent)";
   const gradId = `chartFill_${symbol.replace(/[^a-zA-Z0-9]/g, "")}`;
 
@@ -81,94 +76,64 @@ export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
 
   return (
     <div>
-      {/* Chart */}
-      <div style={{ margin: "8px -6px", height: H }}>
+      {/* Chart card */}
+      <div style={{
+        background: "var(--surface)",
+        border: "0.5px solid var(--border)",
+        borderRadius: 14,
+        padding: 10,
+        marginBottom: 0,
+      }}>
         {loading || closes.length < 2 ? (
-          <div
-            style={{ width: "100%", height: H, display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
+          <div style={{ width: "100%", height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {loading && (
-              <div
-                className="font-mono text-faint"
-                style={{ fontSize: 10, letterSpacing: "0.1em" }}
-              >
+              <div style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.1em", fontFamily: "var(--font-sans)" }}>
                 loading
               </div>
             )}
           </div>
         ) : (
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            width="100%"
-            height={H}
-          >
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block" }}>
             <defs>
               <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
                 <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            {/* Baseline */}
-            <line
-              x1={0}
-              y1={closes.length >= 2
-                ? H - 4 - 0
-                : H / 2}
-              x2={W}
-              y2={closes.length >= 2
-                ? H - 4 - 0
-                : H / 2}
-              stroke="rgba(255,255,255,0.04)"
-              strokeWidth={1}
-              strokeDasharray="2 3"
-            />
-            {/* Fill */}
             <path d={area} fill={`url(#${gradId})`} />
-            {/* Line */}
-            <path
-              d={line}
-              fill="none"
-              stroke={strokeColor}
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {/* End dot */}
-            {lastPt && (
-              <circle cx={lastPt.x} cy={lastPt.y} r={3} fill={strokeColor} />
-            )}
+            <path d={line} fill="none" stroke={strokeColor} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            {lastPt && <circle cx={lastPt.x} cy={lastPt.y} r={3.5} fill={strokeColor} />}
           </svg>
         )}
       </div>
 
-      {/* Time tabs */}
-      <div
-        className="flex gap-0.5"
-        style={{
-          margin: "14px 0 4px",
-          padding: 4,
-          background: "var(--surface)",
-          borderRadius: 12,
-          border: "1px solid var(--border)",
-        }}
-      >
+      {/* Range pills */}
+      <div style={{
+        display: "flex",
+        gap: 4,
+        margin: "12px 0 0",
+        padding: 3,
+        background: "var(--surface-elev)",
+        borderRadius: 999,
+      }}>
         {RANGES.map((r) => (
           <button
             key={r}
             onClick={() => selectRange(r)}
-            className="flex-1 text-center font-mono"
             style={{
+              flex: 1,
+              textAlign: "center",
               padding: "7px 0",
-              fontSize: 11,
-              letterSpacing: "0.04em",
-              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 500,
+              borderRadius: 999,
               color: range === r ? "var(--text)" : "var(--text-dim)",
-              background:
-                range === r ? "var(--surface-elev)" : "transparent",
-              boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.2)" : "none",
+              background: range === r ? "var(--surface)" : "transparent",
+              boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.04)" : "none",
               border: "none",
               cursor: "pointer",
+              letterSpacing: "0.02em",
+              fontFamily: "var(--font-sans)",
             }}
           >
             {r}

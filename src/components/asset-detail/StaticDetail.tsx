@@ -3,15 +3,51 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { PriceDisplay } from "@/components/PriceDisplay";
 import { BondBlock } from "@/components/asset-detail/BondBlock";
-import { ACTION_STYLE, formatDate, TYPE_LABEL } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, formatMoneyParts } from "@/lib/money";
 import type { StaticAsset, BondsAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
   asset: StaticAsset | BondsAsset;
+}
+
+function HeroPrice({ amount, displayCurrency }: { amount: number; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
+  const parts = formatMoneyParts(amount, displayCurrency);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.1em" }}>
+      {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
+      <span style={{ fontSize: "0.52em", lineHeight: 1, paddingTop: "0.08em", color: "var(--text-faint)", fontWeight: 500 }}>
+        {parts.symbol}
+      </span>
+      <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
+    </span>
+  );
+}
+
+function AssetIcon({ asset }: { asset: StaticAsset | BondsAsset }) {
+  if (asset.type === "bonds") {
+    return (
+      <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round"
+        style={{ color: "var(--text-dim)", width: 26, height: 26 }}>
+        <path d="M152,200H40a8,8,0,0,1-8-8V64a8,8,0,0,1,8-8H216a8,8,0,0,1,8,8v76"/>
+        <circle cx="188" cy="188" r="28"/>
+        <polyline points="188 216 188 240 175 232 161 240 161 209"/>
+        <line x1="64" y1="96" x2="192" y2="96"/>
+        <line x1="64" y1="128" x2="128" y2="128"/>
+        <line x1="64" y1="160" x2="112" y2="160"/>
+      </svg>
+    );
+  }
+  // wallet icon for cash/pension/other
+  return (
+    <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round"
+      style={{ color: "var(--text-dim)", width: 26, height: 26 }}>
+      <path d="M216,72H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,64V192a24,24,0,0,0,24,24H216a8,8,0,0,0,8-8V80A8,8,0,0,0,216,72Z"/>
+      <circle cx="180" cy="144" r="12" fill="currentColor"/>
+    </svg>
+  );
 }
 
 export function StaticDetail({ asset }: Props) {
@@ -32,145 +68,182 @@ export function StaticDetail({ asset }: Props) {
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
   const displayCurrency = useDisplayCurrency();
-  const monogram = asset.name.slice(0, 3).toUpperCase();
 
-  const nameEqualsType = asset.name.toLowerCase() === asset.type.toLowerCase();
-  const subLine = nameEqualsType
-    ? (asset.currency ?? "")
-    : [asset.country, TYPE_LABEL[asset.type] ?? asset.type].filter(Boolean).join(" · ");
-
-  const showRate =
-    (asset.type === "cash" || asset.type === "pension") &&
-    asset.mortgage_rate != null;
+  // Compute this-year delta for the change pill
+  const currentYear = new Date().getFullYear();
+  const thisYearDelta = mutations.reduce((sum, m) => {
+    const year = m.occurred_at ? new Date(m.occurred_at).getFullYear() : null;
+    if (year !== currentYear) return sum;
+    if (m.action === "add" && m.after_value != null && m.before_value != null) return sum + m.after_value - m.before_value;
+    if (m.action === "add" && m.after_value != null && m.before_value == null) return sum + m.after_value;
+    if (m.action === "edit" && m.after_value != null && m.before_value != null) return sum + m.after_value - m.before_value;
+    if (m.action === "remove" && m.before_value != null) return sum - m.before_value;
+    return sum;
+  }, 0);
+  const showPill = thisYearDelta !== 0;
 
   return (
     <div className="min-h-screen bg-bg">
-      <div className="max-w-[600px] mx-auto px-4 sm:px-6 pt-4 pb-32">
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "0 22px 110px" }}>
 
-        {/* Back */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 font-mono text-dim mb-2"
-          style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", paddingBottom: 8 }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          Back
-        </button>
-
-        {/* Header */}
-        <div style={{ paddingBottom: 24 }}>
-          <div className="flex items-center gap-3.5 mb-4">
-            <div
-              className="bg-surface border border-border flex items-center justify-center shrink-0 font-mono font-medium text-dim"
-              style={{ width: 50, height: 50, borderRadius: 14, fontSize: 13 }}
-            >
-              {monogram}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                className="font-serif text-fg"
-                style={{ fontSize: 22, fontWeight: 400, lineHeight: 1.2, fontVariationSettings: "'opsz' 144" }}
-              >
-                {asset.name}
-              </div>
-              {subLine && (
-                <div className="font-mono text-dim mt-0.5" style={{ fontSize: 10, letterSpacing: "0.05em" }}>
-                  {subLine}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Balance hero — read-only */}
-          <div className="font-mono uppercase text-faint" style={{ fontSize: 10, letterSpacing: "0.2em", marginBottom: 10 }}>
-            Balance
-          </div>
-          <div
-            className="font-serif font-light text-fg"
-            style={{ fontSize: 38, letterSpacing: "-0.03em", lineHeight: 1, fontVariationSettings: "'opsz' 144" }}
+        {/* Top bar: back only */}
+        <div style={{ display: "flex", alignItems: "center", padding: "14px 0 18px" }}>
+          <button
+            onClick={() => router.back()}
+            style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -8, color: "var(--text)", background: "none", border: "none", cursor: "pointer" }}
+            aria-label="Back"
           >
-            <PriceDisplay amount={asset.value} displayCurrency={displayCurrency} />
-          </div>
+            <svg width="22" height="22" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="160 208 80 128 160 48" />
+            </svg>
+          </button>
+        </div>
 
-          {/* Currency */}
-          <div className="flex items-center gap-2 mt-3">
-            <span className="font-mono text-faint" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-              Currency
-            </span>
-            <span
-              className="font-mono"
-              style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 5, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
-            >
-              {asset.currency ?? "EUR"}
-            </span>
+        {/* Identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
+          <div style={{
+            width: 44, height: 44,
+            borderRadius: 10,
+            background: "var(--surface)",
+            border: "0.5px solid var(--border-strong)",
+            overflow: "hidden",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            <AssetIcon asset={asset} />
           </div>
+          <div style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: 22,
+            fontWeight: 500,
+            color: "var(--hero)",
+            letterSpacing: "-0.01em",
+            lineHeight: 1.05,
+            fontVariationSettings: "'opsz' 24",
+          }}>
+            {asset.name}
+          </div>
+        </div>
 
-          {/* Optional rate — cash and pension only */}
-          {showRate && (
-            <div className="flex items-center gap-2 mt-3">
-              <span className="font-mono text-faint" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                Rate
-              </span>
-              <span className="font-mono text-dim" style={{ fontSize: 12, fontWeight: 500 }}>
-                {asset.mortgage_rate!.toFixed(2)}%
-              </span>
+        {/* Balance / market value hero */}
+        <div style={{ marginBottom: 30 }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "var(--text-faint)",
+            marginBottom: 8,
+          }}>
+            {asset.type === "bonds" ? "Market value" : "Balance"}
+          </div>
+          <div style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: 48,
+            fontWeight: 600,
+            letterSpacing: "-0.03em",
+            color: "var(--hero)",
+            lineHeight: 1,
+            fontVariationSettings: "'opsz' 60",
+            marginBottom: 10,
+          }}>
+            <HeroPrice amount={asset.value} displayCurrency={displayCurrency} />
+          </div>
+          {showPill && (
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "4px 10px",
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 500,
+              fontFeatureSettings: '"tnum" 1',
+              background: thisYearDelta >= 0 ? "var(--positive-soft)" : "var(--negative-soft)",
+              color: thisYearDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)",
+            }}>
+              <svg width="11" height="11" viewBox="0 0 256 256" fill="currentColor">
+                {thisYearDelta >= 0
+                  ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" />
+                  : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />
+                }
+              </svg>
+              {thisYearDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(thisYearDelta), displayCurrency)} this year
+            </div>
+          )}
+          {/* Native currency subtitle */}
+          {asset.currency && asset.currency !== "EUR" && (
+            <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-sans)" }}>
+              Native currency: {asset.currency}
             </div>
           )}
         </div>
 
-        {/* Bond block — read-only for bonds */}
-        {asset.type === "bonds" && (
-          <BondBlock asset={asset as BondsAsset} />
-        )}
+        {/* Bond block */}
+        {asset.type === "bonds" && <BondBlock asset={asset as BondsAsset} />}
 
         {/* Activity */}
-        <div style={{ marginTop: asset.type === "bonds" ? 28 : 4 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
-            <div className="font-serif text-fg" style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}>
+        {mutations.length > 0 && (
+          <div style={{ marginTop: asset.type === "bonds" ? 0 : 4 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Activity
             </div>
-            <span className="font-mono" style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.04em" }}>ALL</span>
-          </div>
+            {mutations.map((m) => {
+              const dateStr = m.occurred_at ?? m.recorded_at;
+              let delta: string | null = null;
+              let deltaPositive = true;
+              let deltaNeutral = false;
 
-          {mutations.length > 0 ? (
-            <div style={{ borderTop: "1px solid var(--border)" }}>
-              {mutations.map((m) => {
-                const style = ACTION_STYLE[m.action] ?? ACTION_STYLE.edit;
-                const dateStr = m.occurred_at ?? m.recorded_at;
-                return (
-                  <div key={m.id} className="border-b border-border last:border-0" style={{ padding: "14px 0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                      <span className="font-mono" style={{ fontSize: 9, fontWeight: 500, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.1em", textTransform: "uppercase", color: style.color, background: style.bg }}>
-                        {style.label}
-                      </span>
-                      <span className="font-mono text-faint" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                        {dateStr ? formatDate(dateStr) : "—"}
-                      </span>
-                    </div>
-                    {m.after_value != null && (
-                      <div className="font-serif text-fg" style={{ fontSize: 14, fontWeight: 400, lineHeight: 1.3, margin: "3px 0 2px" }}>
-                        {m.action === "add" && m.before_value != null
-                          ? `+${formatMoney(m.after_value - m.before_value, displayCurrency)}`
-                          : formatMoney(m.after_value, displayCurrency)}
+              if (m.after_value != null) {
+                if (m.action === "add" && m.before_value == null) {
+                  delta = `Bought ${formatMoney(m.after_value, displayCurrency)}`; deltaNeutral = true;
+                } else if (m.action === "add" && m.before_value != null) {
+                  const d = m.after_value - m.before_value;
+                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                } else if (m.action === "edit" && m.before_value != null) {
+                  const d = m.after_value - m.before_value;
+                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                } else {
+                  delta = formatMoney(m.after_value, displayCurrency); deltaNeutral = true;
+                }
+              }
+
+              return (
+                <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                    {dateStr ? formatDate(dateStr) : "—"}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {delta && (
+                      <div style={{
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
+                        marginBottom: 2,
+                      }}>
+                        {delta}
                       </div>
                     )}
                     {m.personal_context && (
-                      <div className="text-dim italic" style={{ fontSize: 11, lineHeight: 1.5, borderLeft: "2px solid var(--border-strong)", paddingLeft: 9 }}>
-                        &quot;{m.personal_context}&quot;
+                      <div style={{
+                        fontFamily: "var(--font-serif)",
+                        fontStyle: "italic",
+                        fontSize: 13,
+                        color: "var(--text-dim)",
+                        lineHeight: 1.4,
+                        fontVariationSettings: "'opsz' 14",
+                      }}>
+                        {m.personal_context}
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ paddingBottom: 14 }}>
-              <div className="font-mono text-faint" style={{ fontSize: 11 }}>No activity yet.</div>
-            </div>
-          )}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
       </div>
     </div>
