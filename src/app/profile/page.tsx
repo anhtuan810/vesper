@@ -7,7 +7,6 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { uploadAvatar } from "@/lib/avatar-upload";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
-import ProfileFieldSheet from "@/components/ProfileFieldSheet";
 
 const supabase = createBrowserSupabase();
 
@@ -67,7 +66,6 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [expandedPref, setExpandedPref] = useState<"currency" | "theme" | null>(null);
-  const [openField, setOpenField] = useState<{ title: string; body: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -367,21 +365,14 @@ export default function ProfilePage() {
             }
 
             return (
-              <button
+              <div
                 key={key}
-                type="button"
-                onClick={() => setOpenField({ title: label, body: value })}
                 style={{
-                  width: "100%",
                   display: "flex",
-                  alignItems: "center",
+                  alignItems: "flex-start",
                   gap: 12,
                   padding: "14px 16px",
-                  background: "transparent",
-                  border: "none",
                   borderBottom: borderStyle,
-                  cursor: "pointer",
-                  textAlign: "left",
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -398,16 +389,12 @@ export default function ProfilePage() {
                   <div style={{
                     fontSize: 13,
                     color: "var(--text-dim)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    lineHeight: 1.35,
+                    lineHeight: 1.45,
                   }}>
                     {value}
                   </div>
                 </div>
-                <ChevronRight />
-              </button>
+              </div>
             );
           })}
         </div>
@@ -621,12 +608,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <ProfileFieldSheet
-        open={openField !== null}
-        title={openField?.title ?? ""}
-        body={openField?.body ?? ""}
-        onClose={() => setOpenField(null)}
-      />
     </div>
   );
 }
