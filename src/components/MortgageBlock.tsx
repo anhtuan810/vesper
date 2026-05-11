@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { projectMortgage, formatTimeRemaining, formatPayoffDate } from "@/lib/mortgage";
+import { computeCurrentBalance, projectMortgage, formatTimeRemaining, formatPayoffDate } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset } from "@/lib/supabase";
@@ -49,7 +49,6 @@ function buildPayoffPath(
 export function MortgageBlock({ asset }: Props) {
   const displayCurrency = useDisplayCurrency();
   const {
-    mortgage_balance: balance,
     mortgage_rate: rate,
     monthly_payment: payment,
     mortgage_type: type,
@@ -57,13 +56,15 @@ export function MortgageBlock({ asset }: Props) {
     mortgage_end_date: endStr,
   } = asset;
 
-  const hasMortgage = balance != null && balance > 0;
+  const balance = computeCurrentBalance(asset);
+
+  const hasMortgage = balance > 0;
   const hasProjection = hasMortgage && rate != null && payment != null && type != null && startStr != null;
 
   const projection = useMemo(() => {
     if (!hasProjection) return null;
     return projectMortgage(
-      balance!,
+      balance,
       rate!,
       payment!,
       type!,
@@ -121,7 +122,7 @@ export function MortgageBlock({ asset }: Props) {
         <div style={CELL}>
           <div className="font-mono uppercase text-faint" style={LABEL_STYLE}>Balance</div>
           <div className="font-mono" style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-            {balance != null ? formatMoney(balance, displayCurrency) : "—"}
+            {balance > 0 ? formatMoney(balance, displayCurrency) : "—"}
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import type { Asset, UserProfile, Mutation } from "./supabase";
 import type { DisplayCurrency } from "./money";
+import { computeCurrentBalance } from "./mortgage";
 
 // Injects the display-currency rendering directive into a prompt block.
 function displayDirective(displayCurrency: DisplayCurrency): string {
@@ -81,6 +82,7 @@ REAL ESTATE NATIVE CURRENCY: always include "currency" based on the property's c
   Other countries → "currency":"EUR" (system default for unsupported currencies)
 The value, mortgage_balance, and monthly_payment fields are stated in the property's native currency. The system converts to EUR for storage. mortgage_rate is a percentage — no conversion.
 NAMING REAL ESTATE: use the city from the address as the name by default (e.g. "Amsterdam", "Eindhoven"). Do not prefix with "Property" or "House" — the asset type makes that redundant. If the user has multiple properties in the same city, ask for a short discriminator (e.g. "Amsterdam home" vs "Amsterdam rental") rather than auto-generating one.
+NAMING CASH: when the user adds a cash or savings position, ask "What is this for?" if no purpose is clear from context. Use the purpose as the asset name (e.g. "Emergency fund", "Travel pot", "House deposit", "Tax reserve"). Do not ask which bank or platform holds the money — that is not tracked by Vesper.
 
 Field names for edit: name (to match), plus any fields being changed.
 Valid edit fields: value, units, buy_price, buy_date, type, currency, country, symbol, new_name, and all mortgage/real_estate fields listed above.
@@ -111,12 +113,8 @@ export function buildDynamicContext(
   displayCurrency: DisplayCurrency,
   userName?: string
 ): string {
-  const total = assets.reduce((sum, a) => {
-    const netValue = a.type === "real_estate"
-      ? a.value - (a.mortgage_balance ?? 0)
-      : a.value;
-    return sum + netValue;
-  }, 0);
+  const total = assets.reduce((sum, a) =>
+    sum + (a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value), 0);
 
   const byType = assets.reduce((acc, a) => {
     acc[a.type] = (acc[a.type] || 0) + a.value;
@@ -132,7 +130,8 @@ export function buildDynamicContext(
     if (a.units) parts.push(`units:${a.units}`);
     if (a.country) parts.push(`country:${a.country}`);
     if (a.currency && a.currency !== "EUR") parts.push(`currency:${a.currency}`);
-    if (a.type === "real_estate" && a.mortgage_balance) parts.push(`mortgage:EUR${a.mortgage_balance.toLocaleString()}`);
+    const currentMortgage = computeCurrentBalance(a);
+    if (a.type === "real_estate" && currentMortgage > 0) parts.push(`mortgage:EUR${Math.round(currentMortgage).toLocaleString()}`);
     return `- ${parts.join(", ")}`;
   }).join("\n");
 
@@ -205,6 +204,7 @@ REAL ESTATE NATIVE CURRENCY: always include "currency" based on the property's c
   Other countries → "currency":"EUR"
 The value, mortgage_balance, and monthly_payment are stated in the property's native currency. The system converts to EUR for storage.
 NAMING REAL ESTATE: use the city from the address as the name by default (e.g. "Amsterdam", "Eindhoven"). Do not prefix with "Property" or "House" — the asset type makes that redundant. If the user has multiple properties in the same city, ask for a short discriminator (e.g. "Amsterdam home" vs "Amsterdam rental") rather than auto-generating one.
+NAMING CASH: when the user mentions cash, savings, or a pot of money, ask "What is this for?" if no purpose is clear. Use the purpose as the name (e.g. "Emergency fund", "Travel pot", "House deposit"). Do not ask which bank holds it.
 
 IMPORTANT: value must always be a number, never null. Use 0 if unknown.
 The <changes> block must contain valid JSON only.

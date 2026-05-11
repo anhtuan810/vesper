@@ -8,6 +8,7 @@ import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { ACTION_STYLE, formatDate } from "@/lib/utils";
+import { computeCurrentBalance } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset, Mutation } from "@/lib/supabase";
@@ -68,8 +69,9 @@ export function RealEstateDetail({ asset }: Props) {
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
   const displayCurrency = useDisplayCurrency();
-  const equity = asset.value - (asset.mortgage_balance ?? 0);
-  const hasMortgage = (asset.mortgage_balance ?? 0) > 0;
+  const currentBalance = computeCurrentBalance(asset);
+  const equity = asset.value - currentBalance;
+  const hasMortgage = currentBalance > 0;
   const propTypeLabel = asset.property_type ? PROP_TYPE_LABEL[asset.property_type] ?? asset.property_type : null;
 
   return (
@@ -150,7 +152,7 @@ export function RealEstateDetail({ asset }: Props) {
           <div style={{ padding: "22px 0 4px" }}>
             <ValueComposition
               propertyValue={asset.value}
-              mortgageBalance={asset.mortgage_balance!}
+              mortgageBalance={currentBalance}
             />
           </div>
         )}

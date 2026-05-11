@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
-import { computeNetWorth } from "@/lib/utils";
+import { computeCurrentBalance } from "@/lib/mortgage";
 
 // TODO: live-price snapshots — tradeable asset values here are DB-stored, not real-time.
 // Consider fetching live prices for each tradeable asset before writing the snapshot.
@@ -10,18 +10,24 @@ export async function writeSnapshot(userId: string): Promise<void> {
 
     const { data: assets, error } = await supabase
       .from("assets")
-      .select("type, value, mortgage_balance")
+      .select("type, value, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
       .eq("user_id", userId);
 
     if (error) throw error;
     if (!assets || assets.length === 0) return;
 
-    const netTotal = computeNetWorth(assets as Array<{ type: string; value: number; mortgage_balance?: number | null }>);
-    const breakdown: Record<string, number> = {};
+    const now = new Date();
+    const netTotal = assets.reduce((sum, a) => {
+      if (a.type === "real_estate") {
+        return sum + (a.value as number) - computeCurrentBalance(a, now);
+      }
+      return sum + (a.value as number);
+    }, 0);
 
+    const breakdown: Record<string, number> = {};
     for (const a of assets) {
       const contribution = a.type === "real_estate"
-        ? (a.value as number) - ((a.mortgage_balance as number | null) ?? 0)
+        ? (a.value as number) - computeCurrentBalance(a, now)
         : (a.value as number);
       breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + contribution;
     }

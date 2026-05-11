@@ -8,6 +8,7 @@ import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getWarnings, computeNetWorth } from "@/lib/utils";
+import { computeCurrentBalance } from "@/lib/mortgage";
 import { formatMoney } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 
@@ -74,7 +75,8 @@ export default function Dashboard() {
   const {
     netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, warnings,
   } = useMemo(() => {
-    const netTotal = computeNetWorth(assets);
+    const netTotal = assets.reduce((sum, a) =>
+      sum + (a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value), 0);
     const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
     const byType = assets.reduce((acc, a) => {
       acc[a.type] = (acc[a.type] || 0) + a.value;
@@ -84,7 +86,7 @@ export default function Dashboard() {
     const liveCount = assets.filter((a) => a.livePrice).length;
     const totalSymbols = assets.filter((a) => a.symbol).length;
     const totalDebt = assets.reduce((sum, a) =>
-      sum + (a.type === "real_estate" ? (a.mortgage_balance ?? 0) : 0), 0);
+      sum + (a.type === "real_estate" ? computeCurrentBalance(a) : 0), 0);
     const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
     return { netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, warnings };
   }, [assets]);

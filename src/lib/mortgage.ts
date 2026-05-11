@@ -1,3 +1,60 @@
+export interface MortgageAssetInput {
+  type: string;
+  mortgage_balance?: number | null;
+  mortgage_balance_recorded_at?: string | null;
+  mortgage_rate?: number | null;
+  monthly_payment?: number | null;
+  mortgage_type?: string | null;
+}
+
+/**
+ * Projects the stored mortgage_balance forward from mortgage_balance_recorded_at
+ * to asOf using standard amortisation. Pure function — no I/O.
+ *
+ * Returns 0 for non-real-estate assets and for mortgages with no balance.
+ * Returns the stored balance unchanged when recorded_at is absent or asOf ≤ recorded_at.
+ */
+export function computeCurrentBalance(
+  asset: MortgageAssetInput,
+  asOf: Date = new Date(),
+): number {
+  if (asset.type !== "real_estate") return 0;
+  const B0 = asset.mortgage_balance ?? 0;
+  if (B0 <= 0) return 0;
+
+  if (!asset.mortgage_balance_recorded_at) return B0;
+
+  const recordedAt = new Date(asset.mortgage_balance_recorded_at);
+  if (asOf <= recordedAt) return B0;
+
+  const n = monthsBetween(recordedAt, asOf);
+  if (n <= 0) return B0;
+
+  const r = (asset.mortgage_rate ?? 0) / 1200;
+  const P = asset.monthly_payment ?? 0;
+  const type = asset.mortgage_type;
+
+  if (type === "interest_only") return B0;
+
+  if (type === "linear") {
+    // Fixed principal per month = payment minus interest on the recorded balance.
+    // This identifies the constant principal component of a linear mortgage.
+    const fixedPrincipal = r > 0 ? P - B0 * r : P;
+    if (fixedPrincipal <= 0) return B0;
+    return Math.max(0, B0 - fixedPrincipal * n);
+  }
+
+  // Annuity (default for unknown type)
+  if (r > 0 && P > B0 * r) {
+    const factor = Math.pow(1 + r, n);
+    return Math.max(0, B0 * factor - P * (factor - 1) / r);
+  }
+  if (r === 0 && P > 0) {
+    return Math.max(0, B0 - P * n);
+  }
+  return B0;
+}
+
 export interface MortgageProjection {
   remainingMonths: number;
   payoffDate: Date | null;

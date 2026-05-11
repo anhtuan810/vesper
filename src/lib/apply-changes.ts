@@ -147,6 +147,7 @@ export async function applyPortfolioChanges({
         buy_date: change.buy_date || null,
         buy_price_source: change.buy_price_source || null,
         mortgage_balance: resolvedMortgageBalance,
+        mortgage_balance_recorded_at: resolvedMortgageBalance != null ? new Date().toISOString() : null,
         mortgage_rate: change.mortgage_rate ?? null,
         monthly_payment: resolvedMonthlyPayment,
         mortgage_type: change.mortgage_type || null,
@@ -199,7 +200,10 @@ export async function applyPortfolioChanges({
         if (change.units !== undefined) updateData.units = change.units;
         if (change.buy_price !== undefined) updateData.buy_price = change.buy_price;
         if (change.buy_date !== undefined) updateData.buy_date = change.buy_date;
-        if (change.mortgage_balance !== undefined) updateData.mortgage_balance = change.mortgage_balance;
+        if (change.mortgage_balance !== undefined) {
+          updateData.mortgage_balance = change.mortgage_balance;
+          updateData.mortgage_balance_recorded_at = new Date().toISOString();
+        }
         if (change.mortgage_rate !== undefined) updateData.mortgage_rate = change.mortgage_rate;
         if (change.monthly_payment !== undefined) updateData.monthly_payment = change.monthly_payment;
         if (change.mortgage_type !== undefined) updateData.mortgage_type = change.mortgage_type;

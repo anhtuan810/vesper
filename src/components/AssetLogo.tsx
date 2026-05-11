@@ -29,6 +29,52 @@ function Monogram({ type, symbol, name, size }: { type: string | null; symbol: s
   );
 }
 
+function WalletIcon({ size }: { size: number }) {
+  const iconSize = Math.round(size * 0.6);
+  return (
+    <svg
+      width={iconSize}
+      height={iconSize}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--accent)"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* Wallet body */}
+      <rect x="2" y="7" width="20" height="13" rx="2" />
+      {/* Card slot divider */}
+      <path d="M2 12h20" />
+      {/* Clasp dot */}
+      <circle cx="17" cy="16" r="1.5" fill="var(--accent)" stroke="none" />
+    </svg>
+  );
+}
+
+function CertificateIcon({ size }: { size: number }) {
+  const iconSize = Math.round(size * 0.6);
+  return (
+    <svg
+      width={iconSize}
+      height={iconSize}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--accent)"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* Document body */}
+      <rect x="4" y="2" width="16" height="20" rx="1.5" />
+      {/* Text lines */}
+      <path d="M8 8h8M8 12h8M8 16h5" />
+      {/* Seal circle */}
+      <circle cx="17" cy="17" r="2.5" />
+    </svg>
+  );
+}
+
 function RealEstateIcon({ propertyType, size }: { propertyType: string | null | undefined; size: number }) {
   const iconSize = Math.round(size * 0.6);
   const svgProps = {
@@ -97,8 +143,6 @@ function RealEstateIcon({ propertyType, size }: { propertyType: string | null | 
 export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
 
-  const isRealEstate = type === "real_estate";
-
   let imgUrl: string | null = null;
   if (!imgFailed && symbol) {
     if (type === "crypto") {
@@ -109,9 +153,16 @@ export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Prop
     }
   }
 
-  // No border when showing an external image logo; border for real estate and monogram fallbacks
+  // No border when showing an external image logo; border for all SVG/monogram variants
   const showBorder = imgUrl === null || imgFailed;
   const imgDisplaySize = Math.round(size * 0.7);
+
+  const renderIcon = () => {
+    if (type === "real_estate") return <RealEstateIcon propertyType={property_type} size={size} />;
+    if (type === "cash" || type === "pension") return <WalletIcon size={size} />;
+    if (type === "bonds") return <CertificateIcon size={size} />;
+    return <Monogram type={type} symbol={symbol} name={name} size={size} />;
+  };
 
   return (
     <div
@@ -125,13 +176,9 @@ export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Prop
         position: "relative",
       }}
     >
-      {isRealEstate ? (
-        <RealEstateIcon propertyType={property_type} size={size} />
-      ) : (
-        <Monogram type={type} symbol={symbol} name={name} size={size} />
-      )}
+      {renderIcon()}
 
-      {/* Image overlay — sits above monogram, reveals it on failure */}
+      {/* Image overlay — sits above icon, reveals it on failure */}
       {imgUrl !== null && !imgFailed && (
         <div
           style={{

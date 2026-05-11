@@ -63,6 +63,7 @@ export interface RealEstateAsset extends BaseAsset {
   property_type?: string;
   size_sqm?: number;
   mortgage_balance?: number;
+  mortgage_balance_recorded_at?: string | null;
   mortgage_rate?: number;
   monthly_payment?: number;
   mortgage_type?: "annuity" | "linear" | "interest_only";
