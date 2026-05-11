@@ -139,7 +139,7 @@ interface MapLibreMapProps {
 function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
   const supabase = createBrowserSupabase();
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<{ setStyle: (s: unknown) => void; remove: () => void } | null>(null);
+  const mapRef = useRef<{ setStyle: (s: StyleSpecification) => void; remove: () => void } | null>(null);
   const hasUploadedRef = useRef(false);
   const { resolvedTheme } = useTheme();
 
@@ -204,7 +204,7 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
   useEffect(() => {
     if (!mapRef.current) return;
     const styleJson = resolvedTheme === "dark" ? mapDarkJson : mapLightJson;
-    mapRef.current.setStyle(styleJson as unknown as StyleSpecification);
+    mapRef.current.setStyle(styleJson as StyleSpecification);
   }, [resolvedTheme]);
 
   return (

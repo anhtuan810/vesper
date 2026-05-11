@@ -5,6 +5,7 @@ import { NetWorthHero } from "@/components/NetWorthHero";
 import { NetWorthChart } from "@/components/NetWorthChart";
 import { AllocationBar } from "@/components/AllocationBar";
 import { PositionRow } from "@/components/PositionRow";
+import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE, type Warning } from "@/lib/utils";
 import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
@@ -61,7 +62,28 @@ export function PortfolioTab({
   );
   const sparklines = useSparklines(symbols, "1W");
 
-  const sortedByValue = useMemo(() => [...assets].sort((a, b) => b.value - a.value), [assets]);
+  // Group assets by type, sort groups by total value desc, rows within group by value desc
+  const groups = useMemo(() => {
+    const byType: Record<string, LiveAsset[]> = {};
+    for (const a of assets) {
+      (byType[a.type] ??= []).push(a);
+    }
+    return Object.entries(byType)
+      .map(([type, items]) => ({
+        type,
+        label: TYPE_LABEL[type] ?? type,
+        items: [...items].sort((a, b) => b.value - a.value),
+        total: items.reduce((s, a) => s + a.value, 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [assets]);
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Initialize all groups as expanded on first render
+  const isExpanded = (type: string) => expanded[type] !== false;
+  const toggleGroup = (type: string) =>
+    setExpanded((prev) => ({ ...prev, [type]: !isExpanded(type) }));
+
   const allocationItems = sorted.map(([type, val]) => ({
     label: TYPE_LABEL[type] ?? type,
     value: val,
@@ -255,12 +277,23 @@ export function PortfolioTab({
           </div>
         </div>
         <div>
-          {sortedByValue.map((asset) => (
-            <PositionRow
-              key={asset.id}
-              asset={asset}
-              closes={asset.symbol ? sparklines[asset.symbol] : []}
-            />
+          {groups.map((group) => (
+            <HoldingsGroup
+              key={group.type}
+              label={group.label}
+              barColor={TYPE_COLOR[group.type] ?? "var(--accent)"}
+              barPct={grossTotal > 0 ? Math.max((group.total / grossTotal) * 100, 2) : 2}
+              expanded={isExpanded(group.type)}
+              onToggle={() => toggleGroup(group.type)}
+            >
+              {group.items.map((asset) => (
+                <PositionRow
+                  key={asset.id}
+                  asset={asset}
+                  closes={asset.symbol ? sparklines[asset.symbol] : []}
+                />
+              ))}
+            </HoldingsGroup>
           ))}
         </div>
       </div>
