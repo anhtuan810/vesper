@@ -120,6 +120,96 @@ Build when there's enough portfolio history per user (3+ months of snapshots) an
 
 ---
 
+## Known performance issues
+
+Two real performance concerns surfaced in user testing but not yet
+investigated or fixed. Both have planned architectural approaches.
+Both deserve a fresh chat with proper attention rather than
+end-of-session triage.
+
+### Portfolio page slow load (production)
+
+Symptom: cold load of `/` is slow in production. Noticeable wait
+before the page is interactive.
+
+Hypothesized root causes, ranked:
+- Page renders synchronously waiting for live prices instead of
+  using stored EUR values from Supabase (`assets.value`) as the
+  immediate render source.
+- Fetches may be serialized in `useEffect` chains rather than
+  truly parallel.
+- `/api/insight` cache miss rate may be high, triggering a Haiku
+  call on each page load (~1-2s).
+- Missing DB index on `snapshots(user_id, date)`.
+- Yahoo Finance latency is variable; 5-min cache means first hit
+  after expiry is full-cost.
+
+Planned architectural approach:
+
+1. **Stale-while-revalidate for top-level values.** Hero total,
+   group allocation bars, and holdings list render immediately
+   using stored `assets.value` (already EUR, ≤5 min stale).
+   Live-price refresh happens in the background; numbers update
+   in place when the refresh returns. No skeleton, no blocking.
+2. **Server Component for the static shell.** If `src/app/page.tsx`
+   is fully client-rendered today, move the layout + hero +
+   holdings skeleton to a Server Component. Initial HTML contains
+   meaningful content before client JS hydrates. Live-price
+   refresh stays client-side.
+3. **Lazy per-category.** Sparklines, per-position day-change
+   pills, and other group-expanded detail wait until the group is
+   expanded. Top-level totals and allocation bars still render
+   eagerly — they need the full picture.
+4. **Lazy per-range.** Chart's 1M (default) loads with the page;
+   1Y, All and other ranges fetch only when the user taps the
+   range pill.
+5. **DB indexes if missing.** Add `snapshots(user_id, date)`,
+   verify `assets(user_id)`.
+
+Eager (load with page): stored asset values, group bars, hero,
+range=1M chart, cached insight band.
+
+Lazy (load on interaction): live price refresh (background,
+post-paint), per-position sparklines, day-change pills, chart
+ranges beyond 1M.
+
+Next step: run a diagnostic in a fresh chat covering network
+waterfall, `/api/prices` behavior, `/api/insight` cache hit rate,
+page component type, DB indexes, render path. Apply fixes
+matching actual findings.
+
+### Chat history slow open
+
+Symptom: reopening the chat surface with a long conversation
+history takes noticeably long. Feels like "loads the whole list"
+even though the architecture is supposed to be paginated (20-msg
+cursor pages).
+
+Hypothesized root causes, ranked:
+- **IntersectionObserver chain-load bug (most likely).** The
+  sentinel for paginated scroll-back sits at the top of the
+  message list. On cold open with only 20 messages, the sentinel
+  is visible from page load and fires `loadMore()` automatically.
+  Repeats until full history is fetched. Looks like one long load.
+- Missing compound index on `messages(user_id, created_at DESC)`
+  (already in generic Tech Debts above).
+- localStorage cache 24h TTL — daily-or-less-frequent users
+  always pay cold-load cost.
+
+Planned fixes:
+1. Gate the IntersectionObserver with a "user has scrolled" flag.
+   Set true on first non-zero scroll event in the message
+   container; only allow `loadMore()` when true. Alternative:
+   attach the observer after first user interaction.
+2. Add the compound index on `messages(user_id, created_at DESC)`.
+3. Bump localStorage cache TTL from 24h to 7 days.
+
+Next step: diagnostic in a fresh chat to confirm which cause
+applies. The IntersectionObserver fix is cheap and worth doing
+regardless of the others.
+
+---
+
 ## Post-MVP / Future
 
 ### Adding a fourth currency
