@@ -13,8 +13,8 @@ interface CurrencyMeta {
 
 const CURRENCY_META: Record<DisplayCurrency, CurrencyMeta> = {
   EUR: { symbol: "€", locale: "nl-NL" },
-  USD: { symbol: "$", locale: "en-US" },
-  GBP: { symbol: "£", locale: "en-GB" },
+  USD: { symbol: "$", locale: "nl-NL" },
+  GBP: { symbol: "£", locale: "nl-NL" },
 };
 
 // Last reviewed: 2026. These drift over time; review annually.

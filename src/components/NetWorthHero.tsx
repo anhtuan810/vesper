@@ -59,7 +59,7 @@ export function NetWorthHero({ netTotal }: NetWorthHeroProps) {
       <div
         className="font-serif leading-none"
         style={{
-          fontSize: "clamp(48px, 14vw, 56px)",
+          fontSize: 54,
           fontWeight: 600,
           letterSpacing: "-0.02em",
           color: "var(--hero)",

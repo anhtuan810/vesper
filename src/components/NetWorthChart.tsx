@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const RANGES = ["1D", "1W", "1M", "3M", "1Y", "ALL"] as const;
+const RANGES = ["1D", "1W", "1M", "3M", "1Y", "All"] as const;
 type Range = (typeof RANGES)[number];
 
 interface Props {

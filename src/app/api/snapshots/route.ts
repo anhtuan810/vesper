@@ -7,7 +7,7 @@ const RANGE_DAYS: Record<string, number | null> = {
   "1M": 30,
   "3M": 90,
   "1Y": 365,
-  "ALL": null,
+  "All": null,
 };
 
 export async function GET(request: NextRequest) {

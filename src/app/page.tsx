@@ -32,20 +32,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  const enrichedMutations = useMemo(() =>
-    mutations.map(m => {
-      if (m.asset_type && m.symbol) return m;
-      const asset = assets.find(a => a.name.toLowerCase() === m.asset_name?.toLowerCase());
-      if (!asset) return m;
-      return {
-        ...m,
-        asset_type: m.asset_type ?? asset.type ?? null,
-        symbol: m.symbol ?? asset.symbol ?? null,
-      };
-    }),
-    [mutations, assets]
-  );
-
   const fetchMutations = useCallback(async () => {
     if (!user?.id) return;
     const { data, error } = await supabase
@@ -223,8 +209,6 @@ export default function Dashboard() {
             grossTotal={grossTotal}
             netTotal={netTotal}
             warnings={warnings}
-            mutations={enrichedMutations}
-            onViewDiary={() => router.push("/diary")}
           />
         )}
       </div>

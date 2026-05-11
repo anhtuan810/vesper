@@ -336,3 +336,31 @@ export function useSignOut() {
     window.location.href = "/login";
   }, [supabase]);
 }
+
+// Module-level session cache — survives re-renders, cleared on page reload
+let _insightCache: { detail: string | null; fetchedAt: number } | null = null;
+
+export function useInsight() {
+  const [detail, setDetail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Serve from memory cache if fetched within the last hour
+    if (_insightCache && Date.now() - _insightCache.fetchedAt < 60 * 60 * 1000) {
+      setDetail(_insightCache.detail);
+      setLoading(false);
+      return;
+    }
+
+    fetch("/api/insight")
+      .then((r) => r.json())
+      .then(({ detail }: { detail: string | null }) => {
+        _insightCache = { detail, fetchedAt: Date.now() };
+        setDetail(detail);
+      })
+      .catch(() => setDetail(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { detail, loading };
+}

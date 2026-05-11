@@ -3,13 +3,12 @@
 import { useMemo, useState, useEffect } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import { NetWorthChart } from "@/components/NetWorthChart";
+import { InsightBand } from "@/components/InsightBand";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
-import { formatDate, ACTION_STYLE, type Warning } from "@/lib/utils";
-import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
-import type { LiveAsset, Mutation } from "@/lib/supabase";
-import { getMilestoneProgress, fmtRemaining } from "@/lib/projection";
-import type { DisplayCurrency } from "@/lib/money";
+import { type Warning } from "@/lib/utils";
+import { useSparklines } from "@/lib/hooks";
+import type { LiveAsset } from "@/lib/supabase";
 
 // Semantic category mapping — 3 groups, regardless of how many asset types exist
 const CATEGORY_MAP: Record<string, string> = {
@@ -42,15 +41,11 @@ interface PortfolioTabProps {
   grossTotal: number;
   netTotal: number;
   warnings: Warning[];
-  mutations: Mutation[];
-  onViewDiary: () => void;
 }
 
 export function PortfolioTab({
-  assets, grossTotal, netTotal,
-  warnings, mutations, onViewDiary,
+  assets, grossTotal, netTotal, warnings,
 }: PortfolioTabProps) {
-  const displayCurrency = useDisplayCurrency();
   const [dismissed, setDismissed] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -120,41 +115,8 @@ export function PortfolioTab({
         </div>
       )}
 
-      {/* Milestone progress */}
-      {netTotal > 0 && (() => {
-        const m = getMilestoneProgress(netTotal, displayCurrency as DisplayCurrency);
-        return (
-          <div
-            className="mb-5 -mx-4 sm:-mx-8 px-4 sm:px-8 py-[14px]"
-            style={{ background: "var(--accent-soft)" }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div
-                style={{
-                  fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
-                  textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
-                }}
-              >
-                Next milestone
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{m.label}</div>
-            </div>
-            <div
-              className="h-[5px] rounded-full overflow-hidden mb-2"
-              style={{ background: "rgba(0,0,0,0.08)" }}
-            >
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${m.progress}%`, background: "var(--accent)" }}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div style={{ fontSize: 10, color: "var(--accent-text)" }}>{m.progress.toFixed(0)}% there</div>
-              <div style={{ fontSize: 10, color: "var(--accent-text)" }}>{fmtRemaining(m.remaining, displayCurrency)} to go</div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* AI insight band — replaces milestone bar */}
+      <InsightBand />
 
       {/* Warnings */}
       {visibleWarnings.length > 0 && (
@@ -186,60 +148,6 @@ export function PortfolioTab({
               </button>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Recent diary entries — preview */}
-      {mutations.length > 0 && (
-        <div className="bg-surface rounded-2xl border border-border p-5 mb-5">
-          <div className="flex items-center justify-between mb-4">
-            <div
-              style={{
-                fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
-                textTransform: "uppercase", color: "var(--text-faint)",
-              }}
-            >
-              Recent activity
-            </div>
-            <button
-              onClick={onViewDiary}
-              className="hover:opacity-80 transition-opacity"
-              style={{ fontSize: 13, color: "var(--accent)", fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
-              View all →
-            </button>
-          </div>
-          <div>
-            {mutations.slice(0, 3).map((m) => {
-              const style = ACTION_STYLE[m.action] || ACTION_STYLE.edit;
-              return (
-                <div key={m.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className="font-mono shrink-0"
-                      style={{
-                        fontSize: 9, fontWeight: 500,
-                        padding: "2px 6px", borderRadius: 4,
-                        letterSpacing: "0.1em",
-                        color: style.color, background: style.bg,
-                      }}
-                    >
-                      {style.label}
-                    </span>
-                    <span className="text-[13px] font-medium text-fg truncate">{m.asset_name}</span>
-                    {m.personal_context && (
-                      <span className="text-dim text-[11px] italic truncate hidden sm:inline">
-                        — {m.personal_context}
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-mono text-faint shrink-0 ml-2" style={{ fontSize: 10 }}>
-                    {formatDate(m.occurred_at || m.recorded_at)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
