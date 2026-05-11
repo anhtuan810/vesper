@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useProfile, useSignOut, useTheme } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
-import { InlineEdit } from "@/components/InlineEdit";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { uploadAvatar } from "@/lib/avatar-upload";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
@@ -63,7 +62,6 @@ export default function ProfilePage() {
   const signOut = useSignOut();
   const { theme: currentTheme, setTheme } = useTheme();
   const [mutationCount, setMutationCount] = useState(0);
-  const [profileData, setProfileData] = useState<Record<string, string>>({});
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("EUR");
   const [currencyLoading, setCurrencyLoading] = useState<DisplayCurrency | null>(null);
   const [currencyError, setCurrencyError] = useState<string | null>(null);
@@ -73,33 +71,6 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [expandedPref, setExpandedPref] = useState<"currency" | "theme" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (profile?.profile) setProfileData(profile.profile);
-  }, [profile]);
-
-  const updateField = useCallback(async (key: string, value: string | null): Promise<string | null> => {
-    try {
-      const res = await fetch("/api/users/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: { [key]: value } }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        return data.error ?? "Save failed";
-      }
-      setProfileData((prev) => {
-        const next = { ...prev };
-        if (value === null) delete next[key];
-        else next[key] = value;
-        return next;
-      });
-      return null;
-    } catch {
-      return "Save failed";
-    }
-  }, []);
 
   const handleAvatarFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -372,56 +343,44 @@ export default function ProfilePage() {
           overflow: "hidden",
         }}>
           {PROFILE_FIELDS.map(({ key, label }, idx) => {
-            const value = profileData[key] ?? null;
+            const value = (profile?.profile as Record<string, string> | undefined)?.[key] ?? null;
             const isLast = idx === PROFILE_FIELDS.length - 1;
             return (
-              <InlineEdit
+              <div
                 key={key}
-                display={
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "14px 16px",
-                    borderBottom: isLast ? "none" : "0.5px solid var(--border)",
-                    width: "100%",
-                    boxSizing: "border-box",
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontFamily: "var(--font-serif)",
-                        fontSize: 16,
-                        fontWeight: 500,
-                        color: "var(--text)",
-                        marginBottom: 3,
-                        fontVariationSettings: "'opsz' 18",
-                      }}>
-                        {label}
-                      </div>
-                      <div style={{
-                        fontSize: 13,
-                        color: value ? "var(--text-dim)" : "var(--text-faint)",
-                        fontStyle: value ? "normal" : "italic",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        lineHeight: 1.35,
-                      }}>
-                        {value || "Not yet shared"}
-                      </div>
-                    </div>
-                    <ChevronRight />
-                  </div>
-                }
-                rawValue={value ?? ""}
-                displayStyle={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
-                onSave={async (raw) => {
-                  const trimmed = raw.trim();
-                  if (trimmed.length > 500) return "Max 500 characters";
-                  if (trimmed === (profileData[key] ?? "")) return "";
-                  return updateField(key, trimmed === "" ? null : trimmed);
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "14px 16px",
+                  borderBottom: isLast ? "none" : "0.5px solid var(--border)",
                 }}
-              />
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: "var(--font-serif)",
+                    fontSize: 16,
+                    fontWeight: 500,
+                    color: "var(--text)",
+                    marginBottom: 3,
+                    fontVariationSettings: "'opsz' 18",
+                  }}>
+                    {label}
+                  </div>
+                  <div style={{
+                    fontSize: 13,
+                    color: value ? "var(--text-dim)" : "var(--text-faint)",
+                    fontStyle: value ? "normal" : "italic",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    lineHeight: 1.35,
+                  }}>
+                    {value || "Not yet shared"}
+                  </div>
+                </div>
+                <ChevronRight />
+              </div>
             );
           })}
         </div>
