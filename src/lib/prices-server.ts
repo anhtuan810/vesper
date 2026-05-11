@@ -81,9 +81,9 @@ export async function fetchYahooPrice(symbol: string): Promise<PriceResult> {
 
     if (!meta) return { symbol, price: 0, previousClose: 0, nativePrice: 0, nativeCurrency: "", error: "not found" };
 
-    const rawPrice: number = meta.regularMarketPrice;
-    const prevClose: number = meta.chartPreviousClose || meta.previousClose;
-    const yahooCurrency: string = meta.currency || "USD";
+    const rawPrice = Number(meta.regularMarketPrice) || 0;
+    const prevClose = Number(meta.chartPreviousClose || meta.previousClose) || 0;
+    const yahooCurrency = typeof meta.currency === "string" ? meta.currency : "USD";
 
     const yahoo: YahooResult = {
       price: normalizePrice(rawPrice, yahooCurrency),

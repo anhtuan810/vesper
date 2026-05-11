@@ -55,7 +55,11 @@ export async function getEurRates(): Promise<FxRates> {
     const res = await fetch(FRANKFURTER_URL, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) throw new Error(`frankfurter HTTP ${res.status}`);
     const body = await res.json();
-    fresh = body.rates as FxRates;
+    const rawRates = body?.rates;
+    if (!rawRates || typeof rawRates !== "object" || Array.isArray(rawRates)) {
+      throw new Error("Unexpected Frankfurter response shape");
+    }
+    fresh = rawRates as FxRates;
   } catch (err) {
     // If API is unreachable but we have stale rows, return them rather than fail
     if (rows && rows.length > 0) {

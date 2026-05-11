@@ -7,7 +7,6 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { getWarnings, computeNetWorth } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { formatMoney } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
@@ -59,19 +58,14 @@ export default function Dashboard() {
   };
 
   const {
-    netTotal, grossTotal, liveCount, totalSymbols, warnings,
+    netTotal, grossTotal, liveCount, totalSymbols,
   } = useMemo(() => {
     const netTotal = assets.reduce((sum, a) =>
       sum + (a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value), 0);
     const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
-    const byType = assets.reduce((acc, a) => {
-      acc[a.type] = (acc[a.type] || 0) + a.value;
-      return acc;
-    }, {} as Record<string, number>);
     const liveCount = assets.filter((a) => a.livePrice).length;
     const totalSymbols = assets.filter((a) => a.symbol).length;
-    const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
-    return { netTotal, grossTotal, liveCount, totalSymbols, warnings };
+    return { netTotal, grossTotal, liveCount, totalSymbols };
   }, [assets]);
 
   const hasTradeables = assets.some(a => a.symbol);
@@ -208,7 +202,6 @@ export default function Dashboard() {
             assets={assets as LiveAsset[]}
             grossTotal={grossTotal}
             netTotal={netTotal}
-            warnings={warnings}
           />
         )}
       </div>

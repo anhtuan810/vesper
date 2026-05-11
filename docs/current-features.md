@@ -26,7 +26,6 @@
 - Net worth chart between hero and Holdings — range pills `1D / 1W / 1M / 3M / 1Y / All`, smooth bezier line in accent green, end-point dot, today marker, axis labels rendered below the chart in a separate row (no overlap with the curve), empty state until 7 snapshots exist. 1D shows the latest snapshot + the live current value as two points.
 - WORTH KNOWING insight band (in the slot the milestone bar previously occupied) — Claude-generated single italic-serif sentence, accent-soft tinted band, chevron right, tap navigates to `/chat`. Renders nothing when the API returns `{ detail: null }`.
 - Holdings list — grouped by semantic category (Property = `real_estate`; Public markets = `stocks`, `etf`; Reserves = `cash`, `pension`, `bonds`, `gold`, `other`; Crypto = `crypto`). Group order by total value descending. All collapsed by default, tap to expand, session-persisted. Each position inside renders via `PositionRow`.
-- Concentration warning card surfaces above Holdings when thresholds trip (single position > 40%, single type > 60%, cash > 30%, single-class portfolio).
 - No "Allocation" card (proportional bars in HoldingsGroup headers carry the same information).
 - No "Recent Activity" preview (mutations remain accessible via `/diary`).
 - No stat cards (Positions / Countries / Asset classes / Largest were removed — raw counts didn't drive decisions; see `next-build-plan.md` for the replacement plan).
@@ -117,14 +116,6 @@
 - Proxy route validates `type` and `symbol` (regex `/^[A-Za-z0-9.\-]+$/`, max 16 chars). In-process cache with 7-day TTL, FIFO eviction at 500 entries. `Cache-Control: public, max-age=604800, immutable`. CDN sees Vercel's edge IP, not the user's.
 - Wrapper: 10px border radius, bg-surface, border (border dropped for crypto and stock variants since their logos carry their own weight)
 - Files: `src/components/AssetLogo.tsx`, `src/app/api/logo/route.ts`
-
-### Concentration Warnings
-- Single position > 40% of gross
-- Single asset type > 60% of gross
-- Cash > 30% of gross
-- Only one asset class with multiple positions
-- Displayed as an outlined card above Holdings, using semantic warning tokens (not amber)
-- Files: `src/app/page.tsx` (`getWarnings`)
 
 ### Display Currency Parameterization (Phases A–D shipped)
 - Per-user display currency stored on `users.display_currency` (EUR / USD / GBP, default EUR). Picker lives on Profile → Preferences (the originally-planned `/settings` route was dropped per Decision 5).

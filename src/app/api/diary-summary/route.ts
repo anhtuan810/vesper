@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       .eq("id", user.id)
       .single();
     const displayCurrency: DisplayCurrency = isSupportedCurrency(userData?.display_currency)
-      ? (userData!.display_currency as DisplayCurrency)
+      ? (userData?.display_currency as DisplayCurrency)
       : "EUR";
 
     // 5. Compute cache key

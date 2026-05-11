@@ -6,7 +6,6 @@ import { NetWorthChart } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
-import { type Warning } from "@/lib/utils";
 import { useSparklines } from "@/lib/hooks";
 import type { LiveAsset } from "@/lib/supabase";
 
@@ -44,39 +43,11 @@ interface PortfolioTabProps {
   assets: LiveAsset[];
   grossTotal: number;
   netTotal: number;
-  warnings: Warning[];
 }
 
 export function PortfolioTab({
-  assets, grossTotal, netTotal, warnings,
+  assets, grossTotal, netTotal,
 }: PortfolioTabProps) {
-  const [dismissed, setDismissed] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("vesper.dismissed_warnings");
-      if (raw) setDismissed(JSON.parse(raw));
-    } catch {}
-  }, []);
-
-  const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
-
-  const visibleWarnings = warnings.filter((w) => {
-    const ts = dismissed[w.key];
-    if (!ts) return true;
-    return Date.now() - new Date(ts).getTime() >= NINETY_DAYS_MS;
-  });
-
-  const dismissWarning = (key: string) => {
-    setDismissed((prev) => {
-      const next = { ...prev, [key]: new Date().toISOString() };
-      try {
-        localStorage.setItem("vesper.dismissed_warnings", JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
   const symbols = useMemo(
     () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
     [assets]
@@ -146,39 +117,6 @@ export function PortfolioTab({
 
       {/* AI insight band — replaces milestone bar */}
       <InsightBand />
-
-      {/* Warnings */}
-      {visibleWarnings.length > 0 && (
-        <div
-          className="rounded-xl px-5 py-3 mb-5"
-          style={{
-            background: "var(--accent-soft)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          {visibleWarnings.map((w, i) => (
-            <div
-              key={w.key}
-              className="flex items-start justify-between"
-              style={{ paddingTop: i > 0 ? 6 : 0 }}
-            >
-              <div className="text-xs leading-relaxed" style={{ color: "var(--accent-text)" }}>{w.text}</div>
-              <button
-                onClick={() => dismissWarning(w.key)}
-                aria-label="Dismiss"
-                className="hover:opacity-60 transition-opacity ml-3 shrink-0"
-                style={{
-                  fontSize: 14, lineHeight: 1, padding: "0 4px",
-                  background: "none", border: "none", cursor: "pointer",
-                  color: "var(--accent-text)",
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Holdings list — 4 semantic categories */}
       <div>

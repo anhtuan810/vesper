@@ -152,11 +152,6 @@ System prompt tells Claude to refuse off-topic requests with a fixed redirect me
 - **Net worth** = sum where real estate assets contribute (value − `computeCurrentBalance(asset)`) instead of value. **Every read site goes through `computeCurrentBalance` rather than reading `assets.mortgage_balance` directly** (see Mortgage Auto-Amortization below).
 - **Equity per real estate asset** = value − `computeCurrentBalance(asset)`
 - **Allocation percentages** calculated against gross total
-- **Concentration warnings** (in `src/app/page.tsx`):
-  - Single position > 40% of gross
-  - Single asset type > 60% of gross
-  - Cash > 30% of gross
-  - Only one asset class with multiple positions
 - **Holdings grouping** (PR 14, updated PR 23): positions grouped into four groups — Property (`real_estate`), Public markets (`stocks` / `etf`), Reserves (`cash` / `pension` / `bonds` / `gold` / `other`), Crypto (`crypto`). Gold and bonds remain in Reserves. Group order by total value descending. All collapsed by default, tap to expand, session-persisted.
 
 ## Mortgage Auto-Amortization

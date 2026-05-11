@@ -62,39 +62,3 @@ export function computeNetWorth(
   }, 0);
 }
 
-export interface Warning {
-  key: string;
-  text: string;
-}
-
-export function getWarnings(
-  assets: { name: string; value: number; type: string }[],
-  byType: Record<string, number>,
-  total: number
-): Warning[] {
-  const warnings: Warning[] = [];
-  const sorted = [...assets].sort((a, b) => b.value - a.value);
-  if (sorted.length > 0 && sorted[0].value / total > 0.4) {
-    warnings.push({
-      key: `concentration:position:${sorted[0].name.toLowerCase()}`,
-      text: `${sorted[0].name} is ${((sorted[0].value / total) * 100).toFixed(0)}% of your portfolio — high concentration.`,
-    });
-  }
-  const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
-  if (typeEntries.length > 0 && typeEntries[0][1] / total > 0.6) {
-    warnings.push({
-      key: `concentration:type:${typeEntries[0][0]}`,
-      text: `${TYPE_LABEL[typeEntries[0][0]]} makes up ${((typeEntries[0][1] / total) * 100).toFixed(0)}% — consider diversifying.`,
-    });
-  }
-  if (typeEntries.length === 1 && assets.length > 1) {
-    warnings.push({ key: "concentration:single_class", text: "All positions are in one asset class." });
-  }
-  if (byType.cash && byType.cash / total > 0.3) {
-    warnings.push({
-      key: "concentration:cash",
-      text: `${((byType.cash / total) * 100).toFixed(0)}% in cash — consider deploying some.`,
-    });
-  }
-  return warnings;
-}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEurRates } from "@/lib/fx";
+import { getAuthUser } from "@/lib/supabase";
 
 export type { FxRates } from "@/lib/fx";
 export { getEurRates, toEur } from "@/lib/fx";
@@ -8,6 +9,9 @@ export { getEurRates, toEur } from "@/lib/fx";
 // ?base=EUR&quote=USD returns { base, quote, rate } for the named pair.
 // Without ?quote, returns { base, rates } with all pairs.
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const rates = await getEurRates();
     const quote = request.nextUrl.searchParams.get("quote")?.toUpperCase();
