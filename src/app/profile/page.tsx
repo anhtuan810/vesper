@@ -2,12 +2,28 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, useProfile, useSignOut } from "@/lib/hooks";
+import { useUser, useProfile, useSignOut, useTheme } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
+import type { DisplayCurrency } from "@/lib/money";
 
 const supabase = createBrowserSupabase();
+
+const CURRENCY_DISPLAY: Record<DisplayCurrency, { symbol: string; label: string }> = {
+  EUR: { symbol: "€", label: "Euro" },
+  USD: { symbol: "$", label: "US Dollar" },
+  GBP: { symbol: "£", label: "British Pound" },
+};
+
+const THEME_OPTIONS = [
+  { value: "auto" as const, label: "Auto" },
+  { value: "light" as const, label: "Light" },
+  { value: "dark" as const, label: "Dark" },
+];
+
+const TOAST_KEY = "vesper.currency.toastSeen";
 
 const PROFILE_FIELDS = [
   { key: "goal", label: "Financial Goal" },
@@ -32,9 +48,14 @@ export default function ProfilePage() {
   const { user, loading: userLoading } = useUser();
   const profile = useProfile(user?.id);
   const signOut = useSignOut();
+  const { theme: currentTheme, setTheme } = useTheme();
   const [mutationCount, setMutationCount] = useState(0);
   const [profileData, setProfileData] = useState<Record<string, string>>({});
   const [pageError, setPageError] = useState<string | null>(null);
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("EUR");
+  const [currencyLoading, setCurrencyLoading] = useState<DisplayCurrency | null>(null);
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
 
   useEffect(() => {
     if (profile?.profile) setProfileData(profile.profile);
@@ -79,6 +100,49 @@ export default function ProfilePage() {
   }, [user?.id]);
 
   useEffect(() => { fetchMutationCount(); }, [fetchMutationCount]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("users")
+      .select("display_currency")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.display_currency && isSupportedCurrency(data.display_currency)) {
+          setDisplayCurrency(data.display_currency as DisplayCurrency);
+        }
+      });
+  }, [user?.id]);
+
+  const handleCurrencySelect = useCallback(async (currency: DisplayCurrency) => {
+    if (currency === displayCurrency || currencyLoading) return;
+    setCurrencyLoading(currency);
+    setCurrencyError(null);
+    try {
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_currency: currency }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setCurrencyError(data.error ?? "Failed to update currency");
+      } else {
+        setDisplayCurrency(currency);
+        if (currency !== "EUR" && !localStorage.getItem(TOAST_KEY)) {
+          localStorage.setItem(TOAST_KEY, "1");
+          setToastVisible(true);
+          setTimeout(() => setToastVisible(false), 4000);
+        }
+        router.refresh();
+      }
+    } catch {
+      setCurrencyError("Failed to update currency");
+    } finally {
+      setCurrencyLoading(null);
+    }
+  }, [displayCurrency, currencyLoading, router]);
 
   const setTab = (t: "portfolio" | "diary" | "profile") => {
     router.push(t === "portfolio" ? "/" : "/" + t);
@@ -239,6 +303,136 @@ export default function ProfilePage() {
           ))}
         </div>
 
+        {/* Preferences */}
+        <div className="bg-surface rounded-2xl border border-border p-6 mt-4">
+          <div
+            className="font-mono text-faint uppercase mb-4"
+            style={{ fontSize: 9, letterSpacing: "0.18em" }}
+          >
+            Preferences
+          </div>
+
+          {/* Display currency */}
+          <div className="mb-4 pb-4" style={{ borderBottom: "1px solid var(--border)" }}>
+            <div
+              className="font-mono text-faint uppercase mb-3"
+              style={{ fontSize: 9, letterSpacing: "0.18em" }}
+            >
+              Display currency
+            </div>
+            <div className="space-y-2">
+              {SUPPORTED_CURRENCIES.map((currency) => {
+                const { symbol, label } = CURRENCY_DISPLAY[currency];
+                const isActive = displayCurrency === currency;
+                const isLoading = currencyLoading === currency;
+                return (
+                  <button
+                    key={currency}
+                    onClick={() => handleCurrencySelect(currency)}
+                    disabled={!!currencyLoading}
+                    className="w-full text-left bg-bg rounded-xl p-4 transition-colors"
+                    style={{
+                      border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="font-mono"
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 500,
+                            color: isActive ? "var(--accent)" : "var(--text-dim)",
+                            width: 24,
+                            textAlign: "center",
+                          }}
+                        >
+                          {symbol}
+                        </span>
+                        <div>
+                          <div
+                            className="font-mono"
+                            style={{
+                              fontSize: 13,
+                              color: isActive ? "var(--accent)" : "var(--text)",
+                            }}
+                          >
+                            {label}
+                          </div>
+                          <div
+                            className="font-mono text-faint"
+                            style={{ fontSize: 10, letterSpacing: "0.08em", marginTop: 2 }}
+                          >
+                            {currency}
+                          </div>
+                        </div>
+                      </div>
+                      {isLoading ? (
+                        <div className="font-mono text-faint" style={{ fontSize: 10 }}>
+                          Saving…
+                        </div>
+                      ) : isActive ? (
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: "var(--accent)" }}
+                        />
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {currencyError && (
+              <div className="font-mono mt-2" style={{ fontSize: 12, color: "var(--negative)" }}>
+                {currencyError}
+              </div>
+            )}
+          </div>
+
+          {/* Theme */}
+          <div>
+            <div
+              className="font-mono text-faint uppercase mb-3"
+              style={{ fontSize: 9, letterSpacing: "0.18em" }}
+            >
+              Theme
+            </div>
+            <div className="space-y-2">
+              {THEME_OPTIONS.map(({ value, label }) => {
+                const isActive = currentTheme === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setTheme(value)}
+                    className="w-full text-left bg-bg rounded-xl p-4 transition-colors"
+                    style={{
+                      border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div
+                        className="font-mono"
+                        style={{
+                          fontSize: 13,
+                          color: isActive ? "var(--accent)" : "var(--text)",
+                        }}
+                      >
+                        {label}
+                      </div>
+                      {isActive && (
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: "var(--accent)" }}
+                        />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         {/* Sign out */}
         <div className="mt-10 flex flex-col items-center">
           <button
@@ -250,6 +444,30 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+
+      {toastVisible && (
+        <div
+          className="font-mono"
+          style={{
+            position: "fixed",
+            bottom: 88,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "var(--surface)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: 10,
+            padding: "10px 18px",
+            fontSize: 12,
+            color: "var(--text-dim)",
+            letterSpacing: "0.02em",
+            whiteSpace: "nowrap",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            zIndex: 50,
+          }}
+        >
+          Display only — your portfolio is unchanged.
+        </div>
+      )}
     </div>
   );
 }
