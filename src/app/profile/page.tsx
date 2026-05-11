@@ -7,6 +7,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { uploadAvatar } from "@/lib/avatar-upload";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
+import ProfileFieldSheet from "@/components/ProfileFieldSheet";
 
 const supabase = createBrowserSupabase();
 
@@ -66,6 +67,7 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [expandedPref, setExpandedPref] = useState<"currency" | "theme" | null>(null);
+  const [openField, setOpenField] = useState<{ title: string; body: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -326,15 +328,60 @@ export default function ProfilePage() {
           {PROFILE_FIELDS.map(({ key, label }, idx) => {
             const value = (profile?.profile as Record<string, string> | undefined)?.[key] ?? null;
             const isLast = idx === PROFILE_FIELDS.length - 1;
+            const borderStyle = isLast ? "none" : "0.5px solid var(--border)";
+
+            if (!value) {
+              return (
+                <div
+                  key={key}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "14px 16px",
+                    borderBottom: borderStyle,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontFamily: "var(--font-serif)",
+                      fontSize: 16,
+                      fontWeight: 500,
+                      color: "var(--text)",
+                      marginBottom: 3,
+                      fontVariationSettings: "'opsz' 18",
+                    }}>
+                      {label}
+                    </div>
+                    <div style={{
+                      fontSize: 13,
+                      color: "var(--text-faint)",
+                      fontStyle: "italic",
+                      lineHeight: 1.35,
+                    }}>
+                      Not yet shared
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
-              <div
+              <button
                 key={key}
+                type="button"
+                onClick={() => setOpenField({ title: label, body: value })}
                 style={{
+                  width: "100%",
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
                   padding: "14px 16px",
-                  borderBottom: isLast ? "none" : "0.5px solid var(--border)",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: borderStyle,
+                  cursor: "pointer",
+                  textAlign: "left",
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -350,18 +397,17 @@ export default function ProfilePage() {
                   </div>
                   <div style={{
                     fontSize: 13,
-                    color: value ? "var(--text-dim)" : "var(--text-faint)",
-                    fontStyle: value ? "normal" : "italic",
+                    color: "var(--text-dim)",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                     lineHeight: 1.35,
                   }}>
-                    {value || "Not yet shared"}
+                    {value}
                   </div>
                 </div>
                 <ChevronRight />
-              </div>
+              </button>
             );
           })}
         </div>
@@ -574,6 +620,13 @@ export default function ProfilePage() {
           Display only — your portfolio is unchanged.
         </div>
       )}
+
+      <ProfileFieldSheet
+        open={openField !== null}
+        title={openField?.title ?? ""}
+        body={openField?.body ?? ""}
+        onClose={() => setOpenField(null)}
+      />
     </div>
   );
 }
