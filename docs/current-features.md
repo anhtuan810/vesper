@@ -21,8 +21,8 @@
 - Files: `src/app/page.tsx`, `src/app/diary/page.tsx`, `src/app/chat/page.tsx`, `src/app/profile/page.tsx`, `src/app/asset/[id]/page.tsx`, `src/components/BottomNav.tsx`
 
 ### Portfolio Dashboard
-- Header: Vesper icon (serif "V" placeholder in a rounded box — `// TODO: replace with proper icon asset`) on the left, user name next to it (pulled from Supabase auth metadata, falls back to email prefix before `@`, hidden if neither is available — never "User" or "Anonymous"); refresh button with an integrated 4 px status dot (green = all prices live, amber = partial, faint = none) and a settings gear linking to `/settings`, both on the right
-- Net worth hero in serif (Fraunces) with intentionally dimmed currency prefix per design spec
+- Header: avatar and user name on the left (avatar from `users.avatar_url`, falls back to two-letter initials; name pulled from Supabase auth metadata, falls back to email prefix before `@`, hidden if neither is available — never "User" or "Anonymous"); refresh button with an integrated 4 px status dot (green = all prices live, amber = partial, faint = none) on the right. No settings entry point on Portfolio.
+- Net worth hero in serif (Source Serif 4) with intentionally dimmed currency prefix per design spec
 - Change pill on the hero showing % and EUR delta vs 1 month ago — only renders when historical snapshot data exists
 - Net worth over time chart between hero and allocation cards — range pills (1W / 1M / 3M / 1Y / ALL), smooth bezier line, amber up / coral down, today marker, 7-snapshot empty state
 - Allocation card (separate from hero) with "Allocation / DETAILS" header — DETAILS scrolls to the Positions section below
@@ -41,36 +41,31 @@
 - Net worth chart on Portfolio tab consumes via `/api/snapshots?range=...`, with the live current value appended to the rightmost point
 - Files: `src/app/api/cron/snapshot/route.ts`, `src/app/api/snapshots/route.ts`, `src/lib/snapshot.ts`, `vercel.json`
 
-### Asset Detail Pages — Full Inline CRUD (Phase 2 Complete)
+### Asset Detail Pages (Read-Only)
 - Three layout variants dispatched by asset type from `src/app/asset/[id]/page.tsx`
-- All three variants now have inline edit + delete parity (Phase 2a + 2b shipped)
+- Top bar carries a back chevron (left) and a refresh icon (right, where applicable — Tradeable only, since Real Estate and Static have no live price). Back returns to the previous route, distinct from tapping the Portfolio tab.
 
 **Tradeable** (stocks, ETFs, crypto, gold):
 - Icon, big EUR price, change pill, time-range tabs (1D/1W/1M/3M/1Y/ALL), full price chart
-- Metric grid: units, avg buy, live price, total return — units, avg buy price, country are inline-editable
+- Metric grid: units, avg buy, live price, total return — read-only
 - Recent activity scoped to the asset, prefers unit-based deltas ("+5 shares") over value-based for tradeable mutations
-- DISCUSS CTA + DeleteAssetButton with two-step confirm
-- Pencil glyph at idle on editable fields signals editability on mobile
 - Crypto positions show 24h volatility block; stocks do not
 - Crypto positions hide the country field
 
 **Real Estate** — property hub with:
-- Photo or map (PropertyMap auto-caches first render as PNG to Supabase Storage)
-- Inline-editable fields: name, address (re-geocodes server-side via Nominatim), property_type (select), size_sqm, country, value (with ContextNotePrompt on >5% change)
-- Equity hero (computed: value − mortgage_balance), property value editable row above
+- Map (PropertyMap auto-caches first render as PNG to Supabase Storage)
+- Equity hero (computed: value − mortgage_balance), property value row
 - Value composition bar (equity vs mortgage)
-- MortgageBlock with payoff projection chart and TODAY marker — all 6 mortgage fields inline-editable (balance, rate, monthly_payment, type via select, start_date, end_date)
+- MortgageBlock with payoff projection chart and TODAY marker — read-only
 - Scoped activity timeline
 - Street View access via single pill in photo overlay (no longer duplicated next to address)
-- DISCUSS CTA + DeleteAssetButton
 
 **Static** (cash, pension, bonds, other):
 - Minimal layout — balance hero, optional currency code, scoped activity
-- Inline-editable: name, value (with ContextNotePrompt on >5% change), currency
-- Bonds get an additional `BondBlock` with inline-editable issuer, coupon_rate, maturity_date, isin
-- DISCUSS CTA + DeleteAssetButton
+- Bonds get an additional `BondBlock` with issuer, coupon_rate, maturity_date, isin
 
-- Files: `src/components/asset-detail/{TradeableDetail,RealEstateDetail,StaticDetail,InlineEdit,DeleteAssetButton,ContextNotePrompt,CryptoVolatilityBlock,BondBlock}.tsx`, `src/components/PriceChart.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`
+- All asset modifications happen via chat. The bottom-nav Chat tab is context-aware when on /asset/[id] — tapping it opens chat seeded with the asset as context.
+- Files: `src/components/asset-detail/{TradeableDetail,RealEstateDetail,StaticDetail,CryptoVolatilityBlock,BondBlock}.tsx`, `src/components/PriceChart.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`
 
 ### Real Estate & Mortgage Tracking
 - Properties stored as assets with `type = 'real_estate'`
@@ -120,13 +115,13 @@
 - Files: `src/lib/projection.ts`
 
 ### Display Currency Parameterization (Phases A–D shipped)
-- Per-user display currency stored on `users.display_currency` (EUR / USD / GBP, default EUR). Settings route at `/settings`.
+- Per-user display currency stored on `users.display_currency` (EUR / USD / GBP, default EUR). Picker lives on the Profile page under Preferences (superseded the `/settings` route from Phase A — see `redesign-decisions.md` Decision 5 and PR 3).
 - Storage stays EUR on every numeric column. FX pivot: EUR via frankfurter.app (ECB-backed).
-- **Phase A**: `formatMoney(eurValue, displayCurrency)`, `formatMoneyParts`, `useDisplayCurrency()`, `/settings` picker, `PATCH /api/users/me`.
+- **Phase A**: `formatMoney(eurValue, displayCurrency)`, `formatMoneyParts`, `useDisplayCurrency()`, `PATCH /api/users/me`.
 - **Phase B**: Every visible number (hero, allocation, positions, milestones, diary, all detail pages) renders in display currency via `formatMoney`. `PriceDisplay` extended with `displayCurrency` prop for editorial superscript styling. First-switch toast ("Display only — your portfolio is unchanged.") appears once, tracked in localStorage.
 - **Phase C**: Inline edit inputs accept display currency and convert to EUR at write via `convertToEur()`. FX freshness state machine (`fresh` / `stale` / `unavailable`) — `unavailable` blocks the write, `stale` warns inline but allows. `buildStaticSystem(displayCurrency)` and `buildOnboardingPrompt(displayCurrency)` parameterize Claude prompts; prose responses render in display currency, `<changes>` JSON stays native. Goal targets stated in display currency are converted to EUR before storage via server-side `toEur()`. Diary summary Haiku prompt and context lines are in display currency.
 - **Phase D**: Real estate native currency captured at add time from the property's country (NL→EUR, US→USD, UK/GB→GBP, other→EUR). `countryToCurrency()` helper in `src/lib/country-currency.ts`. For non-EUR properties, the value, `mortgage_balance`, and `monthly_payment` from Claude's `<changes>` block are converted from native to EUR before INSERT. `assets.currency` records the native currency. Property detail page shows a "Native: GBP" subtitle for transparency. Existing rows (currency='EUR' or null) are unchanged — no backfill.
-- Files: `src/lib/money.ts`, `src/lib/hooks.ts` (`useDisplayCurrency`, `useFxRate`), `src/lib/projection.ts`, `src/lib/claude.ts`, `src/lib/apply-changes.ts`, `src/lib/country-currency.ts`, `src/components/PriceDisplay.tsx`, `src/components/NetWorthHero.tsx`, `src/components/AllocationBar.tsx`, `src/components/PositionRow.tsx`, `src/components/PortfolioTab.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/components/asset-detail/{InlineEdit,BondBlock,TradeableDetail,RealEstateDetail,StaticDetail}.tsx`, `src/components/DiaryTab.tsx`, `src/app/page.tsx`, `src/app/settings/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/diary-summary/route.ts`
+- Files: `src/lib/money.ts`, `src/lib/hooks.ts` (`useDisplayCurrency`, `useFxRate`), `src/lib/projection.ts`, `src/lib/claude.ts`, `src/lib/apply-changes.ts`, `src/lib/country-currency.ts`, `src/components/PriceDisplay.tsx`, `src/components/NetWorthHero.tsx`, `src/components/AllocationBar.tsx`, `src/components/PositionRow.tsx`, `src/components/PortfolioTab.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/components/asset-detail/{BondBlock,TradeableDetail,RealEstateDetail,StaticDetail}.tsx`, `src/components/DiaryTab.tsx`, `src/app/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/diary-summary/route.ts`
 
 ### Conversational Assistant
 - Mobile: full-page route at `/chat` with a 4-suggestion empty state
@@ -141,6 +136,7 @@
 - Input cap: 500 characters
 - Auto-retry on Claude API failure (3 attempts with backoff)
 - Chat history falls back to DB on cold load: `useChatSession` reads localStorage first (24h TTL); on miss or expiry, issues a single `GET /api/messages?limit=20` and populates the initial message state; the fetched messages are written back to localStorage with a fresh timestamp. Resolves cross-device empty history and the post-24h disorientation where Claude references a prior conversation the UI has already forgotten
+- Chat is a single continuous thread per user. No 'new chat' or 'session history' UI is exposed. Users scroll back to revisit older exchanges. `useChatSession`'s 24h localStorage TTL is a cache strategy, not a session boundary. `GET /api/messages` supports cursor-based pagination (`before=<id>&limit=20`) for scroll-back.
 - Files: `src/components/ChatPopup.tsx`, `src/app/chat/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/messages/route.ts`, `src/lib/claude.ts`, `src/lib/use-chat-session.ts`
 
 ### Portfolio Change Validation
@@ -172,10 +168,10 @@
 - Period title shown above filters when a non-"all" period is selected
 - AI summary card (slimmed from former PeriodHighlight) at top of timeline — pulsing V mark while loading, 3 bullet points + activity counts when loaded
 - Recent activity preview (last 3) on Portfolio tab
-- **Inline expandable notes**: each entry row is tappable; tap expands an inline editor below the row pre-filled with the full `personal_context`; Save calls `PATCH /api/mutations/[id]` with optimistic update and rollback on error; "+ Add note" affordance shown when context is empty; only one editor open at a time — tapping a second entry collapses the first
-- **Search**: text input above the period filter chips; case-insensitive substring match on `asset_name` OR `personal_context` (including locally-edited notes); combines with period filter via AND; client-side, no server round-trip; empty state adapts to "No entries match {query}"
+- **Search**: text input above the period filter chips; case-insensitive substring match on `asset_name` OR `personal_context`; combines with period filter via AND; client-side, no server round-trip; empty state adapts to "No entries match {query}"
 - **"On this day" callout**: rendered above the timeline, independent of all filters; conditions — `occurred_at` shares today's month and day, is in a prior year, and is at least 30 days ago; oldest match wins when multiple qualify; displays a read-only entry-style row with a relative label ("1 year ago", "3 months ago"); tap clears active filters if the row is hidden, then smooth-scrolls to the matching entry in the timeline and plays a 1.5s amber ring highlight; uses browser-local date parsing to avoid UTC-offset drift
-- Files: `src/app/diary/page.tsx`, `src/components/DiaryTab.tsx`, `src/app/api/chat/route.ts` (write), `src/app/api/assets/[id]/route.ts` (write), `src/app/api/diary-summary/route.ts` (AI summary), `src/app/api/mutations/[id]/route.ts` (note PATCH)
+- Diary entries display each asset's current name via LEFT JOIN to `assets`. Deleted assets fall back to `mutations.asset_name`. The same join applies to the diary summary endpoint and the search predicate.
+- Files: `src/app/diary/page.tsx`, `src/components/DiaryTab.tsx`, `src/app/api/chat/route.ts` (write), `src/app/api/diary-summary/route.ts` (AI summary)
 
 ### Investor Profile (Self-Building)
 - Background Claude call after each conversation extracts lasting facts
@@ -183,7 +179,9 @@
 - Fields: goal, risk_behaviour, investment_style, life_context, concerns, preferences, blind_spots, decision_patterns, interests
 - Never overwrites — only adds or refines
 - Visible at `/profile`. Avatar uses `users.avatar_url` (from Google OAuth) when present, falls back to two-letter initials in a `surface-elev` circle
-- Sign-out button at the bottom of the Profile page. Settings (display currency, etc.) is no longer linked from `/profile` — it is reachable via the gear icon in the Portfolio page header
+- Sign-out button at the bottom of the Profile page.
+- Profile page renders a one-line investor fingerprint in italic serif below the email when present. Generated by the profile extractor and stored at `users.profile.fingerprint`. Hidden when null (new users pre-first-extraction).
+- Avatar is user-editable via tap-to-upload on the Profile page. Defaults to the Google profile photo on OAuth signup. Stored in Supabase Storage.
 - Skipped for new-user onboarding conversations
 - Files: `src/lib/profile-extractor.ts`, called from `src/app/api/chat/route.ts`, rendered inline in `src/app/profile/page.tsx`
 
@@ -191,10 +189,22 @@
 - Phase 1 of the redesign wired tokens into the codebase
 - Colors and typography exposed as CSS variables in `src/app/globals.css`, surfaced as Tailwind utilities via `tailwind.config.ts`
 - Mirror in TypeScript at `src/lib/tokens.ts` for inline JS contexts (Recharts colors, etc.)
-- Fonts: Fraunces (serif, hero numbers and section titles), Plus Jakarta Sans (body), Geist Mono (financial figures, dates, metadata)
-- Single accent: amber (#D4A574). Green (#6BAA75) and coral (#C97A6E) for semantic states only
+- Fonts: Source Serif 4 (hero numbers, section titles), Albert Sans (body, labels, nav). Geist Mono is no longer used in UI chrome.
+- Single accent: green (#4A7C5E). Positive uses the same green; negative uses muted coral (#B5564B). No accent for action signaling — action read from value pattern (sign of the delta, strikethrough for removes).
 - The dimmed currency prefix on hero numbers (e.g. dimmer `€` next to bright digits) is intentional editorial styling per the mockups, not a CSS bug
-- Mockups for canonical visual reference: `docs/redesign-mockups/main-screens.html`, `docs/redesign-mockups/real-estate-detail.html`
+- Mockups for canonical visual reference: `docs/redesign_mockups/portfolio.html`, `docs/redesign_mockups/diary.html`, `docs/redesign_mockups/chat.html`, `docs/redesign_mockups/profile.html`, `docs/redesign_mockups/tradeable-detail.html`, `docs/redesign_mockups/real-estate-detail.html`, `docs/redesign_mockups/static-detail.html`, `docs/redesign_mockups/bond-detail.html`
+
+### Preferences (on Profile)
+- Display currency (EUR/USD/GBP) and theme (Auto/Light/Dark) pickers live as a "Preferences" section on the Profile page under the context fields. No separate /settings route.
+
+### Property visual
+- Real estate uses an auto-generated map only. Photo upload has been removed. Map uses a light-theme MapLibre style with a dark variant pre-wired for the dark theme. PropertyMap caches the first render as PNG in Supabase Storage.
+
+### Mortgage balance
+- Displayed mortgage balance auto-amortizes from the stored anchor (initial balance + start date) via the `computeCurrentBalance` helper in `src/lib/mortgage.ts`. Monthly amortization is never logged in the diary. Notable events (extra payment, refinance, rate change, valuation update) are logged via chat.
+
+### Cash, pension, and bonds naming and iconography
+- Cash and pension entries are purpose-pots, not bank accounts. `AssetLogo` renders a generic wallet icon for both types. Bonds use a certificate icon and carry an issuer field. Onboarding and chat prompts ask "what's this for?" not "which bank?"
 
 ---
 

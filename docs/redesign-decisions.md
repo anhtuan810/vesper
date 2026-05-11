@@ -450,7 +450,3 @@ What stays
 This file. If anything in `current-features.md`, `technical-decisions.md`, `currency-feature-spec.md`, or `next-build-plan.md` contradicts the rules above after the work ships, those docs are stale and need updating.
 
 Supersedes the earlier `diary-note-immutability-decision.md` — same scope, broader name, all decisions in one place.
-
-This file. If anything in `current-features.md`, `technical-decisions.md`, `currency-feature-spec.md`, or `next-build-plan.md` contradicts the rules above after the work ships, those docs are stale and need updating.
-
-Supersedes the earlier `diary-note-immutability-decision.md` — same scope, broader name, all decisions in one place.

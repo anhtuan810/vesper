@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vesper — Chat mockup</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+
+  <style>
+    :root, [data-theme="light"] {
+      --bg: #F5F1EA;
+      --surface: #FFFFFF;
+      --surface-elev: #EBE4D6;
+      --border: rgba(26, 31, 46, 0.08);
+      --border-strong: rgba(26, 31, 46, 0.16);
+      --text: #1A1F2E;
+      --text-dim: #6B7280;
+      --text-faint: #9CA3AF;
+      --hero: #0B0F18;
+      --accent: #4A7C5E;
+      --accent-soft: #DDEBE1;
+      --accent-text: #2D5340;
+      --positive: #4A7C5E;
+      --positive-text: #2D5340;
+      --negative: #B5564B;
+      --negative-text: #8B3D33;
+      --font-sans: 'Albert Sans', -apple-system, system-ui, sans-serif;
+      --font-serif: 'Source Serif 4', Georgia, serif;
+      --nav-surface: rgba(245, 241, 234, 0.92);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #2A2A2C;
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .stage {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: #0A0A0A;
+      border-radius: 56px;
+      padding: 12px;
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,0.08), 0 30px 80px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .phone::before {
+      content: '';
+      position: absolute;
+      top: 22px; left: 50%;
+      transform: translateX(-50%);
+      width: 110px; height: 30px;
+      background: #000; border-radius: 16px; z-index: 10;
+    }
+
+    .screen {
+      position: relative;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      border-radius: 44px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      color: var(--text);
+    }
+
+    .status-bar {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px 6px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .status-bar .right { display: flex; gap: 6px; align-items: center; }
+
+    /* MESSAGES */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 22px 100px;
+      scrollbar-width: none;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .messages::-webkit-scrollbar { display: none; }
+
+    /* Source eyebrow — shown when chat entered from an insight card */
+    .source-eyebrow {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-text);
+      opacity: 0.7;
+      margin-bottom: -10px;
+    }
+
+    /* Response — no bubble, just text */
+    .response {
+      max-width: 92%;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    .response em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      color: var(--text);
+      font-variation-settings: 'opsz' 18;
+    }
+    .response .num { font-feature-settings: "tnum" 1; }
+
+    /* User message — bubble right */
+    .user-message {
+      align-self: flex-end;
+      max-width: 78%;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 18px 18px 4px 18px;
+      padding: 10px 14px;
+      font-size: 15px;
+      line-height: 1.4;
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+
+    /* Tap-suggested follow-ups */
+    .followups {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: -8px;
+    }
+    .followup-chip {
+      align-self: flex-start;
+      font-size: 13px;
+      color: var(--accent-text);
+      background: var(--accent-soft);
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    /* COMPOSER */
+    .composer-wrap {
+      position: absolute;
+      bottom: 78px;
+      left: 0; right: 0;
+      padding: 0 22px 12px;
+      background: linear-gradient(180deg, rgba(245,241,234,0) 0%, var(--bg) 30%, var(--bg) 100%);
+    }
+    .composer {
+      position: relative;
+      background: var(--surface);
+      border: 0.5px solid var(--border-strong);
+      border-radius: 22px;
+      padding: 12px 50px 12px 18px;
+      display: flex;
+      align-items: center;
+    }
+    .composer input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      color: var(--text);
+    }
+    .composer input::placeholder { color: var(--text-faint); }
+    .send-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .send-btn svg { width: 16px; height: 16px; }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: var(--nav-surface);
+      backdrop-filter: blur(20px);
+      border-top: 0.5px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 14px 0 32px;
+      border-radius: 0 0 44px 44px;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-faint);
+      flex: 1;
+    }
+    .nav-item.active { color: var(--accent); }
+    .nav-item svg { width: 26px; height: 26px; display: block; }
+    .nav-item span { font-size: 11px; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone">
+      <div class="screen">
+
+        <div class="status-bar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M232,40H184a16,16,0,0,0-16,16V200a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,232,40Zm0,160H184V56h48ZM152,80h-48a16,16,0,0,0-16,16V200a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V96A16,16,0,0,0,152,80Zm0,120h-48V96h48ZM72,128H24a16,16,0,0,0-16,16v56a16,16,0,0,0,16,16H72a16,16,0,0,0,16-16V144A16,16,0,0,0,72,128Zm0,72H24V144H72Z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M140,204a12,12,0,1,1-12-12A12,12,0,0,1,140,204ZM237.08,87A172,172,0,0,0,18.92,87,8,8,0,0,0,29.08,99.37a156,156,0,0,1,197.84,0A8,8,0,1,0,237.08,87ZM205.78,124.9a124,124,0,0,0-155.56,0A8,8,0,1,0,60.18,137.4a108,108,0,0,1,135.64,0,8,8,0,1,0,9.96-12.5Zm-30.79,38.1a76,76,0,0,0-93.98,0A8,8,0,1,0,90.81,175.5a60,60,0,0,1,74.38,0A8,8,0,1,0,174.99,163Z"/></svg>
+            <svg width="22" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,72H32A16,16,0,0,0,16,88v80a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V152h8a8,8,0,0,0,8-8V112a8,8,0,0,0-8-8h-8V88A16,16,0,0,0,224,72ZM224,168H32V88H224V168Z"/><rect x="40" y="96" width="160" height="64" rx="2"/></svg>
+          </span>
+        </div>
+
+        <!-- No top bar — Chat goes straight to the conversation -->
+
+        <!-- Conversation -->
+        <div class="messages">
+
+          <!-- Entered from a Worth-knowing card on Portfolio -->
+          <div class="source-eyebrow">From Portfolio</div>
+          <div class="response">
+            Your reserves cover roughly <em>four months of spending</em> — fine for safety, light if rates ease further.
+          </div>
+
+          <div class="followups">
+            <div class="followup-chip">How much would I need for six?</div>
+            <div class="followup-chip">Show me where reserves sit today</div>
+          </div>
+
+          <div class="user-message">
+            How much would I need for six?
+          </div>
+
+          <div class="response">
+            About <span class="num">€27,000</span>. You currently hold <span class="num">€18,400</span> across ABN AMRO and Trade Republic — a gap of roughly <span class="num">€8,600</span>. <em>One quarter of new savings would close it.</em>
+          </div>
+
+          <div class="user-message">
+            And ASML — am I overweight there?
+          </div>
+
+          <div class="response">
+            ASML is <span class="num">11.4%</span> of your public markets sleeve and <span class="num">3.7%</span> of total net worth. <em>Concentrated, not extreme</em> — within the range we've seen since you started tracking last May.
+          </div>
+
+        </div>
+
+        <!-- Composer -->
+        <div class="composer-wrap">
+          <div class="composer">
+            <input placeholder="Ask anything about your portfolio…" />
+            <div class="send-btn">
+              <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="128" y1="40" x2="128" y2="216"/>
+                <polyline points="56 112 128 40 200 112"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-nav">
+          <div class="nav-item">
+            <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="128" cy="128" r="96"/>
+              <line x1="128" y1="32" x2="128" y2="128"/>
+              <line x1="211.27" y1="80" x2="128" y2="128"/>
+            </svg>
+            <span>Portfolio</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="40" y="40" width="176" height="176" rx="8"/>
+              <line x1="176" y1="24" x2="176" y2="56"/>
+              <line x1="80" y1="24" x2="80" y2="56"/>
+              <line x1="40" y1="88" x2="216" y2="88"/>
+            </svg>
+            <span>Diary</span>
+          </div>
+          <div class="nav-item active">
+            <svg viewBox="0 0 256 256" fill="currentColor">
+              <path d="M232,128A104,104,0,1,1,79.12,36.18a8,8,0,0,1,8.49,13.5A88,88,0,1,0,216,128a87.6,87.6,0,0,0-9.18-39.31,8,8,0,0,1,14.36-7.06A103.7,103.7,0,0,1,232,128Z"/>
+              <path d="M198.07,46.85a8,8,0,0,1,11.08,11.55l-89.6,86a8,8,0,0,1-11.18-.06l-32-32a8,8,0,1,1,11.31-11.32l26.45,26.46Z"/>
+            </svg>
+            <span>Chat</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="128" cy="96" r="64"/>
+              <path d="M30.99,224a112.04,112.04,0,0,1,194.02,0"/>
+            </svg>
+            <span>Profile</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

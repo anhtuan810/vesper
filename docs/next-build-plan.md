@@ -19,49 +19,24 @@ This is the prioritized roadmap for Vesper. MVP-focused. Avoid enterprise archit
 
 ## Build Order
 
-1. **Dashboard highlights** (market events, milestones, reflections — unblocked now diary improvements shipped)
-2. **Scenario analysis UI**
-
-This order: fix the currency display gap that limits the app to EUR-centric users, clear the CDN privacy debt (shipped), then add new top-level surfaces.
-
----
-
-## 1. Display Currency Parameterization
-
-**Source of truth: `currency-feature-spec.md`.** Read it before starting any phase.
-
-### Summary
-
-Vesper currently renders every number in EUR. The plan parameterizes display currency per-user (EUR / USD / GBP at launch) while keeping EUR as the canonical storage and math unit. Real estate gains a native currency by location for transparency. A `/settings` route houses the picker.
-
-### Decisions (all settled)
-
-- **Storage**: EUR-equivalent on every numeric column. Non-negotiable.
-- **FX pivot**: EUR (frankfurter.app is ECB-anchored).
-- **Display options at launch**: EUR, USD, GBP. More currencies later.
-- **Real estate**: native currency per asset, captured at add time from country (NL → EUR, US → USD, UK → GBP).
-- **Settings**: new `/settings` route, currency picker only for now, scaffolded for future settings.
-- **Default for existing users**: EUR (no surprise switching).
-- **Milestones**: scale to display currency. EUR/USD/GBP share the same step pattern (`1k / 5k / 10k / 50k / 100k / 500k / 1M / 5M`).
-
-### Phases (one chat per phase)
-
-- **Phase A — Foundation**. Schema column, `formatMoney` utility, `useDisplayCurrency` hook, `/settings` route. No visible change.
-- **Phase B — Display swap**. Every callsite swapped from `fmt()` / hardcoded `€` to `formatMoney`. App fully renders in user's display currency.
-- **Phase C — Inputs + Claude prompt**. Manual inputs convert at write to EUR. System prompt parameterized with `displayCurrency`.
-- **Phase D — Real-estate native currency**. Per-property native currency captured at add time.
-
-Phases A–C run in order; Phase D can run after C or in parallel with C cleanup.
-
-### Process
-
-Read `currency-feature-spec.md`, run the named phase, ship, review, merge. Do not chain phases in one session.
+- PR 1 · Schema migration + theme infrastructure
+- PR 2 · Design tokens + font swap
+- PR 3 · Settings → Profile move
+- PR 4 · Asset detail read-only
+- PR 5 · Diary immutability + name join
+- PR 6 · Chat single thread
+- PR 7 · Avatar upload + investor fingerprint
+- PR 8 · Mortgage auto-amortization + map-only property + cash pots
+- PR 9 · Portfolio restyle
+- PR 10 · Diary restyle
+- PR 11 · Chat restyle
+- PR 12 · Profile + Asset Detail restyle
 
 ---
 
----
+## Post-redesign roadmap
 
-## 3. Dashboard Highlights
+## Dashboard Highlights
 
 ### Goal
 The original tech spec's launch feature #9 — daily highlights surfaced on the Portfolio tab. Three types: market events affecting holdings (Claude-filtered), portfolio milestones (deterministic from snapshots + dynamic step sizing), personal reflections (anniversary-style from mutation history).
@@ -86,7 +61,7 @@ The original tech spec's launch feature #9 — daily highlights surfaced on the 
 
 ---
 
-## 4. Scenario Analysis UI
+## Scenario Analysis UI
 
 ### Goal
 Let users explore "what if" questions visually, not just conversationally. Examples: "what if I sell my apartment", "what if NVIDIA doubles", "what if I add €50k to ETFs".

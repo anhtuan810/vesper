@@ -4,6 +4,10 @@ This document is the source of truth for the display currency feature. Read it i
 
 Mirrors the pattern set by `redesign-brief.md` — one document, multiple phases, each phase a separate chat.
 
+## Status: Phases A–D shipped. /settings route superseded by Decision 5.
+
+The four phases described in this document have been implemented. The `/settings` route created in Phase A is superseded by Decision 5 of `redesign-decisions.md` — the display currency picker now lives on the `/profile` page under a Preferences section. The shipped picker still works; relocating it is PR 3 of the redesign migration. The rest of this document remains historically accurate and is the reference for the currency feature's architecture.
+
 ## Working principles (read first)
 
 - **EUR is the storage unit.** Every numeric column in `assets`, `snapshots`, `mutations`, `goals` stores EUR-equivalent values. This is non-negotiable for this feature.

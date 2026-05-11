@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vesper — Diary mockup</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+
+  <style>
+    :root, [data-theme="light"] {
+      --bg: #F5F1EA;
+      --surface: #FFFFFF;
+      --surface-elev: #EBE4D6;
+      --border: rgba(26, 31, 46, 0.08);
+      --border-strong: rgba(26, 31, 46, 0.16);
+      --text: #1A1F2E;
+      --text-dim: #6B7280;
+      --text-faint: #9CA3AF;
+      --hero: #0B0F18;
+      --accent: #4A7C5E;
+      --accent-soft: #DDEBE1;
+      --accent-text: #2D5340;
+      --positive: #4A7C5E;
+      --positive-soft: #DDEBE1;
+      --positive-text: #2D5340;
+      --negative: #B5564B;
+      --negative-soft: #F4DDD9;
+      --negative-text: #8B3D33;
+      --font-sans: 'Albert Sans', -apple-system, system-ui, sans-serif;
+      --font-serif: 'Source Serif 4', Georgia, serif;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 28px;
+      --nav-surface: rgba(245, 241, 234, 0.92);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #2A2A2C;
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .stage {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: #0A0A0A;
+      border-radius: 56px;
+      padding: 12px;
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,0.08), 0 30px 80px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .phone::before {
+      content: '';
+      position: absolute;
+      top: 22px; left: 50%;
+      transform: translateX(-50%);
+      width: 110px; height: 30px;
+      background: #000; border-radius: 16px; z-index: 10;
+    }
+
+    .screen {
+      position: relative;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      border-radius: 44px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      color: var(--text);
+    }
+
+    .status-bar {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px 6px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .status-bar .right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .app {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 22px 110px;
+      scrollbar-width: none;
+    }
+    .app::-webkit-scrollbar { display: none; }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0 22px;
+    }
+    .identity { display: flex; align-items: center; gap: 11px; }
+    .avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .name { font-size: 16px; font-weight: 500; color: var(--text); }
+    .icon-row { display: flex; gap: 18px; align-items: center; color: var(--text-dim); }
+    .icon-row svg { width: 22px; height: 22px; cursor: pointer; display: block; }
+
+    /* PAGE HERO — section title only */
+    .page-hero {
+      margin-bottom: 18px;
+    }
+    .page-title {
+      font-family: var(--font-serif);
+      font-size: 38px;
+      font-weight: 500;
+      letter-spacing: -0.025em;
+      color: var(--hero);
+      line-height: 1;
+      font-variation-settings: 'opsz' 60;
+    }
+
+    /* SEARCH INPUT */
+    .search {
+      position: relative;
+      margin-bottom: 18px;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px 12px 42px;
+      font-size: 15px;
+      font-family: var(--font-sans);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input::placeholder { color: var(--text-faint); }
+    .search-input:focus { border-color: var(--border-strong); }
+    .search-icon {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--text-faint);
+    }
+
+    /* WORTH KNOWING — same as Portfolio */
+    .insight {
+      position: relative;
+      margin: 0 -22px 18px;
+      padding: 14px 40px 14px 22px;
+      background: var(--accent-soft);
+      cursor: pointer;
+    }
+    .insight-eyebrow {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-text);
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+    .insight-body {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.35;
+      color: var(--text);
+      font-variation-settings: 'opsz' 18;
+    }
+    .insight-body em { font-style: italic; }
+    .insight-chevron {
+      position: absolute;
+      top: 18px; right: 22px;
+      width: 12px; height: 12px;
+      color: var(--accent-text);
+      opacity: 0.5;
+    }
+
+    /* MONTH DIVIDER */
+    .month {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 22px 0 12px;
+    }
+    .month-name {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      font-variation-settings: 'opsz' 24;
+    }
+    .month-count {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+
+    /* ENTRY ROW */
+    .entry {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .entry:last-child { border-bottom: none; }
+
+    .entry-icon {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 0.5px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 500;
+      color: var(--text);
+      flex-shrink: 0;
+      letter-spacing: -0.02em;
+      overflow: hidden;
+    }
+    .entry-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: white;
+    }
+    .entry-icon.logo {
+      border: none;
+    }
+    .entry-icon.real-estate {
+      background: var(--accent-soft);
+      border: none;
+      color: var(--accent-text);
+    }
+    .entry-icon.cash {
+      font-size: 8px;
+    }
+
+    .entry-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .entry-row1 {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+    .entry-name {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+    .entry-delta {
+      font-size: 13px;
+      font-weight: 500;
+      flex: 1;
+    }
+    .entry-delta.positive { color: var(--positive-text); }
+    .entry-delta.negative { color: var(--negative-text); }
+    .entry-delta.neutral  { color: var(--text-dim); }
+
+    .entry-date {
+      font-size: 12px;
+      color: var(--text-faint);
+      font-feature-settings: "tnum" 1;
+      flex-shrink: 0;
+    }
+    .entry-note {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.4;
+      font-variation-settings: 'opsz' 14;
+    }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: var(--nav-surface);
+      backdrop-filter: blur(20px);
+      border-top: 0.5px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 14px 0 32px;
+      border-radius: 0 0 44px 44px;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-faint);
+      flex: 1;
+    }
+    .nav-item.active { color: var(--accent); }
+    .nav-item svg { width: 26px; height: 26px; display: block; }
+    .nav-item span {
+      font-size: 11px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone">
+      <div class="screen">
+
+        <div class="status-bar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M232,40H184a16,16,0,0,0-16,16V200a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,232,40Zm0,160H184V56h48ZM152,80h-48a16,16,0,0,0-16,16V200a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V96A16,16,0,0,0,152,80Zm0,120h-48V96h48ZM72,128H24a16,16,0,0,0-16,16v56a16,16,0,0,0,16,16H72a16,16,0,0,0,16-16V144A16,16,0,0,0,72,128Zm0,72H24V144H72Z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M140,204a12,12,0,1,1-12-12A12,12,0,0,1,140,204ZM237.08,87A172,172,0,0,0,18.92,87,8,8,0,0,0,29.08,99.37a156,156,0,0,1,197.84,0A8,8,0,1,0,237.08,87ZM205.78,124.9a124,124,0,0,0-155.56,0A8,8,0,1,0,60.18,137.4a108,108,0,0,1,135.64,0,8,8,0,1,0,9.96-12.5Zm-30.79,38.1a76,76,0,0,0-93.98,0A8,8,0,1,0,90.81,175.5a60,60,0,0,1,74.38,0A8,8,0,1,0,174.99,163Z"/></svg>
+            <svg width="22" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,72H32A16,16,0,0,0,16,88v80a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V152h8a8,8,0,0,0,8-8V112a8,8,0,0,0-8-8h-8V88A16,16,0,0,0,224,72ZM224,168H32V88H224V168Z"/><rect x="40" y="96" width="160" height="64" rx="2"/></svg>
+          </span>
+        </div>
+
+        <div class="app">
+
+          <div class="top-bar">
+            <div class="identity">
+              <div class="avatar">AT</div>
+              <span class="name">Anh-Tuan</span>
+            </div>
+            <div class="icon-row">
+              <span class="ico" aria-label="Refresh">
+                <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="176 40 224 40 224 88"/>
+                  <path d="M65.16,65.16a88,88,0,0,1,124.49,0L224,99.51"/>
+                  <polyline points="80 216 32 216 32 168"/>
+                  <path d="M190.84,190.84a88,88,0,0,1-124.49,0L32,156.49"/>
+                </svg>
+              </span>
+              <span class="ico" aria-label="Settings">
+                <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="128" cy="128" r="40"/>
+                  <path d="M130.05,206.11c-1.39,0-2.78,0-4.16,0L94,224a103.7,103.7,0,0,1-37.21-21.6L57,166c-.81-1.13-1.6-2.27-2.36-3.43L18.74,151.4a104.1,104.1,0,0,1,0-46.8L54.59,93.43C55.35,92.27,56.14,91.13,57,90L56.79,53.6A103.7,103.7,0,0,1,94,32l31.85,17.89c1.38,0,2.77,0,4.16,0L162,32a103.7,103.7,0,0,1,37.21,21.6L199,90c.81,1.13,1.6,2.27,2.36,3.43l35.85,11.17a104.1,104.1,0,0,1,0,46.8L201.41,162.57c-.76,1.16-1.55,2.3-2.36,3.43l.18,36.4A103.7,103.7,0,0,1,162,224Z"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+
+          <!-- Page hero -->
+          <div class="page-hero">
+            <div class="page-title">Diary</div>
+          </div>
+
+          <!-- Search -->
+          <div class="search">
+            <svg class="search-icon" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="116" cy="116" r="84"/>
+              <line x1="175.39" y1="175.39" x2="224" y2="224"/>
+            </svg>
+            <input class="search-input" placeholder="Search asml, april, removed…" />
+          </div>
+
+          <!-- Worth knowing — anniversary recall -->
+          <div class="insight">
+            <div class="insight-eyebrow">Worth knowing</div>
+            <div class="insight-body">
+              One year ago you added ASML at €600 — it's <em>up 71%</em> since.
+            </div>
+            <svg class="insight-chevron" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="96 48 176 128 96 208"/>
+            </svg>
+          </div>
+
+          <!-- May -->
+          <div class="month">
+            <div class="month-name">May</div>
+            <div class="month-count">12 entries</div>
+          </div>
+
+          <div class="entry">
+            <div class="entry-icon logo"><img src="https://images.financialmodelingprep.com/symbol/ASML.png" alt="ASML"/></div>
+            <div class="entry-body">
+              <div class="entry-row1">
+                <span class="entry-name">ASML</span>
+                <span class="entry-delta positive">+5 shares</span>
+                <span class="entry-date">8 May</span>
+              </div>
+              <div class="entry-note">Building on the post-earnings dip — same thesis as last buy.</div>
+            </div>
+          </div>
+
+          <div class="entry">
+            <div class="entry-icon real-estate">
+              <svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M152,208V160a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v48a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V115.54a8,8,0,0,1,2.62-5.92l88-80.37a8,8,0,0,1,10.77,0l88,80.37a8,8,0,0,1,2.62,5.92V208a8,8,0,0,1-8,8H160A8,8,0,0,1,152,208Z"/>
+              </svg>
+            </div>
+            <div class="entry-body">
+              <div class="entry-row1">
+                <span class="entry-name">Eindhoven home</span>
+                <span class="entry-delta positive">+€12,000</span>
+                <span class="entry-date">5 May</span>
+              </div>
+              <div class="entry-note">Annual reappraisal — neighbour sold at €730k in February.</div>
+            </div>
+          </div>
+
+          <div class="entry">
+            <div class="entry-icon logo"><img src="https://images.financialmodelingprep.com/symbol/NVDA.png" alt="NVIDIA"/></div>
+            <div class="entry-body">
+              <div class="entry-row1">
+                <span class="entry-name">NVIDIA</span>
+                <span class="entry-delta positive">+10 shares</span>
+                <span class="entry-date">2 May</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- April -->
+          <div class="month">
+            <div class="month-name">April</div>
+            <div class="month-count">18 entries</div>
+          </div>
+
+          <div class="entry">
+            <div class="entry-icon logo"><img src="https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/btc.svg" alt="Bitcoin"/></div>
+            <div class="entry-body">
+              <div class="entry-row1">
+                <span class="entry-name">Bitcoin</span>
+                <span class="entry-delta negative">−0.02 BTC</span>
+                <span class="entry-date">28 Apr</span>
+              </div>
+              <div class="entry-note">Trimming to €5k cap. Position-sizing rule, not a market call.</div>
+            </div>
+          </div>
+
+          <div class="entry">
+            <div class="entry-icon cash">CASH</div>
+            <div class="entry-body">
+              <div class="entry-row1">
+                <span class="entry-name">ABN AMRO savings</span>
+                <span class="entry-delta positive">+€2,500</span>
+                <span class="entry-date">15 Apr</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="entry">
+            <div class="entry-icon logo"><img src="https://images.financialmodelingprep.com/symbol/AAPL.png" alt="Apple"/></div>
+            <div class="entry-body">
+              <div class="entry-row1">
+                <span class="entry-name">Apple</span>
+                <span class="entry-delta positive">+15 shares</span>
+                <span class="entry-date">10 Apr</span>
+              </div>
+              <div class="entry-note">Bought into the post-WWDC weakness at $200.</div>
+            </div>
+          </div>
+
+          <!-- Year suffix appears on months outside the current year -->
+          <div class="month">
+            <div class="month-name">December 2025</div>
+            <div class="month-count">9 entries</div>
+          </div>
+
+          <div class="entry">
+            <div class="entry-icon logo"><img src="https://images.financialmodelingprep.com/symbol/META.png" alt="Meta"/></div>
+            <div class="entry-body">
+              <div class="entry-row1">
+                <span class="entry-name">Meta</span>
+                <span class="entry-delta positive">+3 shares</span>
+                <span class="entry-date">28 Dec 2025</span>
+              </div>
+              <div class="entry-note">Year-end addition — leaning into the post-Q3 drift.</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="bottom-nav">
+          <div class="nav-item">
+            <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="128" cy="128" r="96"/>
+              <line x1="128" y1="32" x2="128" y2="128"/>
+              <line x1="211.27" y1="80" x2="128" y2="128"/>
+            </svg>
+            <span>Portfolio</span>
+          </div>
+          <div class="nav-item active">
+            <svg viewBox="0 0 256 256" fill="currentColor">
+              <path d="M232,56V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56Zm-96,8H56a8,8,0,0,0-8,8v48a8,8,0,0,0,8,8h80a8,8,0,0,0,8-8V72A8,8,0,0,0,136,64Z"/>
+            </svg>
+            <span>Diary</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/>
+            </svg>
+            <span>Chat</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="128" cy="96" r="64"/>
+              <path d="M30.99,224a112.04,112.04,0,0,1,194.02,0"/>
+            </svg>
+            <span>Profile</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

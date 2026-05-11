@@ -24,6 +24,7 @@ The MVP supports both conversation-first and direct-edit workflows. Adding asset
 ## Current Stack
 
 - **Frontend**: Next.js 16 (Turbopack), React, Tailwind CSS, TypeScript
+- **Fonts**: Source Serif 4 (serif, hero numbers and section titles), Albert Sans (body, labels, nav). Geist Mono is no longer used in UI chrome.
 - **Database**: Supabase (Postgres) with Row Level Security
 - **Auth**: Supabase Auth — Google OAuth + email magic link
 - **AI**: Anthropic Claude API (`claude-sonnet-4-6` for assistant, `claude-haiku-4-5-20251001` for summaries)
@@ -70,8 +71,6 @@ src/
       fx/route.ts               FX rate fetch + cache (frankfurter.app)
       diary-summary/route.ts    Background Claude call for diary summary card
       geocode/route.ts          Server-side Nominatim geocoding
-      assets/[id]/route.ts      PATCH (field allowlist) + DELETE with mutation logging + snapshot trigger
-      mutations/[id]/route.ts   PATCH personal_context on a mutation entry
       snapshots/route.ts        GET — returns user's snapshot series for the chart
       cron/snapshot/route.ts    Daily cron — writes snapshots for all users
       backfill/route.ts         One-time backfill for zero-value mutations (legacy data fix)
@@ -94,14 +93,11 @@ src/
     DiaryTab.tsx                Diary list + slimmed AI summary card with pulsing V loading state
     FormatText.tsx              Markdown-lite rendering for chat messages
     asset-detail/
-      TradeableDetail.tsx       Stocks / ETFs / crypto / gold layout (fully inline-editable)
-      RealEstateDetail.tsx      Property hub layout (fully inline-editable, Phase 2b)
-      StaticDetail.tsx          Cash / pension / bond / other layout (fully inline-editable, Phase 2b)
-      InlineEdit.tsx            Inline edit primitive with optional pencil affordance
-      DeleteAssetButton.tsx     Two-step delete with 5s revert window
-      ContextNotePrompt.tsx     Post-mutation note prompt (fires on >5% value/units change)
+      TradeableDetail.tsx       Stocks / ETFs / crypto / gold layout (read-only)
+      RealEstateDetail.tsx      Property hub layout (read-only)
+      StaticDetail.tsx          Cash / pension / bond / other layout (read-only)
       CryptoVolatilityBlock.tsx 24h volatility (crypto only)
-      BondBlock.tsx             Issuer / coupon / maturity / ISIN with inline edits (bonds only)
+      BondBlock.tsx             Issuer / coupon / maturity / ISIN display (bonds only)
   lib/
     supabase.ts                 DB client + TypeScript types (Asset, Mutation with units, etc.)
     claude.ts                   System prompt builders (main + onboarding); EUR-parameterized; supports rename via new_name
@@ -125,9 +121,15 @@ src/
 vercel.json                     Cron schedule
 
 docs/
-  redesign-mockups/
-    main-screens.html           Canonical visual reference for Portfolio / Diary / Chat
-    real-estate-detail.html     Real Estate detail page anatomy
+  redesign_mockups/
+    portfolio.html              Portfolio page reference
+    diary.html                  Diary page reference
+    chat.html                   Chat page reference
+    profile.html                Profile page reference
+    tradeable-detail.html       Tradeable asset detail reference
+    real-estate-detail.html     Real Estate detail page reference
+    static-detail.html          Static asset detail reference
+    bond-detail.html            Bond detail reference
   redesign-brief.md             Source of truth for the redesign (Phases 1–6)
   currency-feature-spec.md      Source of truth for display currency parameterization (Phases A–D)
   vesper-project-handoff.md     This file
@@ -138,7 +140,7 @@ docs/
 
 ## Important Product Principles
 
-1. **Two surfaces, one philosophy**. Adding assets always happens through chat (it captures context, handles screenshots, infers types). Editing and deleting can happen inline OR through chat — both code paths log mutations identically. The chat is no longer a fallback for missing UI; it's a peer surface.
+1. **Chat is the only modification surface**. Adding, editing, and removing assets all happen through chat — where the act of stating the change captures the reasoning at the moment it happens. Asset detail pages and other views display data but never mutate it. There is one code path for changes: the chat route.
 2. **Investing tone, not trading**. Use "growth" not "P&L". Use "added" not "entry". No win/loss ratios. No gamification.
 3. **Professional language**. No emojis. No exclamation marks. No "awesome / great / cool". Speak like a private banker.
 4. **Asset-agnostic**. No country-specific features. No asset-type-specific logic outside detail dispatchers. The intelligence is in the AI layer.

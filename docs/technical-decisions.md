@@ -5,7 +5,7 @@
 - **Next.js 16** (Turbopack) with App Router
 - **React** with TypeScript
 - **Tailwind CSS** for styling
-- **Fonts**: Fraunces (serif, hero numbers), Plus Jakarta Sans (body), Geist Mono (financial figures, dates, metadata) — all loaded from Google Fonts
+- **Fonts**: Source Serif 4 (serif, hero numbers and section titles), Albert Sans (body, labels, nav). Geist Mono is no longer used in UI chrome. — all loaded from Google Fonts
 - **Design tokens** in `src/app/globals.css` (CSS vars) + `tailwind.config.ts` (utilities) + `src/lib/tokens.ts` (TypeScript mirror for inline JS contexts like Recharts)
 - No state management library — local React state and custom hooks only
 - No component library — custom inline styles using Tailwind utility classes
@@ -15,7 +15,7 @@
 - **Supabase Postgres** with Row Level Security on all user-scoped tables
 - **Supabase Auth** for Google OAuth + email magic link
 - **Supabase Storage** bucket `property-photos` for cached map snapshots and uploaded property photos (RLS: users can only read/write files prefixed with their own `user_id`)
-- **Next.js API routes** for server-side logic (`/api/chat`, `/api/prices`, `/api/fx`, `/api/geocode`, `/api/diary-summary`, `/api/prices/history`, `/api/snapshots`, `/api/cron/snapshot`, `/api/assets/[id]`, `/api/mutations/[id]`)
+- **Next.js API routes** for server-side logic (`/api/chat`, `/api/prices`, `/api/fx`, `/api/geocode`, `/api/diary-summary`, `/api/prices/history`, `/api/snapshots`, `/api/cron/snapshot`, `/api/users/me`)
 - **Anthropic Claude API** called server-side only (API key never exposed to client)
 - **Sentry** for error tracking (server, client, and edge). Free tier covers MVP scale. App runs gracefully when DSN is unset.
 - **frankfurter.app** for FX rates (no key, ECB-backed)
@@ -38,6 +38,8 @@ Auto-populated on signup via Supabase Auth trigger.
 - `email`, `name`, `avatar_url`
 - `profile` (jsonb) — investor profile fields built by `profile-extractor.ts`
 - `display_currency` (text, default `'EUR'`, check `in ('EUR', 'USD', 'GBP')`) — per-user display preference. Storage stays EUR-equivalent; this column drives only the rendered string. See `currency-feature-spec.md`. **Added in Phase A of the currency parameterization work; not present until then.**
+- `theme` (text, default `'auto'`, check `in ('auto', 'light', 'dark')`) — per-user theme preference. `ThemeProvider` resolves `auto` against `prefers-color-scheme`.
+- `avatar_url` is now user-editable via PATCH `/api/users/me` (in addition to being auto-populated from Google OAuth on signup).
 - `created_at`, `updated_at`
 
 ### assets
@@ -126,7 +128,9 @@ Claude returns small `<changes>` blocks — only what changed, never the full po
 Every action writes a row to `mutations` with the resolved currency and unit columns where applicable.
 
 ### Background profile extraction
-After every non-onboarding chat, a separate Claude call analyzes the exchange and updates `users.profile`. Fire-and-forget — never blocks the user response. Costs ~$0.003 per conversation.
+After every non-onboarding chat, a separate Claude call analyzes the exchange and updates `users.profile`. Fire-and-forget — never blocks the user response. Costs ~$0.003 per conversation. Also emits a `fingerprint` field — a single-sentence characterization of the user as an investor, 12–18 words, used on the Profile page.
+
+Chat is a single continuous thread per user. `useChatSession`'s 24h localStorage TTL is a cache strategy, not a UX-level session boundary. `GET /api/messages` supports cursor-based pagination (`before=<id>&limit=20`) to lazy-load older history as the user scrolls up.
 
 ### Strict topic boundary
 The system prompt explicitly tells Claude to refuse off-topic requests with a fixed redirect message. Portfolio and personal finance only.
@@ -166,14 +170,15 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 ## Mutation / Diary Logging Rules
 
 - Every `add`, `edit`, `remove` action in `/api/chat` writes a row to `mutations`
-- Manual UI changes via PATCH/DELETE on `/api/assets/[id]` also write rows using the same schema
 - `add` actions are dedup-checked before INSERT: case-insensitive symbol match if symbol present, else case-insensitive name match. Duplicates are rejected and surfaced conversationally so the assistant can clarify with the user (update vs rename)
 - `currency` is recorded alongside the value, derived from the resolved asset currency at write time
 - `before_units` / `after_units` are recorded for tradeable mutations only — null for real estate, cash, bonds, pension. Diary display logic prefers unit-based deltas when these columns are populated
-- `personal_context` comes from the optional `<context>` block returned by Claude (chat path) or null on inline UI changes; banker's-note style enforced via system prompt
+- `personal_context` comes from the optional `<context>` block returned by Claude; banker's-note style enforced via system prompt
 - `portfolio_total` is captured at the moment of mutation
 - `occurred_at` defaults to today; Claude uses `buy_date` for adds when known
-- `PATCH /api/mutations/[id]` allows updating `personal_context` only; all other fields are rejected with 400
+- Pure renames (chat or UI edits where the only diff is the asset name) do not create a `mutations` row. The asset UPDATE still runs.
+- `personal_context` is write-once. Captured at the moment of mutation, never edited afterward.
+- Diary display reads asset names from current `assets.name` via LEFT JOIN; `mutations.asset_name` is the fallback for deleted assets only.
 
 ## Price Fetching and Currency Conversion
 
@@ -224,6 +229,18 @@ The system prompt explicitly tells Claude to refuse off-topic requests with a fi
 - `ANTHROPIC_API_KEY` — Claude API key
 - `CRON_SECRET` — protects `/api/cron/*` endpoints. Vercel Cron sends as `Authorization: Bearer <value>`
 - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` — error tracking, optional (app runs cleanly without)
+
+## User preferences endpoint
+
+`PATCH /api/users/me` accepts an allowlist of `display_currency`, `theme`, and `avatar_url`. Field-level allowlist; unknown fields rejected with 400.
+
+## Mortgage current balance
+
+`computeCurrentBalance(asset, asOf = today)` in `src/lib/mortgage.ts` computes today's balance using the amortization formula from the stored anchor (`mortgage_balance` + `mortgage_start_date` + rate + payment + type). Read sites (`MortgageBlock`, `RealEstateDetail`) go through the helper rather than reading `assets.mortgage_balance` directly. `assets.mortgage_balance` stores the balance at the most recent anchor (initial setup or recalibration via stated balance correction). No cron job. Same amortization formula serves both current balance and the future payoff projection chart.
+
+## Theme
+
+`users.theme` column (auto / light / dark, default auto). `ThemeProvider` resolves auto against `prefers-color-scheme`. Cookie set on theme change so SSR renders the correct `data-theme` attribute on `<html>`. Picker lives on the Profile page; no separate settings route.
 
 ## Known Technical Debt
 
