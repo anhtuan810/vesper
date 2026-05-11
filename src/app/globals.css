@@ -5,6 +5,7 @@
   --serif: var(--font-serif), Georgia, serif;
   --sans:  var(--font-sans), system-ui, sans-serif;
   --mono:  var(--font-mono), "SF Mono", monospace;
+  --nav-height: 56px;
 }
 
 :root,
@@ -75,6 +76,10 @@
   --font-serif:          var(--serif);
   --font-sans:           var(--sans);
   --font-mono:           var(--mono);
+}
+
+html {
+  scroll-padding-top: var(--nav-height);
 }
 
 body {
