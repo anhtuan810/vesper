@@ -15,7 +15,7 @@ export default function ChatPage() {
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
   const {
     messages, input, setInput, loading, thinking, remaining,
-    imagePreview, imageData, canSend, send, clearImage, handlePaste, handleFile,
+    imagePreview, imageData, canSend, send, sendText, clearImage, handlePaste, handleFile,
     loadMore, hasMore, isLoadingMore,
   } = useChatSession({ userId: user?.id });
 
@@ -24,7 +24,6 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Asset id from ?asset= param, consumed once assets have loaded.
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,93 +82,86 @@ export default function ChatPage() {
         .chat-msg { animation: up 0.25s ease forwards; }
         .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 1.2s ease infinite;margin:0 2px; }
         .chat-dot:nth-child(2){animation-delay:.2s}.chat-dot:nth-child(3){animation-delay:.4s}
+        .chat-composer-gradient {
+          background: linear-gradient(180deg, rgba(245,241,234,0) 0%, var(--bg) 30%, var(--bg) 100%);
+        }
+        [data-theme="dark"] .chat-composer-gradient {
+          background: linear-gradient(180deg, rgba(20,17,13,0) 0%, var(--bg) 30%, var(--bg) 100%);
+        }
       `}</style>
 
-      <div className="flex flex-col overflow-x-hidden bg-surface" style={{ height: "100dvh", paddingBottom: "calc(64px + env(safe-area-inset-bottom))" }}>
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-4 shrink-0"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <div
-            className="font-serif text-fg"
-            style={{ fontSize: 18, fontWeight: 400, letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 144" }}
-          >
-            Vesper
-          </div>
-          <button
-            onClick={() => router.back()}
-            className="flex items-center justify-center text-faint hover:text-dim transition-colors"
-            style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: "var(--surface-elev)",
-              fontSize: 16,
-            }}
-          >
-            ×
-          </button>
-        </div>
-
+      <div
+        className="relative flex flex-col overflow-hidden bg-bg"
+        style={{ height: "100dvh" }}
+      >
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 flex flex-col gap-4" style={{ scrollbarWidth: "none", scrollbarGutter: "stable" }}>
+        <div
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+          style={{
+            padding: "32px 22px 160px",
+            scrollbarWidth: "none",
+            display: "flex",
+            flexDirection: "column",
+            gap: 22,
+          }}
+        >
           <div ref={sentinelRef} />
           {isLoadingMore && (
-            <div className="text-center font-mono text-faint" style={{ fontSize: 11, paddingBottom: 4 }}>
-              Loading older messages...
+            <div
+              className="text-center text-faint"
+              style={{ fontSize: 11, paddingBottom: 4 }}
+            >
+              Loading older messages…
             </div>
           )}
+
           {messages.length === 0 && (
             <div>
-              <div className="text-dim mb-4 leading-relaxed" style={{ fontSize: 13 }}>
+              <div
+                className="text-dim mb-5 leading-relaxed"
+                style={{ fontSize: 15 }}
+              >
                 {hasPortfolio
                   ? "Ask about your portfolio, or paste a screenshot of your broker app."
                   : "Welcome. Tell me what you own — stocks, property, savings, anything. List them out, or paste a screenshot of your broker app."}
               </div>
-              {chatSuggestions.map((s) => (
-                <button
-                  key={s}
-                  className="block w-full text-left mb-1.5 transition-colors"
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: "var(--surface-elev)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-dim)",
-                    fontSize: 12,
-                  }}
-                  onClick={() => { setInput(s); inputRef.current?.focus(); }}
-                >
-                  {s}
-                </button>
-              ))}
+              <div className="flex flex-col items-start gap-2">
+                {chatSuggestions.map((s) => (
+                  <button
+                    key={s}
+                    style={{
+                      fontSize: 13,
+                      color: "var(--accent-text)",
+                      background: "var(--accent-soft)",
+                      padding: "8px 14px",
+                      borderRadius: 999,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => sendText(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} className={`chat-msg flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
-              {msg.from === "assistant" && (
-                <div className="self-start mr-2 mt-0.5 shrink-0">
-                  <div
-                    className="flex items-center justify-center font-mono text-accent"
-                    style={{
-                      width: 18, height: 18, borderRadius: 5,
-                      background: "var(--accent-soft)",
-                      border: "1px solid rgba(212,165,116,0.18)",
-                      fontSize: 8, fontWeight: 600,
-                    }}
-                  >
-                    V
-                  </div>
-                </div>
-              )}
+            <div
+              key={i}
+              className={`chat-msg flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}
+            >
               <div
-                className="max-w-[82%]"
                 style={{
+                  maxWidth: msg.from === "user" ? "78%" : "92%",
                   padding: msg.from === "user" ? "10px 14px" : "0",
-                  borderRadius: msg.from === "user" ? "16px 16px 4px 16px" : 0,
-                  background: msg.from === "user" ? "var(--surface-elev)" : "transparent",
-                  color: "var(--text-dim)",
-                  fontSize: 13,
+                  borderRadius: msg.from === "user" ? "18px 18px 4px 18px" : 0,
+                  background: msg.from === "user" ? "var(--surface)" : "transparent",
+                  border: msg.from === "user" ? "0.5px solid var(--border)" : "none",
+                  boxShadow: msg.from === "user" ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
+                  color: "var(--text)",
+                  fontSize: 15,
                   lineHeight: 1.55,
                   overflowWrap: "break-word",
                   minWidth: 0,
@@ -200,7 +192,7 @@ export default function ChatPage() {
           ))}
 
           {thinking && (
-            <div className="flex items-center gap-0.5 py-1 pl-7">
+            <div className="flex items-center gap-0.5 py-1">
               <span className="chat-dot" />
               <span className="chat-dot" />
               <span className="chat-dot" />
@@ -209,119 +201,177 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Image preview */}
-        {imagePreview && (
-          <div className="px-4 pb-2 flex items-center gap-2 shrink-0">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-12 h-12 rounded-lg object-cover"
-              style={{ border: "1px solid var(--border)" }}
-            />
-            <span className="text-dim flex-1" style={{ fontSize: 12 }}>Screenshot ready to send</span>
-            <button
-              onClick={clearImage}
-              className="text-faint hover:text-dim transition-colors"
-              style={{ fontSize: 12 }}
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Input bar */}
+        {/* Floating composer — positioned above the bottom nav */}
         <div
-          className="px-4 py-3 flex gap-2 items-center shrink-0"
-          style={{ position: "relative", borderTop: "1px solid var(--border)" }}
+          className="chat-composer-gradient"
+          style={{
+            position: "absolute",
+            bottom: "calc(64px + env(safe-area-inset-bottom))",
+            left: 0,
+            right: 0,
+            padding: "0 22px 12px",
+          }}
         >
+          {/* Image preview */}
+          {imagePreview && (
+            <div className="pb-2 flex items-center gap-2">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-12 h-12 rounded-lg object-cover"
+                style={{ border: "1px solid var(--border)" }}
+              />
+              <span className="text-dim flex-1" style={{ fontSize: 12 }}>
+                Screenshot ready to send
+              </span>
+              <button
+                onClick={clearImage}
+                className="text-faint hover:text-dim transition-colors"
+                style={{ fontSize: 12, background: "none", border: "none", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Counter badges */}
           {remaining !== null && remaining <= 10 && (
             <div
-              className="absolute font-mono text-accent"
-              style={{ top: -20, right: 16, fontSize: 10 }}
+              className="font-mono text-accent text-right"
+              style={{ fontSize: 10, paddingBottom: 4 }}
             >
-              {remaining === 0 ? "Limit reached" : `${remaining} messages left today`}
+              {remaining === 0 ? "Limit reached" : `${remaining} left today`}
             </div>
           )}
           {input.length >= 400 && (
             <div
-              className="absolute font-mono"
+              className="font-mono"
               style={{
-                top: -20, left: 16, fontSize: 10,
+                fontSize: 10,
+                paddingBottom: 4,
                 color: input.length >= 500 ? "var(--negative)" : "var(--accent)",
               }}
             >
               {input.length}/500
             </div>
           )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-              e.target.value = "";
-            }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Attach image"
-            className="flex items-center justify-center shrink-0 transition-colors text-faint hover:text-dim"
+
+          {/* Input pill */}
+          <div
             style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
+              position: "relative",
+              background: "var(--surface)",
+              border: "0.5px solid var(--border-strong)",
+              borderRadius: 22,
+              padding: "12px 50px 12px 44px",
+              display: "flex",
+              alignItems: "center",
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="9" cy="9" r="2" />
-              <path d="M21 15l-5-5L5 21" />
-            </svg>
-          </button>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }}
-            onPaste={handlePaste}
-            maxLength={500}
-            placeholder={
-              remaining === 0
-                ? "Daily limit reached — back tomorrow"
-                : imageData
-                ? "Add a note or send..."
-                : "Ask or paste a screenshot..."
-            }
-            className="flex-1 outline-none"
-            style={{
-              background: "var(--surface-elev)",
-              border: "1px solid var(--border)",
-              borderRadius: 16,
-              padding: "10px 14px",
-              fontSize: 13,
-              color: "var(--text)",
-              fontFamily: "var(--sans)",
-            }}
-          />
-          <button
-            onClick={send}
-            disabled={!canSend}
-            className="flex items-center justify-center shrink-0 transition-opacity"
-            style={{
-              width: 40, height: 40, borderRadius: "50%",
-              background: canSend ? "var(--accent)" : "var(--surface-elev)",
-              color: canSend ? "var(--bg)" : "var(--text-faint)",
-              fontSize: 16,
-              cursor: canSend ? "pointer" : "default",
-              opacity: canSend ? 1 : 0.5,
-              border: "none",
-            }}
-          >
-            ↑
-          </button>
+            {/* Image attach button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Attach image"
+              className="flex items-center justify-center text-faint hover:text-dim transition-colors"
+              style={{
+                position: "absolute",
+                left: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+            </button>
+
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }}
+              onPaste={handlePaste}
+              maxLength={500}
+              placeholder={
+                remaining === 0
+                  ? "Daily limit reached — back tomorrow"
+                  : imageData
+                  ? "Add a note or send…"
+                  : "Ask anything about your portfolio…"
+              }
+              className="flex-1 outline-none"
+              style={{
+                background: "transparent",
+                border: "none",
+                fontFamily: "var(--sans)",
+                fontSize: 15,
+                color: "var(--text)",
+              }}
+            />
+
+            {/* Send button */}
+            <button
+              onClick={send}
+              disabled={!canSend}
+              className="flex items-center justify-center"
+              style={{
+                position: "absolute",
+                right: 6,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                background: canSend ? "var(--accent)" : "var(--surface-elev)",
+                color: canSend ? "var(--bg)" : "var(--text-faint)",
+                border: "none",
+                cursor: canSend ? "pointer" : "default",
+                opacity: canSend ? 1 : 0.5,
+                transition: "background 0.15s, opacity 0.15s",
+              }}
+            >
+              <svg
+                viewBox="0 0 256 256"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="22"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ width: 15, height: 15 }}
+              >
+                <line x1="128" y1="40" x2="128" y2="216" />
+                <polyline points="56 112 128 40 200 112" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </>

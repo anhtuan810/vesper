@@ -258,6 +258,47 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setLoading(false);
   }, [input, imageData, loading, userId, clearImage]);
 
+  // Send a specific text string without going through the input state — used by suggestion chips.
+  const sendText = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading || !userId) return;
+
+    setLoading(true);
+    setThinking(true);
+    setMessages((prev) => [...prev, { from: "user", text: trimmed }]);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed }),
+      });
+      const data = await res.json();
+      setThinking(false);
+
+      if (!res.ok) {
+        const errText = res.status === 401
+          ? "Session expired. Please refresh the page."
+          : data.message || data.error || "Something went wrong. Please try again.";
+        setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
+        setLoading(false);
+        return;
+      }
+
+      setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
+      if (typeof data.remaining === "number") setRemaining(data.remaining);
+      if (data.assets) onPortfolioUpdateRef.current?.();
+      onNewMessageRef.current?.();
+    } catch {
+      setThinking(false);
+      setMessages((prev) => [
+        ...prev,
+        { from: "assistant", text: "Connection issue. Please try again." },
+      ]);
+    }
+    setLoading(false);
+  }, [loading, userId]);
+
   return {
     messages,
     input,
@@ -269,6 +310,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     imageData,
     canSend: !loading && !!(input.trim() || imageData) && (remaining === null || remaining > 0),
     send,
+    sendText,
     clearImage,
     handlePaste,
     handleFile,
