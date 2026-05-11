@@ -219,6 +219,8 @@ export function RealEstateDetail({ asset }: Props) {
             </div>
             {mutations.map((m) => {
               const dateStr = m.occurred_at ?? m.recorded_at;
+
+              // Unified display rule (real estate is never tradeable — skip unit branch)
               let delta: string | null = null;
               let deltaPositive = true;
               let deltaNeutral = false;
@@ -226,16 +228,16 @@ export function RealEstateDetail({ asset }: Props) {
               if (m.after_value != null) {
                 if (m.action === "add" && m.before_value == null) {
                   delta = `Bought ${formatMoney(m.after_value, displayCurrency)}`; deltaNeutral = true;
-                } else if (m.action === "add" && m.before_value != null) {
-                  const d = m.after_value - m.before_value;
-                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
-                } else if (m.action === "edit" && m.before_value != null) {
-                  const d = m.after_value - m.before_value;
-                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
                 } else {
-                  delta = formatMoney(m.after_value, displayCurrency); deltaNeutral = true;
+                  const d = (m.after_value ?? 0) - (m.before_value ?? 0);
+                  if (d !== 0) {
+                    delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                  }
                 }
               }
+
+              // Hide row entirely if no delta and no context
+              if (!delta && !m.personal_context) return null;
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
@@ -248,7 +250,7 @@ export function RealEstateDetail({ asset }: Props) {
                         fontSize: 14,
                         fontWeight: 500,
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
-                        marginBottom: 2,
+                        marginBottom: m.personal_context ? 2 : 0,
                       }}>
                         {delta}
                       </div>

@@ -218,14 +218,8 @@ export function TradeableDetail({ asset }: Props) {
               background: up ? "var(--positive-soft)" : "var(--negative-soft)",
               color: up ? "var(--positive-text)" : "var(--negative-text)",
             }}>
-              <svg width="11" height="11" viewBox="0 0 256 256" fill="currentColor">
-                {up
-                  ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" />
-                  : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />
-                }
-              </svg>
-              {dailyAbs != null && `${dailyAbs >= 0 ? "+" : ""}${formatMoney(Math.abs(dailyAbs), displayCurrency)} today · `}
-              {up ? "+" : ""}{dailyChg.toFixed(2)}%
+              {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), displayCurrency)} today · `}
+              {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2)}%
             </div>
           ) : (
             <div style={{ fontSize: 12, color: "var(--text-faint)" }}>No live data</div>
@@ -318,31 +312,34 @@ export function TradeableDetail({ asset }: Props) {
             </div>
             {mutations.slice(0, 5).map((m) => {
               const dateStr = m.occurred_at ?? m.recorded_at;
-              const hasUnits = m.before_units != null || m.after_units != null;
               let delta: string | null = null;
               let deltaPositive = true;
               let deltaNeutral = false;
 
-              if (hasUnits) {
-                if (m.action === "add" && m.after_units != null) {
-                  delta = `+${m.after_units.toLocaleString()} ${noun}`;
-                } else if (m.action === "edit") {
-                  const d = (m.after_units ?? 0) - (m.before_units ?? 0);
-                  if (d !== 0) { delta = `${d >= 0 ? "+" : ""}${d.toLocaleString()} ${noun}`; deltaPositive = d >= 0; }
-                } else if (m.action === "remove" && m.before_units != null) {
-                  delta = `−${m.before_units.toLocaleString()} ${noun}`; deltaPositive = false;
-                }
-              }
-              if (delta === null && m.after_value != null) {
+              // Unified display rule
+              if (m.before_units != null && m.after_units != null) {
+                // Both unit fields present: show unit delta
+                const d = m.after_units - m.before_units;
+                if (d !== 0) { delta = `${d >= 0 ? "+" : ""}${d.toLocaleString()} ${noun}`; deltaPositive = d >= 0; }
+              } else if (m.action === "add" && m.after_units != null && m.before_units == null) {
+                // Initial buy: both fields technically partial — show as add
+                delta = `+${m.after_units.toLocaleString()} ${noun}`;
+              } else if (m.action === "remove" && m.before_units != null && m.after_units == null) {
+                delta = `−${m.before_units.toLocaleString()} ${noun}`; deltaPositive = false;
+              } else if (m.after_value != null) {
+                // No unit data: fall back to signed value delta
                 if (m.action === "add" && m.before_value == null) {
                   delta = `${formatMoney(m.after_value, displayCurrency)}`; deltaNeutral = true;
-                } else if (m.action === "add" && m.before_value != null) {
-                  const d = m.after_value - m.before_value;
-                  delta = `${d >= 0 ? "+" : ""}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
                 } else {
-                  delta = formatMoney(m.after_value, displayCurrency); deltaNeutral = true;
+                  const d = (m.after_value ?? 0) - (m.before_value ?? 0);
+                  if (d !== 0) {
+                    delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                  }
                 }
               }
+
+              // Hide row entirely if no delta and no context
+              if (!delta && !m.personal_context) return null;
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
@@ -353,7 +350,7 @@ export function TradeableDetail({ asset }: Props) {
                         fontSize: 14,
                         fontWeight: 500,
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
-                        marginBottom: 2,
+                        marginBottom: m.personal_context ? 2 : 0,
                       }}>
                         {delta}
                       </div>
