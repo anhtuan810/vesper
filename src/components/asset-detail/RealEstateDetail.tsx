@@ -57,6 +57,7 @@ export function RealEstateDetail({ asset }: Props) {
   const purchaseYear = purchaseMutation?.occurred_at
     ? new Date(purchaseMutation.occurred_at).getFullYear()
     : null;
+  const valueGain = purchaseValue != null ? asset.value - purchaseValue : null;
 
   // Property detail rows
   const purchaseDate = purchaseMutation?.occurred_at
@@ -140,7 +141,7 @@ export function RealEstateDetail({ asset }: Props) {
           }}>
             <HeroPrice amount={equity} displayCurrency={displayCurrency} />
           </div>
-          {purchaseValue != null && purchaseYear != null && (
+          {purchaseYear != null && valueGain != null && (
             <div style={{
               display: "inline-flex",
               alignItems: "center",
@@ -150,13 +151,16 @@ export function RealEstateDetail({ asset }: Props) {
               fontSize: 13,
               fontWeight: 500,
               fontFeatureSettings: '"tnum" 1',
-              background: "var(--positive-soft)",
-              color: "var(--positive-text)",
+              background: valueGain >= 0 ? "var(--positive-soft)" : "var(--negative-soft)",
+              color: valueGain >= 0 ? "var(--positive-text)" : "var(--negative-text)",
             }}>
               <svg width="11" height="11" viewBox="0 0 256 256" fill="currentColor">
-                <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" />
+                {valueGain >= 0
+                  ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" />
+                  : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />
+                }
               </svg>
-              since {purchaseYear}
+              {valueGain >= 0 ? "+" : "−"}{formatMoney(Math.abs(valueGain), displayCurrency)} since {purchaseYear}
             </div>
           )}
         </div>

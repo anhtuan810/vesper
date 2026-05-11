@@ -143,8 +143,7 @@ export function MortgageBlock({ asset }: Props) {
           border: "0.5px solid var(--border)",
           borderRadius: 14,
           padding: 12,
-          marginTop: -8,
-          paddingTop: 20,
+          marginTop: -14,
         }}>
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block" }}>
             <defs>
