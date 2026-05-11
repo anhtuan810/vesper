@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const RANGES = ["1W", "1M", "3M", "1Y", "ALL"] as const;
+const RANGES = ["1D", "1W", "1M", "3M", "1Y", "ALL"] as const;
 type Range = (typeof RANGES)[number];
 
 interface Props {
@@ -89,7 +89,7 @@ export function NetWorthChart({ currentNet }: Props) {
 
   return (
     <div>
-      {/* Chart area */}
+      {/* Chart SVG — labels rendered below, not inside, this container */}
       <div style={{ position: "relative", height: H }}>
         {showEmpty ? (
           <div
@@ -112,60 +112,54 @@ export function NetWorthChart({ currentNet }: Props) {
         ) : loading ? (
           <div style={{ height: H }} />
         ) : (
-          <>
-            <svg
-              viewBox={`0 0 ${W} ${H}`}
-              preserveAspectRatio="none"
-              width="100%"
-              height={H}
-              style={{ display: "block" }}
-            >
-              <defs>
-                <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
-                  <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              {/* Fill */}
-              <path d={area} fill={`url(#${gradId})`} />
-              {/* Line */}
-              <path
-                d={line}
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {/* Today marker: halo + dot */}
-              <circle cx={W} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
-              <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
-            </svg>
-
-            {/* Date labels below chart */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: 2,
-                left: 0,
-                right: 0,
-                display: "flex",
-                justifyContent: "space-between",
-                pointerEvents: "none",
-              }}
-            >
-              <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
-                {series.length > 0 ? fmtChartDate(series[0].date) : ""}
-              </span>
-              <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
-                {series.length > 0 ? fmtChartDate(series[series.length - 1].date) : ""}
-              </span>
-            </div>
-          </>
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            width="100%"
+            height={H}
+            style={{ display: "block" }}
+          >
+            <defs>
+              <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <path d={area} fill={`url(#${gradId})`} />
+            <path
+              d={line}
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {/* Today marker: halo + dot */}
+            <circle cx={W} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
+            <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
+          </svg>
         )}
       </div>
 
-      {/* Range pills — below chart */}
+      {/* Date axis labels — separate row below SVG so they never overlap the curve */}
+      {!showEmpty && !loading && series.length >= 2 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: 6,
+          }}
+        >
+          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
+            {fmtChartDate(series[0].date)}
+          </span>
+          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
+            {fmtChartDate(series[series.length - 1].date)}
+          </span>
+        </div>
+      )}
+
+      {/* Range pills — below axis labels */}
       <div
         className="flex gap-1 mt-3"
         style={{

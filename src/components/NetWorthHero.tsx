@@ -6,8 +6,6 @@ import { useDisplayCurrencyState } from "@/lib/hooks";
 
 interface NetWorthHeroProps {
   netTotal: number;
-  grossTotal: number;
-  totalDebt: number;
 }
 
 function useMonthlyChange(currentNet: number) {
@@ -31,7 +29,7 @@ function useMonthlyChange(currentNet: number) {
   return change;
 }
 
-export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroProps) {
+export function NetWorthHero({ netTotal }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
   const change = useMonthlyChange(netTotal);
   const up = change ? change.pct >= 0 : true;
@@ -79,13 +77,6 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
           <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
         </span>
       </div>
-
-      {/* Gross / debt subtitle when mortgages exist */}
-      {totalDebt > 0 && (
-        <div className="text-dim mt-2" style={{ fontSize: 14 }}>
-          Gross {formatMoney(grossTotal, displayCurrency)} · Debt {formatMoney(totalDebt, displayCurrency)}
-        </div>
-      )}
 
       {/* Change pill — only after 7 snapshots */}
       {change && (

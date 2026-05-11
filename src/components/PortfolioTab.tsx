@@ -3,29 +3,51 @@
 import { useMemo, useState, useEffect } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import { NetWorthChart } from "@/components/NetWorthChart";
-import { AllocationBar } from "@/components/AllocationBar";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
-import { formatDate, TYPE_COLOR, TYPE_LABEL, ACTION_STYLE, type Warning } from "@/lib/utils";
+import { formatDate, ACTION_STYLE, type Warning } from "@/lib/utils";
 import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { getMilestoneProgress, fmtRemaining } from "@/lib/projection";
 import type { DisplayCurrency } from "@/lib/money";
 
+// Semantic category mapping — 3 groups, regardless of how many asset types exist
+const CATEGORY_MAP: Record<string, string> = {
+  real_estate: "property",
+  stocks:      "markets",
+  etf:         "markets",
+  crypto:      "markets",
+  cash:        "reserves",
+  pension:     "reserves",
+  bonds:       "reserves",
+  gold:        "reserves",
+  other:       "reserves",
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  property: "Property",
+  markets:  "Public markets",
+  reserves: "Reserves",
+};
+
+// CSS variable references — resolved at paint time, respects light/dark theme
+const CATEGORY_COLOR: Record<string, string> = {
+  property: "var(--accent)",
+  markets:  "var(--category-public-markets)",
+  reserves: "var(--category-reserves)",
+};
+
 interface PortfolioTabProps {
   assets: LiveAsset[];
-  sorted: [string, number][];
-  byType: Record<string, number>;
   grossTotal: number;
   netTotal: number;
-  totalDebt: number;
   warnings: Warning[];
   mutations: Mutation[];
   onViewDiary: () => void;
 }
 
 export function PortfolioTab({
-  assets, sorted, byType, grossTotal, netTotal, totalDebt,
+  assets, grossTotal, netTotal,
   warnings, mutations, onViewDiary,
 }: PortfolioTabProps) {
   const displayCurrency = useDisplayCurrency();
@@ -62,16 +84,17 @@ export function PortfolioTab({
   );
   const sparklines = useSparklines(symbols, "1W");
 
-  // Group assets by type, sort groups by total value desc, rows within group by value desc
+  // Group by semantic category, sort groups by total value desc, rows within group by value desc
   const groups = useMemo(() => {
-    const byType: Record<string, LiveAsset[]> = {};
+    const byCategory: Record<string, LiveAsset[]> = {};
     for (const a of assets) {
-      (byType[a.type] ??= []).push(a);
+      const cat = CATEGORY_MAP[a.type] ?? "reserves";
+      (byCategory[cat] ??= []).push(a);
     }
-    return Object.entries(byType)
-      .map(([type, items]) => ({
-        type,
-        label: TYPE_LABEL[type] ?? type,
+    return Object.entries(byCategory)
+      .map(([cat, items]) => ({
+        category: cat,
+        label: CATEGORY_LABEL[cat] ?? cat,
         items: [...items].sort((a, b) => b.value - a.value),
         total: items.reduce((s, a) => s + a.value, 0),
       }))
@@ -79,22 +102,15 @@ export function PortfolioTab({
   }, [assets]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  // Initialize all groups as expanded on first render
-  const isExpanded = (type: string) => expanded[type] !== false;
-  const toggleGroup = (type: string) =>
-    setExpanded((prev) => ({ ...prev, [type]: !isExpanded(type) }));
-
-  const allocationItems = sorted.map(([type, val]) => ({
-    label: TYPE_LABEL[type] ?? type,
-    value: val,
-    color: TYPE_COLOR[type] ?? "#54545E",
-  }));
+  const isExpanded = (cat: string) => expanded[cat] !== false;
+  const toggleGroup = (cat: string) =>
+    setExpanded((prev) => ({ ...prev, [cat]: !isExpanded(cat) }));
 
   return (
     <>
       {/* Hero: Net worth — no card wrapper, directly on bg */}
       <div className="mb-5">
-        <NetWorthHero netTotal={netTotal} grossTotal={grossTotal} totalDebt={totalDebt} />
+        <NetWorthHero netTotal={netTotal} />
       </div>
 
       {/* Net worth chart */}
@@ -173,39 +189,6 @@ export function PortfolioTab({
         </div>
       )}
 
-      {/* Allocation */}
-      <div className="bg-surface rounded-2xl border border-border p-5 sm:p-8 mb-5">
-        <div className="flex items-baseline justify-between mb-4">
-          <div
-            className="font-serif"
-            style={{
-              fontSize: 26, fontWeight: 500, letterSpacing: "-0.01em",
-              color: "var(--text)", fontVariationSettings: "'opsz' 24",
-            }}
-          >
-            Allocation
-          </div>
-          <button
-            onClick={() => {
-              document.getElementById("holdings")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            style={{
-              fontSize: 13, color: "var(--accent)", cursor: "pointer",
-              background: "none", border: "none", padding: 0, fontWeight: 500,
-            }}
-          >
-            Details
-          </button>
-        </div>
-        <div
-          className="text-faint mb-4"
-          style={{ fontSize: 12 }}
-        >
-          By position value, before mortgages
-        </div>
-        <AllocationBar items={allocationItems} total={grossTotal} />
-      </div>
-
       {/* Recent diary entries — preview */}
       {mutations.length > 0 && (
         <div className="bg-surface rounded-2xl border border-border p-5 mb-5">
@@ -260,9 +243,9 @@ export function PortfolioTab({
         </div>
       )}
 
-      {/* Holdings list */}
+      {/* Holdings list — 3 semantic categories */}
       <div>
-        <div id="holdings" className="flex items-baseline justify-between mb-3">
+        <div className="flex items-baseline justify-between mb-3">
           <div
             className="font-serif"
             style={{
@@ -279,12 +262,12 @@ export function PortfolioTab({
         <div>
           {groups.map((group) => (
             <HoldingsGroup
-              key={group.type}
+              key={group.category}
               label={group.label}
-              barColor={TYPE_COLOR[group.type] ?? "var(--accent)"}
+              barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
               barPct={grossTotal > 0 ? Math.max((group.total / grossTotal) * 100, 2) : 2}
-              expanded={isExpanded(group.type)}
-              onToggle={() => toggleGroup(group.type)}
+              expanded={isExpanded(group.category)}
+              onToggle={() => toggleGroup(group.category)}
             >
               {group.items.map((asset) => (
                 <PositionRow

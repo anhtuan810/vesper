@@ -29,6 +29,8 @@
   --negative-soft: #F4DDD9;
   --negative-text: #8B3D33;
   --nav-surface:   rgba(245, 241, 234, 0.92);
+  --category-public-markets: #6B8AA6;
+  --category-reserves:       #B89968;
 }
 
 [data-theme="dark"] {
@@ -51,6 +53,8 @@
   --negative-soft: rgba(216, 138, 126, 0.14);
   --negative-text: #ECA59B;
   --nav-surface:   rgba(20, 17, 13, 0.92);
+  --category-public-markets: #8AABCA;
+  --category-reserves:       #C9A87A;
 }
 
 @theme inline {

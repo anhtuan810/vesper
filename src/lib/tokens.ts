@@ -37,3 +37,9 @@ export const TYPE_COLOR_TOKENS = {
   pension:     "#7A9E8B",
   other:       "#9CA3AF",
 } as const;
+
+export const CATEGORY_COLOR_TOKENS = {
+  property: "#4A7C5E",
+  markets:  "#6B8AA6",
+  reserves: "#B89968",
+} as const;

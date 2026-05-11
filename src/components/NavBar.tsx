@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser } from "@/lib/hooks";
+import { useUser, useProfile } from "@/lib/hooks";
 
 type Tab = "portfolio" | "diary" | "profile";
 
@@ -27,6 +27,12 @@ function formatRelativeTime(date: Date): string {
   return `${days}d ago`;
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "";
+  return (parts[0][0]?.toUpperCase() ?? "") + (parts[parts.length - 1][0]?.toUpperCase() ?? "");
+}
+
 export function NavBar({
   tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated,
 }: NavBarProps) {
@@ -36,13 +42,23 @@ export function NavBar({
     return () => clearInterval(id);
   }, []);
   const { user } = useUser();
+  const profile = useProfile(user?.id);
 
-  const displayName: string | null =
+  const fullName: string | null =
+    profile?.name ||
     (user?.user_metadata?.full_name as string | undefined) ||
     (user?.user_metadata?.name as string | undefined) ||
     user?.email?.split("@")[0] ||
     null;
 
+  const firstName = fullName ? fullName.split(" ")[0] : null;
+
+  const avatarUrl: string | null =
+    profile?.avatar_url ||
+    (user?.user_metadata?.avatar_url as string | undefined) ||
+    null;
+
+  const initials = fullName ? getInitials(fullName) : null;
 
   return (
     <nav
@@ -50,38 +66,38 @@ export function NavBar({
       style={{ background: "var(--nav-surface)", WebkitBackdropFilter: "blur(20px)" }}
     >
       <div className="max-w-[960px] mx-auto flex items-center justify-between px-6 sm:px-8 h-14">
-        {/* Left: icon · name · desktop tabs */}
+        {/* Left: avatar · name · desktop tabs */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <div
-              className="flex items-center justify-center shrink-0"
-              style={{
-                width: 26, height: 26, borderRadius: 6,
-                background: "var(--accent-soft)",
-                border: "1px solid var(--border)",
-                position: "relative",
-              }}
-            >
-              <span
-                className="font-serif text-accent"
-                style={{ fontSize: 14, fontWeight: 400, fontVariationSettings: "'opsz' 144", lineHeight: 1 }}
-              >
-                V
-              </span>
-              <span
+          <div className="flex items-center gap-[11px] min-w-0">
+            {/* Avatar or initials circle — no "V" wordmark */}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={firstName ?? "User"}
                 style={{
-                  position: "absolute", top: 5, right: 5,
-                  width: 3, height: 3, borderRadius: "50%",
-                  background: "var(--accent)", boxShadow: "0 0 4px var(--accent)",
+                  width: 34, height: 34, borderRadius: "50%",
+                  objectFit: "cover", flexShrink: 0,
                 }}
               />
-            </div>
-            {displayName && (
+            ) : initials ? (
+              <div
+                style={{
+                  width: 34, height: 34, borderRadius: "50%",
+                  background: "var(--accent)", color: "var(--bg)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 500, letterSpacing: "0.01em",
+                  flexShrink: 0,
+                }}
+              >
+                {initials}
+              </div>
+            ) : null}
+            {firstName && (
               <span
                 className="text-fg truncate"
-                style={{ fontSize: 13, fontWeight: 500, maxWidth: "16ch" }}
+                style={{ fontSize: 16, fontWeight: 500, maxWidth: "16ch" }}
               >
-                {displayName}
+                {firstName}
               </span>
             )}
           </div>

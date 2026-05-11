@@ -73,7 +73,7 @@ export default function Dashboard() {
   };
 
   const {
-    netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, warnings,
+    netTotal, grossTotal, liveCount, totalSymbols, warnings,
   } = useMemo(() => {
     const netTotal = assets.reduce((sum, a) =>
       sum + (a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value), 0);
@@ -82,13 +82,10 @@ export default function Dashboard() {
       acc[a.type] = (acc[a.type] || 0) + a.value;
       return acc;
     }, {} as Record<string, number>);
-    const sorted = Object.entries(byType).sort((a, b) => b[1] - a[1]);
     const liveCount = assets.filter((a) => a.livePrice).length;
     const totalSymbols = assets.filter((a) => a.symbol).length;
-    const totalDebt = assets.reduce((sum, a) =>
-      sum + (a.type === "real_estate" ? computeCurrentBalance(a) : 0), 0);
     const warnings = assets.length > 0 ? getWarnings(assets, byType, grossTotal) : [];
-    return { netTotal, grossTotal, byType, sorted, liveCount, totalSymbols, totalDebt, warnings };
+    return { netTotal, grossTotal, liveCount, totalSymbols, warnings };
   }, [assets]);
 
   const hasTradeables = assets.some(a => a.symbol);
@@ -223,11 +220,8 @@ export default function Dashboard() {
         ) : (
           <PortfolioTab
             assets={assets as LiveAsset[]}
-            sorted={sorted}
-            byType={byType}
             grossTotal={grossTotal}
             netTotal={netTotal}
-            totalDebt={totalDebt}
             warnings={warnings}
             mutations={enrichedMutations}
             onViewDiary={() => router.push("/diary")}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 
 const RANGE_DAYS: Record<string, number | null> = {
+  "1D": 1,
   "1W": 7,
   "1M": 30,
   "3M": 90,
