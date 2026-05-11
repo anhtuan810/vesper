@@ -162,7 +162,7 @@ export default function ChatPage() {
                   boxShadow: msg.from === "user" ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
                   color: "var(--text)",
                   fontSize: 15,
-                  lineHeight: 1.55,
+                  lineHeight: msg.from === "user" ? 1.4 : 1.55,
                   overflowWrap: "break-word",
                   minWidth: 0,
                 }}
