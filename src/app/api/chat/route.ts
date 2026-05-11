@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(10),
-      supabase.from("users").select("profile, name, display_currency").eq("id", userId).single(),
+      supabase.from("users").select("profile, name, display_currency, fingerprint").eq("id", userId).single(),
       supabase
         .from("mutations")
         .select("*")
@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
 
     // --- Background: profile extraction & snapshot (both catch internally) ---
     if (message && displayText && !isNewUser && !changesRaw) {
-      after(() => extractProfileUpdate(userId, message, displayText, profile));
+      after(() => extractProfileUpdate(userId, message, displayText, profile, userData?.fingerprint ?? null));
     }
     if (portfolioChanged) {
       after(() => writeSnapshot(userId));

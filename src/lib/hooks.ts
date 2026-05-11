@@ -18,7 +18,8 @@ import {
 
 export interface ProfileData {
   name?: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
+  fingerprint?: string | null;
   profile?: Record<string, string>;
 }
 
@@ -45,7 +46,7 @@ export function useProfile(userId: string | undefined) {
     if (!userId) return;
     supabase
       .from("users")
-      .select("name, avatar_url, profile")
+      .select("name, avatar_url, fingerprint, profile")
       .eq("id", userId)
       .single()
       .then(({ data }) => setProfile(data));

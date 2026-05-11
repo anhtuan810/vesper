@@ -8,14 +8,15 @@ export async function extractProfileUpdate(
   userId: string,
   userMessage: string,
   assistantResponse: string,
-  currentProfile: Record<string, unknown>
+  currentProfile: Record<string, unknown>,
+  currentFingerprint: string | null = null
 ): Promise<void> {
   try {
     const supabase = createServerSupabase();
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 500,
+      max_tokens: 600,
       system: `You analyze conversations between a user and their portfolio assistant to extract lasting facts about the user.
 
 CURRENT PROFILE:
@@ -31,9 +32,9 @@ RULES:
 - Use concise language. Each value should be one short sentence max.
 
 EXAMPLE OUTPUT:
-{"risk_behaviour": "comfortable with tech stocks, cautious with crypto", "goal": "building toward early retirement", "life_context": "has two properties in Netherlands"}
+{"risk_behaviour": "comfortable with tech stocks, cautious with crypto", "goal": "building toward early retirement", "life_context": "has two properties in Netherlands", "fingerprint": "A cautious, long-horizon investor with diversified exposure across equities and real estate."}
 
-FIELDS YOU CAN USE (all optional):
+PROFILE FIELDS YOU CAN USE (all optional):
 - risk_behaviour: how they approach risk
 - investment_style: trading vs buy-and-hold, active vs passive
 - goal: what they're working toward
@@ -43,6 +44,9 @@ FIELDS YOU CAN USE (all optional):
 - blind_spots: patterns they might not notice
 - decision_patterns: how they tend to make financial decisions
 - interests: asset types or markets they follow closely
+
+FINGERPRINT FIELD (always attempt):
+- fingerprint: a single sentence, 12–18 words, characterising the investor. Third person, present tense. No proper names, no hedging ("seems", "appears"), no emojis. Plain text only, no quotes. Captures risk posture, investment philosophy, life context. Example: "A measured, long-horizon investor with concentrated tech conviction balanced by stabilising real estate."
 
 Return ONLY valid JSON. No markdown, no explanation.`,
       messages: [
@@ -62,37 +66,58 @@ What lasting facts about this user (if any) can be extracted from this exchange?
       .join("")
       .trim();
 
-    // Parse the extraction
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const extracted = JSON.parse(cleaned);
 
-    // Skip if nothing extracted
-    if (!extracted || Object.keys(extracted).length === 0) {
+    if (!extracted) return;
+
+    // Pull out fingerprint before profile merge
+    const rawFingerprint =
+      typeof extracted.fingerprint === "string" ? extracted.fingerprint.trim() : "";
+    delete extracted.fingerprint;
+
+    const fingerprintChanged =
+      rawFingerprint.length > 0 &&
+      rawFingerprint.toLowerCase() !== (currentFingerprint ?? "").toLowerCase().trim();
+
+    const hasProfileFields =
+      Object.keys(extracted).length > 0 &&
+      Object.values(extracted).some((v) => v);
+
+    if (!hasProfileFields && !fingerprintChanged) {
       return;
     }
 
-    // Merge with existing profile — never overwrite, only add/refine
-    const mergedProfile = { ...currentProfile };
-    const FIELD_MAX = 200;
+    const updateObj: Record<string, unknown> = {};
 
-    for (const [key, value] of Object.entries(extracted)) {
-      if (value && typeof value === "string" && value.trim().length > 0) {
-        if (mergedProfile[key]) {
-          const existing = mergedProfile[key] as string;
-          if (!existing.toLowerCase().includes((value as string).toLowerCase())) {
-            const appended = `${existing}. ${value}`;
-            mergedProfile[key] = appended.length > FIELD_MAX ? appended.slice(0, FIELD_MAX) : appended;
+    if (hasProfileFields) {
+      const mergedProfile = { ...currentProfile };
+      const FIELD_MAX = 200;
+
+      for (const [key, value] of Object.entries(extracted)) {
+        if (value && typeof value === "string" && value.trim().length > 0) {
+          if (mergedProfile[key]) {
+            const existing = mergedProfile[key] as string;
+            if (!existing.toLowerCase().includes((value as string).toLowerCase())) {
+              const appended = `${existing}. ${value}`;
+              mergedProfile[key] = appended.length > FIELD_MAX ? appended.slice(0, FIELD_MAX) : appended;
+            }
+          } else {
+            mergedProfile[key] = (value as string).slice(0, FIELD_MAX);
           }
-        } else {
-          mergedProfile[key] = (value as string).slice(0, FIELD_MAX);
         }
       }
+
+      updateObj.profile = mergedProfile;
     }
 
-    // Save updated profile
+    if (fingerprintChanged) {
+      updateObj.fingerprint = rawFingerprint;
+    }
+
     const { error } = await supabase
       .from("users")
-      .update({ profile: mergedProfile })
+      .update(updateObj)
       .eq("id", userId);
 
     if (error) {

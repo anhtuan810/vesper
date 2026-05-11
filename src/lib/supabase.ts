@@ -97,7 +97,8 @@ export type LiveAsset = Asset & {
 export interface UserRow {
   id: string;
   name?: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
+  fingerprint?: string | null;
   profile?: Record<string, string>;
   display_currency: DisplayCurrency;
   theme: "auto" | "light" | "dark";

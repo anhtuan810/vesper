@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useProfile, useSignOut, useTheme } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { InlineEdit } from "@/components/asset-detail/InlineEdit";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { uploadAvatar } from "@/lib/avatar-upload";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
 
@@ -56,6 +57,10 @@ export default function ProfilePage() {
   const [currencyLoading, setCurrencyLoading] = useState<DisplayCurrency | null>(null);
   const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile?.profile) setProfileData(profile.profile);
@@ -89,6 +94,32 @@ export default function ProfilePage() {
     const error = await updateField(key, null);
     if (error) setPageError(`Failed to remove ${key}: ${error}`);
   }, [updateField]);
+
+  const handleAvatarFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    e.target.value = "";
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      const url = await uploadAvatar(file, user.id);
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_url: url }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAvatarError(data.error ?? "Failed to save avatar.");
+      } else {
+        setAvatarUrl(url);
+      }
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }, [user?.id]);
 
   const fetchMutationCount = useCallback(async () => {
     if (!user?.id) return;
@@ -171,19 +202,58 @@ export default function ProfilePage() {
         {/* Profile card */}
         <div className="bg-surface rounded-2xl border border-border p-8 mb-4">
           <div className="flex items-start gap-4 mb-6">
-            {/* Avatar: photo if available, initials otherwise */}
-            <div
-              className="w-14 h-14 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-              style={{ background: "var(--surface-elev)" }}
+            {/* Avatar: tappable, shows photo or initials */}
+            <button
+              type="button"
+              aria-label="Change avatar"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+              style={{ background: "var(--surface-elev)", cursor: "pointer", border: "none", padding: 0 }}
             >
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="font-mono text-dim" style={{ fontSize: 18, fontWeight: 500 }}>
-                  {getInitials(profile?.name || "?")}
-                </span>
+              {(() => {
+                const displayed = avatarUrl !== undefined ? avatarUrl : profile?.avatar_url;
+                return displayed ? (
+                  <img
+                    src={displayed}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    style={{ opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.15s" }}
+                  />
+                ) : (
+                  <span
+                    className="font-mono text-dim"
+                    style={{ fontSize: 18, fontWeight: 500, opacity: avatarUploading ? 0.4 : 1, transition: "opacity 0.15s" }}
+                  >
+                    {getInitials(profile?.name || "?")}
+                  </span>
+                );
+              })()}
+              {avatarUploading && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{ pointerEvents: "none" }}
+                >
+                  <div
+                    className="animate-spin"
+                    style={{
+                      width: 16,
+                      height: 16,
+                      border: "2px solid var(--border)",
+                      borderTopColor: "var(--accent)",
+                      borderRadius: "50%",
+                    }}
+                  />
+                </div>
               )}
-            </div>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFileChange}
+            />
             <div>
               <div
                 className="font-serif text-fg"
@@ -191,9 +261,24 @@ export default function ProfilePage() {
               >
                 {profile?.name || "Investor"}
               </div>
-              <div className="font-mono text-faint mt-1" style={{ fontSize: 10, letterSpacing: "0.1em" }}>
-                What Vesper knows about you
-              </div>
+              {profile?.fingerprint && (
+                <div
+                  className="font-serif text-dim mt-1"
+                  style={{ fontSize: 13, fontStyle: "italic" }}
+                >
+                  {profile.fingerprint}
+                </div>
+              )}
+              {!profile?.fingerprint && (
+                <div className="font-mono text-faint mt-1" style={{ fontSize: 10, letterSpacing: "0.1em" }}>
+                  What Vesper knows about you
+                </div>
+              )}
+              {avatarError && (
+                <div className="font-mono mt-1" style={{ fontSize: 11, color: "var(--negative)" }}>
+                  {avatarError}
+                </div>
+              )}
             </div>
           </div>
 
