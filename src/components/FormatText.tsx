@@ -108,6 +108,10 @@ export function FormatText({ text }: FormatTextProps) {
                 );
               }
 
+              if (line.trim() === "---") {
+                return <hr key={i} style={{ border: "none", borderTop: "1px solid var(--border)", margin: "8px 0" }} />;
+              }
+
               if (line.trim() === "") {
                 return <div key={i} style={{ height: 8 }} />;
               }
