@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { UndoDeleteToast } from "@/components/UndoDeleteToast";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -26,21 +28,32 @@ export const metadata: Metadata = {
   description: "Your personal portfolio assistant",
 };
 
-export default function RootLayout({
+type ThemeMode = "auto" | "light" | "dark";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get("vesper.theme")?.value;
+  const theme: ThemeMode =
+    raw === "light" || raw === "dark" || raw === "auto" ? raw : "auto";
+  const resolved = theme === "auto" ? "light" : theme;
+
   return (
     <html
       lang="en"
+      data-theme={resolved}
       className={`${fraunces.variable} ${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
+        <ThemeProvider initialTheme={theme}>
           {children}
           <BottomNav />
           <UndoDeleteToast />
-        </body>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

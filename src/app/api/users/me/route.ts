@@ -25,6 +25,16 @@ export async function PATCH(request: NextRequest) {
       updateData.display_currency = body.display_currency;
     }
 
+    if ("theme" in body) {
+      if (!["auto", "light", "dark"].includes(body.theme)) {
+        return NextResponse.json(
+          { error: "Invalid theme: must be auto, light, or dark" },
+          { status: 400 }
+        );
+      }
+      updateData.theme = body.theme;
+    }
+
     if ("profile" in body) {
       if (typeof body.profile !== "object" || body.profile === null || Array.isArray(body.profile)) {
         return NextResponse.json({ error: "profile must be an object" }, { status: 400 });

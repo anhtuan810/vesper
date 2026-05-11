@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
+import { useThemeContext } from "@/components/ThemeProvider";
 import { normalizePrice } from "@/lib/prices";
 import type { PriceResult, PricePoint } from "@/lib/prices-server";
 import {
@@ -320,6 +321,10 @@ export function useDisplayCurrencyState(): { currency: DisplayCurrency; loaded: 
   const fullyLoaded = loaded && (currency === "EUR" || freshness !== "unavailable");
 
   return { currency, loaded: fullyLoaded };
+}
+
+export function useTheme() {
+  return useThemeContext();
 }
 
 export function useSignOut() {
