@@ -170,7 +170,7 @@ export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Prop
       style={{
         width: size,
         height: size,
-        borderRadius: 6,
+        borderRadius: 10,
         background: "var(--surface)",
         border: showBorder ? "1px solid var(--border)" : "none",
         position: "relative",

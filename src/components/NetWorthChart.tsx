@@ -67,7 +67,7 @@ export function NetWorthChart({ currentNet }: Props) {
   }, [range, currentNet]);
 
   const W = 280;
-  const H = 120;
+  const H = 64;
   const pad = 4;
 
   const values = series.map((p) => p.total_value);
@@ -89,39 +89,6 @@ export function NetWorthChart({ currentNet }: Props) {
 
   return (
     <div>
-      {/* Range pills */}
-      <div
-        className="flex gap-0.5"
-        style={{
-          padding: 4,
-          background: "var(--surface)",
-          borderRadius: 12,
-          border: "1px solid var(--border)",
-          marginBottom: 8,
-        }}
-      >
-        {RANGES.map((r) => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            className="flex-1 text-center font-mono"
-            style={{
-              padding: "7px 0",
-              fontSize: 11,
-              letterSpacing: "0.04em",
-              borderRadius: 8,
-              color: range === r ? "var(--text)" : "var(--text-dim)",
-              background: range === r ? "var(--surface-elev)" : "transparent",
-              boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.2)" : "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            {r}
-          </button>
-        ))}
-      </div>
-
       {/* Chart area */}
       <div style={{ position: "relative", height: H }}>
         {showEmpty ? (
@@ -133,14 +100,10 @@ export function NetWorthChart({ currentNet }: Props) {
               gap: 6,
             }}
           >
-            <div
-              className="font-mono"
-              style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: "0.04em" }}
-            >
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
               Day one
             </div>
             <div
-              className="font-mono"
               style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}
             >
               Vesper logs your net worth daily. Your trajectory will plot here as snapshots accumulate.
@@ -163,16 +126,6 @@ export function NetWorthChart({ currentNet }: Props) {
                   <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              {/* Dashed baseline at lowest value */}
-              <line
-                x1={0}
-                y1={H - pad}
-                x2={W}
-                y2={H - pad}
-                stroke="rgba(255,255,255,0.04)"
-                strokeWidth={1}
-                strokeDasharray="2 3"
-              />
               {/* Fill */}
               <path d={area} fill={`url(#${gradId})`} />
               {/* Line */}
@@ -189,7 +142,7 @@ export function NetWorthChart({ currentNet }: Props) {
               <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
             </svg>
 
-            {/* Date labels — rendered as HTML to avoid SVG stretch distortion */}
+            {/* Date labels below chart */}
             <div
               style={{
                 position: "absolute",
@@ -201,21 +154,47 @@ export function NetWorthChart({ currentNet }: Props) {
                 pointerEvents: "none",
               }}
             >
-              <span
-                className="font-mono"
-                style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.04em" }}
-              >
+              <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
                 {series.length > 0 ? fmtChartDate(series[0].date) : ""}
               </span>
-              <span
-                className="font-mono"
-                style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.04em" }}
-              >
+              <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
                 {series.length > 0 ? fmtChartDate(series[series.length - 1].date) : ""}
               </span>
             </div>
           </>
         )}
+      </div>
+
+      {/* Range pills — below chart */}
+      <div
+        className="flex gap-1 mt-3"
+        style={{
+          padding: 4,
+          background: "var(--surface-elev)",
+          borderRadius: 10,
+        }}
+      >
+        {RANGES.map((r) => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            className="flex-1 text-center"
+            style={{
+              padding: "9px 0",
+              fontSize: 13,
+              fontWeight: 500,
+              borderRadius: 8,
+              color: range === r ? "var(--text)" : "var(--text-dim)",
+              background: range === r ? "var(--bg)" : "transparent",
+              boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+          >
+            {r}
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -47,7 +47,7 @@ export function NavBar({
   return (
     <nav
       className="sticky top-0 z-20 border-b border-border backdrop-blur-xl"
-      style={{ background: "rgba(10,10,11,0.85)" }}
+      style={{ background: "var(--nav-surface)", WebkitBackdropFilter: "blur(20px)" }}
     >
       <div className="max-w-[960px] mx-auto flex items-center justify-between px-6 sm:px-8 h-14">
         {/* Left: icon · name · desktop tabs */}
@@ -58,7 +58,7 @@ export function NavBar({
               style={{
                 width: 26, height: 26, borderRadius: 6,
                 background: "var(--accent-soft)",
-                border: "1px solid rgba(212,165,116,0.18)",
+                border: "1px solid var(--border)",
                 position: "relative",
               }}
             >
@@ -78,8 +78,8 @@ export function NavBar({
             </div>
             {displayName && (
               <span
-                className="text-dim truncate"
-                style={{ fontSize: 13, fontWeight: 400, maxWidth: "16ch" }}
+                className="text-fg truncate"
+                style={{ fontSize: 13, fontWeight: 500, maxWidth: "16ch" }}
               >
                 {displayName}
               </span>

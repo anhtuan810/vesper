@@ -32,25 +32,22 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
 
   return (
     <Link href={`/asset/${asset.id}`} className="block">
-      <div className="flex items-center py-3.5 border-b border-border last:border-0 gap-3">
+      <div className="flex items-center border-b border-border last:border-0 gap-3" style={{ paddingTop: 14, paddingBottom: 14 }}>
         <AssetLogo
           type={asset.type}
           symbol={asset.symbol ?? null}
           name={asset.name}
           property_type={asset.type === "real_estate" ? (asset as RealEstateAsset).property_type ?? null : null}
-          size={38}
+          size={42}
         />
 
         {/* Name + sub-line */}
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-medium text-fg leading-snug truncate">
+          <div className="text-fg leading-snug truncate" style={{ fontSize: 16, fontWeight: 500 }}>
             {asset.name}
           </div>
           {sub && (
-            <div
-              className="font-mono text-dim mt-0.5 truncate"
-              style={{ fontSize: 10, letterSpacing: "0.04em" }}
-            >
+            <div className="text-dim mt-0.5 truncate" style={{ fontSize: 13 }}>
               {sub}
             </div>
           )}
@@ -61,17 +58,19 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
 
         {/* Value + change */}
         <div className="text-right shrink-0">
-          <div className="font-mono text-[13px] font-medium text-fg">{formatMoney(asset.value, displayCurrency)}</div>
+          <div className="text-fg" style={{ fontSize: 16, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}>
+            {formatMoney(asset.value, displayCurrency)}
+          </div>
           {chg !== null ? (
             <div
-              className={`font-mono mt-0.5 ${up ? "text-positive" : "text-negative"}`}
-              style={{ fontSize: 10 }}
+              className={`mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
+              style={{ fontSize: 13, fontWeight: 500 }}
             >
               {up ? "+" : ""}
               {chg.toFixed(2)}%
             </div>
           ) : (
-            <div className="font-mono text-faint mt-0.5" style={{ fontSize: 10 }}>
+            <div className="text-faint mt-0.5" style={{ fontSize: 13 }}>
               —
             </div>
           )}

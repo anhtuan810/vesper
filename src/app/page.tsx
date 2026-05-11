@@ -161,8 +161,8 @@ export default function Dashboard() {
           <div
             className="rounded-xl px-5 py-3 mb-4 flex items-center justify-between"
             style={{
-              background: "rgba(201,122,110,0.10)",
-              border: "1px solid rgba(201,122,110,0.25)",
+              background: "var(--negative-soft)",
+              border: "1px solid var(--border)",
             }}
           >
             <span
@@ -196,7 +196,7 @@ export default function Dashboard() {
               style={{
                 width: 56, height: 56, borderRadius: 14,
                 background: "var(--accent-soft)",
-                border: "1px solid rgba(212,165,116,0.18)",
+                border: "1px solid var(--border)",
                 fontSize: 22, fontVariationSettings: "'opsz' 144",
               }}
             >

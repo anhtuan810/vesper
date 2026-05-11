@@ -18,7 +18,7 @@ function useMonthlyChange(currentNet: number) {
       .then((r) => r.json())
       .then((body) => {
         const data: { date: string; total_value: number }[] = body.data ?? [];
-        if (data.length < 2) return;
+        if (data.length < 7) return;
         const oldest = data[0].total_value;
         if (oldest === 0) return;
         const abs = currentNet - oldest;
@@ -40,11 +40,8 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
   if (!currencyLoaded) {
     return (
       <div>
-        <div
-          className="font-mono uppercase text-faint mb-3"
-          style={{ fontSize: 10, letterSpacing: "0.2em" }}
-        >
-          Net worth
+        <div className="text-dim mb-[14px]" style={{ fontSize: 14 }}>
+          Total net worth
         </div>
         <div
           className="bg-surface-elev rounded-lg animate-pulse"
@@ -56,18 +53,19 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
 
   return (
     <div>
-      <div
-        className="font-mono uppercase text-faint mb-3"
-        style={{ fontSize: 10, letterSpacing: "0.2em" }}
-      >
-        Net worth
+      <div className="text-dim mb-[14px]" style={{ fontSize: 14 }}>
+        Total net worth
       </div>
+
+      {/* Hero number — serif, editorial dimmed prefix */}
       <div
-        className="font-serif font-light leading-none text-fg"
+        className="font-serif leading-none"
         style={{
-          fontSize: "clamp(40px, 9vw, 56px)",
-          letterSpacing: "-0.035em",
-          fontVariationSettings: "'opsz' 72",
+          fontSize: "clamp(48px, 14vw, 56px)",
+          fontWeight: 600,
+          letterSpacing: "-0.02em",
+          color: "var(--hero)",
+          fontVariationSettings: "'opsz' 60",
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.12em" }}>
@@ -81,28 +79,31 @@ export function NetWorthHero({ netTotal, grossTotal, totalDebt }: NetWorthHeroPr
           <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
         </span>
       </div>
+
+      {/* Gross / debt subtitle when mortgages exist */}
       {totalDebt > 0 && (
-        <div className="font-mono text-faint mt-2" style={{ fontSize: 10 }}>
+        <div className="text-dim mt-2" style={{ fontSize: 14 }}>
           Gross {formatMoney(grossTotal, displayCurrency)} · Debt {formatMoney(totalDebt, displayCurrency)}
         </div>
       )}
+
+      {/* Change pill — only after 7 snapshots */}
       {change && (
-        <div className="flex items-center mt-2" style={{ gap: 10 }}>
+        <div className="flex items-center mt-[18px]" style={{ gap: 10 }}>
           <span
-            className="font-mono"
             style={{
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: 500,
-              padding: "4px 8px",
-              borderRadius: 6,
-              background: up ? "rgba(107,170,117,0.12)" : "rgba(201,122,110,0.12)",
-              color: up ? "var(--positive)" : "var(--negative)",
+              padding: "5px 12px",
+              borderRadius: 999,
+              background: up ? "var(--positive-soft)" : "var(--negative-soft)",
+              color: up ? "var(--positive-text)" : "var(--negative-text)",
             }}
           >
-            {up ? "+" : ""}{change.pct.toFixed(2)}%
+            {up ? "↑" : "↓"} {Math.abs(change.pct).toFixed(1)}% this month
           </span>
-          <span className="text-dim" style={{ fontSize: 12 }}>
-            {change.abs >= 0 ? "+" : ""}{formatMoney(change.abs, displayCurrency)} this month
+          <span className="text-dim" style={{ fontSize: 14 }}>
+            {change.abs >= 0 ? "+" : ""}{formatMoney(change.abs, displayCurrency)}
           </span>
         </div>
       )}

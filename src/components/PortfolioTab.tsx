@@ -70,68 +70,49 @@ export function PortfolioTab({
 
   return (
     <>
-      {/* Hero: Net worth */}
-      <div className="bg-surface rounded-2xl border border-border p-5 sm:p-8 mb-4">
+      {/* Hero: Net worth — no card wrapper, directly on bg */}
+      <div className="mb-5">
         <NetWorthHero netTotal={netTotal} grossTotal={grossTotal} totalDebt={totalDebt} />
       </div>
 
-      {/* Net worth chart — flush against page background, no card wrapper */}
+      {/* Net worth chart */}
       {netTotal > 0 && (
-        <div className="mb-4">
+        <div className="mb-6">
           <NetWorthChart currentNet={netTotal} />
         </div>
       )}
-
-      {/* Allocation */}
-      <div className="bg-surface rounded-2xl border border-border p-5 sm:p-8 mb-4">
-        <div style={{ marginBottom: 16 }}>
-          <div className="flex items-baseline justify-between">
-            <div
-              className="font-serif text-fg"
-              style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
-            >
-              Gross allocation
-            </div>
-            <button
-              onClick={() => {
-                document.getElementById("positions")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-              className="font-mono uppercase"
-              style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.04em", cursor: "pointer", background: "none", border: "none", padding: 0 }}
-            >
-              Details
-            </button>
-          </div>
-          <div
-            className="font-mono mt-1"
-            style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.04em" }}
-          >
-            By position value, before mortgages
-          </div>
-        </div>
-        <AllocationBar items={allocationItems} total={grossTotal} />
-      </div>
 
       {/* Milestone progress */}
       {netTotal > 0 && (() => {
         const m = getMilestoneProgress(netTotal, displayCurrency as DisplayCurrency);
         return (
-          <div className="bg-surface rounded-xl border border-border px-5 py-4 mb-4">
+          <div
+            className="mb-5 -mx-4 sm:-mx-8 px-4 sm:px-8 py-[14px]"
+            style={{ background: "var(--accent-soft)" }}
+          >
             <div className="flex items-center justify-between mb-2">
-              <div className="font-mono text-faint" style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase" }}>
+              <div
+                style={{
+                  fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+                  textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
+                }}
+              >
                 Next milestone
               </div>
-              <div className="font-mono text-fg" style={{ fontSize: 12, fontWeight: 500 }}>{m.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{m.label}</div>
             </div>
-            <div className="h-[5px] rounded-full bg-surface-elev overflow-hidden mb-2" style={{ border: "1px solid var(--border)" }}>
+            <div
+              className="h-[5px] rounded-full overflow-hidden mb-2"
+              style={{ background: "rgba(0,0,0,0.08)" }}
+            >
               <div
                 className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${m.progress}%`, background: "var(--accent)", boxShadow: "0 0 8px rgba(212,165,116,0.3)" }}
+                style={{ width: `${m.progress}%`, background: "var(--accent)" }}
               />
             </div>
             <div className="flex items-center justify-between">
-              <div className="font-mono text-faint" style={{ fontSize: 10 }}>{m.progress.toFixed(0)}% there</div>
-              <div className="font-mono text-faint" style={{ fontSize: 10 }}>{fmtRemaining(m.remaining, displayCurrency)} to go</div>
+              <div style={{ fontSize: 10, color: "var(--accent-text)" }}>{m.progress.toFixed(0)}% there</div>
+              <div style={{ fontSize: 10, color: "var(--accent-text)" }}>{fmtRemaining(m.remaining, displayCurrency)} to go</div>
             </div>
           </div>
         );
@@ -140,10 +121,10 @@ export function PortfolioTab({
       {/* Warnings */}
       {visibleWarnings.length > 0 && (
         <div
-          className="rounded-xl px-5 py-3 mb-4"
+          className="rounded-xl px-5 py-3 mb-5"
           style={{
             background: "var(--accent-soft)",
-            border: "1px solid rgba(212,165,116,0.18)",
+            border: "1px solid var(--border)",
           }}
         >
           {visibleWarnings.map((w, i) => (
@@ -152,18 +133,15 @@ export function PortfolioTab({
               className="flex items-start justify-between"
               style={{ paddingTop: i > 0 ? 6 : 0 }}
             >
-              <div className="text-xs text-accent leading-relaxed">{w.text}</div>
+              <div className="text-xs leading-relaxed" style={{ color: "var(--accent-text)" }}>{w.text}</div>
               <button
                 onClick={() => dismissWarning(w.key)}
                 aria-label="Dismiss"
-                className="text-accent hover:opacity-60 transition-opacity ml-3 shrink-0"
+                className="hover:opacity-60 transition-opacity ml-3 shrink-0"
                 style={{
-                  fontSize: 14,
-                  lineHeight: 1,
-                  padding: "0 4px",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
+                  fontSize: 14, lineHeight: 1, padding: "0 4px",
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "var(--accent-text)",
                 }}
               >
                 ×
@@ -173,20 +151,55 @@ export function PortfolioTab({
         </div>
       )}
 
+      {/* Allocation */}
+      <div className="bg-surface rounded-2xl border border-border p-5 sm:p-8 mb-5">
+        <div className="flex items-baseline justify-between mb-4">
+          <div
+            className="font-serif"
+            style={{
+              fontSize: 26, fontWeight: 500, letterSpacing: "-0.01em",
+              color: "var(--text)", fontVariationSettings: "'opsz' 24",
+            }}
+          >
+            Allocation
+          </div>
+          <button
+            onClick={() => {
+              document.getElementById("holdings")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            style={{
+              fontSize: 13, color: "var(--accent)", cursor: "pointer",
+              background: "none", border: "none", padding: 0, fontWeight: 500,
+            }}
+          >
+            Details
+          </button>
+        </div>
+        <div
+          className="text-faint mb-4"
+          style={{ fontSize: 12 }}
+        >
+          By position value, before mortgages
+        </div>
+        <AllocationBar items={allocationItems} total={grossTotal} />
+      </div>
+
       {/* Recent diary entries — preview */}
       {mutations.length > 0 && (
-        <div className="bg-surface rounded-2xl border border-border p-5 mb-4">
+        <div className="bg-surface rounded-2xl border border-border p-5 mb-5">
           <div className="flex items-center justify-between mb-4">
             <div
-              className="font-mono text-faint uppercase"
-              style={{ fontSize: 10, letterSpacing: "0.18em" }}
+              style={{
+                fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+                textTransform: "uppercase", color: "var(--text-faint)",
+              }}
             >
               Recent activity
             </div>
             <button
               onClick={onViewDiary}
-              className="font-mono text-accent hover:opacity-80 transition-opacity"
-              style={{ fontSize: 11, letterSpacing: "0.04em" }}
+              className="hover:opacity-80 transition-opacity"
+              style={{ fontSize: 13, color: "var(--accent)", fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0 }}
             >
               View all →
             </button>
@@ -225,17 +238,20 @@ export function PortfolioTab({
         </div>
       )}
 
-      {/* Positions list */}
+      {/* Holdings list */}
       <div>
-        <div id="positions" className="flex items-baseline justify-between mb-3">
+        <div id="holdings" className="flex items-baseline justify-between mb-3">
           <div
-            className="font-serif text-fg"
-            style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
+            className="font-serif"
+            style={{
+              fontSize: 26, fontWeight: 500, letterSpacing: "-0.01em",
+              color: "var(--text)", fontVariationSettings: "'opsz' 24",
+            }}
           >
-            Positions
+            Holdings
           </div>
-          <div className="font-mono text-faint" style={{ fontSize: 11 }}>
-            {assets.length} holdings
+          <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+            {assets.length} {assets.length === 1 ? "position" : "positions"}
           </div>
         </div>
         <div>

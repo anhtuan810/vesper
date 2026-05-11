@@ -58,8 +58,9 @@ export function BottomNav() {
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border"
       style={{
-        background: "rgba(10,10,11,0.95)",
+        background: "var(--nav-surface)",
         backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
@@ -76,8 +77,7 @@ export function BottomNav() {
             >
               {icon}
               <span
-                className="font-mono uppercase"
-                style={{ fontSize: 9, letterSpacing: "0.1em" }}
+                style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.02em" }}
               >
                 {label}
               </span>
