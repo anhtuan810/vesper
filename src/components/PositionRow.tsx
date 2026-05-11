@@ -9,17 +9,14 @@ import { formatMoney } from "@/lib/money";
 import type { LiveAsset, RealEstateAsset } from "@/lib/supabase";
 
 function subLine(asset: LiveAsset): string {
-  const parts: string[] = [];
-  if (asset.units) parts.push(`${asset.units.toLocaleString()} units`);
-  if (asset.country && asset.type !== "crypto") parts.push(asset.country);
-  if (asset.livePrice) {
-    parts.push(
-      asset.livePrice >= 1000
-        ? asset.livePrice.toLocaleString("en", { maximumFractionDigits: 0 })
-        : asset.livePrice.toFixed(2)
-    );
+  if (asset.type === "real_estate") return asset.country ?? "";
+  if (asset.symbol || asset.units != null) {
+    const parts: string[] = [];
+    if (asset.units != null) parts.push(`${asset.units.toLocaleString()} units`);
+    if (asset.country && asset.type !== "crypto") parts.push(asset.country);
+    return parts.join(" · ");
   }
-  return parts.join(" · ");
+  return asset.country ?? "";
 }
 
 export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; closes?: number[] }) {
@@ -29,6 +26,7 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
   const up = chg !== null && chg >= 0;
   const sub = subLine(asset);
   const displayCurrency = useDisplayCurrency();
+  const hasSparkline = closes.length >= 2;
 
   return (
     <Link href={`/asset/${asset.id}`} className="block">
@@ -53,8 +51,8 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
           )}
         </div>
 
-        {/* Sparkline */}
-        <MiniSparkline prices={closes} />
+        {/* Sparkline — only rendered when data is available */}
+        {hasSparkline && <MiniSparkline prices={closes} />}
 
         {/* Value + change */}
         <div className="text-right shrink-0">
