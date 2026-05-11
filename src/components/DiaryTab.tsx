@@ -607,7 +607,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 marginBottom: 6,
               }}
             >
-              On this day
+              Worth knowing
             </div>
             <div
               className="font-serif"
@@ -623,15 +623,6 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 <span style={{ fontStyle: "italic", color: "var(--text-dim)" }}> — {anniversaryEntry.mutation.personal_context}</span>
               )}
             </div>
-            <div
-              style={{
-                fontSize: 10, color: "var(--accent-text)", opacity: 0.7,
-                marginTop: 8, fontFamily: "var(--font-mono)",
-                letterSpacing: "0.1em", textTransform: "uppercase",
-              }}
-            >
-              Tap to jump
-            </div>
             {/* Chevron */}
             <svg
               viewBox="0 0 256 256"
@@ -641,7 +632,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{
-                position: "absolute", top: 18, right: 20,
+                position: "absolute", top: 18, right: 22,
                 width: 12, height: 12,
                 color: "var(--accent-text)", opacity: 0.5,
               }}
