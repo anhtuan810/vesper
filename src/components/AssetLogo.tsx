@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { TYPE_COLOR } from "@/lib/utils";
 
 interface Props {
   type: string | null;
@@ -11,18 +10,21 @@ interface Props {
   size?: number;
 }
 
-function Monogram({ type, symbol, name, size }: { type: string | null; symbol: string | null; name: string | null; size: number }) {
-  const assetType = type || "other";
-  const color = TYPE_COLOR[assetType] || "#54545E";
+function Monogram({ symbol, name, type, size }: { type: string | null; symbol: string | null; name: string | null; size: number }) {
   const mono = symbol
     ? symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase().slice(0, 4)
-    : (name || assetType).slice(0, 3).toUpperCase();
+    : (name || type || "?").slice(0, 3).toUpperCase();
   const fontSize = Math.max(6, Math.round(size * 0.29));
 
   return (
     <div
-      className="w-full h-full flex items-center justify-center font-mono font-medium"
-      style={{ background: `${color}18`, color, fontSize, letterSpacing: "0.02em" }}
+      className="w-full h-full flex items-center justify-center font-medium"
+      style={{
+        background: "var(--surface-elev)",
+        color: "var(--text)",
+        fontSize,
+        letterSpacing: "0.04em",
+      }}
     >
       {mono}
     </div>
@@ -140,7 +142,7 @@ function RealEstateIcon({ propertyType, size }: { propertyType: string | null | 
   }
 }
 
-export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Props) {
+export function AssetLogo({ type, symbol, name, property_type, size = 32 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
 
   let imgUrl: string | null = null;
@@ -155,6 +157,14 @@ export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Prop
 
   // No border when showing an external image logo; border for all SVG/monogram variants
   const showBorder = imgUrl === null || imgFailed;
+  // Monogram gets a hairline 0.5px; wallet/certificate/property keep 1px
+  const isMonogram =
+    showBorder &&
+    type !== "real_estate" &&
+    type !== "cash" &&
+    type !== "pension" &&
+    type !== "bonds";
+  const borderWidth = isMonogram ? "0.5px" : "1px";
   const imgDisplaySize = Math.round(size * 0.7);
 
   const renderIcon = () => {
@@ -172,7 +182,7 @@ export function AssetLogo({ type, symbol, name, property_type, size = 24 }: Prop
         height: size,
         borderRadius: 10,
         background: "var(--surface)",
-        border: showBorder ? "1px solid var(--border)" : "none",
+        border: showBorder ? `${borderWidth} solid var(--border)` : "none",
         position: "relative",
       }}
     >

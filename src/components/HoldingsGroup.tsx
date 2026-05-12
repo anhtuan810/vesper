@@ -15,7 +15,7 @@ export function HoldingsGroup({
   label, barColor, barPct, expanded, onToggle, children,
 }: HoldingsGroupProps) {
   return (
-    <div style={{ borderBottom: "0.5px solid var(--border)", paddingBottom: 4 }}>
+    <div style={{ borderBottom: "0.5px solid var(--border-strong)", paddingBottom: 4 }}>
       <button
         onClick={onToggle}
         style={{
