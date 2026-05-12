@@ -404,7 +404,9 @@ export function useSignOut() {
 let _insightCache: { detail: string | null; fetchedAt: number } | null = null;
 
 export function primeInsightCache(detail: string | null) {
-  _insightCache = { detail, fetchedAt: Date.now() };
+  if (detail !== null) {
+    _insightCache = { detail, fetchedAt: Date.now() };
+  }
 }
 
 export function useInsight() {
