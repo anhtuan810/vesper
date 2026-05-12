@@ -125,28 +125,6 @@ export function fetchEurRate(currency: DisplayCurrency): Promise<number | null> 
   return promise;
 }
 
-/**
- * Abbreviated currency label for chart use — €617k, €1,5M (nl-NL decimal comma).
- * eurValue is treated as EUR before FX conversion to displayCurrency.
- */
-export function abbreviateMoney(eurValue: number, displayCurrency: DisplayCurrency): string {
-  const rate = getEurRate(displayCurrency);
-  const displayValue = Math.round(eurValue * rate);
-  const absValue = Math.abs(displayValue);
-  const sign = displayValue < 0 ? "-" : "";
-  const { symbol } = CURRENCY_META[displayCurrency];
-
-  if (absValue >= 1_000_000) {
-    const formatted = new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 1 }).format(absValue / 1_000_000);
-    return `${sign}${symbol}${formatted}M`;
-  }
-  if (absValue >= 1_000) {
-    const formatted = new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 0 }).format(Math.round(absValue / 1_000));
-    return `${sign}${symbol}${formatted}k`;
-  }
-  return formatMoney(eurValue, displayCurrency);
-}
-
 export function formatMoneyParts(
   eurValue: number,
   displayCurrency: DisplayCurrency
