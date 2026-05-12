@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
+import { invalidateAssetsCache } from "@/lib/hooks";
 
 export interface ChatMessage {
   id?: string;
@@ -246,7 +247,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
       setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
-      if (data.assets) onPortfolioUpdateRef.current?.();
+      if (data.assets) {
+        if (userId) invalidateAssetsCache(userId);
+        onPortfolioUpdateRef.current?.();
+      }
       onNewMessageRef.current?.();
     } catch {
       setThinking(false);
@@ -287,7 +291,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
       setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
-      if (data.assets) onPortfolioUpdateRef.current?.();
+      if (data.assets) {
+        if (userId) invalidateAssetsCache(userId);
+        onPortfolioUpdateRef.current?.();
+      }
       onNewMessageRef.current?.();
     } catch {
       setThinking(false);

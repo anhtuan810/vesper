@@ -7,6 +7,24 @@ const PROFILE_FIELD_KEYS = new Set([
   "concerns", "preferences", "blind_spots", "decision_patterns", "interests",
 ]);
 
+export async function GET(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("users")
+    .select("name, avatar_url, display_currency, theme, fingerprint, profile")
+    .eq("id", user.id)
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json(data, {
+    headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=1800" },
+  });
+}
+
 export async function PATCH(request: NextRequest) {
   try {
     const user = await getAuthUser(request);

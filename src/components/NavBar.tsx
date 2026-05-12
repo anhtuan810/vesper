@@ -174,11 +174,14 @@ export function NavBar({
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
             {(() => {
-              const dotState = totalSymbols > 0 && liveCount === totalSymbols
-                ? { color: "var(--positive)", label: `All ${totalSymbols} prices live` }
-                : liveCount > 0
-                ? { color: "var(--accent)", label: `${liveCount} of ${totalSymbols} prices live` }
-                : { color: "var(--text-faint)", label: "Prices unavailable" };
+              const STALE_MS = 5 * 60 * 1000;
+              const priceAgeMs = lastUpdated ? Date.now() - lastUpdated.getTime() : Infinity;
+              const dotState =
+                liveCount === totalSymbols && totalSymbols > 0 && priceAgeMs < STALE_MS
+                  ? { color: "var(--positive)", label: `All ${totalSymbols} prices live` }
+                  : liveCount > 0 || (totalSymbols > 0 && priceAgeMs < STALE_MS)
+                  ? { color: "var(--accent)", label: liveCount > 0 ? `${liveCount} of ${totalSymbols} prices live` : "Refreshing prices" }
+                  : { color: "var(--text-faint)", label: "Prices unavailable" };
               return (
                 <span
                   title={dotState.label}

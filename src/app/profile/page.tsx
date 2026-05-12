@@ -17,7 +17,6 @@ const CURRENCY_DISPLAY: Record<DisplayCurrency, { symbol: string; label: string 
 };
 
 const THEME_OPTIONS = [
-  { value: "auto" as const, label: "Auto" },
   { value: "light" as const, label: "Light" },
   { value: "dark" as const, label: "Dark" },
 ];
@@ -157,7 +156,7 @@ export default function ProfilePage() {
 
   const displayedAvatar = avatarUrl !== undefined ? avatarUrl : profile?.avatar_url;
   const currencyLabel = `${CURRENCY_DISPLAY[displayCurrency].label} (${CURRENCY_DISPLAY[displayCurrency].symbol})`;
-  const themeLabel = THEME_OPTIONS.find(o => o.value === currentTheme)?.label ?? "Auto";
+  const themeLabel = THEME_OPTIONS.find(o => o.value === currentTheme)?.label ?? "Light";
 
   return (
     <div className="min-h-screen bg-bg">

@@ -41,5 +41,7 @@ export async function GET(request: NextRequest) {
     insight: insightRes.data?.detail ?? null,
     snapshots: snapshotsRes.data ?? [],
     mutations: mutationsRes.data ?? [],
+  }, {
+    headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=300" },
   });
 }

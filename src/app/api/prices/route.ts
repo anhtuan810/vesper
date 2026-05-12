@@ -18,7 +18,9 @@ export async function GET(req: NextRequest) {
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: result.error === "not found" ? 404 : 500 });
   }
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+  });
 }
 
 export async function POST(req: NextRequest) {

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useUserContext } from "@/components/UserProvider";
+import { invalidateAssetsCache } from "@/lib/hooks";
 
 interface Snapshot {
   asset: Record<string, unknown> & { name?: string };
@@ -11,6 +13,7 @@ const SNAPSHOT_KEY = "vesper.recently_deleted";
 const VISIBLE_MS = 8000;
 
 export function UndoDeleteToast() {
+  const { user } = useUserContext();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +56,7 @@ export function UndoDeleteToast() {
         throw new Error(body.error ?? "Undo failed");
       }
       try { sessionStorage.removeItem(SNAPSHOT_KEY); } catch {}
+      if (user?.id) invalidateAssetsCache(user.id);
       setSnapshot(null);
       window.dispatchEvent(new Event("vesper:asset-restored"));
     } catch (e) {

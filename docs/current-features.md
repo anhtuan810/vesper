@@ -20,7 +20,7 @@
 - Files: `src/app/page.tsx`, `src/app/diary/page.tsx`, `src/app/chat/page.tsx`, `src/app/profile/page.tsx`, `src/app/asset/[id]/page.tsx`, `src/components/BottomNav.tsx`
 
 ### Portfolio Dashboard
-- Header (`NavBar`): user's avatar (28px, from `users.avatar_url` if present, else initials on accent background) + first name (`name.split(' ')[0]`) on the left; refresh button with integrated 4px status dot (green = all prices live, amber = partial, faint = none) on the right. No Vesper wordmark, no settings gear.
+- Header (`NavBar`): user's avatar (28px, from `users.avatar_url` if present, else initials on accent background) + first name (`name.split(' ')[0]`) on the left; refresh button with integrated 4px status dot on the right. No Vesper wordmark, no settings gear. Dot states: **green** = all symbols fetched live within the last 5 minutes; **amber** = partial live prices OR prices are known-fresh (< 5 min) but the current session's fetch is still in-flight ("Refreshing prices"); **faint** = no recent price data. Dot uses a persisted timestamp (`vesper.prices.ts.<userId>` in sessionStorage) so it reflects actual data age, not session presence.
 - Net worth hero in serif (Source Serif 4) at 54px, monochrome currency. Asset-detail heroes use the editorial dimmed currency prefix at their smaller (44–48px) sizes. No gross/debt subtitle even when mortgages exist.
 - Change pill on the hero: percentage + EUR delta vs 1 month ago, with explicit `+`/`−` signs and `accent-soft` / `negative-soft` background. Renders only when at least 7 historical snapshots exist.
 - Net worth chart between hero and Holdings — range pills `1D / 1W / 1M / 3M / 1Y / All`, smooth bezier line in accent green, end-point dot, today marker, axis labels rendered below the chart in a separate row (no overlap with the curve), empty state until 7 snapshots exist. 1D shows the latest snapshot + the live current value as two points.
@@ -99,7 +99,7 @@
 - FX cache refreshed lazily on first miss with 24h TTL via `/api/fx`. In-process 60s memo cache layer prevents redundant table hits during active polling
 - FX source: frankfurter.app (no key, ECB-backed). EUR base matches the storage plan.
 - Self-heal: when Yahoo's reported currency differs from `assets.currency`, the row is corrected on next price refresh — currency tag and freshly-converted EUR value updated together in the same write
-- Status dot in NavBar (green = all live, amber = partial, faint = none)
+- Status dot in NavBar — age-based (see Portfolio Dashboard above for full definition)
 - Manual refresh button in NavBar
 - Day-change pills per position; previous-close is also EUR-converted for like-for-like comparison
 - Files: `src/app/api/prices/route.ts`, `src/app/api/fx/route.ts`, `src/lib/hooks.ts` (`useAssets`, `useLivePrice`)
@@ -128,14 +128,34 @@
 - Files: `src/lib/money.ts`, `src/lib/hooks.ts`, `src/lib/projection.ts`, `src/lib/claude.ts`, `src/lib/apply-changes.ts`, `src/lib/country-currency.ts`, `src/components/PriceDisplay.tsx`, `src/components/NetWorthHero.tsx`, `src/components/PositionRow.tsx`, `src/components/PortfolioTab.tsx`, `src/components/HoldingsGroup.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/components/asset-detail/*`, `src/components/DiaryTab.tsx`, `src/app/page.tsx`, `src/app/profile/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/diary-summary/route.ts`
 
 ### Theme System
-- Three modes: `auto` (default, follows `prefers-color-scheme`), `light`, `dark`
-- Stored on `users.theme` (text, check constraint)
+- Two modes in the UI picker: **Light**, **Dark**. `auto` (system preference) was removed from the Profile picker — the column still accepts `'auto'` for database constraint compatibility, but existing `auto` users will see "Light" as their picker selection until they actively choose.
+- Stored on `users.theme` (text, check constraint `in ('auto', 'light', 'dark')`)
 - `ThemeProvider` resolves the active theme client-side from cookie + system preference, applies `data-theme="light"` or `data-theme="dark"` to the document root; tokens in `globals.css` swap automatically
 - Picker lives on Profile → Preferences alongside the currency picker
 - Cookie (`vesper.theme`) read in the root layout to set initial `data-theme` before hydration, avoiding flash
 - `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `/api/users/me`
 - PropertyMap reacts to theme changes via `setStyle()` and uses a per-theme cached PNG path
 - Files: `src/components/ThemeProvider.tsx`, `src/lib/hooks.ts`, `src/app/layout.tsx`, `src/app/profile/page.tsx`
+
+### Portfolio Loading Performance
+
+Several optimisations reduce the time-to-interactive on the Portfolio page:
+
+**1. Progressive render — no price gate.** The page renders as soon as assets load from the DB. Live prices fill in reactively when `fetchPrices` completes. The previous `pricesLoaded` full-page block (worst-case 3 s skeleton) is gone.
+
+**2. Single auth call via `UserProvider`.** `supabase.auth.getUser()` fires once at the app root and is shared via React context (`src/components/UserProvider.tsx`). Before this, every `useDisplayCurrency()` and `useUser()` call triggered a separate auth round-trip — including one per `PositionRow` render.
+
+**3. Assets stale-while-revalidate (`sessionStorage`).** `useAssets` caches the DB asset list under `vesper.assets.<userId>`. On mount, the cache hydrates instantly and `loading` is set `false` immediately. Supabase revalidates in the background and writes the fresh list back. On mutation, `invalidateAssetsCache(userId)` clears the key before `refetchAssets()` fires. Cross-tab invalidation via `BroadcastChannel` is not yet implemented.
+
+**4. `/api/dashboard-init` batched endpoint.** Replaces three separate authenticated requests (insight, 1M snapshots, mutations) with a single `Promise.all` on the server. Auth is verified once. The insight result pre-populates `_insightCache` so `InsightBand` renders without its own network call. The 1M snapshot data is passed as `initialSnapshots` to `NetWorthChart`, skipping its initial fetch.
+
+**5. Sparklines stale-while-revalidate (`sessionStorage`).** `useSparklines` caches results under `vesper.sparklines.v1.<range>.<symbolKey>` with a 5-minute TTL. On mount, sparklines render from cache instantly; the batch fetch revalidates in background. `invalidateAssetsCache(userId)` also scans and removes all `vesper.sparklines.v1.*` keys.
+
+**6. Price timestamp persistence.** The last successful price fetch timestamp is stored under `vesper.prices.ts.<userId>`. On remount (e.g., after tab switch), `lastUpdated` is initialised from this key so the NavBar status dot reflects actual data age, not session presence.
+
+**Invalidation call sites** (both `invalidateAssetsCache` + sparkline bust): `use-chat-session.ts` `send()`/`sendText()` when `data.assets` is truthy; `UndoDeleteToast.tsx` `handleUndo()` after a successful restore.
+
+- Files: `src/app/page.tsx`, `src/components/UserProvider.tsx`, `src/components/NavBar.tsx`, `src/components/NetWorthChart.tsx`, `src/components/PortfolioTab.tsx`, `src/lib/hooks.ts` (`useAssets`, `useSparklines`, `invalidateAssetsCache`), `src/lib/use-chat-session.ts`, `src/components/UndoDeleteToast.tsx`, `src/app/api/dashboard-init/route.ts`
 
 ### Conversational Assistant
 - **Single continuous thread per user** (per Decision 3). No "new chat", "clear history", or "session list" affordances anywhere. The mental model is "talking to a person," not "starting a new chat."

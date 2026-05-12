@@ -7,7 +7,7 @@
 - **Tailwind CSS** for styling
 - **Fonts**: Source Serif 4 (serif, hero numbers + section titles), Albert Sans (body, with `font-feature-settings: "tnum" 1` on `body` for tabular numbers), Geist Mono (retained but used sparingly — only the few elements where tabular precision really matters). All loaded from Google Fonts.
 - **Design tokens** in `src/app/globals.css` (CSS vars on `:root, [data-theme="light"]` and `[data-theme="dark"]`) + `tailwind.config.ts` (utilities) + `src/lib/tokens.ts` (TypeScript mirror for inline JS contexts like Recharts)
-- **Theme system**: three modes — `auto` (default, follows `prefers-color-scheme`), `light`, `dark`. Active theme applied via `data-theme="light"` or `data-theme="dark"` on the document root by `ThemeProvider`. Cookie (`vesper.theme`) read in the root layout for SSR to avoid flash. `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `users.theme`.
+- **Theme system**: two modes exposed in the Profile picker — `light`, `dark`. `auto` was removed from the picker UI; the column still accepts `'auto'` for DB constraint compatibility but new selections are limited to light/dark. Active theme applied via `data-theme="light"` or `data-theme="dark"` on the document root by `ThemeProvider`. Cookie (`vesper.theme`) read in the root layout for SSR to avoid flash. `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `users.theme`.
 - No state management library — local React state and custom hooks only
 - No component library — custom styles using Tailwind utility classes
 
@@ -27,7 +27,8 @@
   - `/api/diary-summary`
   - `/api/snapshots`, `/api/cron/snapshot`
   - `/api/insight` — AI insight band (new in the migration)
-  - `/api/users/me` — PATCH preferences (theme, display_currency, avatar_url) — new in the migration
+  - `/api/dashboard-init` — batched GET returning `{ insight, snapshots (1M), mutations }` in one auth round-trip; used by the Portfolio page on mount
+  - `/api/users/me` — GET user preferences (`name, avatar_url, display_currency, theme, fingerprint, profile`); PATCH to update preferences (theme, display_currency, avatar_url)
   - `/api/logo` — server-side logo proxy
   - `/api/backfill` — one-time data fixes
 - **Routes removed in the migration**: `PATCH /api/assets/[id]` and `DELETE /api/assets/[id]` (Decision 8, PR 4); `PATCH /api/mutations/[id]` (Decision 1, PR 5). All asset and diary modifications now flow through `/api/chat`.
@@ -111,6 +112,8 @@ Configured in `vercel.json`:
 - Authenticated via `CRON_SECRET` env var. Route checks `Authorization: Bearer ${CRON_SECRET}` and returns 401 otherwise.
 
 ## User Preferences Endpoint
+
+`GET /api/users/me` — returns `{ name, avatar_url, display_currency, theme, fingerprint, profile }` for the authenticated user. `Cache-Control: private, max-age=300, stale-while-revalidate=1800`. Added alongside the HTTP caching work as the foundation for loading user preferences in `UserProvider`.
 
 `PATCH /api/users/me` — the only public write path for `users` columns. Strict field allowlist: `{ display_currency, theme, avatar_url }`. Any other field in the body is rejected with 400. Added in PR 1; absorbed avatar updates (PR 7) and theme updates (PR 1). The defunct `/settings` route was removed per Decision 5 — preferences live on Profile.
 
@@ -233,6 +236,39 @@ Added in PR 8 per Decision 10. The user enters mortgage values once. After that,
 - Service role key used server-side; anon key used client-side (RLS enforces user scope)
 - Site URL: `https://app.novahub.nl`. Redirect URLs include `http://localhost:3000/auth/callback` for local dev.
 - Safari OAuth on localhost is broken due to ITP third-party cookie blocking — works in Chrome and other browsers; production unaffected.
+
+## HTTP Cache-Control Headers
+
+All user-scoped API routes use `private` — never CDN-shared. Error responses (4xx/5xx) do not receive cache headers.
+
+| Route | Handler | max-age | stale-while-revalidate |
+|---|---|---|---|
+| `/api/prices` | GET | 60s | 300s |
+| `/api/fx` | GET | 3600s | 86400s |
+| `/api/snapshots` | GET | 300s | 1800s |
+| `/api/insight` | GET | 3600s | 86400s |
+| `/api/dashboard-init` | GET | 30s | 300s |
+| `/api/users/me` | GET | 300s | 1800s |
+
+Write paths (`/api/chat`, `PATCH /api/users/me`, `POST /api/assets`) carry no cache headers.
+
+`/api/users/me` GET was added alongside the cache header work. It returns `{ name, avatar_url, display_currency, theme, fingerprint, profile }` and is the foundation for loading user preferences in `UserProvider` (Step 6).
+
+## Client-Side Caching (sessionStorage)
+
+Assets are cached in `sessionStorage` under the key `vesper.assets.<userId>` for stale-while-revalidate: the hook hydrates instantly on mount and background-refetches from Supabase.
+
+**Invalidation rule**: whenever a mutation is known to have succeeded on the client, `invalidateAssetsCache(userId)` must be called immediately — before any `refetchAssets()` call — to prevent stale data appearing on back-navigation or cross-component mounts.
+
+**Current invalidation call sites:**
+- `use-chat-session.ts` `send()` / `sendText()` — when `data.assets` is truthy (server confirmed a portfolio change)
+- `UndoDeleteToast.tsx` `handleUndo()` — after a successful `POST /api/assets` restore
+
+**Single-tab only**: `BroadcastChannel` for cross-tab invalidation is not yet implemented. A `// TODO: BroadcastChannel for cross-tab invalidation` comment marks the write site in `writeCachedAssets`.
+
+**Sparklines** are cached under `vesper.sparklines.v1.<range>.<symbolKey>` with a 5-minute TTL stored in the blob (`{ data, ts }`). The key is keyed by sorted symbol set + range, so different portfolios don't collide. `invalidateAssetsCache(userId)` scans for all keys starting with `vesper.sparklines.v1.` and removes them — no `userId` needed in the key because it's a prefix scan.
+
+**`useUser` is NOT sessionStorage-cached**: `useUser()` reads from the `UserProvider` React context (in-memory). `PATCH /api/users/me` does not need a sessionStorage bust.
 
 ## Environment Variables
 

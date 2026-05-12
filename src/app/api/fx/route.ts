@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const CC = { headers: { "Cache-Control": "private, max-age=3600, stale-while-revalidate=86400" } };
   try {
     const rates = await getEurRates();
     const quote = request.nextUrl.searchParams.get("quote")?.toUpperCase();
@@ -20,9 +21,9 @@ export async function GET(request: NextRequest) {
       if (rate === undefined) {
         return NextResponse.json({ error: `Unknown quote currency: ${quote}` }, { status: 400 });
       }
-      return NextResponse.json({ base: "EUR", quote, rate });
+      return NextResponse.json({ base: "EUR", quote, rate }, CC);
     }
-    return NextResponse.json({ base: "EUR", rates });
+    return NextResponse.json({ base: "EUR", rates }, CC);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 503 });
   }

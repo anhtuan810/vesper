@@ -44,7 +44,8 @@ export function useProfile(userId: string | undefined) {
   return profile;
 }
 
-function assetsCacheKey(userId: string) { return `vesper.assets.${userId}`; }
+const ASSETS_CACHE_PREFIX = "vesper.assets.";
+function assetsCacheKey(userId: string) { return `${ASSETS_CACHE_PREFIX}${userId}`; }
 function readCachedAssets(userId: string): Asset[] | null {
   try {
     const raw = sessionStorage.getItem(assetsCacheKey(userId));
@@ -52,7 +53,45 @@ function readCachedAssets(userId: string): Asset[] | null {
   } catch { return null; }
 }
 function writeCachedAssets(userId: string, assets: Asset[]) {
+  // TODO: BroadcastChannel for cross-tab invalidation — this is single-tab safe only
   try { sessionStorage.setItem(assetsCacheKey(userId), JSON.stringify(assets)); } catch {}
+}
+export function invalidateAssetsCache(userId: string) {
+  try { sessionStorage.removeItem(assetsCacheKey(userId)); } catch {}
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith(SPARKLINES_CACHE_PREFIX)) toRemove.push(k);
+    }
+    toRemove.forEach((k) => sessionStorage.removeItem(k));
+  } catch {}
+}
+
+const SPARKLINES_CACHE_PREFIX = "vesper.sparklines.v1.";
+const SPARKLINES_TTL_MS = 5 * 60 * 1000;
+function sparklinesKey(symbolKey: string, range: string) { return `${SPARKLINES_CACHE_PREFIX}${range}.${symbolKey}`; }
+function readCachedSparklines(symbolKey: string, range: string): Record<string, number[]> | null {
+  try {
+    const raw = sessionStorage.getItem(sparklinesKey(symbolKey, range));
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw) as { data: Record<string, number[]>; ts: number };
+    return Date.now() - ts < SPARKLINES_TTL_MS ? data : null;
+  } catch { return null; }
+}
+function writeCachedSparklines(symbolKey: string, range: string, data: Record<string, number[]>) {
+  try { sessionStorage.setItem(sparklinesKey(symbolKey, range), JSON.stringify({ data, ts: Date.now() })); } catch {}
+}
+
+function pricesTsKey(userId: string) { return `vesper.prices.ts.${userId}`; }
+function readPriceTimestamp(userId: string): Date | null {
+  try {
+    const raw = sessionStorage.getItem(pricesTsKey(userId));
+    return raw ? new Date(Number(raw)) : null;
+  } catch { return null; }
+}
+function writePriceTimestamp(userId: string) {
+  try { sessionStorage.setItem(pricesTsKey(userId), String(Date.now())); } catch {}
 }
 
 export function useAssets(userId: string | undefined) {
@@ -75,6 +114,8 @@ export function useAssets(userId: string | undefined) {
       setLoading(false);
       if (!cached.some((a) => a.symbol)) setPricesLoaded(true);
     }
+    const ts = readPriceTimestamp(userId);
+    if (ts) setLastUpdated(ts);
   }, [userId]);
 
   const fetchAssets = useCallback(async () => {
@@ -113,7 +154,9 @@ export function useAssets(userId: string | undefined) {
         if (!p.error) priceMap[p.symbol] = p;
       });
       setPrices(priceMap);
-      setLastUpdated(new Date());
+      const now = new Date();
+      setLastUpdated(now);
+      if (userId) writePriceTimestamp(userId);
       const successCount = Object.keys(priceMap).length;
       const healthRatio = symbols.length > 0 ? successCount / symbols.length : 1;
       setPriceHealth(healthRatio < 0.5 ? "degraded" : "healthy");
@@ -234,8 +277,12 @@ export function useSparklines(symbols: string[], range: string): Record<string, 
   useEffect(() => {
     const unique = symbolKey.split(",").filter(Boolean);
     if (unique.length === 0) return;
-    let cancelled = false;
 
+    // Hydrate from cache instantly; revalidate in background
+    const cached = readCachedSparklines(symbolKey, range);
+    if (cached) setSparklines(cached);
+
+    let cancelled = false;
     fetch("/api/prices/history/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -249,6 +296,7 @@ export function useSparklines(symbols: string[], range: string): Record<string, 
           result[sym] = points.map((p) => p.close);
         }
         setSparklines(result);
+        writeCachedSparklines(symbolKey, range, result);
       })
       .catch(() => {});
 
