@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePriceHistory } from "@/lib/hooks";
 
-const RANGES = ["1D", "1W", "1M", "3M", "1Y", "ALL"] as const;
+const RANGES = ["1D", "1W", "1M", "3M", "1Y", "All"] as const;
 type Range = (typeof RANGES)[number];
 
 interface PriceChartProps {
@@ -36,6 +36,10 @@ function buildPath(closes: number[], W: number, H: number): { line: string; area
   return { line, area };
 }
 
+function fmtChartDate(ts: number): string {
+  return new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
   const router = useRouter();
   const [range, setRange] = useState<Range>(defaultRange);
@@ -46,26 +50,25 @@ export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
     if ((RANGES as readonly string[]).includes(r)) setRange(r as Range);
   }, []);
 
-  const { closes, loading } = usePriceHistory(symbol, range);
+  const { closes, timestamps, loading } = usePriceHistory(symbol, range);
 
   const W = 320;
   const H = 90;
+  const pad = 4;
   const strokeColor = "var(--accent)";
   const gradId = `chartFill_${symbol.replace(/[^a-zA-Z0-9]/g, "")}`;
 
   const { line, area } = buildPath(closes, W, H);
-  const lastPt =
+
+  const min = closes.length ? Math.min(...closes) : 0;
+  const max = closes.length ? Math.max(...closes) : 0;
+  const vRange = Math.max(max - min, max * 0.0001);
+  const lastY =
     closes.length >= 2
-      ? {
-          x: W,
-          y:
-            H -
-            4 -
-            ((closes[closes.length - 1] - Math.min(...closes)) /
-              Math.max(Math.max(...closes) - Math.min(...closes), Math.max(...closes) * 0.0001)) *
-              (H - 8),
-        }
-      : null;
+      ? H - pad - ((closes[closes.length - 1] - min) / vRange) * (H - pad * 2)
+      : H / 2;
+
+  const showEmpty = !loading && closes.length < 2;
 
   function selectRange(r: Range) {
     setRange(r);
@@ -76,24 +79,26 @@ export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
 
   return (
     <div>
-      {/* Chart card */}
-      <div style={{
-        background: "var(--surface)",
-        border: "0.5px solid var(--border)",
-        borderRadius: 14,
-        padding: 10,
-        marginBottom: 0,
-      }}>
-        {loading || closes.length < 2 ? (
-          <div style={{ width: "100%", height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {loading && (
-              <div style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.1em", fontFamily: "var(--font-sans)" }}>
-                loading
-              </div>
-            )}
+      {/* Chart SVG — flush to page surface, no card wrapper */}
+      <div style={{ position: "relative", height: H }}>
+        {showEmpty ? (
+          <div style={{ height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>No data</div>
+          </div>
+        ) : loading ? (
+          <div style={{ height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.1em", fontFamily: "var(--font-sans)" }}>
+              loading
+            </div>
           </div>
         ) : (
-          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block" }}>
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            width="100%"
+            height={H}
+            style={{ display: "block" }}
+          >
             <defs>
               <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
@@ -101,38 +106,58 @@ export function PriceChart({ symbol, defaultRange = "3M" }: PriceChartProps) {
               </linearGradient>
             </defs>
             <path d={area} fill={`url(#${gradId})`} />
-            <path d={line} fill="none" stroke={strokeColor} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-            {lastPt && <circle cx={lastPt.x} cy={lastPt.y} r={3.5} fill={strokeColor} />}
+            <path
+              d={line}
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {/* End-point marker: halo + dot, matching NetWorthChart */}
+            <circle cx={W} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
+            <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
           </svg>
         )}
       </div>
 
-      {/* Range pills */}
-      <div style={{
-        display: "flex",
-        gap: 4,
-        margin: "12px 0 0",
-        padding: 3,
-        background: "var(--surface-elev)",
-        borderRadius: 999,
-      }}>
+      {/* Date axis labels — below SVG, matching NetWorthChart treatment */}
+      {!showEmpty && !loading && closes.length >= 2 && timestamps.length >= 2 && (
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
+            {fmtChartDate(timestamps[0])}
+          </span>
+          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
+            {fmtChartDate(timestamps[timestamps.length - 1])}
+          </span>
+        </div>
+      )}
+
+      {/* Range pills — matching NetWorthChart: tinted track, rounded rect, not pill */}
+      <div
+        className="flex gap-1 mt-3"
+        style={{
+          padding: 4,
+          background: "var(--surface-elev)",
+          borderRadius: 10,
+        }}
+      >
         {RANGES.map((r) => (
           <button
             key={r}
             onClick={() => selectRange(r)}
+            className="flex-1 text-center"
             style={{
-              flex: 1,
-              textAlign: "center",
-              padding: "7px 0",
-              fontSize: 12,
+              padding: "9px 0",
+              fontSize: 13,
               fontWeight: 500,
-              borderRadius: 999,
+              borderRadius: 8,
               color: range === r ? "var(--text)" : "var(--text-dim)",
-              background: range === r ? "var(--surface)" : "transparent",
-              boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.04)" : "none",
+              background: range === r ? "var(--bg)" : "transparent",
+              boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
               border: "none",
               cursor: "pointer",
-              letterSpacing: "0.02em",
+              transition: "all 0.15s",
               fontFamily: "var(--font-sans)",
             }}
           >

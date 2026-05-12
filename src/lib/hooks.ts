@@ -249,25 +249,28 @@ export function useAssets(userId: string | undefined) {
 
 export function usePriceHistory(symbol: string | null | undefined, range: string) {
   const [closes, setCloses] = useState<number[]>([]);
+  const [timestamps, setTimestamps] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!symbol) { setCloses([]); return; }
+    if (!symbol) { setCloses([]); setTimestamps([]); return; }
     let cancelled = false;
     setLoading(true);
     fetch(`/api/prices/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`)
       .then((r) => r.json())
       .then(({ data }) => {
         if (!cancelled) {
-          setCloses((data as PricePoint[] | undefined)?.map((p) => p.close) ?? []);
+          const points = (data as PricePoint[] | undefined) ?? [];
+          setCloses(points.map((p) => p.close));
+          setTimestamps(points.map((p) => p.timestamp));
         }
       })
-      .catch(() => { if (!cancelled) setCloses([]); })
+      .catch(() => { if (!cancelled) { setCloses([]); setTimestamps([]); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [symbol, range]);
 
-  return { closes, loading };
+  return { closes, timestamps, loading };
 }
 
 export function useSparklines(symbols: string[], range: string): Record<string, number[]> {

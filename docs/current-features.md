@@ -56,7 +56,7 @@
 
 **Tradeable** (stocks, ETFs, crypto, gold):
 - Asset logo, serif name, units sub-line, "Market price" hero with editorial currency prefix, change pill (explicit signs, no arrow)
-- Full price chart with time-range tabs (`1D / 1W / 1M / 3M / 1Y / ALL`); chart treatment unified with NetWorthChart
+- Full price chart with time-range tabs (`1D / 1W / 1M / 3M / 1Y / All`); chart treatment matches NetWorthChart exactly — no card wrapper, flush to page surface, same gradient fill (0.18→0 opacity), same end-point dot (halo + solid, r=6/3), same stroke width (1.5px), date axis labels (start left / end right, `var(--text-faint)`, 12px) below the SVG, same range-pill tinted track (`var(--surface-elev)`, borderRadius 10) with active pill on `var(--bg)` background
 - "Your position" list: Current value / Total return (with %) / Avg buy (with year)
 - Activity timeline scoped to the asset; prefers unit-based deltas (`+5 shares`) for tradeable mutations, falls back to signed value delta or context-only for older entries
 - Crypto positions show a 24h volatility block; stocks do not. Crypto rows hide country.
