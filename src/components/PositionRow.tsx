@@ -83,23 +83,23 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
 
         {hasSparkline && <MiniSparkline prices={closes} />}
 
-        {/* Value + change */}
-        <div className="text-right shrink-0">
+        {/* Value + change — paddingRight aligns value right-edge with group total */}
+        <div className="text-right shrink-0" style={{ paddingRight: 28 }}>
           <div
             className="text-fg"
-            style={{ fontSize: 15, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
+            style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
           >
             {formatMoney(asset.value, displayCurrency)}
           </div>
           {chg !== null ? (
             <div
               className={`mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
-              style={{ fontSize: 12, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
+              style={{ fontSize: 11.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
             >
               {fmtPct.format(chg)}%
             </div>
           ) : (
-            <div className="text-faint mt-0.5" style={{ fontSize: 12 }}>
+            <div className="text-faint mt-0.5" style={{ fontSize: 11.5 }}>
               —
             </div>
           )}

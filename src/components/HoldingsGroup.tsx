@@ -1,19 +1,23 @@
 "use client";
 
 import { type ReactNode } from "react";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 
 interface HoldingsGroupProps {
   label: string;
   barColor: string;
   barPct: number;
+  total: number;
   expanded: boolean;
   onToggle: () => void;
   children: ReactNode;
 }
 
 export function HoldingsGroup({
-  label, barColor, barPct, expanded, onToggle, children,
+  label, barColor, barPct, total, expanded, onToggle, children,
 }: HoldingsGroupProps) {
+  const displayCurrency = useDisplayCurrency();
   return (
     <div style={{ borderBottom: "0.5px solid var(--border-strong)", paddingBottom: 4 }}>
       <button
@@ -60,6 +64,17 @@ export function HoldingsGroup({
             background: barColor,
           }} />
         </div>
+
+        {/* Group total */}
+        <span style={{
+          fontSize: 15,
+          fontWeight: 500,
+          fontVariantNumeric: "tabular-nums",
+          color: "var(--text-primary)",
+          flexShrink: 0,
+        }}>
+          {formatMoney(total, displayCurrency)}
+        </span>
 
         {/* Chevron */}
         <svg

@@ -142,6 +142,7 @@ export function PortfolioTab({
               label={group.label}
               barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
               barPct={grossTotal > 0 ? Math.max((group.total / grossTotal) * 100, 2) : 2}
+              total={group.total}
               expanded={isExpanded(group.category)}
               onToggle={() => toggleGroup(group.category)}
             >
