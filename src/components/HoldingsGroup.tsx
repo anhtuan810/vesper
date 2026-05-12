@@ -70,7 +70,7 @@ export function HoldingsGroup({
           fontSize: 15,
           fontWeight: 500,
           fontVariantNumeric: "tabular-nums",
-          color: "var(--text-primary)",
+          color: "var(--text)",
           flexShrink: 0,
         }}>
           {formatMoney(total, displayCurrency)}
