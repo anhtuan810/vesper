@@ -53,16 +53,19 @@ export function MortgageBlock({ asset }: Props) {
     mortgage_type: type,
     mortgage_start_date: startStr,
     mortgage_end_date: endStr,
+    mortgage_balance_recorded_at: recordedAtStr,
   } = asset;
 
   const balance = computeCurrentBalance(asset);
   const hasMortgage = balance > 0;
-  const hasProjection = hasMortgage && rate != null && payment != null && type != null && startStr != null;
+  // Fall back to balance_recorded_at when start_date is absent — still gives a valid projection.
+  const projectionAnchor = startStr ?? recordedAtStr ?? null;
+  const hasProjection = hasMortgage && rate != null && payment != null && type != null && projectionAnchor != null;
 
   const projection = useMemo(() => {
     if (!hasProjection) return null;
-    return projectMortgage(balance, rate!, payment!, type!, new Date(startStr!), new Date(), endStr ? new Date(endStr) : undefined);
-  }, [hasProjection, balance, rate, payment, type, startStr, endStr]);
+    return projectMortgage(balance, rate!, payment!, type!, new Date(projectionAnchor!), new Date(), endStr ? new Date(endStr) : undefined);
+  }, [hasProjection, balance, rate, payment, type, projectionAnchor, endStr]);
 
   const { curve, todayIdx } = useMemo(() => {
     if (!projection) return { curve: [] as { date: Date; balance: number }[], todayIdx: 0 };

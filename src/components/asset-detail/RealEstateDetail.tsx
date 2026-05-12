@@ -99,7 +99,7 @@ export function RealEstateDetail({ asset }: Props) {
         </div>
 
         {/* Identity */}
-        <div style={{ marginBottom: 22 }}>
+        <div style={{ marginBottom: 14 }}>
           <div style={{
             fontFamily: "var(--font-serif)",
             fontSize: 24,
@@ -118,7 +118,7 @@ export function RealEstateDetail({ asset }: Props) {
         </div>
 
         {/* Equity hero */}
-        <div style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 10 }}>
           <div style={{
             fontSize: 10,
             fontWeight: 500,
@@ -167,7 +167,7 @@ export function RealEstateDetail({ asset }: Props) {
 
         {/* Value composition bar */}
         {hasMortgage && (
-          <div style={{ marginBottom: 28 }}>
+          <div style={{ marginBottom: 16 }}>
             <ValueComposition propertyValue={asset.value} mortgageBalance={currentBalance} />
           </div>
         )}
