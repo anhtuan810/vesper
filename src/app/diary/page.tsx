@@ -27,7 +27,7 @@ export default function DiaryPage() {
       .from("mutations")
       .select("*, asset:assets!asset_id (name)", { count: "exact" })
       .eq("user_id", user.id)
-      .order("occurred_at", { ascending: false, nullsFirst: false })
+      .order("recorded_at", { ascending: false })
       .range(0, PAGE_SIZE - 1);
     if (error) { console.error("Failed to load diary:", error.message); return; }
     const loaded = data?.length ?? 0;
@@ -45,7 +45,7 @@ export default function DiaryPage() {
       .from("mutations")
       .select("*, asset:assets!asset_id (name)")
       .eq("user_id", user.id)
-      .order("occurred_at", { ascending: false, nullsFirst: false })
+      .order("recorded_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) return;
     const newData = data || [];

@@ -58,7 +58,7 @@ Format:
   {"action":"edit","name":"London","value":820000},
   {"action":"edit","name":"Austin","value":950000},
   {"action":"edit","name":"Property Eindhoven","new_name":"Eindhoven"},
-  {"action":"edit","name":"ASML","units":71,"buy_price":990,"buy_date":"2025-05-08","value":70290},
+  {"action":"edit","name":"ASML","units":71,"buy_price":990,"buy_date":"2024-11-15","value":70290},
   {"action":"remove","name":"AMD"}
 ]</changes>
 
@@ -135,8 +135,11 @@ export function buildDynamicContext(
     return `- ${parts.join(", ")}`;
   }).join("\n");
 
+  const today = new Date().toISOString().split("T")[0];
+
   return [
     userName ? `User: ${userName}` : "",
+    `Today's date: ${today}`,
     `CURRENT PORTFOLIO (${assets.length} positions, net worth EUR${total.toLocaleString()} — all values are EUR-equivalent):`,
     "Note: prices shown here are EUR-equivalent. Render prose responses in " + displayCurrency + ".",
     assetList,
