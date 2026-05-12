@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { User } from "@supabase/supabase-js";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
 import { useThemeContext } from "@/components/ThemeProvider";
+import { useUserContext } from "@/components/UserProvider";
 import { normalizePrice } from "@/lib/prices";
 import type { PriceResult, PricePoint } from "@/lib/prices-server";
 import {
@@ -24,18 +24,7 @@ export interface ProfileData {
 }
 
 export function useUser() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const supabase = createBrowserSupabase();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setLoading(false);
-    });
-  }, []);
-
-  return { user, loading };
+  return useUserContext();
 }
 
 export function useProfile(userId: string | undefined) {
@@ -55,6 +44,17 @@ export function useProfile(userId: string | undefined) {
   return profile;
 }
 
+function assetsCacheKey(userId: string) { return `vesper.assets.${userId}`; }
+function readCachedAssets(userId: string): Asset[] | null {
+  try {
+    const raw = sessionStorage.getItem(assetsCacheKey(userId));
+    return raw ? (JSON.parse(raw) as Asset[]) : null;
+  } catch { return null; }
+}
+function writeCachedAssets(userId: string, assets: Asset[]) {
+  try { sessionStorage.setItem(assetsCacheKey(userId), JSON.stringify(assets)); } catch {}
+}
+
 export function useAssets(userId: string | undefined) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [prices, setPrices] = useState<Record<string, PriceResult>>({});
@@ -66,6 +66,17 @@ export function useAssets(userId: string | undefined) {
   const [priceHealth, setPriceHealth] = useState<"healthy" | "degraded" | null>(null);
   const supabase = createBrowserSupabase();
 
+  // Hydrate from cache instantly when userId first becomes available
+  useEffect(() => {
+    if (!userId) return;
+    const cached = readCachedAssets(userId);
+    if (cached) {
+      setAssets(cached);
+      setLoading(false);
+      if (!cached.some((a) => a.symbol)) setPricesLoaded(true);
+    }
+  }, [userId]);
+
   const fetchAssets = useCallback(async () => {
     if (!userId) return;
     const { data, error } = await supabase
@@ -76,6 +87,7 @@ export function useAssets(userId: string | undefined) {
     if (error) { setError(true); setLoading(false); return; }
     setAssets(data || []);
     setLoading(false);
+    writeCachedAssets(userId, data || []);
     // No tradeable assets means fetchPrices will never fire — mark prices as loaded immediately
     if (!(data || []).some((a) => a.symbol)) {
       setPricesLoaded(true);
@@ -339,6 +351,10 @@ export function useSignOut() {
 
 // Module-level session cache — survives re-renders, cleared on page reload
 let _insightCache: { detail: string | null; fetchedAt: number } | null = null;
+
+export function primeInsightCache(detail: string | null) {
+  _insightCache = { detail, fetchedAt: Date.now() };
+}
 
 export function useInsight() {
   const [detail, setDetail] = useState<string | null>(null);

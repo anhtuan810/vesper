@@ -5,13 +5,14 @@ import { useState, useEffect } from "react";
 const RANGES = ["1D", "1W", "1M", "3M", "1Y", "All"] as const;
 type Range = (typeof RANGES)[number];
 
-interface Props {
-  currentNet: number;
-}
-
-interface SnapshotPoint {
+export interface SnapshotPoint {
   date: string;
   total_value: number;
+}
+
+interface Props {
+  currentNet: number;
+  initialSnapshots?: SnapshotPoint[];
 }
 
 function buildPath(values: number[], W: number, H: number): { line: string; area: string } {
@@ -46,24 +47,32 @@ function fmtChartDate(dateStr: string): string {
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-export function NetWorthChart({ currentNet }: Props) {
+function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotPoint[] {
+  const today = new Date().toISOString().slice(0, 10);
+  const filtered = raw.filter((p) => p.date !== today);
+  filtered.push({ date: today, total_value: currentNet });
+  return filtered;
+}
+
+export function NetWorthChart({ currentNet, initialSnapshots }: Props) {
   const [range, setRange] = useState<Range>("1M");
-  const [series, setSeries] = useState<SnapshotPoint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [series, setSeries] = useState<SnapshotPoint[]>(
+    initialSnapshots ? buildSeries(initialSnapshots, currentNet) : []
+  );
+  const [loading, setLoading] = useState(!initialSnapshots);
 
   useEffect(() => {
+    // Skip the initial 1M fetch if preloaded data was provided
+    if (range === "1M" && initialSnapshots && series.length > 0) return;
     setLoading(true);
     fetch(`/api/snapshots?range=${range}`)
       .then((r) => r.json())
       .then((body) => {
-        const raw: SnapshotPoint[] = body.data ?? [];
-        const today = new Date().toISOString().slice(0, 10);
-        const filtered = raw.filter((p) => p.date !== today);
-        filtered.push({ date: today, total_value: currentNet });
-        setSeries(filtered);
+        setSeries(buildSeries(body.data ?? [], currentNet));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, currentNet]);
 
   const W = 280;

@@ -5,6 +5,7 @@ import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { UndoDeleteToast } from "@/components/UndoDeleteToast";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { UserProvider } from "@/components/UserProvider";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
@@ -52,9 +53,11 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
         <ThemeProvider initialTheme={theme}>
-          {children}
-          <BottomNav />
-          <UndoDeleteToast />
+          <UserProvider>
+            {children}
+            <BottomNav />
+            <UndoDeleteToast />
+          </UserProvider>
         </ThemeProvider>
       </body>
     </html>

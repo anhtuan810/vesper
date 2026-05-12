@@ -1,29 +1,28 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useUser, useAssets, useDisplayCurrency } from "@/lib/hooks";
+import { useUser, useAssets, useDisplayCurrency, primeInsightCache } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { createBrowserSupabase } from "@/lib/supabase";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { formatMoney } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
-
-const supabase = createBrowserSupabase();
+import type { SnapshotPoint } from "@/components/NetWorthChart";
 
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
   const {
     assets, loading: assetsLoading, error: assetsError, refreshing,
-    refreshPrices, refetchAssets, pricesLoaded, lastUpdated, priceHealth,
+    refreshPrices, refetchAssets, lastUpdated, priceHealth,
   } = useAssets(user?.id);
   const displayCurrency = useDisplayCurrency();
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
+  const [initialSnapshots, setInitialSnapshots] = useState<SnapshotPoint[] | undefined>();
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("welcome")) {
@@ -31,27 +30,34 @@ export default function Dashboard() {
     }
   }, []);
 
-  const fetchMutations = useCallback(async () => {
+  const fetchDashboardInit = useCallback(async () => {
     if (!user?.id) return;
-    const { data, error } = await supabase
-      .from("mutations")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("occurred_at", { ascending: false, nullsFirst: false });
-    if (error) { console.error("Failed to load diary:", error.message); return; }
-    setMutations(data || []);
+    const res = await fetch("/api/dashboard-init");
+    if (!res.ok) return;
+    const { insight, snapshots, mutations } = await res.json();
+    primeInsightCache(insight);
+    setInitialSnapshots(snapshots ?? []);
+    setMutations(mutations ?? []);
   }, [user?.id]);
 
-  useEffect(() => { fetchMutations(); }, [fetchMutations]);
+  const refreshMutations = useCallback(async () => {
+    if (!user?.id) return;
+    const res = await fetch("/api/dashboard-init");
+    if (!res.ok) return;
+    const { mutations } = await res.json();
+    setMutations(mutations ?? []);
+  }, [user?.id]);
+
+  useEffect(() => { fetchDashboardInit(); }, [fetchDashboardInit]);
 
   useEffect(() => {
     const handler = () => {
       refetchAssets();
-      fetchMutations();
+      refreshMutations();
     };
     window.addEventListener("vesper:asset-restored", handler);
     return () => window.removeEventListener("vesper:asset-restored", handler);
-  }, [refetchAssets, fetchMutations]);
+  }, [refetchAssets, refreshMutations]);
 
   const setTab = (t: "portfolio" | "diary" | "profile") => {
     if (t !== "portfolio") router.push("/" + t);
@@ -68,9 +74,7 @@ export default function Dashboard() {
     return { netTotal, grossTotal, liveCount, totalSymbols };
   }, [assets]);
 
-  const hasTradeables = assets.some(a => a.symbol);
-
-  if (userLoading || assetsLoading || (hasTradeables && !pricesLoaded)) {
+  if (userLoading || assetsLoading) {
     return (
       <div className="min-h-screen bg-bg">
         <div className="h-14 bg-surface border-b border-border" />
@@ -202,6 +206,7 @@ export default function Dashboard() {
             assets={assets as LiveAsset[]}
             grossTotal={grossTotal}
             netTotal={netTotal}
+            initialSnapshots={initialSnapshots}
           />
         )}
       </div>
@@ -215,7 +220,7 @@ export default function Dashboard() {
           onToggle={() => setChatOpen(!chatOpen)}
           onPortfolioUpdate={() => {
             refetchAssets();
-            fetchMutations();
+            refreshMutations();
             if (!chatOpen) setHasNew(true);
           }}
           onNewMessage={() => {

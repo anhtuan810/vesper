@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
-import { NetWorthChart } from "@/components/NetWorthChart";
+import { NetWorthChart, type SnapshotPoint } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
@@ -43,10 +43,11 @@ interface PortfolioTabProps {
   assets: LiveAsset[];
   grossTotal: number;
   netTotal: number;
+  initialSnapshots?: SnapshotPoint[];
 }
 
 export function PortfolioTab({
-  assets, grossTotal, netTotal,
+  assets, grossTotal, netTotal, initialSnapshots,
 }: PortfolioTabProps) {
   const symbols = useMemo(
     () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
@@ -111,7 +112,7 @@ export function PortfolioTab({
       {/* Net worth chart */}
       {netTotal > 0 && (
         <div className="mb-6">
-          <NetWorthChart currentNet={netTotal} />
+          <NetWorthChart currentNet={netTotal} initialSnapshots={initialSnapshots} />
         </div>
       )}
 
