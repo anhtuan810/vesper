@@ -23,12 +23,19 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const initialScrollDone = useRef(false);
 
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!bottomRef.current) return;
+    if (!initialScrollDone.current && messages.length > 0) {
+      bottomRef.current.scrollIntoView({ behavior: "instant" });
+      initialScrollDone.current = true;
+    } else if (initialScrollDone.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, thinking]);
 
   useEffect(() => {
