@@ -25,22 +25,19 @@ ${JSON.stringify(currentProfile, null, 2)}
 RULES:
 - Only extract facts that are worth remembering long-term.
 - Skip transactional details (adding 10 shares is not a profile fact).
-- Focus on: life situation, investment style, concerns, preferences, decision patterns, blind spots, and investment philosophy.
 - Return ONLY a JSON object with fields to add or update. Return {} if nothing new was learned.
 - Never remove existing profile data — only add or refine.
 - Be conservative. One conversation rarely reveals more than 1-2 facts.
-- Use concise language. Each value should be one short sentence max.
+- Write in warm, banker's tone — third person, present tense, plain prose. One short sentence per field max.
 
 EXAMPLE OUTPUT:
-{"investment_style": "buy-and-hold, prefers quality compounders", "life_context": "has two properties in Netherlands", "fingerprint": "A cautious, long-horizon investor with diversified exposure across equities and real estate."}
+{"life_and_direction": "Based in Amsterdam, planning a move to reduce mortgage exposure before starting a family.", "approach": "Buy-and-hold, prefers quality compounders with low turnover.", "fingerprint": "A leveraged Dutch real estate investor with concentrated tech equity exposure seeking to add stability through fixed income diversification."}
 
 PROFILE FIELDS YOU CAN USE (all optional):
-- investment_style: trading vs buy-and-hold, active vs passive, philosophy
-- life_context: relevant life situation (family, career, location)
-- concerns: what worries them financially
-- preferences: communication style, what they care about
-- blind_spots: patterns they might not notice
-- decision_patterns: how they tend to make financial decisions
+- life_and_direction: life situation and where they are headed — family, career, location, major transitions
+- approach: how they invest — philosophy, style, time horizon, active vs passive, risk posture
+- currently_exploring: what they are actively researching or thinking through right now
+- worth_raising: recurring themes, blind spots, or tensions the assistant should proactively surface
 
 FINGERPRINT FIELD (always attempt):
 - fingerprint: a single sentence, 12–18 words, characterising the investor. Third person, present tense. No proper names, no hedging ("seems", "appears"), no emojis. Plain text only, no quotes. Captures risk posture, investment philosophy, life context. Example: "A measured, long-horizon investor with concentrated tech conviction balanced by stabilising real estate."

@@ -100,7 +100,12 @@ export interface UserRow {
   name?: string;
   avatar_url?: string | null;
   fingerprint?: string | null;
-  profile?: Record<string, string>;
+  profile?: {
+    life_and_direction?: string | null;
+    approach?: string | null;
+    currently_exploring?: string | null;
+    worth_raising?: string | null;
+  } | null;
   display_currency: DisplayCurrency;
   theme: "auto" | "light" | "dark";
   last_backfill_at?: string | null;

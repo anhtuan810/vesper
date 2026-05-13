@@ -24,12 +24,10 @@ const THEME_OPTIONS = [
 const TOAST_KEY = "vesper.currency.toastSeen";
 
 const PROFILE_FIELDS = [
-  { key: "investment_style", label: "Investment style" },
-  { key: "life_context", label: "Life context" },
-  { key: "concerns", label: "Concerns" },
-  { key: "preferences", label: "Preferences" },
-  { key: "blind_spots", label: "Blind spots" },
-  { key: "decision_patterns", label: "Decision patterns" },
+  { key: "life_and_direction", label: "Life and direction" },
+  { key: "approach", label: "Approach" },
+  { key: "currently_exploring", label: "Currently exploring" },
+  { key: "worth_raising", label: "Worth raising" },
 ] as const;
 
 function getInitials(name: string): string {
@@ -323,7 +321,7 @@ export default function ProfilePage() {
           overflow: "hidden",
         }}>
           {PROFILE_FIELDS.map(({ key, label }, idx) => {
-            const value = (profile?.profile as Record<string, string> | undefined)?.[key] ?? null;
+            const value = profile?.profile?.[key] ?? null;
             const isLast = idx === PROFILE_FIELDS.length - 1;
             const borderStyle = isLast ? "none" : "0.5px solid var(--border)";
 
