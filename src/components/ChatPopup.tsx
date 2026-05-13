@@ -246,49 +246,77 @@ export default function ChatPopup({
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`chat-msg flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}
-          >
+        {(() => {
+          const lastAssistantIdx = messages.reduce((last, m, i) => m.from === "assistant" ? i : last, -1);
+          return messages.map((msg, i) => (
             <div
-              style={{
-                maxWidth: msg.from === "user" ? "80%" : "92%",
-                padding: msg.from === "user" ? "10px 14px" : "0",
-                borderRadius: msg.from === "user" ? "18px 18px 4px 18px" : 0,
-                background: msg.from === "user" ? "var(--surface-elev)" : "transparent",
-                border: msg.from === "user" ? "0.5px solid var(--border)" : "none",
-                boxShadow: msg.from === "user" ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
-                color: "var(--text)",
-                fontSize: 14,
-                lineHeight: 1.55,
-                overflowWrap: "break-word",
-                minWidth: 0,
-              }}
+              key={i}
+              className={`chat-msg flex flex-col ${msg.from === "user" ? "items-end" : "items-start"}`}
             >
-              {msg.from === "assistant" ? (
-                <FormatText text={msg.text} />
-              ) : (
-                <>
-                  {msg.imagePreview && (
-                    <img
-                      src={msg.imagePreview}
-                      alt=""
+              <div
+                style={{
+                  maxWidth: msg.from === "user" ? "80%" : "92%",
+                  padding: msg.from === "user" ? "10px 14px" : "0",
+                  borderRadius: msg.from === "user" ? "18px 18px 4px 18px" : 0,
+                  background: msg.from === "user" ? "var(--surface-elev)" : "transparent",
+                  border: msg.from === "user" ? "0.5px solid var(--border)" : "none",
+                  boxShadow: msg.from === "user" ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
+                  color: "var(--text)",
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  overflowWrap: "break-word",
+                  minWidth: 0,
+                }}
+              >
+                {msg.from === "assistant" ? (
+                  <FormatText text={msg.text} />
+                ) : (
+                  <>
+                    {msg.imagePreview && (
+                      <img
+                        src={msg.imagePreview}
+                        alt=""
+                        style={{
+                          display: "block",
+                          maxWidth: "100%",
+                          maxHeight: 200,
+                          borderRadius: 10,
+                          marginBottom: msg.text && msg.text !== "Screenshot uploaded" ? 8 : 0,
+                        }}
+                      />
+                    )}
+                    {(!msg.imagePreview || (msg.text && msg.text !== "Screenshot uploaded")) && msg.text}
+                  </>
+                )}
+              </div>
+              {i === lastAssistantIdx && !loading && msg.suggestedReplies && msg.suggestedReplies.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {msg.suggestedReplies.map((chip) => (
+                    <button
+                      key={chip}
+                      onClick={() => sendText(chip)}
                       style={{
-                        display: "block",
-                        maxWidth: "100%",
-                        maxHeight: 200,
-                        borderRadius: 10,
-                        marginBottom: msg.text && msg.text !== "Screenshot uploaded" ? 8 : 0,
+                        height: 32,
+                        padding: "0 14px",
+                        borderRadius: 999,
+                        fontSize: 13,
+                        background: "var(--surface-elev)",
+                        color: "var(--text)",
+                        border: chip === "Confirm and save"
+                          ? "1px solid var(--accent)"
+                          : "1px solid var(--border)",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
                       }}
-                    />
-                  )}
-                  {(!msg.imagePreview || (msg.text && msg.text !== "Screenshot uploaded")) && msg.text}
-                </>
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          ));
+        })()}
 
         {thinking && (
           <div className="flex items-center gap-0.5 py-1">

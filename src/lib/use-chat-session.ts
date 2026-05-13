@@ -9,6 +9,7 @@ export interface ChatMessage {
   from: "user" | "assistant";
   text: string;
   imagePreview?: string;
+  suggestedReplies?: string[] | null;
 }
 
 const ROUND_AMOUNT: Record<DisplayCurrency, number> = {
@@ -112,10 +113,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
             return;
           }
           const mapped: ChatMessage[] = data.messages.map(
-            (m: { id: string; role: "user" | "assistant"; content: string }) => ({
+            (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => ({
               id: m.id,
               from: m.role,
               text: m.content,
+              suggestedReplies: m.suggested_replies ?? null,
             })
           );
           setMessages(mapped);
@@ -132,7 +134,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     if (!userId) return;
     try {
       const latest = messages.slice(-LOAD_LIMIT);
-      const stripped = latest.map(({ id, from, text }) => ({ id, from, text }));
+      const stripped = latest.map(({ id, from, text, suggestedReplies }) => ({ id, from, text, suggestedReplies }));
       localStorage.setItem(storageKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
     } catch {}
   }, [messages, userId]);
@@ -156,10 +158,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       }
 
       const older: ChatMessage[] = data.messages.map(
-        (m: { id: string; role: "user" | "assistant"; content: string }) => ({
+        (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => ({
           id: m.id,
           from: m.role,
           text: m.content,
+          suggestedReplies: m.suggested_replies ?? null,
         })
       );
 
@@ -245,7 +248,9 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
+      const assistantMsg: ChatMessage = { from: "assistant", text: data.message || "Done." };
+      if (data.suggested_replies) assistantMsg.suggestedReplies = data.suggested_replies;
+      setMessages((prev) => [...prev, assistantMsg]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
@@ -289,7 +294,9 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Done." }]);
+      const assistantMsg: ChatMessage = { from: "assistant", text: data.message || "Done." };
+      if (data.suggested_replies) assistantMsg.suggestedReplies = data.suggested_replies;
+      setMessages((prev) => [...prev, assistantMsg]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);

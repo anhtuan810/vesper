@@ -10,13 +10,14 @@ import { writeSnapshot } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges } from "@/lib/apply-changes";
 import { validatePortfolioChanges } from "@/lib/validations";
+import { geocodeAddress } from "@/lib/geocode";
 
 validateEnv();
 
 const anthropic = new Anthropic();
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
-const TAG_RE = /<(changes|update|context|goal)>[\s\S]*?<\/\1>/g;
+const TAG_RE = /<(changes|update|context|goal|propose_address)>[\s\S]*?<\/\1>/g;
 function stripTags(text: string) { return text.replace(TAG_RE, "").trim(); }
 function extractTag(text: string, tag: string) {
   return text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))?.[1] ?? null;
@@ -173,7 +174,40 @@ export async function POST(req: NextRequest) {
     const changesRaw = extractTag(raw, "changes");
     const contextRaw = extractTag(raw, "context");
     const goalRaw = extractTag(raw, "goal");
+    const proposeAddressRaw = extractTag(raw, "propose_address");
     let displayText = stripTags(raw);
+
+    // --- Address proposal flow (real estate adds / address edits) ---
+    // When Claude emits <propose_address>, geocode and return chips — no DB write this turn.
+    if (proposeAddressRaw) {
+      const proposedAddress = proposeAddressRaw.trim();
+      const geo = await geocodeAddress(proposedAddress, null);
+
+      if (!geo || !geo.hasHouseNumber) {
+        const clarification = `I couldn't find "${proposedAddress}" — could you double-check the spelling or share a postcode?`;
+        await supabase.from("messages").insert([
+          { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
+          { user_id: userId, role: "assistant", content: clarification },
+        ]);
+        return NextResponse.json({ message: clarification, assets: null, remaining: DAILY_LIMIT - used });
+      }
+
+      const canonicalLine = `Resolved address: ${geo.canonicalAddress}`;
+      const proposalText = displayText ? `${displayText}\n\n${canonicalLine}` : canonicalLine;
+      const suggestedReplies = ["Confirm and save", "No, let me correct it"];
+
+      await supabase.from("messages").insert([
+        { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
+        { user_id: userId, role: "assistant", content: proposalText, suggested_replies: suggestedReplies },
+      ]);
+
+      return NextResponse.json({
+        message: proposalText,
+        suggested_replies: suggestedReplies,
+        assets: null,
+        remaining: DAILY_LIMIT - used,
+      });
+    }
 
     let portfolioChanged = false;
 
@@ -191,6 +225,44 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: validationError, assets: null, remaining: DAILY_LIMIT - used });
           }
 
+          // Geocoding gate: validate + resolve all real_estate addresses before any DB write.
+          // All-or-nothing: a bad address on any change in the turn rejects the whole turn.
+          const resolvedCanonicalAddresses: string[] = [];
+          for (const change of changes) {
+            if (!change.address) continue;
+
+            const existingForEdit = change.action === "edit"
+              ? currentAssets.find((a) =>
+                  a.name.toLowerCase() === change.name?.toLowerCase() ||
+                  (a.symbol && a.symbol.toLowerCase() === change.name?.toLowerCase())
+                )
+              : null;
+
+            const isRealEstate =
+              change.type === "real_estate" ||
+              (change.action === "edit" && existingForEdit?.type === "real_estate");
+
+            if (!isRealEstate) continue;
+
+            const countryHint = change.country ?? existingForEdit?.country ?? null;
+            const geo = await geocodeAddress(change.address, countryHint);
+
+            if (!geo || !geo.hasHouseNumber) {
+              const clarification = "I couldn't find that address. Could you double-check the spelling or share a postcode?";
+              await supabase.from("messages").insert([
+                { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
+                { user_id: userId, role: "assistant", content: clarification },
+              ]);
+              return NextResponse.json({ message: clarification, assets: null, remaining: DAILY_LIMIT - used });
+            }
+
+            // Replace user's raw input with Nominatim's canonical address and attach coords.
+            change.address = geo.canonicalAddress;
+            change.latitude = geo.latitude;
+            change.longitude = geo.longitude;
+            resolvedCanonicalAddresses.push(geo.canonicalAddress);
+          }
+
           const { changed, duplicateWarnings, fxWarnings } = await applyPortfolioChanges({
             supabase,
             userId,
@@ -205,6 +277,10 @@ export async function POST(req: NextRequest) {
           }
           if (fxWarnings.length > 0) {
             const suffix = fxWarnings.join(" ");
+            displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
+          }
+          if (resolvedCanonicalAddresses.length > 0 && portfolioChanged) {
+            const suffix = resolvedCanonicalAddresses.map((addr) => `Saved as ${addr}.`).join(" ");
             displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
           }
         }

@@ -1,7 +1,21 @@
 // Shared geocoding logic used by /api/geocode and /api/chat.
 // Single in-memory cache + Nominatim rate-limiter (1 req/sec).
 
-const cache = new Map<string, { latitude: number; longitude: number }>();
+type NominatimResult = {
+  lat: string;
+  lon: string;
+  display_name: string;
+  address?: Record<string, string>;
+};
+
+export type GeocodeResult = {
+  canonicalAddress: string;
+  latitude: number;
+  longitude: number;
+  hasHouseNumber: boolean;
+};
+
+const cache = new Map<string, GeocodeResult>();
 let lastRequestTime = 0;
 const MIN_INTERVAL_MS = 1100; // Nominatim policy: max 1 req/sec
 
@@ -10,7 +24,7 @@ const NOMINATIM_HEADERS = {
   "Accept-Language": "en",
 };
 
-async function nominatimFetch(url: string): Promise<Array<{ lat: string; lon: string }> | null> {
+async function nominatimFetch(url: string): Promise<NominatimResult[] | null> {
   const now = Date.now();
   const wait = MIN_INTERVAL_MS - (now - lastRequestTime);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -24,6 +38,32 @@ async function nominatimFetch(url: string): Promise<Array<{ lat: string; lon: st
   } catch {
     return null;
   }
+}
+
+// Build a compact "Road Number, Postcode, Country" string from Nominatim address fields.
+// Falls back to display_name when essential components are missing.
+function buildCanonicalAddress(result: NominatimResult): string {
+  const addr = result.address;
+  if (!addr) return result.display_name;
+
+  const parts: string[] = [];
+
+  if (addr.road && addr.house_number) {
+    parts.push(`${addr.road} ${addr.house_number}`);
+  } else if (addr.road) {
+    parts.push(addr.road);
+  }
+
+  if (addr.postcode) {
+    parts.push(addr.postcode);
+  } else {
+    const city = addr.city || addr.town || addr.village;
+    if (city) parts.push(city);
+  }
+
+  if (addr.country) parts.push(addr.country);
+
+  return parts.length >= 2 ? parts.join(", ") : result.display_name;
 }
 
 // Parse "Street Name 100, City, CC" into components for a structured Nominatim query.
@@ -46,7 +86,7 @@ function parseAddressParts(address: string): {
 export async function geocodeAddress(
   address: string,
   country?: string | null
-): Promise<{ latitude: number; longitude: number } | null> {
+): Promise<GeocodeResult | null> {
   const cacheKey = `${address.toLowerCase().trim()}|${(country || "").toLowerCase()}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
@@ -56,7 +96,7 @@ export async function geocodeAddress(
 
   // Attempt 1: structured query — street-level precision, preferred over free-text
   if (city && countryCode) {
-    const params = new URLSearchParams({ format: "json", limit: "1" });
+    const params = new URLSearchParams({ format: "json", limit: "1", addressdetails: "1" });
     params.set("city", city.trim());
     params.set("country", countryCode.trim());
     if (street) params.set("street", street.trim());
@@ -64,7 +104,12 @@ export async function geocodeAddress(
 
     const data = await nominatimFetch(structuredUrl);
     if (data) {
-      const result = { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+      const result: GeocodeResult = {
+        canonicalAddress: buildCanonicalAddress(data[0]),
+        latitude: parseFloat(data[0].lat),
+        longitude: parseFloat(data[0].lon),
+        hasHouseNumber: !!data[0].address?.house_number,
+      };
       cache.set(cacheKey, result);
       return result;
     }
@@ -75,12 +120,17 @@ export async function geocodeAddress(
     countryCode && !address.toLowerCase().includes(countryCode.toLowerCase())
       ? `${address}, ${countryCode}`
       : address;
-  const freeTextUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+  const freeTextUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=1`;
 
   const data = await nominatimFetch(freeTextUrl);
   if (!data) return null;
 
-  const result = { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+  const result: GeocodeResult = {
+    canonicalAddress: data[0].display_name,
+    latitude: parseFloat(data[0].lat),
+    longitude: parseFloat(data[0].lon),
+    hasHouseNumber: !!data[0].address?.house_number,
+  };
   cache.set(cacheKey, result);
   return result;
 }

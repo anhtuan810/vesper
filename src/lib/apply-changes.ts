@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
-import { geocodeAddress } from "./geocode";
 import { computeNetWorth } from "./utils";
 import { toEur } from "./fx";
 import { countryToCurrency } from "./country-currency";
@@ -39,6 +38,8 @@ type PortfolioChange = {
   address?: string;
   property_type?: string;
   size_sqm?: number;
+  latitude?: number;
+  longitude?: number;
 };
 
 export async function applyPortfolioChanges({
@@ -128,12 +129,8 @@ export async function applyPortfolioChanges({
         if (convPmt !== null) resolvedMonthlyPayment = Math.round(convPmt);
       }
 
-      let resolvedLat: number | null = null;
-      let resolvedLng: number | null = null;
-      if (isRealEstate && change.address) {
-        const geo = await geocodeAddress(change.address, change.country || null);
-        if (geo) { resolvedLat = geo.latitude; resolvedLng = geo.longitude; }
-      }
+      const resolvedLat: number | null = change.latitude ?? null;
+      const resolvedLng: number | null = change.longitude ?? null;
 
       const { data: inserted, error } = await supabase.from("assets").insert({
         name,
@@ -211,10 +208,8 @@ export async function applyPortfolioChanges({
         if (change.property_type !== undefined) updateData.property_type = change.property_type;
         if (change.size_sqm !== undefined) updateData.size_sqm = change.size_sqm;
 
-        if (change.address && (existing.type === "real_estate" || change.type === "real_estate")) {
-          const geo = await geocodeAddress(change.address, change.country || existing.country || null);
-          if (geo) { updateData.latitude = geo.latitude; updateData.longitude = geo.longitude; }
-        }
+        if (change.latitude !== undefined) updateData.latitude = change.latitude;
+        if (change.longitude !== undefined) updateData.longitude = change.longitude;
 
         // Convert monetary fields from native currency to EUR for non-EUR real-estate edits.
         // Claude states values in the property's native currency (same convention as add).

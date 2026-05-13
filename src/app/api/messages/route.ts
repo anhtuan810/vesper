@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("messages")
-    .select("id, role, content")
+    .select("id, role, content, suggested_replies")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   const messages = (data ?? [])
     .reverse()
-    .map(({ id, role, content }) => ({ id, role, content }));
+    .map(({ id, role, content, suggested_replies }) => ({ id, role, content, suggested_replies }));
 
   return NextResponse.json({ messages });
 }

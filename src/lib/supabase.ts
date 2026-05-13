@@ -124,6 +124,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  suggested_replies?: string[] | null;
 }
 
 export interface Mutation {
