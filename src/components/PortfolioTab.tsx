@@ -2,7 +2,12 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
-import { NetWorthChart, type SnapshotPoint } from "@/components/NetWorthChart";
+import {
+  NetWorthChart,
+  type SnapshotPoint,
+  type Range,
+  buildSeries,
+} from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
@@ -55,6 +60,27 @@ export function PortfolioTab({
   );
   const sparklines = useSparklines(symbols, "1W");
 
+  const [range, setRange] = useState<Range>("1M");
+  const [series, setSeries] = useState<SnapshotPoint[]>(
+    initialSnapshots ? buildSeries(initialSnapshots, netTotal) : []
+  );
+  const [loading, setLoading] = useState(!initialSnapshots);
+  const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
+
+  useEffect(() => {
+    if (range === "1M" && initialSnapshots && series.length > 0) return;
+    setLoading(true);
+    setSelectedPoint(null);
+    fetch(`/api/snapshots?range=${range}`)
+      .then((r) => r.json())
+      .then((body) => {
+        setSeries(buildSeries(body.data ?? [], netTotal));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range, netTotal]);
+
   // Group by semantic category, sort groups by total value desc, rows within group by value desc
   const groups = useMemo(() => {
     const byCategory: Record<string, LiveAsset[]> = {};
@@ -106,13 +132,19 @@ export function PortfolioTab({
     <>
       {/* Hero: Net worth — no card wrapper, directly on bg */}
       <div className="mb-5">
-        <NetWorthHero netTotal={netTotal} />
+        <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} />
       </div>
 
       {/* Net worth chart */}
       {netTotal > 0 && (
         <div className="mb-6">
-          <NetWorthChart currentNet={netTotal} initialSnapshots={initialSnapshots} />
+          <NetWorthChart
+            range={range}
+            onRangeChange={setRange}
+            series={series}
+            loading={loading}
+            onSelectPoint={setSelectedPoint}
+          />
         </div>
       )}
 

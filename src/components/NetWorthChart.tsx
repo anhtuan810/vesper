@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useDisplayCurrencyState } from "@/lib/hooks";
 
-const RANGES = ["1D", "1W", "1M", "3M", "1Y", "All"] as const;
-type Range = (typeof RANGES)[number];
+export const RANGES = ["1W", "1M", "3M", "1Y", "All"] as const;
+export type Range = (typeof RANGES)[number];
 
 export interface SnapshotPoint {
   date: string;
@@ -11,20 +12,84 @@ export interface SnapshotPoint {
 }
 
 interface Props {
-  currentNet: number;
-  initialSnapshots?: SnapshotPoint[];
+  range: Range;
+  onRangeChange: (r: Range) => void;
+  series: SnapshotPoint[];
+  loading: boolean;
+  onSelectPoint?: (point: SnapshotPoint | null) => void;
 }
 
-function buildPath(values: number[], W: number, H: number): { line: string; area: string } {
+const CURRENCY_SYMBOL: Record<string, string> = {
+  EUR: "€", USD: "$", GBP: "£", CHF: "Fr.", JPY: "¥", AUD: "A$", CAD: "C$",
+};
+
+function fmtYLabel(value: number, currency: string): string {
+  const sym = CURRENCY_SYMBOL[currency] ?? currency;
+  const sign = value < 0 ? "−" : "";
+  const abs = Math.abs(value);
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(n);
+  if (abs >= 1_000_000) return `${sign}${sym}${fmt(abs / 1_000_000)}M`;
+  if (abs >= 1_000) return `${sign}${sym}${fmt(abs / 1_000)}K`;
+  return `${sign}${sym}${new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
+}
+
+interface NiceLevels {
+  niceMin: number;
+  niceMax: number;
+  labels: number[];
+}
+
+function computeNiceLevels(dataMin: number, dataMax: number): NiceLevels {
+  const range = dataMax - dataMin;
+  if (range === 0) {
+    const step = Math.max(Math.abs(dataMax) * 0.1, 1);
+    return { niceMin: dataMax - step, niceMax: dataMax + step, labels: [dataMax - step, dataMax, dataMax + step] };
+  }
+  const rawBase = Math.pow(10, Math.floor(Math.log10(range)));
+  const mults = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
+
+  // Target 4–5 labels first for a clean IBKR-style look
+  for (const m of mults) {
+    const step = rawBase * m;
+    const niceMin = Math.floor(dataMin / step) * step;
+    let niceMax = Math.ceil(dataMax / step) * step;
+    if (niceMax <= dataMax) niceMax += step; // ensure strict headroom above the peak
+    const count = Math.round((niceMax - niceMin) / step) + 1;
+    if (count >= 4 && count <= 5) {
+      const labels: number[] = [];
+      for (let i = 0; i < count; i++) labels.push(niceMin + i * step);
+      return { niceMin, niceMax, labels };
+    }
+  }
+
+  // Fallback: accept 3–6
+  for (const m of mults) {
+    const step = rawBase * m;
+    const niceMin = Math.floor(dataMin / step) * step;
+    let niceMax = Math.ceil(dataMax / step) * step;
+    if (niceMax <= dataMax) niceMax += step;
+    const count = Math.round((niceMax - niceMin) / step) + 1;
+    if (count >= 3 && count <= 6) {
+      const labels: number[] = [];
+      for (let i = 0; i < count; i++) labels.push(niceMin + i * step);
+      return { niceMin, niceMax, labels };
+    }
+  }
+
+  const mid = (dataMin + dataMax) / 2;
+  return { niceMin: dataMin, niceMax: dataMax, labels: [dataMin, mid, dataMax] };
+}
+
+function buildPath(
+  values: number[], W: number, H: number, yMin: number, yMax: number
+): { line: string; area: string } {
   if (values.length < 2) return { line: "", area: "" };
 
-  const pad = 4;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = Math.max(max - min, max * 0.0001);
+  const yRange = Math.max(yMax - yMin, 1);
 
   const toX = (i: number) => (i / (values.length - 1)) * W;
-  const toY = (v: number) => H - pad - ((v - min) / range) * (H - pad * 2);
+  const toY = (v: number) => H - ((v - yMin) / yRange) * H;
 
   const pts = values.map((c, i) => ({ x: toX(i), y: toY(c) }));
   let line = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
@@ -35,158 +100,206 @@ function buildPath(values: number[], W: number, H: number): { line: string; area
   }
   line += ` L ${pts[pts.length - 1].x.toFixed(2)} ${pts[pts.length - 1].y.toFixed(2)}`;
 
-  const area =
-    line +
-    ` L ${pts[pts.length - 1].x.toFixed(2)} ${H} L 0 ${H} Z`;
+  const area = line + ` L ${pts[pts.length - 1].x.toFixed(2)} ${H} L 0 ${H} Z`;
 
   return { line, area };
 }
 
-function fmtChartDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotPoint[] {
+export function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotPoint[] {
   const today = new Date().toISOString().slice(0, 10);
   const filtered = raw.filter((p) => p.date !== today);
   filtered.push({ date: today, total_value: currentNet });
   return filtered;
 }
 
-export function NetWorthChart({ currentNet, initialSnapshots }: Props) {
-  const [range, setRange] = useState<Range>("1M");
-  const [series, setSeries] = useState<SnapshotPoint[]>(
-    initialSnapshots ? buildSeries(initialSnapshots, currentNet) : []
-  );
-  const [loading, setLoading] = useState(!initialSnapshots);
+export function NetWorthChart(props: Props) {
+  const { range, onRangeChange, series, loading } = props;
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const { currency: displayCurrency } = useDisplayCurrencyState();
 
+  // Clear selection whenever the series reference changes (range switch or data reload)
   useEffect(() => {
-    // Skip the initial 1M fetch if preloaded data was provided
-    if (range === "1M" && initialSnapshots && series.length > 0) return;
-    setLoading(true);
-    fetch(`/api/snapshots?range=${range}`)
-      .then((r) => r.json())
-      .then((body) => {
-        setSeries(buildSeries(body.data ?? [], currentNet));
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    setSelectedIndex(null); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [series]);
+
+  // Propagate selection to parent whenever index changes
+  useEffect(() => {
+    props.onSelectPoint?.(
+      selectedIndex !== null ? (series[selectedIndex] ?? null) : null
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, currentNet]);
+  }, [selectedIndex]);
 
   const W = 280;
-  const H = 64;
-  const pad = 4;
+  const H = 140;
 
   const values = series.map((p) => p.total_value);
   const up = series.length >= 2 && series[series.length - 1].total_value >= series[0].total_value;
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
   const gradId = "netWorthChartFill";
 
-  const { line, area } = buildPath(values, W, H);
+  // Nice Y-axis bounds — shared by the curve projection, end-point marker, and label positions
+  const dataMin = values.length >= 2 ? Math.min(...values) : 0;
+  const dataMax = values.length >= 2 ? Math.max(...values) : 1;
+  const { niceMin, niceMax, labels: yLabels } = computeNiceLevels(dataMin, dataMax);
+  const yRange = Math.max(niceMax - niceMin, 1);
 
-  const min = values.length ? Math.min(...values) : 0;
-  const max = values.length ? Math.max(...values) : 0;
-  const vRange = Math.max(max - min, max * 0.0001);
+  const { line, area } = buildPath(values, W, H, niceMin, niceMax);
+
   const lastY =
     values.length >= 2
-      ? H - pad - ((values[values.length - 1] - min) / vRange) * (H - pad * 2)
+      ? H - ((values[values.length - 1] - niceMin) / yRange) * H
       : H / 2;
 
+  // Scrub marker — same projection as buildPath / lastY
+  const selectedX =
+    selectedIndex !== null && series.length >= 2
+      ? (selectedIndex / (series.length - 1)) * W
+      : null;
+  const selectedY =
+    selectedIndex !== null && values.length >= 2
+      ? H - ((values[selectedIndex] - niceMin) / yRange) * H
+      : null;
+
+  const showEndMarker = selectedIndex === null || selectedIndex === series.length - 1;
+
   const showEmpty = !loading && series.length < 2;
+  const showLabels = !showEmpty && !loading && series.length >= 2;
+  const interactive = !loading && series.length >= 2;
+
+  function calcIndex(clientX: number, rect: DOMRect): number {
+    const relX = (clientX - rect.left) / rect.width;
+    return Math.min(Math.max(Math.round(relX * (series.length - 1)), 0), series.length - 1);
+  }
+
+  const chartHandlers = interactive
+    ? {
+        onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+          setSelectedIndex(calcIndex(e.clientX, e.currentTarget.getBoundingClientRect()));
+        },
+        onMouseLeave() { setSelectedIndex(null); },
+        onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+          setSelectedIndex(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
+        },
+        onTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+          setSelectedIndex(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
+        },
+        onTouchEnd() { setSelectedIndex(null); },
+      }
+    : {};
 
   return (
     <div>
-      {/* Chart SVG — labels rendered below, not inside, this container */}
-      <div style={{ position: "relative", height: H }}>
-        {showEmpty ? (
-          <div
-            style={{
-              height: H,
-              display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center",
-              gap: 6,
-            }}
-          >
-            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-              Day one
-            </div>
+      {/* Chart area: SVG + Y-axis label column */}
+      <div style={{ display: "flex", alignItems: "stretch", height: H }}>
+
+        {/* Chart SVG — interaction target; handlers attached here so getBoundingClientRect covers only the curve area */}
+        <div
+          style={{ flex: 1, position: "relative", touchAction: interactive ? "none" : undefined }}
+          {...chartHandlers}
+        >
+          {showEmpty ? (
             <div
-              style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}
+              style={{
+                height: H,
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center",
+                gap: 6,
+              }}
             >
-              Vesper logs your net worth daily. Your trajectory will plot here as snapshots accumulate.
+              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Day one</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
+                Vesper logs your net worth daily. Your trajectory will plot here as snapshots accumulate.
+              </div>
             </div>
+          ) : loading ? (
+            <div style={{ height: H }} />
+          ) : (
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              preserveAspectRatio="none"
+              width="100%"
+              height={H}
+              style={{ display: "block" }}
+            >
+              <defs>
+                <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
+                  <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <path d={area} fill={`url(#${gradId})`} />
+              <path
+                d={line}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {/* Static end-point marker — hidden while scrubbing a non-last point */}
+              {showEndMarker && (
+                <>
+                  <circle cx={W} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
+                  <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
+                </>
+              )}
+              {/* Scrub marker — vertical guide + halo + dot */}
+              {selectedIndex !== null && selectedX !== null && selectedY !== null && (
+                <>
+                  <line
+                    x1={selectedX} y1={0} x2={selectedX} y2={H}
+                    stroke="var(--text-faint)" strokeWidth={0.5}
+                    strokeDasharray="2 3" opacity={0.4}
+                  />
+                  <circle cx={selectedX} cy={selectedY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
+                  <circle cx={selectedX} cy={selectedY} r={3} fill={strokeColor} />
+                </>
+              )}
+            </svg>
+          )}
+        </div>
+
+        {/* Y-axis price labels — no gridlines, IBKR-style */}
+        {showLabels && (
+          <div style={{ width: 40, position: "relative" }}>
+            {yLabels.map((value) => (
+              <div
+                key={value}
+                style={{
+                  position: "absolute",
+                  top: `${(1 - (value - niceMin) / (niceMax - niceMin)) * 100}%`,
+                  transform: "translateY(-50%)",
+                  right: 0,
+                  fontSize: 11,
+                  color: "var(--text-faint)",
+                  textAlign: "right",
+                  lineHeight: 1,
+                  pointerEvents: "none",
+                }}
+              >
+                {fmtYLabel(value, displayCurrency)}
+              </div>
+            ))}
           </div>
-        ) : loading ? (
-          <div style={{ height: H }} />
-        ) : (
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            width="100%"
-            height={H}
-            style={{ display: "block" }}
-          >
-            <defs>
-              <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
-                <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <path d={area} fill={`url(#${gradId})`} />
-            <path
-              d={line}
-              fill="none"
-              stroke={strokeColor}
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {/* Today marker: halo + dot */}
-            <circle cx={W} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
-            <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
-          </svg>
         )}
       </div>
 
-      {/* Date axis labels — separate row below SVG so they never overlap the curve */}
-      {!showEmpty && !loading && series.length >= 2 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: 6,
-          }}
-        >
-          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
-            {fmtChartDate(series[0].date)}
-          </span>
-          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
-            {fmtChartDate(series[series.length - 1].date)}
-          </span>
-        </div>
-      )}
-
-      {/* Range pills — below axis labels */}
+      {/* Range pills */}
       <div
-        className="flex gap-1 mt-3"
-        style={{
-          padding: 4,
-          background: "var(--surface-elev)",
-          borderRadius: 10,
-        }}
+        className="flex gap-1 mt-2"
+        style={{ padding: 3, background: "var(--surface-elev)", borderRadius: 8, opacity: 0.6, marginRight: 40 }}
       >
         {RANGES.map((r) => (
           <button
             key={r}
-            onClick={() => setRange(r)}
+            onClick={() => onRangeChange(r)}
             className="flex-1 text-center"
             style={{
-              padding: "9px 0",
-              fontSize: 13,
+              padding: "5px 0",
+              fontSize: 12,
               fontWeight: 500,
-              borderRadius: 8,
+              borderRadius: 6,
               color: range === r ? "var(--text)" : "var(--text-dim)",
               background: range === r ? "var(--bg)" : "transparent",
               boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
