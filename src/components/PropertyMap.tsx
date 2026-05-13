@@ -12,7 +12,6 @@ import mapLightJson from "@/styles/map-light.json";
 
 interface Props {
   asset: RealEstateAsset;
-  onCached?: (url: string) => void;
 }
 
 const MAP_HEIGHT = 180;
@@ -53,7 +52,7 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
   );
 }
 
-export function PropertyMap({ asset, onCached: onCachedProp }: Props) {
+export function PropertyMap({ asset }: Props) {
   const router = useRouter();
   const supabase = createBrowserSupabase();
   const { resolvedTheme } = useTheme();
@@ -64,15 +63,10 @@ export function PropertyMap({ asset, onCached: onCachedProp }: Props) {
     .from("property-photos")
     .getPublicUrl(themeCachePath);
 
-  // In warm mode (onCachedProp set), start with no cached URL so we skip the img check
-  // and go directly to MapLibreMap. This avoids the img-404 → skipCaching=true trap.
-  const [cachedUrl, setCachedUrl] = useState<string | null>(
-    onCachedProp ? null : themeCacheUrl
-  );
+  const [cachedUrl, setCachedUrl] = useState<string | null>(themeCacheUrl);
 
-  // When theme changes, try the new theme's cached URL (detail page only)
+  // When theme changes, try the new theme's cached URL
   useEffect(() => {
-    if (onCachedProp) return;
     setCachedUrl(themeCacheUrl);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedTheme]);
@@ -130,11 +124,7 @@ export function PropertyMap({ asset, onCached: onCachedProp }: Props) {
       skipCaching={false}
       onCached={(url) => {
         setCachedUrl(url);
-        if (onCachedProp) {
-          onCachedProp(url);
-        } else {
-          router.refresh();
-        }
+        router.refresh();
       }}
     />
   );

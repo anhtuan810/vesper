@@ -6,7 +6,7 @@ import { MiniSparkline } from "@/components/MiniSparkline";
 import { AssetLogo } from "@/components/AssetLogo";
 import { usePriceHistory, useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
-import type { LiveAsset, RealEstateAsset } from "@/lib/supabase";
+import type { LiveAsset } from "@/lib/supabase";
 
 const TRADEABLE_TYPES: ReadonlySet<string> = new Set(["stocks", "etf", "crypto", "gold"]);
 
@@ -46,7 +46,7 @@ function subLine(asset: LiveAsset): string {
   return asset.country ?? "";
 }
 
-export function PositionRow({ asset, closes: closesProp, cacheVersion }: { asset: LiveAsset; closes?: number[]; cacheVersion?: number }) {
+export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; closes?: number[] }) {
   const { closes: fetchedCloses } = usePriceHistory(closesProp != null ? null : asset.symbol, "1W");
   const closes = closesProp ?? fetchedCloses;
   const chg = pctChange(asset.livePrice, asset.livePrev);
@@ -65,9 +65,6 @@ export function PositionRow({ asset, closes: closesProp, cacheVersion }: { asset
           type={asset.type}
           symbol={asset.symbol ?? null}
           name={asset.name}
-          userId={asset.type === "real_estate" ? asset.user_id : null}
-          assetId={asset.type === "real_estate" ? asset.id : null}
-          cacheVersion={asset.type === "real_estate" ? cacheVersion : undefined}
           size={32}
         />
 
