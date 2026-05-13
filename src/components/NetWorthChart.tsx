@@ -249,8 +249,8 @@ export function NetWorthChart(props: Props) {
                 <>
                   <line
                     x1={selectedX} y1={0} x2={selectedX} y2={H}
-                    stroke="var(--text-faint)" strokeWidth={0.5}
-                    strokeDasharray="2 3" opacity={0.4}
+                    stroke="var(--text-dim)" strokeWidth={1}
+                    strokeDasharray="3 3" opacity={0.7}
                   />
                   <circle cx={selectedX} cy={selectedY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
                   <circle cx={selectedX} cy={selectedY} r={3} fill={strokeColor} />
@@ -288,7 +288,7 @@ export function NetWorthChart(props: Props) {
       {/* Range pills */}
       <div
         className="flex gap-1 mt-2"
-        style={{ padding: 3, background: "var(--surface-elev)", borderRadius: 8, opacity: 0.6, marginRight: 40 }}
+        style={{ padding: 3, borderRadius: 8, marginRight: 40 }}
       >
         {RANGES.map((r) => (
           <button
@@ -301,8 +301,8 @@ export function NetWorthChart(props: Props) {
               fontWeight: 500,
               borderRadius: 6,
               color: range === r ? "var(--text)" : "var(--text-dim)",
-              background: range === r ? "var(--bg)" : "transparent",
-              boxShadow: range === r ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+              background: range === r ? "var(--surface-elev)" : "transparent",
+              boxShadow: range === r ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               border: "none",
               cursor: "pointer",
               transition: "all 0.15s",
