@@ -126,7 +126,7 @@ export async function geocodeAddress(
   if (!data) return null;
 
   const result: GeocodeResult = {
-    canonicalAddress: data[0].display_name,
+    canonicalAddress: buildCanonicalAddress(data[0]),
     latitude: parseFloat(data[0].lat),
     longitude: parseFloat(data[0].lon),
     hasHouseNumber: !!data[0].address?.house_number,

@@ -77,11 +77,16 @@ For real_estate assets, also include when mentioned:
 Do not ask the user for coordinates.
 
 ADDRESS PROPOSAL FLOW (real estate adds and address edits):
-When adding a real-estate asset with an address, or editing the address of an existing one, use a two-turn propose-then-confirm flow instead of emitting <changes> immediately.
-  Turn 1 — Proposal: emit <propose_address>full address including country name</propose_address> alongside your natural-language summary (value, mortgage, etc.). State the address verbatim in your message so the user can see what will be geocoded. Do NOT emit <changes> this turn.
-  Turn 2 — Confirm: when the user's message is "Confirm and save" (or free-form confirmation), emit the full <changes> block. Use the canonical address from the "Resolved address:" line in the previous assistant message as the address field value.
-  Turn 2 — Decline: when the user's message is "No, let me correct it" (or free-form correction), ask what to fix. No <changes>.
-Free-form replies ("yes save it", "no the postcode is wrong") are handled conversationally following the same logic.
+When adding a real-estate asset with an address, or editing the address of an existing one, use a strict two-turn flow.
+
+Turn 1 — Proposal (ONE time only): emit <propose_address>full address including country name</propose_address>. In your natural-language message, bundle the value, mortgage summary, AND the name question together: e.g. "I'll add this property at €340,000 with no mortgage. What would you like to call it? I'll suggest 'Hosingenhof 23' unless you prefer something different." Do NOT repeat the address in prose. Do NOT emit <changes>.
+
+Turn 2 — Commit: when you see "Confirm and save" (or free-form confirmation) in the user's last message, this confirms EVERYTHING — address, name, value, all of it. You MUST emit <changes> now. Do NOT emit <propose_address> again. Do NOT ask any follow-up questions. Use the canonical address from the "Resolved address:" line visible in your previous message. Use the name you proposed (or the user's stated name if different). Example commit:
+<changes>[{"action":"add","name":"Hosingenhof 23","type":"real_estate","value":340000,"currency":"EUR","country":"NL","address":"Hosingenhof 23, 5625 NJ, Netherlands"}]</changes>
+
+Turn 2 — Decline: when the user's last message is "No, let me correct it" (or free-form correction), ask what to fix. No <changes>, no <propose_address>.
+
+CRITICAL: <propose_address> is emitted ONCE per add/edit, never twice. If you already emitted it and the user replied, you are in Turn 2 — commit or decline only.
 REAL ESTATE NATIVE CURRENCY: always include "currency" based on the property's country:
   NL/DE/FR/ES/IT and other eurozone countries → "currency":"EUR"
   US → "currency":"USD"
@@ -218,10 +223,11 @@ Field names (include all that apply):
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type
 
 ADDRESS PROPOSAL FLOW (real estate only):
-When adding a real-estate asset that includes an address, use a two-turn propose-then-confirm flow instead of emitting <changes> immediately.
-  Turn 1 — Proposal: emit <propose_address>full address including country name</propose_address> alongside your natural-language summary. State the address verbatim in your message. Do NOT emit <changes> this turn.
-  Turn 2 — Confirm: when the user says "Confirm and save", emit the full <changes> block using the canonical address from the "Resolved address:" line in the previous assistant message.
-  Turn 2 — Decline: when the user says "No, let me correct it", ask what to fix. No <changes>.
+When adding a real-estate asset that includes an address, use a strict two-turn flow.
+  Turn 1 — Proposal (once): emit <propose_address>full address including country name</propose_address>. Bundle value, mortgage, and name question in your message. Do NOT repeat the address in prose. Do NOT emit <changes>.
+  Turn 2 — Commit: on "Confirm and save" (or free-form yes), emit <changes> immediately. Do NOT emit <propose_address> again. Use the canonical address from the "Resolved address:" line in your previous message.
+  Turn 2 — Decline: on "No, let me correct it", ask what to fix. No <changes>, no <propose_address>.
+CRITICAL: <propose_address> is emitted ONCE per add. If the user has already replied to your proposal, you are in Turn 2 — commit or decline only.
 
 REAL ESTATE NATIVE CURRENCY: always include "currency" based on the property's country:
   NL/DE/FR/ES/IT and other eurozone countries → "currency":"EUR"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { streetViewUrlForAsset } from "@/lib/maps";
@@ -64,18 +64,20 @@ export function PropertyMap({ asset, onCached: onCachedProp }: Props) {
     .from("property-photos")
     .getPublicUrl(themeCachePath);
 
-  const [cachedUrl, setCachedUrl] = useState<string | null>(themeCacheUrl);
-  const photoFailedRef = useRef(false);
+  // In warm mode (onCachedProp set), start with no cached URL so we skip the img check
+  // and go directly to MapLibreMap. This avoids the img-404 → skipCaching=true trap.
+  const [cachedUrl, setCachedUrl] = useState<string | null>(
+    onCachedProp ? null : themeCacheUrl
+  );
 
-  // When theme changes, try the new theme's cached URL
+  // When theme changes, try the new theme's cached URL (detail page only)
   useEffect(() => {
-    photoFailedRef.current = false;
+    if (onCachedProp) return;
     setCachedUrl(themeCacheUrl);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedTheme]);
 
   const handleImgError = useCallback(() => {
-    photoFailedRef.current = true;
     setCachedUrl(null);
   }, []);
 
@@ -125,7 +127,7 @@ export function PropertyMap({ asset, onCached: onCachedProp }: Props) {
   return (
     <MapLibreMap
       asset={asset}
-      skipCaching={photoFailedRef.current}
+      skipCaching={false}
       onCached={(url) => {
         setCachedUrl(url);
         if (onCachedProp) {
