@@ -23,6 +23,16 @@ function extractTag(text: string, tag: string) {
   return text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))?.[1] ?? null;
 }
 
+// Ensures user row always sorts before assistant row when both share the same
+// DB-level now() value. The 1ms offset is enough for ORDER BY created_at.
+function timestampedPair(userRow: Record<string, unknown>, assistantRow: Record<string, unknown>) {
+  const now = Date.now();
+  return [
+    { ...userRow,      created_at: new Date(now).toISOString() },
+    { ...assistantRow, created_at: new Date(now + 1).toISOString() },
+  ];
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
@@ -185,10 +195,10 @@ export async function POST(req: NextRequest) {
 
       if (!geo || !geo.hasHouseNumber) {
         const clarification = `I couldn't find "${proposedAddress}" — could you double-check the spelling or share a postcode?`;
-        await supabase.from("messages").insert([
+        await supabase.from("messages").insert(timestampedPair(
           { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
           { user_id: userId, role: "assistant", content: clarification },
-        ]);
+        ));
         return NextResponse.json({ message: clarification, assets: null, remaining: DAILY_LIMIT - used });
       }
 
@@ -196,10 +206,10 @@ export async function POST(req: NextRequest) {
       const proposalText = displayText ? `${displayText}\n\n${canonicalLine}` : canonicalLine;
       const suggestedReplies = ["Confirm and save", "No, let me correct it"];
 
-      await supabase.from("messages").insert([
+      await supabase.from("messages").insert(timestampedPair(
         { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
         { user_id: userId, role: "assistant", content: proposalText, suggested_replies: suggestedReplies },
-      ]);
+      ));
 
       return NextResponse.json({
         message: proposalText,
@@ -218,10 +228,10 @@ export async function POST(req: NextRequest) {
         if (Array.isArray(changes) && changes.length > 0) {
           const validationError = validatePortfolioChanges(changes, currentAssets);
           if (validationError) {
-            await supabase.from("messages").insert([
+            await supabase.from("messages").insert(timestampedPair(
               { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
               { user_id: userId, role: "assistant", content: validationError },
-            ]);
+            ));
             return NextResponse.json({ message: validationError, assets: null, remaining: DAILY_LIMIT - used });
           }
 
@@ -249,10 +259,10 @@ export async function POST(req: NextRequest) {
 
             if (!geo || !geo.hasHouseNumber) {
               const clarification = "I couldn't find that address. Could you double-check the spelling or share a postcode?";
-              await supabase.from("messages").insert([
+              await supabase.from("messages").insert(timestampedPair(
                 { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
                 { user_id: userId, role: "assistant", content: clarification },
-              ]);
+              ));
               return NextResponse.json({ message: clarification, assets: null, remaining: DAILY_LIMIT - used });
             }
 
@@ -321,10 +331,10 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Save user + assistant messages together after Claude succeeds ---
-    await supabase.from("messages").insert([
+    await supabase.from("messages").insert(timestampedPair(
       { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
       { user_id: userId, role: "assistant", content: displayText },
-    ]);
+    ));
 
     // --- Background: profile extraction & snapshot (both catch internally) ---
     if (message && displayText && !isNewUser && !changesRaw) {

@@ -169,6 +169,7 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
         zoom: 15,
         interactive: false,
         attributionControl: false,
+        canvasContextAttributes: { preserveDrawingBuffer: true },
       });
       mapRef.current = map;
 
@@ -195,12 +196,17 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
           const theme = resolvedTheme === "dark" ? "dark" : "light";
           const path = `${asset.user_id}/${asset.id}-${theme}.png`;
           const { error } = await supabase.storage.from("property-photos").upload(path, blob, { upsert: true, contentType: "image/png" });
-          if (error) return;
+          if (error) {
+            console.warn(`Thumbnail upload failed for ${asset.id}:`, error);
+            onCached("");
+            return;
+          }
           const { data: { publicUrl } } = supabase.storage.from("property-photos").getPublicUrl(path);
           await supabase.from("assets").update({ photo_url: publicUrl }).eq("id", asset.id);
           onCached(publicUrl);
-        } catch {
-          // caching failed silently
+        } catch (err) {
+          console.warn(`Thumbnail capture failed for ${asset.id}:`, err);
+          onCached("");
         }
       });
     };
