@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import { NetWorthChart, type SnapshotPoint } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
-import { useSparklines } from "@/lib/hooks";
-import type { LiveAsset } from "@/lib/supabase";
+import { PropertyMap } from "@/components/PropertyMap";
+import { useSparklines, useTheme } from "@/lib/hooks";
+import type { LiveAsset, RealEstateAsset } from "@/lib/supabase";
 
 // Semantic category mapping — 4 groups, regardless of how many asset types exist
 const CATEGORY_MAP: Record<string, string> = {
@@ -46,9 +47,13 @@ interface PortfolioTabProps {
   initialSnapshots?: SnapshotPoint[];
 }
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const MAX_CONCURRENT_WARM = 2;
+
 export function PortfolioTab({
   assets, grossTotal, netTotal, initialSnapshots,
 }: PortfolioTabProps) {
+  const { resolvedTheme } = useTheme();
   const symbols = useMemo(
     () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
     [assets]
@@ -102,8 +107,78 @@ export function PortfolioTab({
     });
   };
 
+  // --- Thumbnail cache-warming machinery ---
+  const [cacheVersions, setCacheVersions] = useState<Record<string, number>>({});
+  const [warmQueue, setWarmQueue] = useState<RealEstateAsset[]>([]);
+  const [activeWarmAssets, setActiveWarmAssets] = useState<RealEstateAsset[]>([]);
+
+  const realEstateWithCoords = useMemo(
+    () =>
+      assets
+        .filter((a) => a.type === "real_estate" && !!(a as RealEstateAsset).latitude)
+        .map((a) => a as RealEstateAsset),
+    [assets]
+  );
+
+  // One-time mount: HEAD-check each real-estate thumbnail; queue the missing ones.
+  useEffect(() => {
+    if (realEstateWithCoords.length === 0) return;
+    let cancelled = false;
+
+    Promise.all(
+      realEstateWithCoords.map(async (asset) => {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/property-photos/${asset.user_id}/${asset.id}-${resolvedTheme}.png`;
+        try {
+          const r = await fetch(url, { method: "HEAD" });
+          return r.ok ? null : asset;
+        } catch {
+          return asset;
+        }
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const missing = results.filter((a): a is RealEstateAsset => a !== null);
+      if (missing.length > 0) setWarmQueue(missing);
+    });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty — single check on mount
+
+  // Fill active slots (max 2) from the queue whenever either changes.
+  useEffect(() => {
+    if (activeWarmAssets.length >= MAX_CONCURRENT_WARM || warmQueue.length === 0) return;
+    const slots = MAX_CONCURRENT_WARM - activeWarmAssets.length;
+    const toStart = warmQueue.slice(0, slots);
+    setWarmQueue(warmQueue.slice(toStart.length));
+    setActiveWarmAssets([...activeWarmAssets, ...toStart]);
+  }, [activeWarmAssets, warmQueue]);
+
+  const handleWarmed = useCallback((assetId: string) => {
+    setCacheVersions((prev) => ({ ...prev, [assetId]: (prev[assetId] ?? 0) + 1 }));
+    setActiveWarmAssets((prev) => prev.filter((a) => a.id !== assetId));
+  }, []);
+
   return (
     <>
+      {/* Hidden PropertyMap renders for cache warming — offscreen, no pointer events */}
+      {activeWarmAssets.map((asset) => (
+        <div
+          key={asset.id}
+          style={{
+            position: "fixed",
+            top: -9999,
+            left: -9999,
+            width: 200,
+            height: 200,
+            pointerEvents: "none",
+            overflow: "hidden",
+          }}
+        >
+          <PropertyMap asset={asset} onCached={() => handleWarmed(asset.id)} />
+        </div>
+      ))}
+
       {/* Hero: Net worth — no card wrapper, directly on bg */}
       <div className="mb-5">
         <NetWorthHero netTotal={netTotal} />
@@ -151,6 +226,7 @@ export function PortfolioTab({
                   key={asset.id}
                   asset={asset}
                   closes={asset.symbol ? sparklines[asset.symbol] : []}
+                  cacheVersion={cacheVersions[asset.id]}
                 />
               ))}
             </HoldingsGroup>

@@ -46,7 +46,7 @@ function subLine(asset: LiveAsset): string {
   return asset.country ?? "";
 }
 
-export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; closes?: number[] }) {
+export function PositionRow({ asset, closes: closesProp, cacheVersion }: { asset: LiveAsset; closes?: number[]; cacheVersion?: number }) {
   const { closes: fetchedCloses } = usePriceHistory(closesProp != null ? null : asset.symbol, "1W");
   const closes = closesProp ?? fetchedCloses;
   const chg = pctChange(asset.livePrice, asset.livePrev);
@@ -65,7 +65,9 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
           type={asset.type}
           symbol={asset.symbol ?? null}
           name={asset.name}
-          property_type={asset.type === "real_estate" ? (asset as RealEstateAsset).property_type ?? null : null}
+          userId={asset.type === "real_estate" ? asset.user_id : null}
+          assetId={asset.type === "real_estate" ? asset.id : null}
+          cacheVersion={asset.type === "real_estate" ? cacheVersion : undefined}
           size={32}
         />
 

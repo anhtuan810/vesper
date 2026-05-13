@@ -12,6 +12,7 @@ import mapLightJson from "@/styles/map-light.json";
 
 interface Props {
   asset: RealEstateAsset;
+  onCached?: (url: string) => void;
 }
 
 const MAP_HEIGHT = 180;
@@ -52,7 +53,7 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
   );
 }
 
-export function PropertyMap({ asset }: Props) {
+export function PropertyMap({ asset, onCached: onCachedProp }: Props) {
   const router = useRouter();
   const supabase = createBrowserSupabase();
   const { resolvedTheme } = useTheme();
@@ -125,7 +126,14 @@ export function PropertyMap({ asset }: Props) {
     <MapLibreMap
       asset={asset}
       skipCaching={photoFailedRef.current}
-      onCached={(url) => { setCachedUrl(url); router.refresh(); }}
+      onCached={(url) => {
+        setCachedUrl(url);
+        if (onCachedProp) {
+          onCachedProp(url);
+        } else {
+          router.refresh();
+        }
+      }}
     />
   );
 }
