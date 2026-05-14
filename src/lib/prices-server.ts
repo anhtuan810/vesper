@@ -15,6 +15,8 @@ export const RANGE_PARAMS: Record<string, { interval: string; range: string }> =
   "3M": { interval: "1d",  range: "3mo" },
   "1Y": { interval: "1d",  range: "1y"  },
   "ALL": { interval: "1wk", range: "10y" },
+  "All": { interval: "1wk", range: "10y" },
+  "3Y":  { interval: "1wk", range: "3y"  },
 };
 
 const historyCache = new Map<string, { data: PricePoint[]; ts: number }>();

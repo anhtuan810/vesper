@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { PriceChart } from "@/components/PriceChart";
+import { PriceChart, type Range, type ScrubInfo } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
 import { pctChange, formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney, formatMoneyParts } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
+import { AssetLogo } from "@/components/AssetLogo";
 import { normalizePrice } from "@/lib/prices";
 import type { TradeableAsset, Mutation } from "@/lib/supabase";
 
@@ -15,23 +16,7 @@ interface Props {
   asset: TradeableAsset;
 }
 
-function monogram(asset: TradeableAsset): string {
-  if (asset.symbol) return asset.symbol.replace(/-[A-Z]+$/i, "").slice(0, 4).toUpperCase();
-  return asset.name.slice(0, 3).toUpperCase();
-}
 
-function HeroPrice({ amount, displayCurrency }: { amount: number; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
-  const parts = formatMoneyParts(amount, displayCurrency);
-  return (
-    <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.1em" }}>
-      {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
-      <span style={{ fontSize: "0.52em", lineHeight: 1, paddingTop: "0.08em", color: "var(--text-faint)", fontWeight: 500 }}>
-        {parts.symbol}
-      </span>
-      <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
-    </span>
-  );
-}
 
 function ActivityDate({ dateStr }: { dateStr: string }) {
   return (
@@ -55,6 +40,14 @@ export function TradeableDetail({ asset }: Props) {
   const [nativePrice, setNativePrice] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mutations, setMutations] = useState<Mutation[]>([]);
+  const [periodInfo, setPeriodInfo] = useState<{ pct: number; range: Range; label: string } | null>(null);
+  const [scrubInfo, setScrubInfo] = useState<ScrubInfo | null>(null);
+  const onPeriodChange = useRef((pct: number | null, range: Range, label: string) => {
+    setPeriodInfo(pct !== null ? { pct, range, label } : null);
+  }).current;
+  const onScrub = useRef((info: ScrubInfo | null) => {
+    setScrubInfo(info);
+  }).current;
   const supabase = createBrowserSupabase();
 
   useEffect(() => {
@@ -143,24 +136,7 @@ export function TradeableDetail({ asset }: Props) {
 
         {/* Identity header */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
-          <div style={{
-            width: 44, height: 44,
-            borderRadius: 10,
-            background: "var(--surface)",
-            border: "0.5px solid var(--border)",
-            overflow: "hidden",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "var(--text-dim)",
-            fontFamily: "var(--font-sans)",
-            letterSpacing: "0.02em",
-          }}>
-            {monogram(asset)}
-          </div>
+          <AssetLogo type={asset.type} symbol={asset.symbol ?? null} name={asset.name} size={44} />
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <div style={{
               fontFamily: "var(--font-serif)",
@@ -193,41 +169,55 @@ export function TradeableDetail({ asset }: Props) {
           }}>
             Market price
           </div>
-          <div style={{
-            fontFamily: "var(--font-serif)",
-            fontSize: 48,
-            fontWeight: 600,
-            letterSpacing: "-0.03em",
-            color: "var(--hero)",
-            lineHeight: 1,
-            fontVariationSettings: "'opsz' 60",
-            marginBottom: 10,
-          }}>
-            <HeroPrice amount={livePrice != null ? livePrice : (asset.buy_price ?? 0)} displayCurrency={displayCurrency} />
+          <div
+            className="font-serif leading-none"
+            style={{
+              fontSize: 54,
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              color: "var(--hero)",
+              fontVariationSettings: "'opsz' 60",
+              marginBottom: 10,
+            }}
+          >
+            <span>{formatMoney(
+              scrubInfo && livePrice != null
+                ? Math.round(livePrice * scrubInfo.ratio)
+                : livePrice != null ? livePrice : (asset.buy_price ?? 0),
+              displayCurrency
+            )}</span>
           </div>
-          {dailyChg !== null ? (
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "4px 10px",
-              borderRadius: 999,
-              fontSize: 13,
-              fontWeight: 500,
-              fontFeatureSettings: '"tnum" 1',
-              background: up ? "var(--positive-soft)" : "var(--negative-soft)",
-              color: up ? "var(--positive-text)" : "var(--negative-text)",
-            }}>
-              {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), displayCurrency)} today · `}
-              {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2)}%
-            </div>
-          ) : (
-            <div style={{ fontSize: 12, color: "var(--text-faint)" }}>No live data</div>
-          )}
+          {(() => {
+            const active = scrubInfo ?? periodInfo;
+            if (active) {
+              const isUp = active.pct >= 0;
+              const label = scrubInfo ? scrubInfo.label : (active as typeof periodInfo)!.label;
+              return (
+                <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
+                  <span style={{ fontWeight: 500, color: isUp ? "var(--positive-text)" : "var(--negative-text)" }}>
+                    {isUp ? "+" : "−"}{Math.abs(active.pct).toFixed(2)}%
+                  </span>
+                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{label}</span>
+                </div>
+              );
+            }
+            if (dailyChg !== null) {
+              return (
+                <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
+                  <span style={{ fontWeight: 500, color: up ? "var(--positive-text)" : "var(--negative-text)" }}>
+                    {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), displayCurrency)} · `}
+                    {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2)}%
+                  </span>
+                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>today</span>
+                </div>
+              );
+            }
+            return <div style={{ fontSize: 12, color: "var(--text-faint)" }}>No live data</div>;
+          })()}
         </div>
 
         {/* Price chart */}
-        {asset.symbol && <PriceChart symbol={asset.symbol} defaultRange="1M" />}
+        {asset.symbol && <PriceChart symbol={asset.symbol} defaultRange="1M" onPeriodChange={onPeriodChange} onScrub={onScrub} />}
 
         {/* Your position */}
         <div style={{ marginTop: 26 }}>

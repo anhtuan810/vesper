@@ -5,12 +5,23 @@ import { useRouter } from "next/navigation";
 import { usePriceHistory } from "@/lib/hooks";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 
-const RANGES = ["1W", "1M", "3M", "1Y", "All"] as const;
-type Range = (typeof RANGES)[number];
+export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y"] as const;
+export type Range = (typeof RANGES)[number];
+
+// US trading day: 9:30–16:00 ET at 5-minute intervals = 78 bars
+const FULL_DAY_POINTS = 78;
+
+export interface ScrubInfo {
+  ratio: number;   // closes[i] / closes[last] — multiply by livePrice to get approx EUR
+  pct: number;     // % change from period start to this point
+  label: string;   // formatted time/date label
+}
 
 interface PriceChartProps {
   symbol: string;
   defaultRange?: Range;
+  onPeriodChange?: (pct: number | null, range: Range, label: string) => void;
+  onScrub?: (info: ScrubInfo | null) => void;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -66,12 +77,15 @@ function computeNiceLevels(dataMin: number, dataMax: number): NiceLevels {
   return { niceMin: dataMin, niceMax: dataMax, labels: [dataMin, mid, dataMax] };
 }
 
+// totalPoints controls the full X span (for 1D: full trading day; others: data length)
 function buildPath(
-  values: number[], W: number, H: number, yMin: number, yMax: number
+  values: number[], totalPoints: number,
+  W: number, H: number, yMin: number, yMax: number
 ): { line: string; area: string } {
   if (values.length < 2) return { line: "", area: "" };
   const yRange = Math.max(yMax - yMin, 1);
-  const toX = (i: number) => (i / (values.length - 1)) * W;
+  const n = Math.max(totalPoints - 1, values.length - 1);
+  const toX = (i: number) => (i / n) * W;
   const toY = (v: number) => H - ((v - yMin) / yRange) * H;
   const pts = values.map((c, i) => ({ x: toX(i), y: toY(c) }));
   let line = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
@@ -81,11 +95,43 @@ function buildPath(
     line += ` Q ${pts[i].x.toFixed(2)} ${pts[i].y.toFixed(2)} ${mx} ${my}`;
   }
   line += ` L ${pts[pts.length - 1].x.toFixed(2)} ${pts[pts.length - 1].y.toFixed(2)}`;
-  const area = line + ` L ${pts[pts.length - 1].x.toFixed(2)} ${H} L 0 ${H} Z`;
+  const lastPt = pts[pts.length - 1];
+  // Area closes at last actual data point (not full width), so 1D shows empty right portion
+  const area = line + ` L ${lastPt.x.toFixed(2)} ${H} L 0 ${H} Z`;
   return { line, area };
 }
 
-export function PriceChart({ symbol, defaultRange = "1M" }: PriceChartProps) {
+const RANGE_LABEL: Record<Range, string> = {
+  "1D": "today", "1W": "past week", "1M": "past month",
+  "3M": "past 3 months", "1Y": "past year", "3Y": "past 3 years",
+};
+
+function periodLabel(range: Range, timestamps: number[]): string {
+  if (range !== "1D") return RANGE_LABEL[range];
+  const lastTs = timestamps[timestamps.length - 1];
+  if (!lastTs) return RANGE_LABEL["1D"];
+  const d = new Date(lastTs * 1000);
+  const now = new Date();
+  const isToday =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (isToday) return "today";
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
+function fmtScrubLabel(timestamp: number, range: Range): string {
+  const d = new Date(timestamp * 1000);
+  if (range === "1D") {
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  }
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric", month: "short",
+    year: range === "3Y" ? "numeric" : undefined,
+  });
+}
+
+export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScrub }: PriceChartProps) {
   const router = useRouter();
   const [range, setRange] = useState<Range>(defaultRange);
   const { currency: displayCurrency } = useDisplayCurrencyState();
@@ -96,7 +142,11 @@ export function PriceChart({ symbol, defaultRange = "1M" }: PriceChartProps) {
     if ((RANGES as readonly string[]).includes(r)) setRange(r as Range); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
-  const { closes, loading } = usePriceHistory(symbol, range);
+  const { closes, timestamps, loading } = usePriceHistory(symbol, range);
+
+  // For 1D: X axis spans a full trading day even if we only have partial data
+  const totalPoints = range === "1D" ? Math.max(FULL_DAY_POINTS, closes.length) : closes.length;
+  const n = Math.max(totalPoints - 1, 1);
 
   const W = 320;
   const H = 140;
@@ -110,12 +160,13 @@ export function PriceChart({ symbol, defaultRange = "1M" }: PriceChartProps) {
   const up = closes.length >= 2 && closes[closes.length - 1] >= closes[0];
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
 
-  const { line, area } = buildPath(closes, W, H, niceMin, niceMax);
+  const { line, area } = buildPath(closes, totalPoints, W, H, niceMin, niceMax);
 
-  const lastY =
-    closes.length >= 2
-      ? H - ((closes[closes.length - 1] - niceMin) / yRange) * H
-      : H / 2;
+  // End marker sits at the last actual data point (may be left of right edge for 1D)
+  const lastX = closes.length >= 2 ? ((closes.length - 1) / n) * W : W;
+  const lastY = closes.length >= 2
+    ? H - ((closes[closes.length - 1] - niceMin) / yRange) * H
+    : H / 2;
 
   const showEmpty = !loading && closes.length < 2;
   const showLabels = !showEmpty && !loading && closes.length >= 2;
@@ -127,34 +178,62 @@ export function PriceChart({ symbol, defaultRange = "1M" }: PriceChartProps) {
     setSelectedIndex(null); // eslint-disable-line react-hooks/set-state-in-effect
   }, [closes]);
 
-  const selectedX =
-    selectedIndex !== null && closes.length >= 2
-      ? (selectedIndex / (closes.length - 1)) * W
-      : null;
-  const selectedY =
-    selectedIndex !== null && closes.length >= 2
-      ? H - ((closes[selectedIndex] - niceMin) / yRange) * H
-      : null;
+  // Report period change whenever data or range changes
+  useEffect(() => {
+    if (!onPeriodChange) return;
+    const label = periodLabel(range, timestamps);
+    if (closes.length >= 2 && closes[0] !== 0) {
+      const pct = ((closes[closes.length - 1] - closes[0]) / closes[0]) * 100;
+      onPeriodChange(pct, range, label);
+    } else {
+      onPeriodChange(null, range, label);
+    }
+  }, [closes, range, timestamps]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedX = selectedIndex !== null && closes.length >= 2
+    ? (selectedIndex / n) * W
+    : null;
+  const selectedY = selectedIndex !== null && closes.length >= 2
+    ? H - ((closes[selectedIndex] - niceMin) / yRange) * H
+    : null;
   const showEndMarker = selectedIndex === null || selectedIndex === closes.length - 1;
 
   function calcIndex(clientX: number, rect: DOMRect): number {
     const relX = (clientX - rect.left) / rect.width;
-    return Math.min(Math.max(Math.round(relX * (closes.length - 1)), 0), closes.length - 1);
+    return Math.min(Math.max(Math.round(relX * n), 0), closes.length - 1);
+  }
+
+  function applyScrub(index: number) {
+    setSelectedIndex(index);
+    if (onScrub && closes.length >= 2 && closes[0] !== 0) {
+      const lastClose = closes[closes.length - 1];
+      const scrubClose = closes[index];
+      onScrub({
+        ratio: lastClose !== 0 ? scrubClose / lastClose : 1,
+        pct: ((scrubClose - closes[0]) / closes[0]) * 100,
+        label: timestamps[index] ? fmtScrubLabel(timestamps[index], range) : "",
+      });
+    }
+  }
+
+  function clearScrub() {
+    setSelectedIndex(null);
+    onScrub?.(null);
   }
 
   const chartHandlers = interactive
     ? {
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-          setSelectedIndex(calcIndex(e.clientX, e.currentTarget.getBoundingClientRect()));
+          applyScrub(calcIndex(e.clientX, e.currentTarget.getBoundingClientRect()));
         },
-        onMouseLeave() { setSelectedIndex(null); },
+        onMouseLeave() { clearScrub(); },
         onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
-          setSelectedIndex(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
+          applyScrub(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
         },
         onTouchMove(e: React.TouchEvent<HTMLDivElement>) {
-          setSelectedIndex(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
+          applyScrub(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
         },
-        onTouchEnd() { setSelectedIndex(null); },
+        onTouchEnd() { clearScrub(); },
       }
     : {};
 
@@ -210,8 +289,8 @@ export function PriceChart({ symbol, defaultRange = "1M" }: PriceChartProps) {
               />
               {showEndMarker && (
                 <>
-                  <circle cx={W} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
-                  <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
+                  <circle cx={lastX} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
+                  <circle cx={lastX} cy={lastY} r={3} fill={strokeColor} />
                 </>
               )}
               {selectedIndex !== null && selectedX !== null && selectedY !== null && (
