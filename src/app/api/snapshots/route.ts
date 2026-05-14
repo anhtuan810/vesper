@@ -7,6 +7,7 @@ const RANGE_DAYS: Record<string, number | null> = {
   "1M": 30,
   "3M": 90,
   "1Y": 365,
+  "3Y": 1095,
   "All": null,
 };
 

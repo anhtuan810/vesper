@@ -9,6 +9,7 @@ const RANGE_LABEL: Record<Range, string> = {
   "1M": "past month",
   "3M": "past 3 months",
   "1Y": "past year",
+  "3Y": "past 3 years",
   "All": "since inception",
 };
 
