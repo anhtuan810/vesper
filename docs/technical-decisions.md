@@ -281,7 +281,7 @@ Assets are cached in `sessionStorage` under the key `vesper.assets.<userId>` for
 
 - **Historical mutations have currency-implicit-EUR values**. Pre-normalization rows cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP.
 - **`before_value` / `after_value` semantic muddle on mutations**. Stored as EUR-equivalents but `currency` is native. Pre-existing inconsistency, separate redesign needed.
-- **System prompt is verbose**. At 50+ assets, ~50% token compression is achievable. Not yet implemented.
+- **System prompt compression deferred** — ephemeral caching covers the per-request cost.
 - **No tests**. Zero unit, integration, or E2E coverage. Acceptable for MVP. See `testing-strategies.md` for the activation plan.
 - **No analytics**. Defer until user count justifies it.
 - **Hardcoded FX fallback rates drift**. Review annually if both DB cache and frankfurter.app fail.

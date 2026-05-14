@@ -1,4 +1,5 @@
 import { TYPE_COLOR_TOKENS } from "@/lib/tokens";
+import { computeCurrentBalance } from "@/lib/mortgage";
 
 export const TYPE_COLOR: Record<string, string> = TYPE_COLOR_TOKENS;
 
@@ -54,10 +55,18 @@ export function getMonthLabel(key: string): string {
 }
 
 export function computeNetWorth(
-  assets: Array<{ type: string; value: number; mortgage_balance?: number | null }>
+  assets: Array<{
+    type: string;
+    value: number;
+    mortgage_balance?: number | null;
+    mortgage_balance_recorded_at?: string | null;
+    mortgage_rate?: number | null;
+    monthly_payment?: number | null;
+    mortgage_type?: string | null;
+  }>
 ): number {
   return assets.reduce((sum, a) => {
-    const net = a.type === "real_estate" ? a.value - (a.mortgage_balance ?? 0) : a.value;
+    const net = a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value;
     return sum + net;
   }, 0);
 }
