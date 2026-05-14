@@ -67,8 +67,26 @@ export function PortfolioTab({
   const [loading, setLoading] = useState(!initialSnapshots);
   const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
 
+  // When dashboard-init finishes (potentially after a backfill), re-seed the 1M
+  // series with real snapshot data. The initial /api/snapshots fetch may have
+  // completed before the backfill ran, leaving an empty series.
   useEffect(() => {
-    if (range === "1M" && initialSnapshots && series.length > 0) return;
+    if (!initialSnapshots || range !== "1M") return;
+    setSeries(buildSeries(initialSnapshots, netTotal));
+    setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSnapshots]);
+
+  useEffect(() => {
+    if (range === "1M" && initialSnapshots && series.length > 0) {
+      // Skip the network fetch but keep today's endpoint in sync with live netTotal
+      const today = new Date().toISOString().slice(0, 10);
+      setSeries((prev) => [
+        ...prev.filter((p) => p.date !== today),
+        { date: today, total_value: netTotal },
+      ]);
+      return;
+    }
     setLoading(true);
     setSelectedPoint(null);
     fetch(`/api/snapshots?range=${range}`)

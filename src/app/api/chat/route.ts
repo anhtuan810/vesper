@@ -6,7 +6,7 @@ import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
 import { toEur } from "@/lib/fx";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
-import { writeSnapshot } from "@/lib/snapshot";
+import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges } from "@/lib/apply-changes";
 import { validatePortfolioChanges } from "@/lib/validations";
@@ -220,12 +220,17 @@ export async function POST(req: NextRequest) {
     }
 
     let portfolioChanged = false;
+    let needsBackfill = false;
 
     // --- Apply portfolio changes ---
     if (changesRaw) {
       try {
         const changes = JSON.parse(changesRaw.trim());
         if (Array.isArray(changes) && changes.length > 0) {
+          const today = new Date().toISOString().slice(0, 10);
+          if (changes.some((c) => c.action === "add" && c.buy_date && c.buy_date < today)) {
+            needsBackfill = true;
+          }
           const validationError = validatePortfolioChanges(changes, currentAssets);
           if (validationError) {
             await supabase.from("messages").insert(timestampedPair(
@@ -343,6 +348,7 @@ export async function POST(req: NextRequest) {
     }
     if (portfolioChanged) {
       after(() => writeSnapshot(userId));
+      if (needsBackfill) after(() => backfillSnapshots(userId));
     }
 
     return NextResponse.json({

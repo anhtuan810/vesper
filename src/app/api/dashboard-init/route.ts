@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { backfillSnapshots } from "@/lib/snapshot";
 
 const RANGE_DAYS = 30; // default 1M
 
@@ -37,9 +38,25 @@ export async function GET(request: NextRequest) {
       .order("occurred_at", { ascending: false, nullsFirst: false }),
   ]);
 
+  let snapshots = snapshotsRes.data ?? [];
+
+  const today = new Date().toISOString().slice(0, 10);
+  const hasHistory = snapshots.some((s) => s.date < today);
+
+  if (!hasHistory) {
+    await backfillSnapshots(user.id);
+    const refetch = await supabase
+      .from("snapshots")
+      .select("date, total_value")
+      .eq("user_id", user.id)
+      .gte("date", cutoff.toISOString().slice(0, 10))
+      .order("date", { ascending: true });
+    snapshots = refetch.data ?? [];
+  }
+
   return NextResponse.json({
     insight: insightRes.data?.detail ?? null,
-    snapshots: snapshotsRes.data ?? [],
+    snapshots,
     mutations: mutationsRes.data ?? [],
   }, {
     headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=300" },
