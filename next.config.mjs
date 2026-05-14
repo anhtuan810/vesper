@@ -7,8 +7,8 @@ const CSP = [
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   // Tailwind uses inline styles throughout
   "style-src 'self' 'unsafe-inline'",
-  // Supabase storage (avatars, property photos) + OAuth avatar CDNs
-  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com",
+  // Supabase storage (avatars, property photos) + OAuth avatar CDNs + stock/crypto logo CDNs
+  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com https://images.financialmodelingprep.com https://cdn.jsdelivr.net",
   // MapLibre web workers run in blob: URLs
   "worker-src blob:",
   "font-src 'self'",

@@ -66,7 +66,7 @@ Field names for add (include all that apply):
   name, type (stocks|etf|crypto|bonds|gold|real_estate|cash|pension|other),
   value (number in the asset's native currency — use 0 if unknown, the system will auto-fill),
   currency (the asset's native currency: USD for US stocks, EUR for European assets, etc.),
-  country (ISO2), symbol (Yahoo Finance ticker),
+  country (ISO2), symbol (Yahoo Finance ticker — if the stock is dual-listed and also trades in the US, always use the US ticker without exchange suffix, e.g. "ASML" not "ASML.AS"),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only)
 
@@ -218,7 +218,7 @@ Field names (include all that apply):
   name, type (stocks|etf|crypto|bonds|gold|real_estate|cash|pension|other),
   value (number in the asset's native currency — use 0 if unknown, the system will auto-fill for stocks/ETFs/crypto),
   currency (the asset's native currency: USD for US stocks, EUR for European assets — use the correct native currency, not EUR by default),
-  country (ISO2), symbol (Yahoo Finance ticker if known),
+  country (ISO2), symbol (Yahoo Finance ticker — prefer the US-listed ticker when dual-listed, e.g. "ASML" not "ASML.AS"),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type
 

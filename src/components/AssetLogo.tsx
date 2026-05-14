@@ -95,9 +95,11 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
   if (!imgFailed && symbol) {
     if (type === "crypto") {
       const base = symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toLowerCase();
-      imgUrl = `/api/logo?type=crypto&symbol=${encodeURIComponent(base)}`;
+      imgUrl = `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${encodeURIComponent(base)}.svg`;
     } else if (type === "stocks" || type === "etf") {
-      imgUrl = `/api/logo?type=stock&symbol=${encodeURIComponent(symbol)}`;
+      // Strip exchange suffix (e.g. ASML.AS → ASML) since FMP stores by base ticker
+      const base = symbol.replace(/\.(AS|L|PA|DE|HK|TO|AX|KS|MI|MC|BR|CO|OL|ST|STO|SS|SZ|SA|MX|SW|AT|IR|NZ|TW|BO)$/i, "");
+      imgUrl = `https://images.financialmodelingprep.com/symbol/${encodeURIComponent(base)}.png`;
     }
   }
 

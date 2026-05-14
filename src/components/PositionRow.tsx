@@ -25,7 +25,7 @@ function subLine(asset: LiveAsset): string {
       const ticker =
         asset.type === "crypto"
           ? asset.symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase()
-          : asset.symbol.toUpperCase();
+          : asset.symbol.replace(/\.(AS|L|PA|DE|HK|TO|AX|KS|MI|MC|BR|CO|OL|ST|STO|SS|SZ|SA|MX|SW|AT|IR|NZ|TW|BO)$/i, "").toUpperCase();
       parts.push(ticker);
     }
     if (asset.units != null) {
