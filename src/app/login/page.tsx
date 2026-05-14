@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { LogoMark } from "@/components/Logo";
 
 function LoginInner() {
   const params = useSearchParams();
@@ -55,37 +56,23 @@ function LoginInner() {
       <div className="w-full" style={{ maxWidth: 360 }}>
         <div className="text-center mb-12">
           <div
-            className="mx-auto flex items-center justify-center mb-5"
             style={{
-              width: 56, height: 56, borderRadius: 14,
-              background: "var(--accent-soft)",
-              border: "1px solid rgba(212,165,116,0.18)",
-              position: "relative",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", gap: 16, marginBottom: 20,
             }}
           >
-            <span
-              className="font-serif text-accent"
-              style={{ fontSize: 28, fontWeight: 400, fontVariationSettings: "'opsz' 144" }}
-            >
-              V
-            </span>
+            <LogoMark size={48} />
             <span
               style={{
-                position: "absolute", top: 10, right: 10,
-                width: 4, height: 4, borderRadius: "50%",
-                background: "var(--accent)", boxShadow: "0 0 6px var(--accent)",
+                fontFamily: "var(--font-sans)",
+                fontWeight: 600, fontSize: 24,
+                letterSpacing: "-0.035em", lineHeight: 1,
+                color: "var(--text)",
               }}
-            />
+            >
+              Volnar
+            </span>
           </div>
-          <h1
-            className="font-serif text-fg"
-            style={{
-              fontSize: 32, fontWeight: 300, letterSpacing: "-0.025em",
-              fontVariationSettings: "'opsz' 144", lineHeight: 1.1, marginBottom: 8,
-            }}
-          >
-            Volnar
-          </h1>
           <p
             className="font-serif italic text-dim"
             style={{ fontSize: 14, lineHeight: 1.5, fontVariationSettings: "'opsz' 144" }}

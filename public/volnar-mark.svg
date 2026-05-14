@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 60" fill="none">
+  <path fill="currentColor" d="M 4 4 L 16 4 L 36 50 L 56 4 L 68 4 L 42 56 L 30 56 Z" />
+  <path fill="var(--accent)" d="M 20 4 L 30 4 L 36 28 L 42 4 L 52 4 L 41 36 L 31 36 Z" />
+  <path fill="currentColor" d="M 32 4 L 36 4 L 36 14 L 40 4 L 44 4 L 38 18 L 34 18 Z" />
+</svg>

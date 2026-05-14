@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser, useProfile } from "@/lib/hooks";
+import { Logo } from "@/components/Logo";
 
 type Tab = "portfolio" | "diary" | "profile";
 
@@ -69,42 +70,9 @@ export function NavBar({
       style={{ background: "var(--nav-surface)", WebkitBackdropFilter: "blur(20px)" }}
     >
       <div className="max-w-[960px] mx-auto flex items-center justify-between px-6 sm:px-8 h-14">
-        {/* Left: avatar · name · desktop tabs */}
+        {/* Left: brand · desktop tabs */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-[11px] min-w-0">
-            {/* Avatar or initials circle — no "V" wordmark */}
-            {avatarUrl && !imgFailed ? (
-              <img
-                src={avatarUrl}
-                alt={firstName ?? "User"}
-                onError={() => setImgFailed(true)}
-                style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  objectFit: "cover", flexShrink: 0,
-                }}
-              />
-            ) : initials ? (
-              <div
-                style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: "var(--accent)", color: "var(--bg)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: 500, letterSpacing: "0.01em",
-                  flexShrink: 0,
-                }}
-              >
-                {initials}
-              </div>
-            ) : null}
-            {firstName && (
-              <span
-                className="text-fg truncate"
-                style={{ fontSize: 16, fontWeight: 500, maxWidth: "16ch" }}
-              >
-                {firstName}
-              </span>
-            )}
-          </div>
+          <Logo size={20} />
 
           <div className="hidden md:flex items-center gap-0.5">
             {(["portfolio", "diary", "profile"] as Tab[]).map((t) => (
@@ -137,8 +105,31 @@ export function NavBar({
           </div>
         </div>
 
-        {/* Right: refresh (status dot as badge) */}
+        {/* Right: avatar · refresh */}
         <div className="flex items-center gap-2">
+          {avatarUrl && !imgFailed ? (
+            <img
+              src={avatarUrl}
+              alt={firstName ?? "User"}
+              onError={() => setImgFailed(true)}
+              style={{
+                width: 28, height: 28, borderRadius: "50%",
+                objectFit: "cover", flexShrink: 0,
+              }}
+            />
+          ) : initials ? (
+            <div
+              style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: "var(--accent)", color: "var(--bg)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 500, letterSpacing: "0.01em",
+                flexShrink: 0,
+              }}
+            >
+              {initials}
+            </div>
+          ) : null}
           {lastUpdated && (
             <span
               className="font-mono text-faint hidden sm:inline"
