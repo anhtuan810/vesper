@@ -163,7 +163,7 @@ export async function applyPortfolioChanges({
       } else {
         changed = true;
         runningTotal += resolvedValue;
-        const { error: mutationError } = await supabase.from("mutations").insert({
+        await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
           asset_name: name,
@@ -178,7 +178,6 @@ export async function applyPortfolioChanges({
           portfolio_total: runningTotal,
           occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
         });
-        if (mutationError) throw mutationError;
       }
 
     } else if (action === "edit") {
@@ -261,7 +260,7 @@ export async function applyPortfolioChanges({
 
           const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
           if (!onlyNameChanged) {
-            const { error: mutationError } = await supabase.from("mutations").insert({
+            await supabase.from("mutations").insert({
               user_id: userId,
               asset_id: existing.id,
               asset_name: change.new_name || name,
@@ -277,7 +276,6 @@ export async function applyPortfolioChanges({
               portfolio_total: runningTotal,
               occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
             });
-            if (mutationError) throw mutationError;
           }
         }
       }

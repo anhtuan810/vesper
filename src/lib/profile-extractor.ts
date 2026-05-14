@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "./supabase";
 
 const anthropic = new Anthropic();
@@ -120,10 +119,6 @@ What lasting facts about this user (if any) can be extracted from this exchange?
     }
   } catch (err) {
     // Profile extraction is non-critical — never let it crash the main flow
-    Sentry.captureException(err, {
-      tags: { fn: "extractProfileUpdate" },
-      extra: { user_id: userId },
-    });
     console.error("PROFILE EXTRACTION ERROR:", err);
   }
 }

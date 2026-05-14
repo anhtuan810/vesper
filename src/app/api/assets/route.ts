@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     const { data: allAssets } = await supabase
       .from("assets")
-      .select("type, value, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
+      .select("type, value, mortgage_balance")
       .eq("user_id", user.id);
     const portfolioTotal = computeNetWorth(allAssets || []);
 

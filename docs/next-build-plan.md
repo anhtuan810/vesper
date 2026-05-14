@@ -113,6 +113,7 @@ Build when there's enough portfolio history per user (3+ months of snapshots) an
 - No tests — accepted for MVP. See `testing-strategies.md` for the activation plan.
 - No analytics (PostHog/Mixpanel) — defer until user count justifies it
 - Compound index on `messages (user_id, created_at DESC)` would optimize the cursor-paginated `/api/messages` fetch. Not blocking at current scale (hundreds of messages per user). File for a future migration when query latency becomes measurable.
+- Chat history mapper silently coerces unknown `role` values to `"assistant"`. Acceptable given the schema only ever writes `"user"` or `"assistant"`, but a `continue` in the mapper would be more defensive against future schema drift.
 - AAPL logo intermittently 404s from FMP — falls back to monogram. Display-only.
 - Safari OAuth on localhost — Google sign-in on localhost via Safari redirects to production due to Safari + ITP third-party cookie blocking. Works in Chrome and other browsers; production unaffected.
 - `users.fingerprint` extraction reliability — for any active user where `users.fingerprint` stays null, check Sentry for failed extraction calls. The Profile slot hides cleanly when null, so this is not user-visible — but it should populate within one or two conversations.

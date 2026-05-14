@@ -18,19 +18,9 @@ const CURRENCY_META: Record<DisplayCurrency, CurrencyMeta> = {
 };
 
 // Last reviewed: 2026. These drift over time; review annually.
-export const FALLBACK_EUR_RATES: Record<string, number> = {
+const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
   USD: 1.12,
   GBP: 0.85,
-  CHF: 0.94,
-  JPY: 160,
-  CAD: 1.56,
-  AUD: 1.75,
-  HKD: 8.72,
-};
-
-const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
-  USD: FALLBACK_EUR_RATES.USD,
-  GBP: FALLBACK_EUR_RATES.GBP,
 };
 
 // Client-side module-level EUR→X rate cache, seeded with fallback rates.

@@ -3,7 +3,8 @@ import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
 
 const PROFILE_FIELD_KEYS = new Set([
-  "life_and_direction", "approach", "currently_exploring", "worth_raising",
+  "goal", "risk_behaviour", "investment_style", "life_context",
+  "concerns", "preferences", "blind_spots", "decision_patterns", "interests",
 ]);
 
 export async function GET(request: NextRequest) {
