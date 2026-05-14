@@ -287,28 +287,36 @@ export async function applyPortfolioChanges({
       );
 
       if (existing) {
+        const newRunningTotal = runningTotal - existing.value;
+
+        // INSERT the mutation row while asset_id still exists, then DELETE.
+        // mutations.asset_id is ON DELETE SET NULL, so it nulls out post-delete and the row persists.
+        const { error: mutationError } = await supabase.from("mutations").insert({
+          user_id: userId,
+          asset_id: existing.id,
+          asset_name: name,
+          action: "remove",
+          asset_type: existing.type,
+          symbol: existing.symbol || null,
+          before_value: existing.value,
+          after_value: null,
+          before_units: existing.units || null,
+          after_units: null,
+          currency: existing.currency || "EUR",
+          personal_context: contextNote,
+          portfolio_total: newRunningTotal,
+          occurred_at: new Date().toISOString().split("T")[0],
+        });
+
+        if (mutationError) throw mutationError;
+
         const { error } = await supabase.from("assets").delete().eq("id", existing.id);
 
         if (error) {
           console.error("REMOVE ERROR:", error);
         } else {
           changed = true;
-          runningTotal -= existing.value;
-          await supabase.from("mutations").insert({
-            user_id: userId,
-            asset_id: existing.id,
-            asset_name: name,
-            action: "remove",
-            asset_type: existing.type,
-            symbol: existing.symbol || null,
-            before_value: existing.value,
-            before_units: existing.units || null,
-            after_units: null,
-            currency: existing.currency || "EUR",
-            personal_context: contextNote,
-            portfolio_total: runningTotal,
-            occurred_at: new Date().toISOString().split("T")[0],
-          });
+          runningTotal = newRunningTotal;
         }
       }
     }

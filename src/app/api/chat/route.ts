@@ -295,6 +295,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (parseErr) {
+        if (!(parseErr instanceof SyntaxError)) throw parseErr;
         console.error("Changes parse failed:", parseErr);
       }
     }
