@@ -132,35 +132,40 @@ export async function applyPortfolioChanges({
       const resolvedLat: number | null = change.latitude ?? null;
       const resolvedLng: number | null = change.longitude ?? null;
 
-      runningTotal += resolvedValue;
-      const { error } = await supabase.rpc("add_asset_with_mutation", {
-        p_asset: {
-          name,
-          type: change.type || "other",
-          value: resolvedValue,
-          currency: resolvedCurrency,
-          country: change.country || null,
-          symbol: change.symbol || null,
-          units: change.units || null,
-          buy_price: resolvedBuyPrice,
-          buy_date: change.buy_date || null,
-          buy_price_source: change.buy_price_source || null,
-          mortgage_balance: resolvedMortgageBalance,
-          mortgage_balance_recorded_at: resolvedMortgageBalance != null ? new Date().toISOString() : null,
-          mortgage_rate: change.mortgage_rate ?? null,
-          monthly_payment: resolvedMonthlyPayment,
-          mortgage_type: change.mortgage_type || null,
-          mortgage_start_date: change.mortgage_start_date || null,
-          mortgage_end_date: change.mortgage_end_date || null,
-          address: change.address || null,
-          property_type: change.property_type || null,
-          size_sqm: change.size_sqm || null,
-          latitude: resolvedLat,
-          longitude: resolvedLng,
+      const { data: inserted, error } = await supabase.from("assets").insert({
+        name,
+        type: change.type || "other",
+        value: resolvedValue,
+        currency: resolvedCurrency,
+        country: change.country || null,
+        symbol: change.symbol || null,
+        units: change.units || null,
+        buy_price: resolvedBuyPrice,
+        buy_date: change.buy_date || null,
+        buy_price_source: change.buy_price_source || null,
+        mortgage_balance: resolvedMortgageBalance,
+        mortgage_balance_recorded_at: resolvedMortgageBalance != null ? new Date().toISOString() : null,
+        mortgage_rate: change.mortgage_rate ?? null,
+        monthly_payment: resolvedMonthlyPayment,
+        mortgage_type: change.mortgage_type || null,
+        mortgage_start_date: change.mortgage_start_date || null,
+        mortgage_end_date: change.mortgage_end_date || null,
+        address: change.address || null,
+        property_type: change.property_type || null,
+        size_sqm: change.size_sqm || null,
+        latitude: resolvedLat,
+        longitude: resolvedLng,
+        user_id: userId,
+      }).select("id").single();
+
+      if (error) {
+        console.error("ADD ERROR:", error);
+      } else {
+        changed = true;
+        runningTotal += resolvedValue;
+        const { error: mutationError } = await supabase.from("mutations").insert({
           user_id: userId,
-        },
-        p_mutation: {
-          user_id: userId,
+          asset_id: inserted?.id || null,
           asset_name: name,
           action: "add",
           asset_type: change.type || "other",
@@ -172,10 +177,9 @@ export async function applyPortfolioChanges({
           personal_context: contextNote,
           portfolio_total: runningTotal,
           occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
-        },
-      });
-      if (error) throw error;
-      changed = true;
+        });
+        if (mutationError) throw mutationError;
+      }
 
     } else if (action === "edit") {
       const existing = currentAssets.find(
@@ -246,31 +250,36 @@ export async function applyPortfolioChanges({
           }
         }
 
-        const afterValue = updateData.value !== undefined ? (updateData.value as number) : existing.value;
-        runningTotal += afterValue - existing.value;
+        const { error } = await supabase.from("assets").update(updateData).eq("id", existing.id);
 
-        const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
-        const { error } = await supabase.rpc("edit_asset_with_mutation", {
-          p_asset_id: existing.id,
-          p_asset_updates: updateData,
-          p_mutation: onlyNameChanged ? null : {
-            user_id: userId,
-            asset_name: change.new_name || name,
-            action: "edit",
-            asset_type: existing.type,
-            symbol: existing.symbol || null,
-            before_value: existing.value,
-            after_value: afterValue,
-            before_units: existing.units || null,
-            after_units: change.units !== undefined ? change.units : (existing.units || null),
-            currency: change.currency || existing.currency || "EUR",
-            personal_context: contextNote,
-            portfolio_total: runningTotal,
-            occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
-          },
-        });
-        if (error) throw error;
-        changed = true;
+        if (error) {
+          console.error("EDIT ERROR:", error);
+        } else {
+          changed = true;
+          const afterValue = updateData.value !== undefined ? (updateData.value as number) : existing.value;
+          runningTotal += afterValue - existing.value;
+
+          const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
+          if (!onlyNameChanged) {
+            const { error: mutationError } = await supabase.from("mutations").insert({
+              user_id: userId,
+              asset_id: existing.id,
+              asset_name: change.new_name || name,
+              action: "edit",
+              asset_type: existing.type,
+              symbol: existing.symbol || null,
+              before_value: existing.value,
+              after_value: afterValue,
+              before_units: existing.units || null,
+              after_units: change.units !== undefined ? change.units : (existing.units || null),
+              currency: change.currency || existing.currency || "EUR",
+              personal_context: contextNote,
+              portfolio_total: runningTotal,
+              occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
+            });
+            if (mutationError) throw mutationError;
+          }
+        }
       }
 
     } else if (action === "remove") {
@@ -282,29 +291,35 @@ export async function applyPortfolioChanges({
       if (existing) {
         const newRunningTotal = runningTotal - existing.value;
 
-        // Mutation insert and asset delete are atomic inside the RPC.
-        // mutations.asset_id FK is valid at insert time; ON DELETE SET NULL fires post-delete inside the function.
-        const { error } = await supabase.rpc("remove_asset_with_mutation", {
-          p_asset_id: existing.id,
-          p_mutation: {
-            user_id: userId,
-            asset_name: name,
-            action: "remove",
-            asset_type: existing.type,
-            symbol: existing.symbol || null,
-            before_value: existing.value,
-            after_value: null,
-            before_units: existing.units || null,
-            after_units: null,
-            currency: existing.currency || "EUR",
-            personal_context: contextNote,
-            portfolio_total: newRunningTotal,
-            occurred_at: new Date().toISOString().split("T")[0],
-          },
+        // INSERT the mutation row while asset_id still exists, then DELETE.
+        // mutations.asset_id is ON DELETE SET NULL, so it nulls out post-delete and the row persists.
+        const { error: mutationError } = await supabase.from("mutations").insert({
+          user_id: userId,
+          asset_id: existing.id,
+          asset_name: name,
+          action: "remove",
+          asset_type: existing.type,
+          symbol: existing.symbol || null,
+          before_value: existing.value,
+          after_value: null,
+          before_units: existing.units || null,
+          after_units: null,
+          currency: existing.currency || "EUR",
+          personal_context: contextNote,
+          portfolio_total: newRunningTotal,
+          occurred_at: new Date().toISOString().split("T")[0],
         });
-        if (error) throw error;
-        changed = true;
-        runningTotal = newRunningTotal;
+
+        if (mutationError) throw mutationError;
+
+        const { error } = await supabase.from("assets").delete().eq("id", existing.id);
+
+        if (error) {
+          console.error("REMOVE ERROR:", error);
+        } else {
+          changed = true;
+          runningTotal = newRunningTotal;
+        }
       }
     }
   }
