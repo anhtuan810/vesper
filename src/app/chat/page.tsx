@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { FormatText } from "@/components/FormatText";
@@ -23,12 +23,29 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const initialScrollDone = useRef(false);
+  const isLoadMoreUpdate = useRef(false);
+  const savedScrollMetrics = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
 
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
 
+  // Restore scroll position after prepending older messages (loadMore).
+  // useLayoutEffect runs before paint so there's no visible jump.
+  useLayoutEffect(() => {
+    const metrics = savedScrollMetrics.current;
+    const container = scrollContainerRef.current;
+    if (!metrics || !container) return;
+    container.scrollTop = container.scrollTop + (container.scrollHeight - metrics.scrollHeight);
+    savedScrollMetrics.current = null;
+  }, [messages]);
+
   useEffect(() => {
+    if (isLoadMoreUpdate.current) {
+      isLoadMoreUpdate.current = false;
+      return;
+    }
     if (!bottomRef.current) return;
     if (!initialScrollDone.current && messages.length > 0) {
       bottomRef.current.scrollIntoView({ behavior: "instant" });
@@ -65,7 +82,16 @@ export default function ChatPage() {
     const sentinel = sentinelRef.current;
     if (!sentinel || !hasMore) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && !isLoadingMore) loadMore(); },
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore) {
+          const container = scrollContainerRef.current;
+          if (container) {
+            savedScrollMetrics.current = { scrollHeight: container.scrollHeight, scrollTop: container.scrollTop };
+          }
+          isLoadMoreUpdate.current = true;
+          loadMore();
+        }
+      },
       { threshold: 0 }
     );
     observer.observe(sentinel);
@@ -106,6 +132,7 @@ export default function ChatPage() {
       >
         {/* Messages */}
         <div
+          ref={scrollContainerRef}
           className="flex-1 overflow-y-auto overflow-x-hidden"
           style={{
             padding: "32px 22px 160px",
