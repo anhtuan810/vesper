@@ -6,7 +6,7 @@
 - **React** with TypeScript
 - **Tailwind CSS** for styling
 - **Fonts**: Source Serif 4 (serif, hero numbers + section titles), Albert Sans (body, with `font-feature-settings: "tnum" 1` on `body` for tabular numbers), Geist Mono (retained but used sparingly — only the few elements where tabular precision really matters). All loaded from Google Fonts.
-- **Design tokens** in `src/app/globals.css` (CSS vars on `:root, [data-theme="light"]` and `[data-theme="dark"]`) + `tailwind.config.ts` (utilities) + `src/lib/tokens.ts` (TypeScript mirror for inline JS contexts like Recharts)
+- **Design tokens** in `src/app/globals.css` (CSS vars on `:root, [data-theme="light"]` and `[data-theme="dark"]`) + `tailwind.config.ts` (utilities) + `src/lib/tokens.ts` (TypeScript mirror for inline JS contexts)
 - **Theme system**: two modes exposed in the Profile picker — `light`, `dark`. `auto` was removed from the picker UI; the column still accepts `'auto'` for DB constraint compatibility but new selections are limited to light/dark. Active theme applied via `data-theme="light"` or `data-theme="dark"` on the document root by `ThemeProvider`. Cookie (`volnar.theme`) read in the root layout for SSR to avoid flash. `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `users.theme`.
 - No state management library — local React state and custom hooks only
 - No component library — custom styles using Tailwind utility classes
@@ -95,6 +95,8 @@ Daily net worth records.
 - Unique index on `(user_id, date)` enforces one row per user per day
 - Written by daily Vercel cron at midnight UTC + fire-and-forget after every successful mutation in `/api/chat`
 - Shared writer: `src/lib/snapshot.ts` `writeSnapshot(userId)`
+- Served by `GET /api/snapshots?range=<range>`. Supported ranges: `1W` (7d), `1M` (30d), `3M` (90d), `1Y` (365d), `3Y` (1095d), `All` (no cutoff). The `1D` range is not used by the net worth chart (it remains only in the `PriceChart` for tradeable assets).
+- Net worth chart uses a **Catmull-Rom spline** (converted to cubic Bézier control points) so the curve passes exactly through every data point.
 
 ### goals
 Optional soft goals captured during onboarding.

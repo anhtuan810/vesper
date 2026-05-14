@@ -25,7 +25,7 @@ A multi-chat migration moved Volnar from the old amber/Fraunces dark-only design
 - **PR 12 — Profile + Asset Detail restyle.** Caught a missed cleanup from PR 8: PropertyMap photo-upload affordance removed.
 - **PR 13 — Post-migration polish.** Light map style added (`src/styles/map-light.json`); theme-aware MapLibre. NavBar overlap fix. Activity rows, change pill, position rows, chat HR refinements.
 - **PR 14 — Holdings grouping.** Semantic categories: Property / Public markets / Reserves. `HoldingsGroup.tsx` with proportional bars in headers, rotating chevrons, all expanded by default.
-- **PR 15 — Mockup parity round 2.** NavBar identity (avatar + first name, no Volnar wordmark). `AllocationBar.tsx` deleted (proportional bars in HoldingsGroup carry the same information). 1D pill added to range selector. No gross/debt subtitle on hero.
+- **PR 15 — Mockup parity round 2.** NavBar identity (avatar + first name, no Volnar wordmark). `AllocationBar.tsx` deleted (proportional bars in HoldingsGroup carry the same information). No gross/debt subtitle on hero.
 - **PR 16 — AI insight band + tab icons + EU formatting + Recent Activity removed.** `/api/insight` route with Haiku generator, 24h cache via `highlights` table, italic-serif "WORTH KNOWING" band. Bottom-nav icons extracted from mockup. Number formatting forced to `nl-NL` locale across all currencies.
 - **PR 17 — Mockup parity sweep.** Diary/Chat/Profile/Asset Detail small-drift fixes — anniversary band "Worth knowing" rewording, chat user-message line-height, equity pill `+€X since YEAR`, mortgage chart spacing.
 - **PR 18 — Profile context read-only.** `InlineEdit.tsx` deleted entirely. Context fields render as static rows; corrections happen through chat → next extraction refresh.
@@ -161,7 +161,7 @@ Planned architectural approach:
    expanded. Top-level totals and allocation bars still render
    eagerly — they need the full picture.
 4. **Lazy per-range.** Chart's 1M (default) loads with the page;
-   1Y, All and other ranges fetch only when the user taps the
+   3M, 1Y, 3Y, All and other ranges fetch only when the user taps the
    range pill.
 5. **DB indexes if missing.** Add `snapshots(user_id, date)`,
    verify `assets(user_id)`.

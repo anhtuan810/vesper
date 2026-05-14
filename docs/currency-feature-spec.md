@@ -153,7 +153,7 @@ First-switch toast added: "Display only — your portfolio is unchanged." Tracke
 **Acceptance criteria:**
 
 - Switching display currency in Profile causes every visible number to re-render in the new currency.
-- Recharts axes and tooltips reflect the change.
+- Chart Y-axis labels and scrub tooltip reflect the change.
 - Milestone progress label uses the new currency's symbol and step sizing.
 
 ---

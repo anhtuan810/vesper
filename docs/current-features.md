@@ -22,8 +22,8 @@
 ### Portfolio Dashboard
 - Header (`NavBar`): user's avatar (28px, from `users.avatar_url` if present, else initials on accent background) + first name (`name.split(' ')[0]`) on the left; refresh button with integrated 4px status dot on the right. No Volnar wordmark, no settings gear. Dot states: **green** = all symbols fetched live within the last 5 minutes; **amber** = partial live prices OR prices are known-fresh (< 5 min) but the current session's fetch is still in-flight ("Refreshing prices"); **faint** = no recent price data. Dot uses a persisted timestamp (`volnar.prices.ts.<userId>` in sessionStorage) so it reflects actual data age, not session presence.
 - Net worth hero in serif (Source Serif 4) at 54px, monochrome currency. Asset-detail heroes use the editorial dimmed currency prefix at their smaller (44–48px) sizes. No gross/debt subtitle even when mortgages exist.
-- Change pill on the hero: percentage + EUR delta vs 1 month ago, with explicit `+`/`−` signs and `accent-soft` / `negative-soft` background. Renders only when at least 7 historical snapshots exist.
-- Net worth chart between hero and Holdings — range pills `1D / 1W / 1M / 3M / 1Y / All`, smooth bezier line in accent green, end-point dot, today marker, axis labels rendered below the chart in a separate row (no overlap with the curve), empty state until 7 snapshots exist. 1D shows the latest snapshot + the live current value as two points.
+- Change pill on the hero: percentage + EUR delta vs 1 month ago (or vs the first snapshot in the selected range), with explicit `+`/`−` signs and `accent-soft` / `negative-soft` background. Renders only when at least 2 historical snapshots exist.
+- Net worth chart between hero and Holdings — range pills `1W / 1M / 3M / 1Y / 3Y / All`, Catmull-Rom spline in accent green (passes through every data point exactly), end-point dot, scrub/hover marker, Y-axis price labels (IBKR-style, no gridlines), empty state until 2 snapshots exist.
 - WORTH KNOWING insight band (in the slot the milestone bar previously occupied) — Claude-generated single italic-serif sentence, accent-soft tinted band, chevron right, tap navigates to `/chat`. Renders nothing when the API returns `{ detail: null }`.
 - Holdings list — grouped by semantic category (Property = `real_estate`; Public markets = `stocks`, `etf`; Reserves = `cash`, `pension`, `bonds`, `gold`, `other`; Crypto = `crypto`). Group order by total value descending. All collapsed by default, tap to expand, session-persisted. Each position inside renders via `PositionRow`.
 - No "Allocation" card (proportional bars in HoldingsGroup headers carry the same information).
@@ -35,7 +35,7 @@
 - Vercel cron writes daily snapshots at midnight UTC, secured via `CRON_SECRET` header
 - `writeSnapshot()` shared writer also fires fire-and-forget on every successful mutation in `/api/chat` so the chart stays fresh between cron runs
 - Idempotent upsert on `(user_id, date)` — multiple writes same day produce one row, last value wins
-- Net worth chart on Portfolio tab consumes via `/api/snapshots?range=...`, with the live current value appended to the rightmost point. `range=1D` returns the past day's snapshot for a two-point line.
+- Net worth chart on Portfolio tab consumes via `/api/snapshots?range=...`, with the live current value appended as today's endpoint. Supported ranges: `1W`, `1M`, `3M`, `1Y`, `3Y`, `All`.
 - Files: `src/app/api/cron/snapshot/route.ts`, `src/app/api/snapshots/route.ts`, `src/lib/snapshot.ts`, `vercel.json`
 
 ### AI Insight Band
@@ -56,7 +56,7 @@
 
 **Tradeable** (stocks, ETFs, crypto, gold):
 - Asset logo, serif name, units sub-line, "Market price" hero with editorial currency prefix, change pill (explicit signs, no arrow)
-- Full price chart with time-range tabs (`1D / 1W / 1M / 3M / 1Y / All`); chart treatment matches NetWorthChart exactly — no card wrapper, flush to page surface, same gradient fill (0.18→0 opacity), same end-point dot (halo + solid, r=6/3), same stroke width (1.5px), date axis labels (start left / end right, `var(--text-faint)`, 12px) below the SVG, same range-pill tinted track (`var(--surface-elev)`, borderRadius 10) with active pill on `var(--bg)` background
+- Full price chart with time-range tabs (`1D / 1W / 1M / 3M / 1Y / 3Y`); chart treatment matches NetWorthChart exactly — no card wrapper, flush to page surface, same gradient fill (0.18→0 opacity), same end-point dot (halo + solid, r=6/3), same stroke width (1.5px), date axis labels (start left / end right, `var(--text-faint)`, 12px) below the SVG, same range-pill tinted track (`var(--surface-elev)`, borderRadius 10) with active pill on `var(--bg)` background
 - "Your position" list: Current value / Total return (with %) / Avg buy (with year)
 - Activity timeline scoped to the asset; prefers unit-based deltas (`+5 shares`) for tradeable mutations, falls back to signed value delta or context-only for older entries
 - Crypto positions show a 24h volatility block; stocks do not. Crypto rows hide country.

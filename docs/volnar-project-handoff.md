@@ -19,7 +19,7 @@ A single web dashboard where a user can:
 - Drill into any position via a dedicated **read-only** detail page (with a property hub for real estate, including theme-aware map, mortgage projection, and value composition)
 - See an AI-built profile of themselves that grows over time — six context fields plus a one-line investor fingerprint
 - Read a single AI-generated "Worth knowing" insight on the Portfolio surface, refreshed daily
-- Switch display currency (EUR / USD / GBP) and theme (Auto / Light / Dark) from Profile
+- Switch display currency (EUR / USD / GBP) and theme (Light / Dark) from Profile
 
 ## Current Stack
 
@@ -84,7 +84,7 @@ src/
     BottomNav.tsx               4-tab mobile nav (Portfolio/Diary/Chat/Profile)
     NavBar.tsx                  Top nav: avatar (28px) + first name on left, refresh + status dot on right
     NetWorthHero.tsx            Big serif net worth + change pill
-    NetWorthChart.tsx           Trajectory chart with range pills (1D/1W/1M/3M/1Y/All)
+    NetWorthChart.tsx           Trajectory chart with range pills (1W/1M/3M/1Y/3Y/All), Catmull-Rom spline
     InsightBand.tsx             "Worth knowing" italic-serif AI insight, links to /chat
     PortfolioTab.tsx            Portfolio page composition
     HoldingsGroup.tsx           Semantic groupings (Property / Public markets / Reserves) with proportional bars
