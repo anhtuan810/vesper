@@ -209,7 +209,7 @@ export function NetWorthChart(props: Props) {
             >
               <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Day one</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
-                Vesper logs your net worth daily. Your trajectory will plot here as snapshots accumulate.
+                Volnar logs your net worth daily. Your trajectory will plot here as snapshots accumulate.
               </div>
             </div>
           ) : loading ? (

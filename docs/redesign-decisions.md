@@ -24,7 +24,7 @@ If anything in `current-features.md`, `technical-decisions.md`, `currency-featur
 
 Decisions from the redesign session that change product behavior beyond CSS — they touch data, routing, or how the chat assistant is structured. None require a schema migration except where noted.
 
-Underlying principle that ties them together: **Vesper is a record of decisions and a conversation, not a wiki and not a session-based chat.** Context is captured at the moment something happens; renames are metadata; the chat is one continuous thread.
+Underlying principle that ties them together: **Volnar is a record of decisions and a conversation, not a wiki and not a session-based chat.** Context is captured at the moment something happens; renames are metadata; the chat is one continuous thread.
 
 ---
 
@@ -116,7 +116,7 @@ Edge case worth knowing
 
 **The change:** Drop the separate `/settings` route. The two settings the app actually needs — display currency and theme — live as a "Preferences" section on the Profile page. No gear icon, no settings sheet.
 
-**Rationale:** Settings was always going to be small. A separate route for two rows is structural overkill, and putting them on Profile is conceptually correct: Profile is where the user tells Vesper *how to be*.
+**Rationale:** Settings was always going to be small. A separate route for two rows is structural overkill, and putting them on Profile is conceptually correct: Profile is where the user tells Volnar *how to be*.
 
 **Implication for the currency feature:** `currency-feature-spec.md` Phase A explicitly created `src/app/settings/page.tsx`. That plan was superseded. The currency picker landed on Profile in the Preferences section instead.
 
@@ -209,7 +209,7 @@ Backend
 
 **The change:** Real estate detail pages always show the auto-generated map. Users cannot upload a photo to replace it.
 
-**Rationale:** Maps win on every axis that matters for a portfolio tool — objective, zero user effort, show *where* the property is (currency, country, geography), uniform across the app, on-brand. Vesper isn't Funda or Zillow. Vesper cares about net worth, not curb appeal.
+**Rationale:** Maps win on every axis that matters for a portfolio tool — objective, zero user effort, show *where* the property is (currency, country, geography), uniform across the app, on-brand. Volnar isn't Funda or Zillow. Volnar cares about net worth, not curb appeal.
 
 **Code teardown:**
 
@@ -254,7 +254,7 @@ Diary
 
 **The change:** Cash positions are mental-accounting pots. The user names them by purpose (`Emergency fund`, `Tax money`, `House deposit`) rather than by provider. All cash entries use the same generic wallet icon — no Clearbit lookup.
 
-**Rationale:** Vesper is a ledger, not a bank aggregator. Mental-accounting pots are how this kind of investor actually organizes cash: "I have €18k earmarked for emergencies" is a financial decision; "I have €18k at ABN AMRO" is bookkeeping.
+**Rationale:** Volnar is a ledger, not a bank aggregator. Mental-accounting pots are how this kind of investor actually organizes cash: "I have €18k earmarked for emergencies" is a financial decision; "I have €18k at ABN AMRO" is bookkeeping.
 
 **Pension** follows the same rule: pots, regardless of provider.
 

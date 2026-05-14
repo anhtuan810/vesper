@@ -9,7 +9,7 @@ interface Snapshot {
   deleted_at: string;
 }
 
-const SNAPSHOT_KEY = "vesper.recently_deleted";
+const SNAPSHOT_KEY = "volnar.recently_deleted";
 const VISIBLE_MS = 8000;
 
 export function UndoDeleteToast() {
@@ -58,7 +58,7 @@ export function UndoDeleteToast() {
       try { sessionStorage.removeItem(SNAPSHOT_KEY); } catch {}
       if (user?.id) invalidateAssetsCache(user.id);
       setSnapshot(null);
-      window.dispatchEvent(new Event("vesper:asset-restored"));
+      window.dispatchEvent(new Event("volnar:asset-restored"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Undo failed");
       setRestoring(false);

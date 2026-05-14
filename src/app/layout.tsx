@@ -28,7 +28,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vesper",
+  title: "Volnar",
   description: "Your personal portfolio assistant",
 };
 
@@ -40,7 +40,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  const raw = cookieStore.get("vesper.theme")?.value;
+  const raw = cookieStore.get("volnar.theme")?.value;
   const theme: ThemeMode =
     raw === "light" || raw === "dark" || raw === "auto" ? raw : "auto";
   const resolved = theme === "auto" ? "light" : theme;

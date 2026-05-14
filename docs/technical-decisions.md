@@ -7,7 +7,7 @@
 - **Tailwind CSS** for styling
 - **Fonts**: Source Serif 4 (serif, hero numbers + section titles), Albert Sans (body, with `font-feature-settings: "tnum" 1` on `body` for tabular numbers), Geist Mono (retained but used sparingly — only the few elements where tabular precision really matters). All loaded from Google Fonts.
 - **Design tokens** in `src/app/globals.css` (CSS vars on `:root, [data-theme="light"]` and `[data-theme="dark"]`) + `tailwind.config.ts` (utilities) + `src/lib/tokens.ts` (TypeScript mirror for inline JS contexts like Recharts)
-- **Theme system**: two modes exposed in the Profile picker — `light`, `dark`. `auto` was removed from the picker UI; the column still accepts `'auto'` for DB constraint compatibility but new selections are limited to light/dark. Active theme applied via `data-theme="light"` or `data-theme="dark"` on the document root by `ThemeProvider`. Cookie (`vesper.theme`) read in the root layout for SSR to avoid flash. `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `users.theme`.
+- **Theme system**: two modes exposed in the Profile picker — `light`, `dark`. `auto` was removed from the picker UI; the column still accepts `'auto'` for DB constraint compatibility but new selections are limited to light/dark. Active theme applied via `data-theme="light"` or `data-theme="dark"` on the document root by `ThemeProvider`. Cookie (`volnar.theme`) read in the root layout for SSR to avoid flash. `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `users.theme`.
 - No state management library — local React state and custom hooks only
 - No component library — custom styles using Tailwind utility classes
 
@@ -256,7 +256,7 @@ Write paths (`/api/chat`, `PATCH /api/users/me`, `POST /api/assets`) carry no ca
 
 ## Client-Side Caching (sessionStorage)
 
-Assets are cached in `sessionStorage` under the key `vesper.assets.<userId>` for stale-while-revalidate: the hook hydrates instantly on mount and background-refetches from Supabase.
+Assets are cached in `sessionStorage` under the key `volnar.assets.<userId>` for stale-while-revalidate: the hook hydrates instantly on mount and background-refetches from Supabase.
 
 **Invalidation rule**: whenever a mutation is known to have succeeded on the client, `invalidateAssetsCache(userId)` must be called immediately — before any `refetchAssets()` call — to prevent stale data appearing on back-navigation or cross-component mounts.
 
@@ -266,7 +266,7 @@ Assets are cached in `sessionStorage` under the key `vesper.assets.<userId>` for
 
 **Single-tab only**: `BroadcastChannel` for cross-tab invalidation is not yet implemented. A `// TODO: BroadcastChannel for cross-tab invalidation` comment marks the write site in `writeCachedAssets`.
 
-**Sparklines** are cached under `vesper.sparklines.v1.<range>.<symbolKey>` with a 5-minute TTL stored in the blob (`{ data, ts }`). The key is keyed by sorted symbol set + range, so different portfolios don't collide. `invalidateAssetsCache(userId)` scans for all keys starting with `vesper.sparklines.v1.` and removes them — no `userId` needed in the key because it's a prefix scan.
+**Sparklines** are cached under `volnar.sparklines.v1.<range>.<symbolKey>` with a 5-minute TTL stored in the blob (`{ data, ts }`). The key is keyed by sorted symbol set + range, so different portfolios don't collide. `invalidateAssetsCache(userId)` scans for all keys starting with `volnar.sparklines.v1.` and removes them — no `userId` needed in the key because it's a prefix scan.
 
 **`useUser` is NOT sessionStorage-cached**: `useUser()` reads from the `UserProvider` React context (in-memory). `PATCH /api/users/me` does not need a sessionStorage bust.
 

@@ -52,7 +52,7 @@ export function ThemeProvider({
 
   const setTheme = useCallback((mode: ThemeMode) => {
     setThemeState(mode);
-    document.cookie = `vesper.theme=${mode}; path=/; max-age=31536000; samesite=lax`;
+    document.cookie = `volnar.theme=${mode}; path=/; max-age=31536000; samesite=lax`;
     fetch("/api/users/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

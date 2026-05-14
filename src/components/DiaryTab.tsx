@@ -292,7 +292,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
       style={{ padding: "16px 20px" }}
     >
       <style>{`
-        @keyframes vesperPulse {
+        @keyframes volnarPulse {
           0%, 100% { opacity: 0.4; }
           50% { opacity: 1; }
         }
@@ -306,7 +306,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
               background: "var(--accent-soft)",
               border: "1px solid var(--border)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              animation: "vesperPulse 1.6s ease-in-out infinite",
+              animation: "volnarPulse 1.6s ease-in-out infinite",
             }}
           >
             <span

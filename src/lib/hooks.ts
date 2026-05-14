@@ -44,7 +44,7 @@ export function useProfile(userId: string | undefined) {
   return profile;
 }
 
-const ASSETS_CACHE_PREFIX = "vesper.assets.";
+const ASSETS_CACHE_PREFIX = "volnar.assets.";
 function assetsCacheKey(userId: string) { return `${ASSETS_CACHE_PREFIX}${userId}`; }
 function readCachedAssets(userId: string): Asset[] | null {
   try {
@@ -68,7 +68,7 @@ export function invalidateAssetsCache(userId: string) {
   } catch {}
 }
 
-const SPARKLINES_CACHE_PREFIX = "vesper.sparklines.v1.";
+const SPARKLINES_CACHE_PREFIX = "volnar.sparklines.v1.";
 const SPARKLINES_TTL_MS = 5 * 60 * 1000;
 function sparklinesKey(symbolKey: string, range: string) { return `${SPARKLINES_CACHE_PREFIX}${range}.${symbolKey}`; }
 function readCachedSparklines(symbolKey: string, range: string): Record<string, number[]> | null {
@@ -83,7 +83,7 @@ function writeCachedSparklines(symbolKey: string, range: string, data: Record<st
   try { sessionStorage.setItem(sparklinesKey(symbolKey, range), JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
-function pricesTsKey(userId: string) { return `vesper.prices.ts.${userId}`; }
+function pricesTsKey(userId: string) { return `volnar.prices.ts.${userId}`; }
 function readPriceTimestamp(userId: string): Date | null {
   try {
     const raw = sessionStorage.getItem(pricesTsKey(userId));

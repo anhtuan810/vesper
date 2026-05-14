@@ -84,7 +84,7 @@ function LoginInner() {
               fontVariationSettings: "'opsz' 144", lineHeight: 1.1, marginBottom: 8,
             }}
           >
-            Vesper
+            Volnar
           </h1>
           <p
             className="font-serif italic text-dim"

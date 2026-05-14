@@ -1,10 +1,10 @@
 # Next Build Plan
 
-This is the prioritized roadmap for Vesper. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
+This is the prioritized roadmap for Volnar. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
 
 ## What just shipped — Redesign migration (PR 1 → PR 21)
 
-A multi-chat migration moved Vesper from the old amber/Fraunces dark-only design to the locked redesign — cream/ink in light mode, warm-black/cream in dark, single accent green (`#4A7C5E`), Source Serif 4 + Albert Sans typography. Beyond the visual swap, the migration enforced the 11 locked decisions in `redesign-decisions.md` and absorbed all manual edit paths into chat.
+A multi-chat migration moved Volnar from the old amber/Fraunces dark-only design to the locked redesign — cream/ink in light mode, warm-black/cream in dark, single accent green (`#4A7C5E`), Source Serif 4 + Albert Sans typography. Beyond the visual swap, the migration enforced the 11 locked decisions in `redesign-decisions.md` and absorbed all manual edit paths into chat.
 
 ### Foundations
 - **PR 1 — Theme infrastructure.** `users.theme` column (auto/light/dark), `ThemeProvider`, cookie-based SSR, `PATCH /api/users/me` with field allowlist `{ theme, display_currency, avatar_url }`. Light + dark CSS variable sets in `globals.css`.
@@ -25,7 +25,7 @@ A multi-chat migration moved Vesper from the old amber/Fraunces dark-only design
 - **PR 12 — Profile + Asset Detail restyle.** Caught a missed cleanup from PR 8: PropertyMap photo-upload affordance removed.
 - **PR 13 — Post-migration polish.** Light map style added (`src/styles/map-light.json`); theme-aware MapLibre. NavBar overlap fix. Activity rows, change pill, position rows, chat HR refinements.
 - **PR 14 — Holdings grouping.** Semantic categories: Property / Public markets / Reserves. `HoldingsGroup.tsx` with proportional bars in headers, rotating chevrons, all expanded by default.
-- **PR 15 — Mockup parity round 2.** NavBar identity (avatar + first name, no Vesper wordmark). `AllocationBar.tsx` deleted (proportional bars in HoldingsGroup carry the same information). 1D pill added to range selector. No gross/debt subtitle on hero.
+- **PR 15 — Mockup parity round 2.** NavBar identity (avatar + first name, no Volnar wordmark). `AllocationBar.tsx` deleted (proportional bars in HoldingsGroup carry the same information). 1D pill added to range selector. No gross/debt subtitle on hero.
 - **PR 16 — AI insight band + tab icons + EU formatting + Recent Activity removed.** `/api/insight` route with Haiku generator, 24h cache via `highlights` table, italic-serif "WORTH KNOWING" band. Bottom-nav icons extracted from mockup. Number formatting forced to `nl-NL` locale across all currencies.
 - **PR 17 — Mockup parity sweep.** Diary/Chat/Profile/Asset Detail small-drift fixes — anniversary band "Worth knowing" rewording, chat user-message line-height, equity pill `+€X since YEAR`, mortgage chart spacing.
 - **PR 18 — Profile context read-only.** `InlineEdit.tsx` deleted entirely. Context fields render as static rows; corrections happen through chat → next extraction refresh.
@@ -98,7 +98,7 @@ Build when there's enough portfolio history per user (3+ months of snapshots) an
 - Allocation benchmarking — nice-to-have, not core
 - Shareable portfolio report — growth feature, not retention
 - Mobile native app — web-first
-- Tax features — never, not Vesper's lane
+- Tax features — never, not Volnar's lane
 - Broker sync / bank integrations — never for MVP; manual + AI-driven is the differentiator
 - Dashboard highlights cards (market events, milestones, reflections) as originally specified — partially superseded by the AI insight band shipped in PR 16. Revisit if user research shows the single-sentence band isn't enough.
 

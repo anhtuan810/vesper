@@ -21,7 +21,7 @@ const THEME_OPTIONS = [
   { value: "dark" as const, label: "Dark" },
 ];
 
-const TOAST_KEY = "vesper.currency.toastSeen";
+const TOAST_KEY = "volnar.currency.toastSeen";
 
 const PROFILE_FIELDS = [
   { key: "life_and_direction", label: "Life and direction" },

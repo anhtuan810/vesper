@@ -104,7 +104,7 @@ export function PortfolioTab({
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("vesper.holdings.expanded");
+      const raw = sessionStorage.getItem("volnar.holdings.expanded");
       if (raw) {
         const keys: string[] = JSON.parse(raw);
         setExpanded((prev) => {
@@ -122,7 +122,7 @@ export function PortfolioTab({
       const next = { ...prev, [cat]: !prev[cat] };
       try {
         const expandedKeys = Object.entries(next).filter(([, v]) => v).map(([k]) => k);
-        sessionStorage.setItem("vesper.holdings.expanded", JSON.stringify(expandedKeys));
+        sessionStorage.setItem("volnar.holdings.expanded", JSON.stringify(expandedKeys));
       } catch {}
       return next;
     });

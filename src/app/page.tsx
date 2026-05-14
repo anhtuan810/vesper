@@ -55,8 +55,8 @@ export default function Dashboard() {
       refetchAssets();
       refreshMutations();
     };
-    window.addEventListener("vesper:asset-restored", handler);
-    return () => window.removeEventListener("vesper:asset-restored", handler);
+    window.addEventListener("volnar:asset-restored", handler);
+    return () => window.removeEventListener("volnar:asset-restored", handler);
   }, [refetchAssets, refreshMutations]);
 
   const setTab = (t: "portfolio" | "diary" | "profile") => {

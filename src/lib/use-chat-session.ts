@@ -45,7 +45,7 @@ export function getChatSuggestions(
 }
 
 // Shared across ChatPopup and /chat so history persists between surfaces
-const storageKey = (uid: string) => "vesper_chat_history_" + uid;
+const storageKey = (uid: string) => "volnar_chat_history_" + uid;
 const CHAT_TTL_MS = 24 * 60 * 60 * 1000;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const LOAD_LIMIT = 20;
@@ -85,7 +85,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       // Sweep any keys belonging to other users
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
-        if (k && k.startsWith("vesper_chat_history_") && k !== key) {
+        if (k && k.startsWith("volnar_chat_history_") && k !== key) {
           localStorage.removeItem(k);
         }
       }

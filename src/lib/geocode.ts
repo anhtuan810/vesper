@@ -20,7 +20,7 @@ let lastRequestTime = 0;
 const MIN_INTERVAL_MS = 1100; // Nominatim policy: max 1 req/sec
 
 const NOMINATIM_HEADERS = {
-  "User-Agent": "Vesper/1.0 (https://app.novahub.nl)",
+  "User-Agent": "Volnar/1.0 (https://app.novahub.nl)",
   "Accept-Language": "en",
 };
 

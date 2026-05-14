@@ -1,8 +1,8 @@
-# Vesper — Project Handoff
+# Volnar — Project Handoff
 
 ## Product Vision
 
-Vesper is a personal portfolio intelligence web app. It gives investors clarity over their full financial picture through conversation, not forms. The promise: the clarity and confidence that used to require a private banker, available to anyone with a portfolio.
+Volnar is a personal portfolio intelligence web app. It gives investors clarity over their full financial picture through conversation, not forms. The promise: the clarity and confidence that used to require a private banker, available to anyone with a portfolio.
 
 ## Target User
 
@@ -146,7 +146,7 @@ docs/
     bond-detail.html
   redesign-decisions.md         The 11 locked decisions (all shipped — see status header)
   currency-feature-spec.md      Display currency feature spec (Phases A–D all shipped)
-  vesper-project-handoff.md     This file
+  volnar-project-handoff.md     This file
   current-features.md           What is built and what is fragile
   technical-decisions.md        Stack, schema, patterns
   next-build-plan.md            Prioritized roadmap
@@ -176,7 +176,7 @@ docs/
 10. **Decisions over numbers.** The diary is a log of decisions and reasoning, not just a transaction history. Notes are write-once. Pure renames are metadata and don't log. Diary entries display each asset's current name via JOIN — the *thing* has one identity.
 11. **Mortgage balance auto-amortizes invisibly.** The user enters mortgage values once. After that, balance and equity move silently month by month. Only notable events (extra payment, refinance, value update) are logged.
 
-## What Vesper Is NOT Trying to Be Yet
+## What Volnar Is NOT Trying to Be Yet
 
 - Not a tax tool.
 - Not a trading platform. No order execution, no broker integration.

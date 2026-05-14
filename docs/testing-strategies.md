@@ -1,10 +1,10 @@
 # Testing Strategy
 
-Status: deferred. Captured here for when it's time to invest. Currently Vesper has zero automated tests by design — manual smoke testing against acceptance criteria has been sufficient through the redesign and currency feature work.
+Status: deferred. Captured here for when it's time to invest. Currently Volnar has zero automated tests by design — manual smoke testing against acceptance criteria has been sufficient through the redesign and currency feature work.
 
 ## What this document is
 
-A snapshot of the thinking on automated testing for Vesper, recorded so it doesn't have to be re-derived later. When a real regression hurts a user, or paying users come on, or refactor velocity slows because of fear of silent breakage — that's the trigger to revisit this doc.
+A snapshot of the thinking on automated testing for Volnar, recorded so it doesn't have to be re-derived later. When a real regression hurts a user, or paying users come on, or refactor velocity slows because of fear of silent breakage — that's the trigger to revisit this doc.
 
 ## Two distinct questions
 
@@ -56,7 +56,7 @@ Effort: one day, mostly extracting the pure transformation logic from the I/O.
 Maintenance: medium. Updates needed when the schema changes or new actions are added.
 
 ### Layer 3: LLM-as-user conversational walkthroughs (post-paying-users)
-A second LLM driven against the app via browser automation. Given a persona and a goal, it converses with Vesper's assistant. A third LLM grades the transcript.
+A second LLM driven against the app via browser automation. Given a persona and a goal, it converses with Volnar's assistant. A third LLM grades the transcript.
 
 Tooling options:
 - Anthropic Computer Use API — Claude takes screenshots and outputs mouse/keyboard actions
