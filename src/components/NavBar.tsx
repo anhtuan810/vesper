@@ -28,11 +28,6 @@ function formatRelativeTime(date: Date): string {
   return `${days}d ago`;
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "";
-  return (parts[0][0]?.toUpperCase() ?? "") + (parts[parts.length - 1][0]?.toUpperCase() ?? "");
-}
 
 export function NavBar({
   tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated,
@@ -53,16 +48,6 @@ export function NavBar({
     null;
 
   const firstName = fullName ? fullName.split(" ")[0] : null;
-
-  const avatarUrl: string | null =
-    profile?.avatar_url ||
-    (user?.user_metadata?.avatar_url as string | undefined) ||
-    null;
-
-  const [imgFailed, setImgFailed] = useState(false);
-  useEffect(() => { setImgFailed(false); }, [avatarUrl]);
-
-  const initials = fullName ? getInitials(fullName) : null;
 
   return (
     <nav
@@ -105,31 +90,16 @@ export function NavBar({
           </div>
         </div>
 
-        {/* Right: avatar · refresh */}
+        {/* Right: name · refresh */}
         <div className="flex items-center gap-2">
-          {avatarUrl && !imgFailed ? (
-            <img
-              src={avatarUrl}
-              alt={firstName ?? "User"}
-              onError={() => setImgFailed(true)}
-              style={{
-                width: 28, height: 28, borderRadius: "50%",
-                objectFit: "cover", flexShrink: 0,
-              }}
-            />
-          ) : initials ? (
-            <div
-              style={{
-                width: 28, height: 28, borderRadius: "50%",
-                background: "var(--accent)", color: "var(--bg)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 500, letterSpacing: "0.01em",
-                flexShrink: 0,
-              }}
+          {firstName && (
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--text-faint)" }}
             >
-              {initials}
-            </div>
-          ) : null}
+              {firstName}
+            </span>
+          )}
           {lastUpdated && (
             <span
               className="font-mono text-faint hidden sm:inline"
