@@ -23,24 +23,34 @@ CURRENT PROFILE:
 ${JSON.stringify(currentProfile, null, 2)}
 
 RULES:
-- Only extract facts that are worth remembering long-term.
-- Skip transactional details (adding 10 shares is not a profile fact).
+- Only extract facts worth remembering long-term. Skip transactional details (adding 10 shares is not a profile fact).
 - Return ONLY a JSON object with fields to add or update. Return {} if nothing new was learned.
 - Never remove existing profile data — only add or refine.
 - Be conservative. One conversation rarely reveals more than 1-2 facts.
-- Write in warm, banker's tone — third person, present tense, plain prose. One short sentence per field max.
 
-EXAMPLE OUTPUT:
-{"life_and_direction": "Based in Amsterdam, planning a move to reduce mortgage exposure before starting a family.", "approach": "Buy-and-hold, prefers quality compounders with low turnover.", "fingerprint": "A leveraged Dutch real estate investor with concentrated tech equity exposure seeking to add stability through fixed income diversification."}
+TONE:
+- Plain language. Never use: 'portfolio transition', 'execution phase', 'strategy' / 'strategic', 'concentration' as a noun phrase, 'leverage amplification', 'redeploy capital' / 'deploy capital', 'diversified asset classes', 'leveraged real estate' (say 'mortgaged property'), 'rebalance' / 'rebalancing' (say 'shift toward' / 'move into'), 'fundamentally' / 'thoughtfully' as filler adverbs.
+- Observational voice — describe what's happening, not what it 'suggests' or 'indicates'. Never write 'suggesting a significant shift' — just describe the shift.
+- Never use third-person clinical framing ('this client', 'the user', 'this investor's approach'). Talk about the person directly or use no subject at all.
+- Concrete numbers and named things over abstractions. 'Selling six properties (~€3M)' beats 'liquidating a concentrated real estate position'.
+
+LENGTH:
+- Fingerprint: 12–18 words, one sentence.
+- Each context field: 10–22 words, one sentence.
 
 PROFILE FIELDS YOU CAN USE (all optional):
-- life_and_direction: life situation and where they are headed — family, career, location, major transitions
-- approach: how they invest — philosophy, style, time horizon, active vs passive, risk posture
-- currently_exploring: what they are actively researching or thinking through right now
-- worth_raising: recurring themes, blind spots, or tensions the assistant should proactively surface
+- life_and_direction: life situation and where headed — family, career, location, major changes.
+  Examples: 'Selling down all Dutch property; moving toward a more balanced portfolio.' / 'Building a long-term equity position alongside the family home in Amsterdam.'
+- approach: how they invest — philosophy, style, time horizon, risk posture.
+  Example: 'Buy-and-hold, quality compounders, low turnover, long horizon.'
+- currently_exploring: what they are actively researching or thinking through right now.
+  Examples: 'Selling six properties (~€3M); deciding where the proceeds land.' / 'Considering ASML at current levels; the position would double if executed.'
+- worth_raising: recurring themes, blind spots, or tensions worth surfacing.
+  Examples: 'Selling property removes the leverage risk, but the proceeds need a thoughtful new home.' / 'Single-position concentration is high; worth knowing as the position grows.'
 
 FINGERPRINT FIELD (always attempt):
-- fingerprint: a single sentence, 12–18 words, characterising the investor. Third person, present tense. No proper names, no hedging ("seems", "appears"), no emojis. Plain text only, no quotes. Captures risk posture, investment philosophy, life context. Example: "A measured, long-horizon investor with concentrated tech conviction balanced by stabilising real estate."
+- fingerprint: one sentence, 12–18 words, characterising the investor. No hedging ('seems', 'appears'). No emojis. Plain text, no quotes.
+  Examples: 'A Dutch investor unwinding years of property concentration to diversify.' / 'Long-horizon equity investor with a strong semiconductor conviction.' / 'Conservative builder — steady contributions, cash buffer, no leverage.' / 'Property-focused investor with a growing public-markets position on the side.'
 
 Return ONLY valid JSON. No markdown, no explanation.`,
       messages: [
@@ -65,13 +75,17 @@ What lasting facts about this user (if any) can be extracted from this exchange?
 
     if (!extracted) return;
 
+    const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+
     // Pull out fingerprint before profile merge
     const rawFingerprint =
       typeof extracted.fingerprint === "string" ? extracted.fingerprint.trim() : "";
     delete extracted.fingerprint;
 
+    const fpWords = wordCount(rawFingerprint);
     const fingerprintChanged =
       rawFingerprint.length > 0 &&
+      fpWords >= 12 && fpWords <= 20 &&
       rawFingerprint.toLowerCase() !== (currentFingerprint ?? "").toLowerCase().trim();
 
     const hasProfileFields =
@@ -90,6 +104,7 @@ What lasting facts about this user (if any) can be extracted from this exchange?
 
       for (const [key, value] of Object.entries(extracted)) {
         if (value && typeof value === "string" && value.trim().length > 0) {
+          if (wordCount(value) > 25) continue;
           if (mergedProfile[key]) {
             const existing = mergedProfile[key] as string;
             if (!existing.toLowerCase().includes((value as string).toLowerCase())) {
