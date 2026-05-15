@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { flushSync } from "react-dom";
+import { useRouter } from "next/navigation";
 import { formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
@@ -356,6 +357,7 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
 // ── Main component ─────────────────────────────────────────────────────────────
 export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const displayCurrency = useDisplayCurrency();
+  const router = useRouter();
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [period, setPeriod] = useState<PeriodKey>("all");
@@ -363,6 +365,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const [customTo, setCustomTo] = useState(thisMonth);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Anniversary: same MM-DD as today, at least 30 days in the past, oldest wins
   const anniversaryEntry = (() => {
@@ -436,6 +439,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
           0%   { outline: 2px solid rgba(212,165,116,0.75); outline-offset: 2px; border-radius: 6px; }
           100% { outline: 2px solid rgba(212,165,116,0);    outline-offset: 2px; border-radius: 6px; }
         }
+        .diary-row { cursor: pointer; }
+        .diary-row:hover { background-color: var(--surface-elev); }
+        .diary-row:active { opacity: 0.7; }
       `}</style>
 
       {/* Page title */}
@@ -695,25 +701,42 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               const date = m.occurred_at || m.recorded_at;
               const valueNode = buildValueNode(m, displayCurrency);
               const name = displayName(m);
+              const isRemovedAsset = !m.asset_id;
+              const isExpanded = expandedIds.has(m.id);
 
               return (
                 <div
                   key={m.id}
                   id={`diary-entry-${m.id}`}
+                  onClick={() => {
+                    if (m.asset_id) {
+                      router.push(`/asset/${m.asset_id}`);
+                    } else {
+                      setExpandedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(m.id)) next.delete(m.id);
+                        else next.add(m.id);
+                        return next;
+                      });
+                    }
+                  }}
+                  className="diary-row last:border-0"
                   style={{
                     borderBottom: "0.5px solid var(--border)",
                     ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
                   }}
-                  className="last:border-0"
                 >
                   <div style={{ display: "flex", gap: 10, padding: "8px 0", alignItems: "flex-start" }}>
-                    <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} />
+                    <div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}>
+                      <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} />
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {/* Row 1: name · delta · date */}
                       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
                         <span
                           style={{
-                            fontSize: 15, fontWeight: 500, color: "var(--text)",
+                            fontSize: 15, fontWeight: 500,
+                            color: isRemovedAsset ? "var(--text-dim)" : "var(--text)",
                             flexShrink: 0,
                           }}
                         >
@@ -731,16 +754,22 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         </span>
                       </div>
 
-                      {/* Row 2: context note — serif italic, line-clamped */}
+                      {/* Row 2: context note — serif italic, line-clamped unless expanded */}
                       {m.personal_context && (
                         <div
                           className="font-serif"
                           style={{
                             fontStyle: "italic", fontSize: 13,
                             color: "var(--text-dim)", lineHeight: 1.4,
-                            overflow: "hidden", display: "-webkit-box",
-                            WebkitBoxOrient: "vertical", WebkitLineClamp: 2,
                             fontVariationSettings: "'opsz' 14",
+                            ...(isExpanded
+                              ? {}
+                              : {
+                                  overflow: "hidden",
+                                  display: "-webkit-box",
+                                  WebkitBoxOrient: "vertical",
+                                  WebkitLineClamp: 2,
+                                }),
                           }}
                         >
                           {m.personal_context === STARTING_POSITION_CTX
