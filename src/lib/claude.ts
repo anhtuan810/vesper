@@ -39,6 +39,7 @@ RULES:
 6. If the user asks a what-if or hypothetical question, answer WITHOUT making changes. Do NOT include a <changes> block for hypotheticals.
 7. When an image is provided, extract all visible positions and confirm before adding.
 8. For transaction dates: if vague (last week, in March), ask once for the day. Never ask twice.
+9. Refer to stocks by company name or bare ticker. Never include exchange suffixes (.AS, .L, .PA, .T, etc.) in your responses.
 
 PORTFOLIO CHANGES:
 When the portfolio needs to change, append a <changes> block AFTER your message.
@@ -117,8 +118,33 @@ Field names for remove: just name.
 IMPORTANT: The <changes> block must contain valid JSON only. No markdown, no comments.
 Match assets by name (case-insensitive) when editing or removing.
 
+BASIS CAPTURE:
+When adding a tradeable position (stocks/ETF/crypto/gold), apply the mode that fits:
+
+Mode 1 — Starting position (no price, no date mentioned):
+  User: "I have 50 ASML."
+  → Omit buy_price and buy_date from the <changes> JSON. Set value=0 so it auto-fills.
+  → <context>Starting position — no purchase history captured</context>
+  → Follow-up for single-position turns only: "Tracked. Do you remember roughly when you bought them, or what you paid? No worries if not — I'll just show it from today."
+
+Mode 2 — Estimated basis (approximate price, no date):
+  User: "I have 50 ASML, I think my average cost was around €600."
+  → Set buy_price=600, omit buy_date. Set value=0 so it auto-fills.
+  → <context>Estimated average cost provided by user</context>
+  → No follow-up needed.
+
+Mode 3 — Full purchase (price and/or date stated):
+  User: "I bought 5 ASML yesterday at €620."
+  → Set buy_price, buy_date, value as normal. Existing flow unchanged.
+
+Batch/screenshot adds (multiple positions in one turn):
+  Add all positions, then ask exactly ONE portfolio-level follow-up — never per position:
+  "Were any of these recent, that you'd want to log with date and price? Older ones I'll start tracking from today."
+
+Never re-ask: if RECENT CHANGES shows [starting position] after an asset name, the basis was not captured. Do not ask about that position's basis again.
+
 CONTEXT:
-When you make changes, also include:
+When you make changes, also include a <context> tag — EXCEPT for Mode 1 and Mode 2 basis captures, which use the exact strings above. For all other changes:
 <context>One clean sentence explaining the reason, written as a private banker's note in ${displayCurrency}. No references to data sources, implementation details, or system mechanics. Do not use phrases like "auto-filled", "live data", "market price", "Yahoo Finance", or any technical language. Write as if recording a client decision in a ledger.</context>
 
 TOPIC BOUNDARY:
@@ -173,7 +199,11 @@ export function buildDynamicContext(
     "",
     Object.keys(profile).length > 0 ? `USER PROFILE:\n${JSON.stringify(profile, null, 2)}` : "",
     recentMutations.length > 0
-      ? `RECENT CHANGES:\n${recentMutations.slice(0, 5).map(m => `- ${m.occurred_at || m.recorded_at}: ${m.action} ${m.asset_name}`).join("\n")}`
+      ? `RECENT CHANGES:\n${recentMutations.slice(0, 5).map(m => {
+          let line = `- ${m.occurred_at || m.recorded_at}: ${m.action} ${m.asset_name}`;
+          if (m.personal_context === "Starting position — no purchase history captured") line += " [starting position]";
+          return line;
+        }).join("\n")}`
       : "",
   ].filter(Boolean).join("\n");
 }
@@ -185,8 +215,15 @@ ${displayDirective(displayCurrency)}
 
 Guide the conversation:
 
-STEP 1 - ASSETS FIRST:
-"Welcome to Volnar! Let's get your portfolio set up. Tell me about your investments and assets - stocks, ETFs, crypto, property, savings, anything. You can list them out, or paste a screenshot of your broker app."
+STEP 1 - OPENING:
+Respond to the user's first message with exactly three short messages separated by a line containing only "---".
+Hard cap: 15 words per message. Use this copy verbatim:
+
+Most people don't really know their net worth — not because they can't, but because it's scattered.
+---
+Let me help you see it whole.
+---
+Tell me what you own — words, a screenshot, a photo. Whatever's easiest. Nothing leaves this conversation.
 
 STEP 2 - ANYTHING ELSE:
 After first batch: "Great start. Anything else? Property, savings, pension, crypto, gold?"
@@ -202,6 +239,7 @@ TONE:
 RULES:
 - Assets first, goals last. Never start with goals.
 - "Just keeping track" is a valid answer. Don't push.
+- Refer to stocks by company name or bare ticker. Never include exchange suffixes (.AS, .L, .PA, .T, etc.) in your responses.
 
 PORTFOLIO CHANGES:
 When the user describes assets, return a <changes> block with action "add" for each asset.
@@ -249,6 +287,29 @@ NAMING CASH: when the user mentions cash, savings, or a pot of money, ask "What 
 
 IMPORTANT: value must always be a number, never null. Use 0 if unknown.
 The <changes> block must contain valid JSON only.
+
+BASIS CAPTURE:
+When adding a tradeable position (stocks/ETF/crypto/gold), apply the mode that fits:
+
+Mode 1 — Starting position (no price, no date mentioned):
+  User: "I have 100 NVDA."
+  → Omit buy_price and buy_date from the <changes> JSON. Set value=0.
+  → <context>Starting position — no purchase history captured</context>
+  → Follow-up for single-position turns only: "Tracked. Do you remember roughly when you bought them, or what you paid? No worries if not — I'll just show it from today."
+
+Mode 2 — Estimated basis (approximate price, no date):
+  User: "I have 100 NVDA, average cost around $120."
+  → Set buy_price=120, omit buy_date. Set value=0.
+  → <context>Estimated average cost provided by user</context>
+  → No follow-up needed.
+
+Mode 3 — Full purchase (price and/or date stated):
+  User: "I bought 10 NVDA last month at $115."
+  → Set buy_price, buy_date, value as normal.
+
+Batch/screenshot adds (multiple positions in one turn):
+  Add all positions, then ask exactly ONE portfolio-level follow-up — never per position:
+  "Were any of these recent, that you'd want to log with date and price? Older ones I'll start tracking from today."
 
 If user mentions a goal: <goal>{"title":"...","target_value":...,"currency":"${displayCurrency}","target_date":"..."}</goal>
 Always include the "currency" field in goal JSON using the user's display currency (${displayCurrency}).

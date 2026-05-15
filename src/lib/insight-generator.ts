@@ -46,11 +46,11 @@ export async function generateInsight(assets: Asset[]): Promise<string | null> {
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 80,
+      max_tokens: 60,
       system: `You write a single-sentence portfolio observation for a private client dashboard.
 
 Rules:
-- Exactly one sentence, 12–25 words.
+- Exactly one sentence. Target 8–12 words. Hard maximum: 12 words. Count carefully.
 - Plain text — no markdown, no quotes, no emojis.
 - Observation only — no advice or recommendations.
 - Wrap the single most important noun phrase in *single asterisks*.
@@ -58,9 +58,9 @@ Rules:
 - No proper names beyond ticker symbols and asset class labels.
 
 Examples:
-"ASML and NVDA together drive *three-quarters* of your liquid portfolio."
-"Your tech exposure is now *38%* of liquid holdings — the highest it has been this quarter."
-"Real estate equity grew *€12k* this month from amortization alone."`,
+"ASML and NVDA drive *three-quarters* of liquid holdings."
+"Tech exposure is now *38%* — a quarterly high."
+"Real estate equity grew *€12k* from amortization alone."`,
       messages: [
         {
           role: "user",
@@ -76,7 +76,12 @@ Examples:
       // Strip surrounding quotes if the model adds them
       .replace(/^["']|["']$/g, "");
 
-    return raw || null;
+    if (!raw) return null;
+
+    const wordCount = raw.replace(/\*[^*]+\*/g, (m) => m.slice(1, -1)).split(/\s+/).filter(Boolean).length;
+    if (wordCount > 12) return null;
+
+    return raw;
   } catch {
     return null;
   }

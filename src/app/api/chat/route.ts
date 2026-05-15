@@ -226,8 +226,13 @@ export async function POST(req: NextRequest) {
       try {
         const changes = JSON.parse(changesRaw.trim());
         if (Array.isArray(changes) && changes.length > 0) {
-          const today = new Date().toISOString().slice(0, 10);
-          if (changes.some((c) => c.action === "add" && c.buy_date && c.buy_date < today)) {
+          // Trigger backfill for multi-action turns or any change with a buy_date
+          // older than 30 days (historical context that affects the chart shape).
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+          if (
+            changes.length > 1 ||
+            changes.some((c) => c.buy_date && c.buy_date < thirtyDaysAgo)
+          ) {
             needsBackfill = true;
           }
           const validationError = validatePortfolioChanges(changes, currentAssets);
@@ -376,6 +381,7 @@ export async function POST(req: NextRequest) {
       remaining: CHAT_DAILY_LIMIT - used,
     });
   } catch (err) {
+    console.error("[/api/chat] unhandled error:", err);
     Sentry.captureException(err, { tags: { route: "POST /api/chat" } });
     return NextResponse.json(
       { message: "Couldn't reach the assistant. Please try again." },

@@ -1,5 +1,7 @@
 "use client";
 
+import { displayTicker } from "@/lib/utils";
+
 interface Props {
   type: string | null;
   symbol: string | null;
@@ -11,7 +13,10 @@ import { useState } from "react";
 
 function Monogram({ symbol, name, type, size }: { type: string | null; symbol: string | null; name: string | null; size: number }) {
   const mono = symbol
-    ? symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase().slice(0, 4)
+    ? (type === "crypto"
+        ? symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "")
+        : displayTicker(symbol)
+      ).toUpperCase().slice(0, 4)
     : (name || type || "?").slice(0, 3).toUpperCase();
   const fontSize = Math.max(6, Math.round(size * 0.29));
 
@@ -97,9 +102,7 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
       const base = symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toLowerCase();
       imgUrl = `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${encodeURIComponent(base)}.svg`;
     } else if (type === "stocks" || type === "etf") {
-      // Strip exchange suffix (e.g. ASML.AS → ASML) since FMP stores by base ticker
-      const base = symbol.replace(/\.(AS|L|PA|DE|HK|TO|AX|KS|MI|MC|BR|CO|OL|ST|STO|SS|SZ|SA|MX|SW|AT|IR|NZ|TW|BO)$/i, "");
-      imgUrl = `https://images.financialmodelingprep.com/symbol/${encodeURIComponent(base)}.png`;
+      imgUrl = `https://images.financialmodelingprep.com/symbol/${encodeURIComponent(displayTicker(symbol))}.png`;
     }
   }
 

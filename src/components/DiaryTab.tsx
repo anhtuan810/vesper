@@ -9,6 +9,7 @@ import type { Mutation } from "@/lib/supabase";
 import { AssetLogo } from "@/components/AssetLogo";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
+const STARTING_POSITION_CTX = "Starting position — no purchase history captured";
 
 function unitNoun(assetType: string | null): string {
   if (assetType === "crypto") return "units";
@@ -617,9 +618,11 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               }}
             >
               <span>{relativeAge(anniversaryEntry.date, now)} you </span>
-              <span>{anniversaryEntry.mutation.action === "add" ? "added" : anniversaryEntry.mutation.action === "remove" ? "removed" : "edited"} </span>
+              <span>{anniversaryEntry.mutation.action === "add"
+                ? (anniversaryEntry.mutation.personal_context === STARTING_POSITION_CTX ? "started tracking" : "added")
+                : anniversaryEntry.mutation.action === "remove" ? "removed" : "edited"} </span>
               <span style={{ fontStyle: "italic" }}>{displayName(anniversaryEntry.mutation)}</span>
-              {anniversaryEntry.mutation.personal_context && (
+              {anniversaryEntry.mutation.personal_context && anniversaryEntry.mutation.personal_context !== STARTING_POSITION_CTX && (
                 <span style={{ fontStyle: "italic", color: "var(--text-dim)" }}> — {anniversaryEntry.mutation.personal_context}</span>
               )}
             </div>
@@ -740,7 +743,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                             fontVariationSettings: "'opsz' 14",
                           }}
                         >
-                          {m.personal_context}
+                          {m.personal_context === STARTING_POSITION_CTX
+                            ? "Started tracking from today."
+                            : m.personal_context}
                         </div>
                       )}
                     </div>

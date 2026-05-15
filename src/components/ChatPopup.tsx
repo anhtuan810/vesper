@@ -37,6 +37,8 @@ export default function ChatPopup({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolled = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,7 +68,7 @@ export default function ChatPopup({
     const sentinel = sentinelRef.current;
     if (!sentinel || !hasMore) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && !isLoadingMore) loadMore(); },
+      ([entry]) => { if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) loadMore(); },
       { threshold: 0 }
     );
     observer.observe(sentinel);
@@ -198,7 +200,11 @@ export default function ChatPopup({
 
       {/* Messages */}
       <div
+        ref={scrollContainerRef}
         className="flex-1 overflow-y-auto overflow-x-hidden"
+        onScroll={(e) => {
+          if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
+        }}
         style={{
           padding: "20px 20px 8px",
           scrollbarWidth: "none",

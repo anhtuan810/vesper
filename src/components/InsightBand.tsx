@@ -51,12 +51,13 @@ export function InsightBand() {
         Worth knowing
       </div>
 
-      {/* Body — serif, normal weight; emphasis via <em> */}
+      {/* Body — italic serif; emphasis via <em> renders upright + medium weight */}
       <div
-        className="font-serif"
+        className="font-serif insight-band"
         style={{
           fontSize: 16,
           fontWeight: 400,
+          fontStyle: "italic",
           lineHeight: 1.35,
           letterSpacing: "-0.005em",
           color: "var(--text)",

@@ -281,12 +281,12 @@ export async function applyPortfolioChanges({
       }
 
     } else if (action === "remove") {
-      const existing = currentAssets.find(
+      const matching = currentAssets.filter(
         (a) => a.name.toLowerCase() === name.toLowerCase() ||
                (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
       );
 
-      if (existing) {
+      for (const existing of matching) {
         const newRunningTotal = runningTotal - existing.value;
 
         // INSERT the mutation row while asset_id still exists, then DELETE.
@@ -294,7 +294,7 @@ export async function applyPortfolioChanges({
         const { error: mutationError } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: existing.id,
-          asset_name: name,
+          asset_name: existing.name,
           action: "remove",
           asset_type: existing.type,
           symbol: existing.symbol || null,

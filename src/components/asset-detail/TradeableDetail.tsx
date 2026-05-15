@@ -90,10 +90,8 @@ export function TradeableDetail({ asset }: Props) {
       : null;
   const up = dailyChg != null && dailyChg >= 0;
 
-  const avgBuyPrice = asset.buy_price;
-  const avgBuyYear = mutations.length > 0
-    ? new Date(mutations[mutations.length - 1].occurred_at ?? mutations[mutations.length - 1].recorded_at).getFullYear()
-    : null;
+  const avgBuyPrice = asset.buy_price ?? null;
+  const avgBuyYear = asset.buy_date ? new Date(asset.buy_date).getFullYear() : null;
 
   const totalReturnAbs = nativePrice != null && asset.buy_price && asset.buy_price > 0 && asset.units
     ? (nativePrice - asset.buy_price) * asset.units

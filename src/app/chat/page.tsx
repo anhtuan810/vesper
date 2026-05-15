@@ -27,6 +27,7 @@ export default function ChatPage() {
   const initialScrollDone = useRef(false);
   const isLoadMoreUpdate = useRef(false);
   const savedScrollMetrics = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
+  const hasScrolled = useRef(false);
 
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
@@ -83,7 +84,7 @@ export default function ChatPage() {
     if (!sentinel || !hasMore) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !isLoadingMore) {
+        if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) {
           const container = scrollContainerRef.current;
           if (container) {
             savedScrollMetrics.current = { scrollHeight: container.scrollHeight, scrollTop: container.scrollTop };
@@ -134,6 +135,9 @@ export default function ChatPage() {
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto overflow-x-hidden"
+          onScroll={(e) => {
+            if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
+          }}
           style={{
             padding: "32px 22px 160px",
             scrollbarWidth: "none",

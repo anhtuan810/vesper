@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { pctChange } from "@/lib/utils";
+import { pctChange, displayTicker } from "@/lib/utils";
 import { MiniSparkline } from "@/components/MiniSparkline";
 import { AssetLogo } from "@/components/AssetLogo";
 import { usePriceHistory, useDisplayCurrency } from "@/lib/hooks";
@@ -25,7 +25,7 @@ function subLine(asset: LiveAsset): string {
       const ticker =
         asset.type === "crypto"
           ? asset.symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase()
-          : asset.symbol.replace(/\.(AS|L|PA|DE|HK|TO|AX|KS|MI|MC|BR|CO|OL|ST|STO|SS|SZ|SA|MX|SW|AT|IR|NZ|TW|BO)$/i, "").toUpperCase();
+          : displayTicker(asset.symbol).toUpperCase();
       parts.push(ticker);
     }
     if (asset.units != null) {

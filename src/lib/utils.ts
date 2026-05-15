@@ -62,3 +62,16 @@ export function computeNetWorth(
   }, 0);
 }
 
+const EXCHANGE_SUFFIXES = new Set([
+  "AS", "L", "PA", "DE", "F", "SW", "MI", "MC", "BR", "LS", "HE", "ST", "OL",
+  "CO", "VI", "WA", "HK", "T", "AX", "NZ", "SI", "KS", "KQ", "TO", "V", "SA",
+  "MX", "BA",
+]);
+
+export function displayTicker(symbol: string): string {
+  const dot = symbol.lastIndexOf(".");
+  if (dot === -1) return symbol;
+  const suffix = symbol.slice(dot + 1).toUpperCase();
+  return EXCHANGE_SUFFIXES.has(suffix) ? symbol.slice(0, dot) : symbol;
+}
+

@@ -1,8 +1,9 @@
 import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance } from "@/lib/mortgage";
-import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
+import { normalizePrice } from "@/lib/prices";
 import { getEurRates } from "@/lib/fx";
+import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 
 // TODO: live-price snapshots — tradeable asset values here are DB-stored, not real-time.
 // Consider fetching live prices for each tradeable asset before writing the snapshot.
@@ -50,89 +51,231 @@ export async function writeSnapshot(userId: string): Promise<void> {
   }
 }
 
+// ── Backfill helpers ───────────────────────────────────────────────────────────
+
 const TRADEABLE = new Set(["stocks", "etf", "crypto", "gold"]);
 
-// Writes historical snapshots for each date an asset joined the portfolio.
-// Uses ignoreDuplicates so cron-written rows are never overwritten.
+// Fetches a full daily closing-price series from Yahoo Finance for a date range.
+// Returns prices sorted ascending by date.
+async function fetchFullPriceHistory(
+  symbol: string,
+  startDate: string,
+  endDate: string,
+): Promise<Array<{ date: string; price: number; currency: string }> | null> {
+  try {
+    const period1 = Math.floor(new Date(startDate + "T00:00:00Z").getTime() / 1000);
+    const period2 = Math.floor(new Date(endDate + "T23:59:59Z").getTime() / 1000);
+    const url = `${YAHOO_FINANCE_BASE_URL}/${encodeURIComponent(symbol)}?interval=1d&period1=${period1}&period2=${period2}`;
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+
+    const currency: string = result.meta?.currency ?? "USD";
+    const timestamps: number[] = result.timestamp ?? [];
+    const closes: (number | null)[] = result.indicators?.quote?.[0]?.close ?? [];
+
+    const history: Array<{ date: string; price: number; currency: string }> = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      if (closes[i] == null) continue;
+      history.push({
+        date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
+        price: closes[i]!,
+        currency,
+      });
+    }
+    history.sort((a, b) => a.date.localeCompare(b.date));
+    return history;
+  } catch {
+    return null;
+  }
+}
+
+// Returns the most recent price on or before `date`, walking a sorted-ascending history.
+function priceAtOrBefore(
+  history: Array<{ date: string; price: number; currency: string }>,
+  date: string,
+): { price: number; currency: string } | null {
+  let result: { price: number; currency: string } | null = null;
+  for (const entry of history) {
+    if (entry.date > date) break;
+    result = { price: entry.price, currency: entry.currency };
+  }
+  return result;
+}
+
+// Returns units held as of `date` by walking a sorted-ascending mutation timeline.
+// Returns 0 if no mutation precedes the date.
+function unitsAtDate(
+  timeline: Array<{ date: string; units: number }>,
+  date: string,
+): number {
+  let units = 0;
+  for (const entry of timeline) {
+    if (entry.date > date) break;
+    units = entry.units;
+  }
+  return units;
+}
+
+// Generates snapshot target dates with decreasing resolution going further back:
+//   - daily:   D-1 … D-30
+//   - weekly:  every 7 days from D-30 back to D-365
+//   - monthly: 1st of each month from D-365 back to `earliest`
+// Returns dates sorted ascending that are >= earliest and < todayStr.
+function targetSnapshotDates(earliest: string, todayStr: string): string[] {
+  const set = new Set<string>();
+  const today = new Date(todayStr + "T12:00:00Z");
+
+  // Daily
+  for (let i = 1; i <= 30; i++) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i);
+    set.add(d.toISOString().slice(0, 10));
+  }
+
+  // Weekly: D-30 back to D-365
+  const weeklyEnd = new Date(today);
+  weeklyEnd.setUTCDate(weeklyEnd.getUTCDate() - 30);
+  const monthlyStart = new Date(today);
+  monthlyStart.setUTCFullYear(monthlyStart.getUTCFullYear() - 1);
+  let w = new Date(weeklyEnd);
+  while (w > monthlyStart) {
+    set.add(w.toISOString().slice(0, 10));
+    w.setUTCDate(w.getUTCDate() - 7);
+  }
+
+  // Monthly: 1st of each month from 1 year ago back to earliest
+  const earliestDate = new Date(earliest + "T12:00:00Z");
+  let m = new Date(monthlyStart);
+  m.setUTCDate(1);
+  while (m >= earliestDate) {
+    set.add(m.toISOString().slice(0, 10));
+    m.setUTCMonth(m.getUTCMonth() - 1);
+  }
+
+  return [...set]
+    .filter((d) => d >= earliest && d < todayStr)
+    .sort();
+}
+
+// Backfills historical net-worth snapshots using actual units held at each date.
+// Only writes rows that don't already exist (ignoreDuplicates: true).
 export async function backfillSnapshots(userId: string): Promise<void> {
   try {
     const supabase = createServerSupabase();
 
-    const { data: assets, error } = await supabase
+    // Load all assets
+    const { data: assets, error: aErr } = await supabase
       .from("assets")
-      .select("id, type, value, symbol, units, buy_date, created_at, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
+      .select("id, type, value, symbol, created_at, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
       .eq("user_id", userId);
-
-    if (error) throw error;
+    if (aErr) throw aErr;
     if (!assets || assets.length === 0) return;
 
-    const today = new Date().toISOString().slice(0, 10);
+    // Load all mutations (asset_id is never null for portfolio changes)
+    const { data: mutations, error: mErr } = await supabase
+      .from("mutations")
+      .select("asset_id, action, after_units, occurred_at")
+      .eq("user_id", userId)
+      .not("asset_id", "is", null);
+    if (mErr) throw mErr;
 
-    // Collect unique inception dates that are strictly before today
-    const datesSet = new Set<string>();
-    for (const a of assets) {
-      const inception = (a.buy_date ?? (a.created_at as string).slice(0, 10)) as string;
-      if (inception < today) datesSet.add(inception);
+    // Determine earliest date from dated mutations and asset creation dates
+    const datedDates = (mutations ?? [])
+      .filter((m) => m.occurred_at)
+      .map((m) => (m.occurred_at as string).slice(0, 10));
+    const assetDates = assets.map((a) => (a.created_at as string).slice(0, 10));
+    const allDates = [...datedDates, ...assetDates].filter(Boolean);
+    if (allDates.length === 0) return;
+    const earliest = allDates.sort()[0];
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (earliest >= todayStr) return;
+
+    // Build per-asset unit timeline.
+    // Mutations with null occurred_at (starting positions) are placed at earliest.
+    const mutsByAsset = new Map<string, Array<{ date: string; units: number }>>();
+    for (const m of mutations ?? []) {
+      if (!m.asset_id) continue;
+      // For remove, after_units is null → 0 units; for add/edit, use after_units directly.
+      const afterUnits = m.action === "remove" ? 0 : (m.after_units as number | null);
+      if (afterUnits === null) continue;
+      const date = m.occurred_at ? (m.occurred_at as string).slice(0, 10) : earliest;
+      if (!mutsByAsset.has(m.asset_id as string)) mutsByAsset.set(m.asset_id as string, []);
+      mutsByAsset.get(m.asset_id as string)!.push({ date, units: afterUnits });
     }
-    if (datesSet.size === 0) return;
+    for (const timeline of mutsByAsset.values()) {
+      timeline.sort((a, b) => a.date.localeCompare(b.date));
+    }
 
-    const dates = [...datesSet].sort();
+    // Fetch full price history once per unique tradeable symbol
+    const symbols = [
+      ...new Set(
+        assets
+          .filter((a) => TRADEABLE.has(a.type as string) && a.symbol)
+          .map((a) => a.symbol as string),
+      ),
+    ];
+    const priceHistories = new Map<string, Array<{ date: string; price: number; currency: string }>>();
+    await Promise.all(
+      symbols.map(async (symbol) => {
+        const history = await fetchFullPriceHistory(symbol, earliest, todayStr);
+        if (history && history.length > 0) priceHistories.set(symbol, history);
+      }),
+    );
+
     const fx = await getEurRates();
+    const dates = targetSnapshotDates(earliest, todayStr);
+    if (dates.length === 0) return;
 
     const rows: Array<{ user_id: string; date: string; total_value: number; breakdown: Record<string, number> }> = [];
 
     for (const date of dates) {
       const asOf = new Date(date + "T12:00:00Z");
-
-      // Only assets whose inception is on or before this date
-      const active = assets.filter((a) => {
-        const inception = (a.buy_date ?? (a.created_at as string).slice(0, 10)) as string;
-        return inception <= date;
-      });
-      if (active.length === 0) continue;
-
-      // Fetch historical prices for all tradeables on this date in parallel
-      const tradeables = active.filter((a) => TRADEABLE.has(a.type) && a.symbol && a.units);
-      const priceResults = await Promise.all(
-        tradeables.map((a) => fetchHistoricalPrice(a.symbol!, date))
-      );
-      const priceMap = new Map(tradeables.map((a, i) => [a.id, priceResults[i]]));
-
       let total = 0;
       const breakdown: Record<string, number> = {};
 
-      for (const a of active) {
-        let contribution: number;
+      for (const asset of assets) {
+        const type = asset.type as string;
+        const inception = (asset.created_at as string).slice(0, 10);
+        let contribution = 0;
 
-        if (TRADEABLE.has(a.type) && a.symbol && a.units) {
-          const priceData = priceMap.get(a.id);
-          if (priceData) {
-            const raw = normalizePrice(priceData.price, priceData.currency);
-            const cur = priceData.currency === "GBp" ? "GBP" : priceData.currency;
-            const native = raw * (a.units as number);
-            contribution = cur === "EUR" ? native : (fx[cur] ? native / fx[cur] : (a.value as number));
-            // Fix zero-value assets in place; live-price system corrects to current on next refresh
-            if ((a.value as number) === 0) {
-              await supabase.from("assets").update({
-                value: Math.round(contribution),
-                buy_price: Math.round(raw * 100) / 100,
-              }).eq("id", a.id);
-              (a as Record<string, unknown>).value = Math.round(contribution);
+        if (TRADEABLE.has(type) && asset.symbol) {
+          const timeline = mutsByAsset.get(asset.id as string) ?? [];
+          const units = unitsAtDate(timeline, date);
+          if (units > 0) {
+            const history = priceHistories.get(asset.symbol as string);
+            if (history) {
+              const priceEntry = priceAtOrBefore(history, date);
+              if (priceEntry) {
+                const raw = normalizePrice(priceEntry.price, priceEntry.currency);
+                const cur = priceEntry.currency === "GBp" ? "GBP" : priceEntry.currency;
+                const native = raw * units;
+                contribution = cur === "EUR" ? native : (fx[cur] ? native / fx[cur] : 0);
+              }
             }
-          } else {
-            contribution = a.value as number;
           }
-        } else if (a.type === "real_estate") {
-          contribution = (a.value as number) - computeCurrentBalance(a, asOf);
+        } else if (type === "real_estate") {
+          // computeCurrentBalance projects the mortgage balance backwards correctly
+          contribution = (asset.value as number) - computeCurrentBalance(asset, asOf);
         } else {
-          contribution = a.value as number;
+          // Cash / bonds / pension / other: use current value from inception date onward
+          if (date >= inception) {
+            contribution = asset.value as number;
+          }
         }
 
-        total += contribution;
-        breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + contribution;
+        if (contribution > 0) {
+          total += contribution;
+          breakdown[type] = (breakdown[type] ?? 0) + contribution;
+        }
       }
 
-      rows.push({ user_id: userId, date, total_value: Math.round(total), breakdown });
+      if (total > 0) {
+        rows.push({ user_id: userId, date, total_value: Math.round(total), breakdown });
+      }
     }
 
     if (rows.length === 0) return;

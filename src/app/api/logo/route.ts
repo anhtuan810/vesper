@@ -6,6 +6,19 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const CACHE_MAX = 500;
 const FETCH_TIMEOUT_MS = 5000;
 
+const EXCHANGE_SUFFIXES = new Set([
+  "AS", "L", "PA", "DE", "F", "SW", "MI", "MC", "BR", "LS", "HE", "ST", "OL",
+  "CO", "VI", "WA", "HK", "T", "AX", "NZ", "SI", "KS", "KQ", "TO", "V", "SA",
+  "MX", "BA",
+]);
+
+function fmpTicker(symbol: string): string {
+  const dot = symbol.lastIndexOf(".");
+  if (dot === -1) return symbol;
+  const suffix = symbol.slice(dot + 1).toUpperCase();
+  return EXCHANGE_SUFFIXES.has(suffix) ? symbol.slice(0, dot) : symbol;
+}
+
 interface CacheEntry {
   bytes: ArrayBuffer;
   contentType: string;
@@ -18,7 +31,7 @@ function upstreamUrl(type: string, symbol: string): string {
   if (type === "crypto") {
     return `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${symbol}.svg`;
   }
-  return `https://images.financialmodelingprep.com/symbol/${symbol}.png`;
+  return `https://images.financialmodelingprep.com/symbol/${fmpTicker(symbol)}.png`;
 }
 
 export async function GET(request: NextRequest) {

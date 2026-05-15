@@ -110,13 +110,18 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
             setHasMore(false);
             return;
           }
-          const mapped: ChatMessage[] = data.messages.map(
-            (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => ({
-              id: m.id,
-              from: m.role,
-              text: m.content,
-              suggestedReplies: m.suggested_replies ?? null,
-            })
+          const mapped: ChatMessage[] = data.messages.flatMap(
+            (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => {
+              if (m.role === "assistant" && m.content.includes("\n---\n")) {
+                return m.content.split("\n---\n").map((part, i, arr) => ({
+                  id: i === 0 ? m.id : undefined,
+                  from: "assistant" as const,
+                  text: part.trim(),
+                  suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
+                }));
+              }
+              return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null }];
+            }
           );
           setMessages(mapped);
           if (data.messages.length < CHAT_LOAD_LIMIT) setHasMore(false);
@@ -155,13 +160,18 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      const older: ChatMessage[] = data.messages.map(
-        (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => ({
-          id: m.id,
-          from: m.role,
-          text: m.content,
-          suggestedReplies: m.suggested_replies ?? null,
-        })
+      const older: ChatMessage[] = data.messages.flatMap(
+        (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => {
+          if (m.role === "assistant" && m.content.includes("\n---\n")) {
+            return m.content.split("\n---\n").map((part: string, i: number, arr: string[]) => ({
+              id: i === 0 ? m.id : undefined,
+              from: "assistant" as const,
+              text: part.trim(),
+              suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
+            }));
+          }
+          return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null }];
+        }
       );
 
       setMessages((prev) => [...older, ...prev]);
@@ -246,9 +256,13 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      const assistantMsg: ChatMessage = { from: "assistant", text: data.message || "Done." };
-      if (data.suggested_replies) assistantMsg.suggestedReplies = data.suggested_replies;
-      setMessages((prev) => [...prev, assistantMsg]);
+      const parts = (data.message || "Done.").split("\n---\n").map((p: string) => p.trim()).filter(Boolean);
+      const newMsgs: ChatMessage[] = parts.map((p: string, i: number) => ({
+        from: "assistant" as const,
+        text: p,
+        suggestedReplies: i === parts.length - 1 && data.suggested_replies ? data.suggested_replies : null,
+      }));
+      setMessages((prev) => [...prev, ...newMsgs]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
@@ -292,9 +306,13 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      const assistantMsg: ChatMessage = { from: "assistant", text: data.message || "Done." };
-      if (data.suggested_replies) assistantMsg.suggestedReplies = data.suggested_replies;
-      setMessages((prev) => [...prev, assistantMsg]);
+      const parts = (data.message || "Done.").split("\n---\n").map((p: string) => p.trim()).filter(Boolean);
+      const newMsgs: ChatMessage[] = parts.map((p: string, i: number) => ({
+        from: "assistant" as const,
+        text: p,
+        suggestedReplies: i === parts.length - 1 && data.suggested_replies ? data.suggested_replies : null,
+      }));
+      setMessages((prev) => [...prev, ...newMsgs]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
