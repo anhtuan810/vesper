@@ -94,7 +94,7 @@ export function PortfolioTab({
       .then((body) => {
         setSeries(buildSeries(body.data ?? [], netTotal));
       })
-      .catch(() => {})
+      .catch((err) => { console.error("Snapshots fetch failed:", err); })
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, netTotal]);

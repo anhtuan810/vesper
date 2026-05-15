@@ -1,5 +1,6 @@
 import { normalizePrice } from "@/lib/prices";
 import { toEur } from "@/lib/fx";
+import { YAHOO_FINANCE_BASE_URL, FETCH_TIMEOUT_MS, PRICE_CACHE_TTL_MS } from "@/lib/constants";
 
 // ── Price history ─────────────────────────────────────────────────────────────
 
@@ -20,18 +21,17 @@ export const RANGE_PARAMS: Record<string, { interval: string; range: string }> =
 };
 
 const historyCache = new Map<string, { data: PricePoint[]; ts: number }>();
-const HISTORY_CACHE_TTL = 5 * 60 * 1000;
 
 export async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]> {
   const key = `${symbol}_${range}`;
   const cached = historyCache.get(key);
-  if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL) return cached.data;
+  if (cached && Date.now() - cached.ts < PRICE_CACHE_TTL_MS) return cached.data;
 
   const params = RANGE_PARAMS[range] ?? RANGE_PARAMS["1W"];
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${params.interval}&range=${params.range}`;
+  const url = `${YAHOO_FINANCE_BASE_URL}/${encodeURIComponent(symbol)}?interval=${params.interval}&range=${params.range}`;
 
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     const json = await res.json();
     const result = json?.chart?.result?.[0];
     if (!result) return [];
@@ -67,17 +67,16 @@ export interface PriceResult {
 }
 
 const priceCache = new Map<string, { data: Omit<PriceResult, "symbol">; ts: number }>();
-const CACHE_TTL = 5 * 60 * 1000;
 
 export async function fetchYahooPrice(symbol: string): Promise<PriceResult> {
   const cached = priceCache.get(symbol);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+  if (cached && Date.now() - cached.ts < PRICE_CACHE_TTL_MS) {
     return { symbol, ...cached.data };
   }
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const url = `${YAHOO_FINANCE_BASE_URL}/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     const data = await res.json();
     const meta = data?.chart?.result?.[0]?.meta;
 

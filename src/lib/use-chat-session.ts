@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { invalidateAssetsCache } from "@/lib/hooks";
+import { CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX } from "@/lib/constants";
 
 export interface ChatMessage {
   id?: string;
@@ -45,10 +46,7 @@ export function getChatSuggestions(
 }
 
 // Shared across ChatPopup and /chat so history persists between surfaces
-const storageKey = (uid: string) => "volnar_chat_history_" + uid;
-const CHAT_TTL_MS = 24 * 60 * 60 * 1000;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
-const LOAD_LIMIT = 20;
 
 interface Options {
   userId: string | undefined;
@@ -77,15 +75,15 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   useEffect(() => {
     if (!userId) return;
 
-    const key = storageKey(userId);
+    const key = chatHistoryCacheKey(userId);
     let hasHistory = false;
     const controller = new AbortController();
 
     try {
-      // Sweep any keys belonging to other users
+      // Sweep any keys belonging to other users (check both old and new prefix)
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
-        if (k && k.startsWith("volnar_chat_history_") && k !== key) {
+        if (k && (k.startsWith(CHAT_HISTORY_PREFIX) || k.startsWith("volnar_chat_history_")) && k !== key) {
           localStorage.removeItem(k);
         }
       }
@@ -105,7 +103,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
     // DB fallback: fires only when localStorage had no usable messages.
     if (!hasHistory) {
-      fetch(`/api/messages?limit=${LOAD_LIMIT}`, { signal: controller.signal })
+      fetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`, { signal: controller.signal })
         .then((r) => r.json())
         .then((data) => {
           if (!Array.isArray(data?.messages) || data.messages.length === 0) {
@@ -121,21 +119,21 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
             })
           );
           setMessages(mapped);
-          if (data.messages.length < LOAD_LIMIT) setHasMore(false);
+          if (data.messages.length < CHAT_LOAD_LIMIT) setHasMore(false);
         })
-        .catch(() => {});
+        .catch((err) => { console.error("Chat history fetch failed:", err); });
     }
 
     return () => { controller.abort(); };
   }, [userId]);
 
-  // Write only the latest LOAD_LIMIT messages to localStorage — older paginated history stays out of the cache.
+  // Write only the latest CHAT_LOAD_LIMIT messages to localStorage — older paginated history stays out of the cache.
   useEffect(() => {
     if (!userId) return;
     try {
-      const latest = messages.slice(-LOAD_LIMIT);
+      const latest = messages.slice(-CHAT_LOAD_LIMIT);
       const stripped = latest.map(({ id, from, text, suggestedReplies }) => ({ id, from, text, suggestedReplies }));
-      localStorage.setItem(storageKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
+      localStorage.setItem(chatHistoryCacheKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
     } catch {}
   }, [messages, userId]);
 
@@ -148,7 +146,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setIsLoadingMore(true);
 
     try {
-      const res = await fetch(`/api/messages?limit=${LOAD_LIMIT}&before=${oldestId}`);
+      const res = await fetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}&before=${oldestId}`);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data?.messages)) return;
 
@@ -167,7 +165,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       );
 
       setMessages((prev) => [...older, ...prev]);
-      if (data.messages.length < LOAD_LIMIT) setHasMore(false);
+      if (data.messages.length < CHAT_LOAD_LIMIT) setHasMore(false);
     } catch {
       // silently fail
     } finally {

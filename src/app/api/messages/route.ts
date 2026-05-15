@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { MESSAGES_DEFAULT_LIMIT, MESSAGES_MAX_LIMIT } from "@/lib/constants";
 
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 50;
+const DEFAULT_LIMIT = MESSAGES_DEFAULT_LIMIT;
+const MAX_LIMIT = MESSAGES_MAX_LIMIT;
 
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);

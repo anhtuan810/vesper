@@ -15,6 +15,17 @@ import {
   getRateFreshness,
   fetchEurRate,
 } from "@/lib/money";
+import {
+  SPARKLINES_TTL_MS,
+  PRICES_POLL_INTERVAL_MS,
+  PRICES_SAFETY_TIMEOUT_MS,
+  INSIGHT_CACHE_TTL_MS,
+  ASSETS_CACHE_PREFIX,
+  SPARKLINES_CACHE_PREFIX,
+  assetsCacheKey,
+  sparklinesCacheKey,
+  pricesTsCacheKey,
+} from "@/lib/constants";
 
 export interface ProfileData {
   name?: string;
@@ -44,8 +55,6 @@ export function useProfile(userId: string | undefined) {
   return profile;
 }
 
-const ASSETS_CACHE_PREFIX = "volnar.assets.";
-function assetsCacheKey(userId: string) { return `${ASSETS_CACHE_PREFIX}${userId}`; }
 function readCachedAssets(userId: string): Asset[] | null {
   try {
     const raw = sessionStorage.getItem(assetsCacheKey(userId));
@@ -68,30 +77,26 @@ export function invalidateAssetsCache(userId: string) {
   } catch {}
 }
 
-const SPARKLINES_CACHE_PREFIX = "volnar.sparklines.v1.";
-const SPARKLINES_TTL_MS = 5 * 60 * 1000;
-function sparklinesKey(symbolKey: string, range: string) { return `${SPARKLINES_CACHE_PREFIX}${range}.${symbolKey}`; }
 function readCachedSparklines(symbolKey: string, range: string): Record<string, number[]> | null {
   try {
-    const raw = sessionStorage.getItem(sparklinesKey(symbolKey, range));
+    const raw = sessionStorage.getItem(sparklinesCacheKey(symbolKey, range));
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw) as { data: Record<string, number[]>; ts: number };
     return Date.now() - ts < SPARKLINES_TTL_MS ? data : null;
   } catch { return null; }
 }
 function writeCachedSparklines(symbolKey: string, range: string, data: Record<string, number[]>) {
-  try { sessionStorage.setItem(sparklinesKey(symbolKey, range), JSON.stringify({ data, ts: Date.now() })); } catch {}
+  try { sessionStorage.setItem(sparklinesCacheKey(symbolKey, range), JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
-function pricesTsKey(userId: string) { return `volnar.prices.ts.${userId}`; }
 function readPriceTimestamp(userId: string): Date | null {
   try {
-    const raw = sessionStorage.getItem(pricesTsKey(userId));
+    const raw = sessionStorage.getItem(pricesTsCacheKey(userId));
     return raw ? new Date(Number(raw)) : null;
   } catch { return null; }
 }
 function writePriceTimestamp(userId: string) {
-  try { sessionStorage.setItem(pricesTsKey(userId), String(Date.now())); } catch {}
+  try { sessionStorage.setItem(pricesTsCacheKey(userId), String(Date.now())); } catch {}
 }
 
 export function useAssets(userId: string | undefined) {
@@ -140,8 +145,7 @@ export function useAssets(userId: string | undefined) {
     if (symbols.length === 0) return;
 
     setRefreshing(true);
-    // Safety net: if Yahoo doesn't respond within 3 s, render the dashboard with DB values
-    const timer = setTimeout(() => setPricesLoaded(true), 3000);
+    const timer = setTimeout(() => setPricesLoaded(true), PRICES_SAFETY_TIMEOUT_MS);
     try {
       const res = await fetch("/api/prices", {
         method: "POST",
@@ -208,7 +212,7 @@ export function useAssets(userId: string | undefined) {
       if (document.visibilityState === "visible") {
         fetchPrices();
       }
-    }, 10 * 60 * 1000);
+    }, PRICES_POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [fetchPrices, assets.length]);
 
@@ -301,7 +305,7 @@ export function useSparklines(symbols: string[], range: string): Record<string, 
         setSparklines(result);
         writeCachedSparklines(symbolKey, range, result);
       })
-      .catch(() => {});
+      .catch((err) => { console.error("Sparklines fetch failed:", err); });
 
     return () => { cancelled = true; };
   }, [symbolKey, range]);
@@ -329,7 +333,7 @@ export function useLivePrice(symbol: string | undefined) {
           setNativeCurrency(data.nativeCurrency ?? null);
         }
       })
-      .catch(() => {});
+      .catch((err) => { console.error("Live price fetch failed:", err); });
     return () => { cancelled = true; };
   }, [symbol]);
 
@@ -414,8 +418,7 @@ export function useInsight() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Serve from memory cache if fetched within the last hour
-    if (_insightCache && Date.now() - _insightCache.fetchedAt < 60 * 60 * 1000) {
+    if (_insightCache && Date.now() - _insightCache.fetchedAt < INSIGHT_CACHE_TTL_MS) {
       setDetail(_insightCache.detail);
       setLoading(false);
       return;

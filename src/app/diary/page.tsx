@@ -7,9 +7,9 @@ import { NavBar } from "@/components/NavBar";
 import { DiaryTab } from "@/components/DiaryTab";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Mutation } from "@/lib/supabase";
+import { DIARY_PAGE_SIZE } from "@/lib/constants";
 
 const supabase = createBrowserSupabase();
-const PAGE_SIZE = 100;
 
 export default function DiaryPage() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function DiaryPage() {
       .select("*, asset:assets!asset_id (name)", { count: "exact" })
       .eq("user_id", user.id)
       .order("recorded_at", { ascending: false })
-      .range(0, PAGE_SIZE - 1);
+      .range(0, DIARY_PAGE_SIZE - 1);
     if (error) { console.error("Failed to load diary:", error.message); return; }
     const loaded = data?.length ?? 0;
     const total = count ?? 0;
@@ -46,7 +46,7 @@ export default function DiaryPage() {
       .select("*, asset:assets!asset_id (name)")
       .eq("user_id", user.id)
       .order("recorded_at", { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
+      .range(offset, offset + DIARY_PAGE_SIZE - 1);
     if (error) return;
     const newData = data || [];
     setMutations((prev) => [...prev, ...newData]);
@@ -63,7 +63,7 @@ export default function DiaryPage() {
     fetch("/api/backfill", { method: "POST" }).then(async (res) => {
       const { updated } = await res.json();
       if (updated > 0) fetchMutations();
-    }).catch(() => {});
+    }).catch((err) => { console.error("Backfill fetch failed:", err); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 

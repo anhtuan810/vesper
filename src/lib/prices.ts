@@ -1,3 +1,5 @@
+import { YAHOO_FINANCE_BASE_URL, FETCH_TIMEOUT_MS } from "@/lib/constants";
+
 interface HistoricalPrice {
   price: number;
   currency: string;
@@ -14,12 +16,12 @@ export async function fetchHistoricalPrice(
       // Window ±4 days to catch weekends and holidays
       const period1 = Math.floor((d.getTime() - 4 * 86400_000) / 1000);
       const period2 = Math.floor((d.getTime() + 4 * 86400_000) / 1000);
-      url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&period1=${period1}&period2=${period2}`;
+      url = `${YAHOO_FINANCE_BASE_URL}/${encodeURIComponent(symbol)}?interval=1d&period1=${period1}&period2=${period2}`;
     } else {
-      url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+      url = `${YAHOO_FINANCE_BASE_URL}/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
     }
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     const data = await res.json();
     const result = data?.chart?.result?.[0];
     if (!result) return null;

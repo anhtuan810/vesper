@@ -1,31 +1,22 @@
 import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
-
-const FRANKFURTER_URL =
-  "https://api.frankfurter.app/latest?base=EUR&symbols=USD,GBP,CHF,JPY,CAD,AUD,HKD";
-
-const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+import {
+  FRANKFURTER_URL,
+  FETCH_TIMEOUT_MS,
+  FX_STALE_AFTER_MS,
+  FX_MEM_CACHE_TTL_MS,
+  EUR_FALLBACK_RATES,
+} from "@/lib/constants";
 
 export interface FxRates {
   [quote: string]: number; // rate: 1 EUR = N quote
 }
 
-// Last reviewed: 2026. These drift over time; review annually.
-const HARDCODED_FALLBACK_RATES: FxRates = {
-  USD: 1.12,
-  GBP: 0.85,
-  CHF: 0.94,
-  JPY: 160,
-  CAD: 1.56,
-  AUD: 1.75,
-  HKD: 8.72,
-};
-
 // In-process cache so a burst of price fetches in one request cycle shares one lookup
 let memCache: { rates: FxRates; ts: number } | null = null;
 
 export async function getEurRates(): Promise<FxRates> {
-  if (memCache && Date.now() - memCache.ts < 60_000) {
+  if (memCache && Date.now() - memCache.ts < FX_MEM_CACHE_TTL_MS) {
     return memCache.rates;
   }
 
@@ -41,7 +32,7 @@ export async function getEurRates(): Promise<FxRates> {
 
   if (rows && rows.length > 0) {
     const oldestTs = Math.min(...rows.map((r) => new Date(r.fetched_at).getTime()));
-    if (now - oldestTs < STALE_AFTER_MS) {
+    if (now - oldestTs < FX_STALE_AFTER_MS) {
       const rates: FxRates = {};
       for (const r of rows) rates[r.quote] = Number(r.rate);
       memCache = { rates, ts: now };
@@ -52,7 +43,7 @@ export async function getEurRates(): Promise<FxRates> {
   // Fetch fresh rates
   let fresh: FxRates | null = null;
   try {
-    const res = await fetch(FRANKFURTER_URL, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(FRANKFURTER_URL, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`frankfurter HTTP ${res.status}`);
     const body = await res.json();
     const rawRates = body?.rates;
@@ -73,15 +64,15 @@ export async function getEurRates(): Promise<FxRates> {
     // next request treats them as maximally stale and attempts a live refresh.
     Sentry.captureMessage("FX rates unavailable — using hardcoded fallback", "warning");
     console.warn("FX rates unavailable; using hardcoded fallback:", err);
-    const fallbackRows = Object.entries(HARDCODED_FALLBACK_RATES).map(([quote, rate]) => ({
+    const fallbackRows = Object.entries(EUR_FALLBACK_RATES).map(([quote, rate]) => ({
       base: "EUR",
       quote,
       rate,
       fetched_at: new Date(0).toISOString(),
     }));
     await supabase.from("fx_rates").upsert(fallbackRows, { onConflict: "base,quote" });
-    memCache = { rates: HARDCODED_FALLBACK_RATES, ts: now };
-    return HARDCODED_FALLBACK_RATES;
+    memCache = { rates: EUR_FALLBACK_RATES, ts: now };
+    return EUR_FALLBACK_RATES;
   }
 
   // Upsert all pairs

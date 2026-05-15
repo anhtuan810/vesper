@@ -11,6 +11,7 @@ import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges } from "@/lib/apply-changes";
 import { validatePortfolioChanges } from "@/lib/validations";
 import { geocodeAddress } from "@/lib/geocode";
+import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 
 validateEnv();
 
@@ -60,8 +61,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerSupabase();
 
-    // --- Rate limiting: 50 messages per day (atomic upsert) ---
-    const DAILY_LIMIT = 50;
     const today = new Date().toISOString().slice(0, 10);
 
     const { data: newCount, error: rpcError } = await supabase.rpc("increment_rate_limit", {
@@ -74,9 +73,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Couldn't reach the assistant. Please try again." }, { status: 500 });
     }
 
-    if ((newCount as number) > DAILY_LIMIT) {
+    if ((newCount as number) > CHAT_DAILY_LIMIT) {
       return NextResponse.json({
-        message: "You've reached today's message limit (50). Come back tomorrow!",
+        message: `You've reached today's message limit (${CHAT_DAILY_LIMIT}). Come back tomorrow!`,
         assets: null,
         remaining: 0,
       }, { status: 429 });
@@ -199,7 +198,7 @@ export async function POST(req: NextRequest) {
           { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
           { user_id: userId, role: "assistant", content: clarification },
         ));
-        return NextResponse.json({ message: clarification, assets: null, remaining: DAILY_LIMIT - used });
+        return NextResponse.json({ message: clarification, assets: null, remaining: CHAT_DAILY_LIMIT - used });
       }
 
       const canonicalLine = `Resolved address: ${geo.canonicalAddress}`;
@@ -215,7 +214,7 @@ export async function POST(req: NextRequest) {
         message: proposalText,
         suggested_replies: suggestedReplies,
         assets: null,
-        remaining: DAILY_LIMIT - used,
+        remaining: CHAT_DAILY_LIMIT - used,
       });
     }
 
@@ -237,7 +236,7 @@ export async function POST(req: NextRequest) {
               { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
               { user_id: userId, role: "assistant", content: validationError },
             ));
-            return NextResponse.json({ message: validationError, assets: null, remaining: DAILY_LIMIT - used });
+            return NextResponse.json({ message: validationError, assets: null, remaining: CHAT_DAILY_LIMIT - used });
           }
 
           // Geocoding gate: validate + resolve all real_estate addresses before any DB write.
@@ -268,7 +267,7 @@ export async function POST(req: NextRequest) {
                 { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
                 { user_id: userId, role: "assistant", content: clarification },
               ));
-              return NextResponse.json({ message: clarification, assets: null, remaining: DAILY_LIMIT - used });
+              return NextResponse.json({ message: clarification, assets: null, remaining: CHAT_DAILY_LIMIT - used });
             }
 
             // Replace user's raw input with Nominatim's canonical address and attach coords.
@@ -342,19 +341,39 @@ export async function POST(req: NextRequest) {
       { user_id: userId, role: "assistant", content: displayText },
     ));
 
-    // --- Background: profile extraction & snapshot (both catch internally) ---
+    // --- Background: profile extraction & snapshot ---
     if (message && displayText && !isNewUser && !changesRaw) {
-      after(() => extractProfileUpdate(userId, message, displayText, profile, userData?.fingerprint ?? null));
+      after(async () => {
+        try {
+          await extractProfileUpdate(userId, message, displayText, profile, userData?.fingerprint ?? null);
+        } catch (err) {
+          Sentry.captureException(err, { tags: { background: "profile-extraction" } });
+        }
+      });
     }
     if (portfolioChanged) {
-      after(() => writeSnapshot(userId));
-      if (needsBackfill) after(() => backfillSnapshots(userId));
+      after(async () => {
+        try {
+          await writeSnapshot(userId);
+        } catch (err) {
+          Sentry.captureException(err, { tags: { background: "snapshot" } });
+        }
+      });
+      if (needsBackfill) {
+        after(async () => {
+          try {
+            await backfillSnapshots(userId);
+          } catch (err) {
+            Sentry.captureException(err, { tags: { background: "backfill-snapshots" } });
+          }
+        });
+      }
     }
 
     return NextResponse.json({
       message: displayText || "Done.",
       assets: updatedAssets,
-      remaining: DAILY_LIMIT - used,
+      remaining: CHAT_DAILY_LIMIT - used,
     });
   } catch (err) {
     Sentry.captureException(err, { tags: { route: "POST /api/chat" } });

@@ -1,3 +1,5 @@
+import { EUR_FALLBACK_RATES, FX_STALE_AFTER_MS } from "@/lib/constants";
+
 export type DisplayCurrency = "EUR" | "USD" | "GBP";
 
 export const SUPPORTED_CURRENCIES: DisplayCurrency[] = ["EUR", "USD", "GBP"];
@@ -17,10 +19,9 @@ const CURRENCY_META: Record<DisplayCurrency, CurrencyMeta> = {
   GBP: { symbol: "£", locale: "nl-NL" },
 };
 
-// Last reviewed: 2026. These drift over time; review annually.
 const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
-  USD: 1.12,
-  GBP: 0.85,
+  USD: EUR_FALLBACK_RATES.USD,
+  GBP: EUR_FALLBACK_RATES.GBP,
 };
 
 // Client-side module-level EUR→X rate cache, seeded with fallback rates.
@@ -32,8 +33,8 @@ const eurRateCache: Partial<Record<DisplayCurrency, number>> = {
 // Tracks when each rate was last written by a live fetch (not from fallback seed).
 const rateTimestamps = new Map<DisplayCurrency, number>();
 
-const FRESH_MS  = 60 * 60 * 1000;       // 1h
-const STALE_MS  = 24 * 60 * 60 * 1000;  // 24h
+const FRESH_MS  = 60 * 60 * 1000; // 1h
+const STALE_MS  = FX_STALE_AFTER_MS;
 
 export type FxFreshness = "fresh" | "stale" | "unavailable";
 

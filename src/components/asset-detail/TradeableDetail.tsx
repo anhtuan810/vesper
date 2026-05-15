@@ -62,7 +62,7 @@ export function TradeableDetail({ asset }: Props) {
           setNativePrice(data.nativePrice ?? null);
         }
       })
-      .catch(() => {});
+      .catch((err) => { console.error("Price fetch failed:", err); });
     return () => { cancelled = true; };
   }, [asset.symbol, refreshKey]);
 

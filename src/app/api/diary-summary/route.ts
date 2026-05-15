@@ -6,11 +6,11 @@ import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { validateEnv } from "@/lib/env";
 import { getEurRates } from "@/lib/fx";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
+import { DIARY_DAILY_LIMIT } from "@/lib/constants";
 
 validateEnv();
 
 const anthropic = new Anthropic();
-const DAILY_LIMIT = 100;
 
 /** Format a EUR-stored value in the user's display currency using server-side rates. */
 function fmtDisplay(eurValue: number, currency: DisplayCurrency, rates: Record<string, number>): string {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       p_bucket: "diary",
       p_date: today,
     });
-    if ((newCount as number) > DAILY_LIMIT) {
+    if ((newCount as number) > DIARY_DAILY_LIMIT) {
       return NextResponse.json({ error: "Daily limit reached" }, { status: 429 });
     }
 
