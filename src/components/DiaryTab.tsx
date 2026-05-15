@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
@@ -94,6 +94,208 @@ function relativeAge(past: Date, now: Date): string {
 
 function displayName(m: Mutation): string {
   return m.asset?.name ?? m.asset_name ?? "";
+}
+
+// ── Duplicate-row grouping ─────────────────────────────────────────────────────
+
+type DiaryItem =
+  | { kind: "singleton"; mutation: Mutation }
+  | { kind: "group"; id: string; anchor: Mutation; members: Mutation[]; groupName: string };
+
+function commonNamePrefix(a: string, b: string): string {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return a.slice(0, i).replace(/[\s\-–—,.:;]+$/, "").trim();
+}
+
+function assetTypeLabel(assetType: string | null): string {
+  const map: Record<string, string> = {
+    stocks: "stock", etf: "ETF", crypto: "crypto", gold: "gold",
+    cash: "cash", real_estate: "property", business: "business",
+  };
+  return (assetType && map[assetType]) || "";
+}
+
+function actionVerb(action: string): string {
+  if (action === "add") return "added";
+  if (action === "remove") return "removed";
+  return "edited";
+}
+
+function buildDisplayItems(mutations: Mutation[], disableGrouping: boolean): DiaryItem[] {
+  if (disableGrouping || mutations.length === 0) {
+    return mutations.map((m) => ({ kind: "singleton" as const, mutation: m }));
+  }
+
+  const items: DiaryItem[] = [];
+  let runGroup: Mutation[] = [];
+  let runPrefix = "";
+
+  function closeGroup() {
+    if (runGroup.length === 0) return;
+    if (runGroup.length < 3) {
+      for (const m of runGroup) items.push({ kind: "singleton", mutation: m });
+    } else {
+      const anchor = runGroup[0];
+      let groupName: string;
+      if (anchor.asset_id) {
+        groupName = displayName(anchor);
+      } else {
+        const typeLabel = assetTypeLabel(anchor.asset_type);
+        groupName = runPrefix.length >= 3
+          ? [runPrefix, typeLabel, "entries"].filter(Boolean).join(" ")
+          : displayName(anchor);
+      }
+      items.push({ kind: "group", id: `group-${anchor.id}`, anchor, members: [...runGroup], groupName });
+    }
+    runGroup = [];
+    runPrefix = "";
+  }
+
+  for (const m of mutations) {
+    const day = (m.occurred_at || m.recorded_at).slice(0, 10);
+
+    if (runGroup.length === 0) {
+      runGroup = [m];
+      runPrefix = m.asset_id ? "" : displayName(m);
+      continue;
+    }
+
+    const anchor = runGroup[0];
+    const anchorDay = (anchor.occurred_at || anchor.recorded_at).slice(0, 10);
+
+    if (m.action !== anchor.action || day !== anchorDay) {
+      closeGroup();
+      runGroup = [m];
+      runPrefix = m.asset_id ? "" : displayName(m);
+      continue;
+    }
+
+    if (anchor.asset_id !== null && m.asset_id !== null) {
+      if (anchor.asset_id === m.asset_id) {
+        runGroup.push(m);
+      } else {
+        closeGroup();
+        runGroup = [m];
+        runPrefix = "";
+      }
+    } else if (anchor.asset_id === null && m.asset_id === null) {
+      const newPrefix = commonNamePrefix(runPrefix || displayName(anchor), displayName(m));
+      if (newPrefix.length >= 3) {
+        runPrefix = newPrefix;
+        runGroup.push(m);
+      } else {
+        closeGroup();
+        runGroup = [m];
+        runPrefix = displayName(m);
+      }
+    } else {
+      closeGroup();
+      runGroup = [m];
+      runPrefix = m.asset_id ? "" : displayName(m);
+    }
+  }
+
+  closeGroup();
+  return items;
+}
+
+function abbrevMoney(value: number, displayCurrency: DisplayCurrency): string {
+  if (value >= 1_000_000) {
+    const sym = displayCurrency === "USD" ? "$" : displayCurrency === "GBP" ? "£" : "€";
+    return `${sym}${(value / 1_000_000).toFixed(1)}m`;
+  }
+  return formatMoney(value, displayCurrency);
+}
+
+function buildGroupAggregate(members: Mutation[], displayCurrency: DisplayCurrency): React.ReactNode {
+  const action = members[0].action;
+  if (action === "remove") {
+    const total = members.reduce((s, m) => s + (m.before_value ?? 0), 0);
+    if (total === 0) return null;
+    return (
+      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>
+        −{abbrevMoney(total, displayCurrency)}
+      </span>
+    );
+  }
+  if (action === "add") {
+    const total = members.reduce((s, m) => s + (m.after_value ?? 0), 0);
+    if (total === 0) return null;
+    return (
+      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--positive-text)" }}>
+        +{abbrevMoney(total, displayCurrency)}
+      </span>
+    );
+  }
+  const netDelta = members.reduce((s, m) => {
+    return s + (m.before_value != null && m.after_value != null ? m.after_value - m.before_value : 0);
+  }, 0);
+  if (netDelta === 0) return null;
+  return (
+    <span style={{ fontSize: 13, fontWeight: 500, color: netDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
+      {netDelta >= 0 ? "+" : "−"}{abbrevMoney(Math.abs(netDelta), displayCurrency)}
+    </span>
+  );
+}
+
+// ── Shared row template ────────────────────────────────────────────────────────
+
+function DiaryRowContent({
+  logo, name, nameColor, valueNode, date,
+  contextText, isContextExpanded, subtitle, footer,
+}: {
+  logo: React.ReactNode;
+  name: string;
+  nameColor: string;
+  valueNode: React.ReactNode;
+  date: string;
+  contextText: string | null;
+  isContextExpanded: boolean;
+  subtitle?: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 10, padding: "8px 0", alignItems: "flex-start" }}>
+      {logo}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Title line: name (flex) + right cluster (no-wrap) */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: nameColor }}>
+            {name}
+          </span>
+          <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
+            {valueNode}
+            <span style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
+              {formatDate(date)}
+            </span>
+          </span>
+        </div>
+        {subtitle}
+        {contextText && (
+          <div
+            className="font-serif"
+            style={{
+              fontStyle: "italic", fontSize: 13,
+              color: "var(--text-dim)", lineHeight: 1.4,
+              fontVariationSettings: "'opsz' 14",
+              ...(isContextExpanded
+                ? {}
+                : {
+                    overflow: "hidden",
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical",
+                    WebkitLineClamp: 2,
+                  }),
+            }}
+          >
+            {contextText === STARTING_POSITION_CTX ? "Started tracking from today." : contextText}
+          </div>
+        )}
+        {footer}
+      </div>
+    </div>
+  );
 }
 
 interface DiaryTabProps {
@@ -366,6 +568,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Anniversary: same MM-DD as today, at least 30 days in the past, oldest wins
   const anniversaryEntry = (() => {
@@ -672,119 +875,168 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       )}
 
       {/* Timeline — month-bucketed entry list */}
-      {monthKeys.map((monthKey) => (
-        <div key={monthKey}>
-          {/* Month header */}
-          <div
-            style={{
-              display: "flex", alignItems: "baseline", justifyContent: "space-between",
-              margin: "22px 0 12px",
-            }}
-          >
+      {monthKeys.map((monthKey) => {
+        const monthItems = buildDisplayItems(grouped[monthKey], !!trimmedQuery);
+        return (
+          <div key={monthKey}>
+            {/* Month header */}
             <div
-              className="font-serif"
               style={{
-                fontSize: 22, fontWeight: 500, color: "var(--text)",
-                letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 24",
+                display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                margin: "22px 0 12px",
               }}
             >
-              {getMonthLabel(monthKey)}
+              <div
+                className="font-serif"
+                style={{
+                  fontSize: 22, fontWeight: 500, color: "var(--text)",
+                  letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 24",
+                }}
+              >
+                {getMonthLabel(monthKey)}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
-              {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
-            </div>
-          </div>
 
-          {/* Entry rows */}
-          <div>
-            {grouped[monthKey].map((m) => {
-              const date = m.occurred_at || m.recorded_at;
-              const valueNode = buildValueNode(m, displayCurrency);
-              const name = displayName(m);
-              const isRemovedAsset = !m.asset_id;
-              const isExpanded = expandedIds.has(m.id);
+            {/* Entry rows */}
+            <div>
+              {monthItems.map((item) => {
+                if (item.kind === "singleton") {
+                  const m = item.mutation;
+                  const date = m.occurred_at || m.recorded_at;
+                  const valueNode = buildValueNode(m, displayCurrency);
+                  const name = displayName(m);
+                  const isRemovedAsset = !m.asset_id;
+                  const isExpanded = expandedIds.has(m.id);
 
-              return (
-                <div
-                  key={m.id}
-                  id={`diary-entry-${m.id}`}
-                  onClick={() => {
-                    if (m.asset_id) {
-                      router.push(`/asset/${m.asset_id}`);
-                    } else {
-                      setExpandedIds((prev) => {
+                  return (
+                    <div
+                      key={m.id}
+                      id={`diary-entry-${m.id}`}
+                      onClick={() => {
+                        if (m.asset_id) {
+                          router.push(`/asset/${m.asset_id}`);
+                        } else {
+                          setExpandedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(m.id)) next.delete(m.id);
+                            else next.add(m.id);
+                            return next;
+                          });
+                        }
+                      }}
+                      className="diary-row last:border-0"
+                      style={{
+                        borderBottom: "0.5px solid var(--border)",
+                        ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
+                      }}
+                    >
+                      <DiaryRowContent
+                        logo={<div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} /></div>}
+                        name={name}
+                        nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
+                        valueNode={valueNode}
+                        date={date}
+                        contextText={m.personal_context ?? null}
+                        isContextExpanded={isExpanded}
+                      />
+                    </div>
+                  );
+                }
+
+                // Group summary + children
+                const { id: groupId, anchor, members, groupName } = item;
+                const isGroupExpanded = expandedGroups.has(groupId);
+                const isRemovedGroup = !anchor.asset_id;
+                const anchorDate = anchor.occurred_at || anchor.recorded_at;
+                const anchorContext = members.find((m) => !!m.personal_context)?.personal_context ?? null;
+                const groupAggNode = buildGroupAggregate(members, displayCurrency);
+                const verb = actionVerb(anchor.action);
+
+                return (
+                  <Fragment key={groupId}>
+                    {/* Summary row */}
+                    <div
+                      id={`diary-entry-${anchor.id}`}
+                      onClick={() => setExpandedGroups((prev) => {
                         const next = new Set(prev);
-                        if (next.has(m.id)) next.delete(m.id);
-                        else next.add(m.id);
+                        if (next.has(groupId)) next.delete(groupId);
+                        else next.add(groupId);
                         return next;
-                      });
-                    }
-                  }}
-                  className="diary-row last:border-0"
-                  style={{
-                    borderBottom: "0.5px solid var(--border)",
-                    ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 10, padding: "8px 0", alignItems: "flex-start" }}>
-                    <div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}>
-                      <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} />
+                      })}
+                      className="diary-row last:border-0"
+                      style={{
+                        borderBottom: "0.5px solid var(--border)",
+                        ...(highlightedId === anchor.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
+                      }}
+                    >
+                      <DiaryRowContent
+                        logo={<div style={{ opacity: isRemovedGroup ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={28} /></div>}
+                        name={groupName}
+                        nameColor={isRemovedGroup ? "var(--text-dim)" : "var(--text)"}
+                        valueNode={groupAggNode}
+                        date={anchorDate}
+                        contextText={anchorContext}
+                        isContextExpanded={false}
+                        subtitle={
+                          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.3, marginBottom: anchorContext ? 2 : 0 }}>
+                            · {members.length} {verb}
+                          </div>
+                        }
+                        footer={
+                          <div style={{ marginTop: anchorContext ? 4 : 2, fontSize: 12, color: "var(--text-faint)" }}>
+                            {isGroupExpanded ? "↑ Hide" : `↓ Show all ${members.length} entries`}
+                          </div>
+                        }
+                      />
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* Row 1: name · delta · date */}
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
-                        <span
-                          style={{
-                            fontSize: 15, fontWeight: 500,
-                            color: isRemovedAsset ? "var(--text-dim)" : "var(--text)",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {name}
-                        </span>
-                        <span style={{ flex: 1 }}>{valueNode}</span>
-                        <span
-                          style={{
-                            fontSize: 12, color: "var(--text-faint)",
-                            fontFeatureSettings: '"tnum" 1',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {formatDate(date)}
-                        </span>
-                      </div>
 
-                      {/* Row 2: context note — serif italic, line-clamped unless expanded */}
-                      {m.personal_context && (
+                    {/* Expanded child rows */}
+                    {isGroupExpanded && members.map((m) => {
+                      const date = m.occurred_at || m.recorded_at;
+                      const valueNode = buildValueNode(m, displayCurrency);
+                      return (
                         <div
-                          className="font-serif"
-                          style={{
-                            fontStyle: "italic", fontSize: 13,
-                            color: "var(--text-dim)", lineHeight: 1.4,
-                            fontVariationSettings: "'opsz' 14",
-                            ...(isExpanded
-                              ? {}
-                              : {
-                                  overflow: "hidden",
-                                  display: "-webkit-box",
-                                  WebkitBoxOrient: "vertical",
-                                  WebkitLineClamp: 2,
-                                }),
+                          key={m.id}
+                          id={`diary-entry-${m.id}`}
+                          onClick={() => {
+                            if (m.asset_id) {
+                              router.push(`/asset/${m.asset_id}`);
+                            } else {
+                              setExpandedIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(m.id)) next.delete(m.id);
+                                else next.add(m.id);
+                                return next;
+                              });
+                            }
                           }}
+                          className="diary-row last:border-0"
+                          style={{ borderBottom: "0.5px solid var(--border)" }}
                         >
-                          {m.personal_context === STARTING_POSITION_CTX
-                            ? "Started tracking from today."
-                            : m.personal_context}
+                          <div style={{ display: "flex", gap: 10, padding: "5px 0 5px 38px", alignItems: "baseline" }}>
+                            <span style={{ flex: 1 }}>{valueNode}</span>
+                            <span
+                              style={{
+                                fontSize: 12, color: "var(--text-faint)",
+                                fontFeatureSettings: '"tnum" 1', flexShrink: 0,
+                              }}
+                            >
+                              {formatDate(date)}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      );
+                    })}
+                  </Fragment>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Load more */}
       {hasMore && onLoadMore && (

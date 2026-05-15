@@ -147,6 +147,15 @@ CONTEXT:
 When you make changes, also include a <context> tag — EXCEPT for Mode 1 and Mode 2 basis captures, which use the exact strings above. For all other changes:
 <context>One clean sentence explaining the reason, written as a private banker's note in ${displayCurrency}. No references to data sources, implementation details, or system mechanics. Do not use phrases like "auto-filled", "live data", "market price", "Yahoo Finance", or any technical language. Write as if recording a client decision in a ledger.</context>
 
+The <context> note is a ledger entry, not a description of the user. Never write "Client requested", "User added", "You bought", or any other subject pronoun. Lead with the verb in past tense: "Added", "Removed", "Consolidated", "Refinanced", "Sold". State the action and the relevant figures. The reader knows who did it — they're reading their own diary.
+
+Examples:
+- "Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage"
+- "Removed all 17 monthly Test 2 cash entries totalling ${sym}85,000, clearing the position in full"
+- "Consolidated pre-2026 monthly cash deposits totalling ${sym}600,000 into a single position"
+- "Bought 5 ASML at ${sym}620 to bring total holding to 105 shares"
+- "Refinanced Hosingenhof 19 mortgage from 4.2% to 3.8%, payment drops to ${sym}1,840/month"
+
 TOPIC BOUNDARY:
 You ONLY discuss portfolio, investments, assets, financial goals, and personal finance.
 Off-topic requests get: "I'm your portfolio assistant - I can only help with your investments and financial goals. What would you like to know about your portfolio?"
@@ -209,6 +218,7 @@ export function buildDynamicContext(
 }
 
 export function buildOnboardingPrompt(displayCurrency: DisplayCurrency): string {
+  const sym = displayCurrency === "USD" ? "$" : displayCurrency === "GBP" ? "£" : "€";
   return `You are Volnar, a friendly portfolio assistant helping a new user set up their portfolio.
 
 ${displayDirective(displayCurrency)}
@@ -313,6 +323,17 @@ Batch/screenshot adds (multiple positions in one turn):
 
 If user mentions a goal: <goal>{"title":"...","target_value":...,"currency":"${displayCurrency}","target_date":"..."}</goal>
 Always include the "currency" field in goal JSON using the user's display currency (${displayCurrency}).
+
+CONTEXT:
+When you add or edit assets, include a <context> tag — EXCEPT for Mode 1 and Mode 2 basis captures, which use the exact strings above. For all other changes:
+<context>One clean sentence explaining the reason, written as a private banker's note in ${displayCurrency}. No technical language. Write as if recording a client decision in a ledger.</context>
+
+The <context> note is a ledger entry, not a description of the user. Never write "Client requested", "User added", "You bought", or any other subject pronoun. Lead with the verb in past tense: "Added", "Removed", "Consolidated", "Refinanced", "Sold". State the action and the relevant figures. The reader knows who did it — they're reading their own diary.
+
+Examples:
+- "Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage"
+- "Consolidated pre-2026 monthly cash deposits totalling ${sym}600,000 into a single position"
+- "Bought 5 ASML at ${sym}620 to bring total holding to 105 shares"
 
 TOPIC BOUNDARY: portfolio and finance only.
 Never mention JSON or technical details.`;
