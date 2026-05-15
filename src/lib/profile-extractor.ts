@@ -9,10 +9,28 @@ export async function extractProfileUpdate(
   userMessage: string,
   assistantResponse: string,
   currentProfile: Record<string, unknown>,
-  currentFingerprint: string | null = null
+  currentFingerprint: string | null = null,
+  assetCount: number = 10
 ): Promise<void> {
   try {
     const supabase = createServerSupabase();
+
+    const isMinimalData = assetCount < 5;
+
+    const coldStartSection = isMinimalData
+      ? `\nCOLD-START MODE — sparse data:
+The user has only just started tracking — limited data available. Fill what you can honestly say:
+- Fingerprint: ALWAYS populate. Use asset types, geography, and what was said in conversation. 12–18 words, one sentence. Acceptable shapes:
+  'A Dutch investor starting to track a property-heavy portfolio, with one position so far.'
+  'A new equity investor with a focused opening position, beginning to build.'
+  'A cautious starter with a single cash holding, tracking from scratch.'
+- Context fields: fill every field with a brief honest observation (10-22 words). For fields where deep inference is not yet possible from limited data, describe what's observable about the portfolio shape, the asset character, or the early activity pattern.
+  Acceptable approaches for sparse-data fields:
+  - Describe what's visible ('Tracking a single Dutch property as the first position.')
+  - Describe what's absent ('No public-markets exposure yet — portfolio is real-estate-anchored.')
+  - Describe what's expected to emerge ('Single position — broader patterns will appear as the portfolio grows.')
+  Forbidden: 'Not yet shared', 'Unknown', 'Pending', 'Loading'. Every field gets observational content. Never invent intent, risk tolerance, or goals from insufficient data — describe portfolio shape instead.`
+      : "";
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -51,7 +69,7 @@ PROFILE FIELDS YOU CAN USE (all optional):
 FINGERPRINT FIELD (always attempt):
 - fingerprint: one sentence, 12–18 words, characterising the investor. No hedging ('seems', 'appears'). No emojis. Plain text, no quotes.
   Examples: 'A Dutch investor unwinding years of property concentration to diversify.' / 'Long-horizon equity investor with a strong semiconductor conviction.' / 'Conservative builder — steady contributions, cash buffer, no leverage.' / 'Property-focused investor with a growing public-markets position on the side.'
-
+${coldStartSection}
 Return ONLY valid JSON. No markdown, no explanation.`,
       messages: [
         {

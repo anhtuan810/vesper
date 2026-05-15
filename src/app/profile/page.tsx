@@ -155,6 +155,7 @@ export default function ProfilePage() {
   const displayedAvatar = avatarUrl !== undefined ? avatarUrl : profile?.avatar_url;
   const currencyLabel = `${CURRENCY_DISPLAY[displayCurrency].label} (${CURRENCY_DISPLAY[displayCurrency].symbol})`;
   const themeLabel = THEME_OPTIONS.find(o => o.value === currentTheme)?.label ?? "Light";
+  const visibleFields = PROFILE_FIELDS.filter(({ key }) => !!(profile?.profile?.[key]));
 
   return (
     <div className="min-h-screen bg-bg">
@@ -302,99 +303,65 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Context section */}
-        <div style={{
-          fontSize: 10,
-          fontWeight: 500,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "var(--text-faint)",
-          marginBottom: 10,
-        }}>
-          Context
-        </div>
-        <div style={{
-          background: "var(--surface)",
-          border: "0.5px solid var(--border)",
-          borderRadius: 14,
-          marginBottom: 24,
-          overflow: "hidden",
-        }}>
-          {PROFILE_FIELDS.map(({ key, label }, idx) => {
-            const value = profile?.profile?.[key] ?? null;
-            const isLast = idx === PROFILE_FIELDS.length - 1;
-            const borderStyle = isLast ? "none" : "0.5px solid var(--border)";
-
-            if (!value) {
-              return (
-                <div
-                  key={key}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "14px 16px",
-                    borderBottom: borderStyle,
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontFamily: "var(--font-serif)",
-                      fontSize: 16,
-                      fontWeight: 500,
-                      color: "var(--text)",
-                      marginBottom: 3,
-                      fontVariationSettings: "'opsz' 18",
-                    }}>
-                      {label}
+        {/* Context section — hidden entirely if extractor hasn't populated any fields yet */}
+        {visibleFields.length > 0 && (
+          <>
+            <div style={{
+              fontSize: 10,
+              fontWeight: 500,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "var(--text-faint)",
+              marginBottom: 10,
+            }}>
+              Context
+            </div>
+            <div style={{
+              background: "var(--surface)",
+              border: "0.5px solid var(--border)",
+              borderRadius: 14,
+              marginBottom: 24,
+              overflow: "hidden",
+            }}>
+              {visibleFields.map(({ key, label }, idx) => {
+                const value = profile?.profile?.[key];
+                const isLast = idx === visibleFields.length - 1;
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "14px 16px",
+                      borderBottom: isLast ? "none" : "0.5px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: "var(--font-serif)",
+                        fontSize: 16,
+                        fontWeight: 500,
+                        color: "var(--text)",
+                        marginBottom: 3,
+                        fontVariationSettings: "'opsz' 18",
+                      }}>
+                        {label}
+                      </div>
+                      <div style={{
+                        fontSize: 13,
+                        color: "var(--text-dim)",
+                        lineHeight: 1.45,
+                      }}>
+                        {value}
+                      </div>
                     </div>
-                    <div style={{
-                      fontSize: 13,
-                      color: "var(--text-faint)",
-                      fontStyle: "italic",
-                      lineHeight: 1.35,
-                    }}>
-                      Not yet shared
-                    </div>
                   </div>
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={key}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  padding: "14px 16px",
-                  borderBottom: borderStyle,
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontFamily: "var(--font-serif)",
-                    fontSize: 16,
-                    fontWeight: 500,
-                    color: "var(--text)",
-                    marginBottom: 3,
-                    fontVariationSettings: "'opsz' 18",
-                  }}>
-                    {label}
-                  </div>
-                  <div style={{
-                    fontSize: 13,
-                    color: "var(--text-dim)",
-                    lineHeight: 1.45,
-                  }}>
-                    {value}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {/* Preferences section */}
         <div style={{

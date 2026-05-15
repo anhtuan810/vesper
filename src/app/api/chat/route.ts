@@ -220,6 +220,7 @@ export async function POST(req: NextRequest) {
 
     let portfolioChanged = false;
     let needsBackfill = false;
+    let hasAdds = false;
 
     // --- Apply portfolio changes ---
     if (changesRaw) {
@@ -235,6 +236,7 @@ export async function POST(req: NextRequest) {
           ) {
             needsBackfill = true;
           }
+          hasAdds = changes.some((c) => c.action === "add");
           const validationError = validatePortfolioChanges(changes, currentAssets);
           if (validationError) {
             await supabase.from("messages").insert(timestampedPair(
@@ -319,6 +321,10 @@ export async function POST(req: NextRequest) {
       updatedAssets = newAssets;
     }
 
+    const postAddAssetCount = portfolioChanged
+      ? (updatedAssets?.length ?? currentAssets.length)
+      : currentAssets.length;
+
     // --- Handle goal ---
     if (goalRaw) {
       try {
@@ -346,11 +352,34 @@ export async function POST(req: NextRequest) {
       { user_id: userId, role: "assistant", content: displayText },
     ));
 
-    // --- Background: profile extraction & snapshot ---
+    // --- Profile extraction ---
+    // Onboarding transition: synchronous. User just added their first asset — run now so
+    // Profile is populated when they land on it. ~1.5s latency is acceptable here.
+    if (isNewUser && portfolioChanged && message && displayText) {
+      try {
+        await extractProfileUpdate(userId, message, displayText, profile, userData?.fingerprint ?? null, postAddAssetCount);
+      } catch (err) {
+        // Non-critical — silently fall back to deferred extraction on next session
+        console.error("Onboarding extraction failed:", err);
+      }
+    }
+
+    // Background: text-only turns for existing users
     if (message && displayText && !isNewUser && !changesRaw) {
       after(async () => {
         try {
-          await extractProfileUpdate(userId, message, displayText, profile, userData?.fingerprint ?? null);
+          await extractProfileUpdate(userId, message, displayText, profile, userData?.fingerprint ?? null, postAddAssetCount);
+        } catch (err) {
+          Sentry.captureException(err, { tags: { background: "profile-extraction" } });
+        }
+      });
+    }
+
+    // Background: fire after any successful asset add for existing users
+    if (!isNewUser && hasAdds && portfolioChanged && message && displayText) {
+      after(async () => {
+        try {
+          await extractProfileUpdate(userId, message, displayText, profile, userData?.fingerprint ?? null, postAddAssetCount);
         } catch (err) {
           Sentry.captureException(err, { tags: { background: "profile-extraction" } });
         }
