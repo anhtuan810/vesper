@@ -46,25 +46,35 @@ export async function generateInsight(assets: Asset[]): Promise<string | null> {
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 60,
-      system: `You write a single-sentence portfolio observation for a private client dashboard.
+      max_tokens: 120,
+      system: `Produce a two-sentence portfolio insight in the voice of a private banker writing a warm but honest note to their client. The first sentence states a specific observation with a real number or pattern. The second sentence says what it means or why it's notable.
 
-Rules:
-- Exactly one sentence. Target 8–12 words. Hard maximum: 12 words. Count carefully.
-- Plain text — no markdown, no quotes, no emojis.
-- Observation only — no advice or recommendations.
-- Wrap the single most important noun phrase in *single asterisks*.
-- No hedging ("perhaps", "might", "could").
-- No proper names beyond ticker symbols and asset class labels.
+Tone calibration — choose by what the data shows:
+1. Positive observation (use when justified): notable growth, smart concentration that paid off, steady contributions, diversification, healthy cash buffer, beating typical benchmarks. Lead with the good thing in warm language.
+2. Neutral with warmth (use when ambiguous): state a fact without judgment. Avoid lecturing.
+3. Cautionary (use only when warranted): single-position concentration above 35%, six-month drift in a category, currency exposure mismatch. Frame as 'worth knowing', never as a warning.
 
-Examples:
-"ASML and NVDA drive *three-quarters* of liquid holdings."
-"Tech exposure is now *38%* — a quarterly high."
-"Real estate equity grew *€12k* from amortization alone."`,
+Bias toward (1) and (2). The user opens the app to see how their portfolio is doing — greet them well when the data supports it. Don't manufacture concern that isn't there.
+
+Length: 30-40 words total, 15-22 per sentence. Mark the key noun phrase in the first sentence with *asterisks*.
+
+Style rules:
+- Plain text — no markdown beyond the *asterisks*, no quotes, no emojis
+- No advice, no recommendations, no calls to action
+- Never use 'You should' / 'Consider' / 'You might want to'
+- Past-tense observations and present-tense interpretations are fine ('has tripled', 'is paying')
+- The banker observes; the client decides
+
+Good examples:
+"*Public markets* up 12% over the last quarter, ahead of typical benchmarks. The compounding shows up clearly in your trajectory."
+"*Cash reserves* cover roughly 18 months of typical expenses — a real margin of safety. Your portfolio can afford to be patient."
+"*ASML* has tripled since you first bought in, growing from a starter position to your largest holding. A position that earned its size."
+
+Reject if the second sentence merely restates the first, or if the tone slides into either advice or vague positivity ('great progress!').`,
       messages: [
         {
           role: "user",
-          content: `Portfolio summary:\n${summary}\n\nWrite one observation sentence.`,
+          content: `Portfolio summary:\n${summary}\n\nWrite a two-sentence portfolio insight.`,
         },
       ],
     });
@@ -73,13 +83,23 @@ Examples:
       .map((b) => (b.type === "text" ? b.text : ""))
       .join("")
       .trim()
-      // Strip surrounding quotes if the model adds them
       .replace(/^["']|["']$/g, "");
 
     if (!raw) return null;
 
-    const wordCount = raw.replace(/\*[^*]+\*/g, (m) => m.slice(1, -1)).split(/\s+/).filter(Boolean).length;
-    if (wordCount > 12) return null;
+    const sentences = raw.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+    if (sentences.length !== 2) return null;
+
+    const wordCount = (s: string) =>
+      s.replace(/\*[^*]+\*/g, (m) => m.slice(1, -1)).split(/\s+/).filter(Boolean).length;
+    const totalWords = wordCount(raw);
+    if (totalWords < 25 || totalWords > 45) return null;
+    for (const s of sentences) {
+      const wc = wordCount(s);
+      if (wc < 10 || wc > 25) return null;
+    }
+
+    if (/\byou should\b|\bconsider\b|\byou might\b|\byou could\b/i.test(raw)) return null;
 
     return raw;
   } catch {

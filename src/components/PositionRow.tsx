@@ -37,13 +37,9 @@ function subLine(asset: LiveAsset): string {
     return parts.join(" · ");
   }
 
-  if (asset.symbol || asset.units != null) {
-    const parts: string[] = [];
-    if (asset.units != null) parts.push(`${asset.units.toLocaleString()} units`);
-    if (asset.country && asset.type !== "crypto") parts.push(asset.country);
-    return parts.join(" · ");
-  }
-  return asset.country ?? "";
+  // Static positions (cash, pension, bonds, other): no country
+  if (asset.units != null) return `${asset.units.toLocaleString()} units`;
+  return "";
 }
 
 export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; closes?: number[] }) {
@@ -54,12 +50,13 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
   const sub = subLine(asset);
   const displayCurrency = useDisplayCurrency();
   const hasSparkline = closes.length >= 2;
+  const isTradeable = TRADEABLE_TYPES.has(asset.type);
 
   return (
     <Link href={`/asset/${asset.id}`} className="block">
       <div
         className="flex items-center border-b border-border-strong last:border-0 gap-3"
-        style={{ paddingTop: 13, paddingBottom: 13 }}
+        style={{ paddingTop: 12, paddingBottom: 12 }}
       >
         <AssetLogo
           type={asset.type}
@@ -90,16 +87,12 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
           >
             {formatMoney(asset.value, displayCurrency)}
           </div>
-          {chg !== null ? (
+          {isTradeable && chg !== null && (
             <div
               className={`mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
               style={{ fontSize: 11.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
             >
               {fmtPct.format(chg)}%
-            </div>
-          ) : (
-            <div className="text-faint mt-0.5" style={{ fontSize: 11.5 }}>
-              —
             </div>
           )}
         </div>

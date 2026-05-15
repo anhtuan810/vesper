@@ -19,7 +19,7 @@ export function HoldingsGroup({
 }: HoldingsGroupProps) {
   const displayCurrency = useDisplayCurrency();
   return (
-    <div style={{ borderBottom: "0.5px solid var(--border-strong)", paddingBottom: 4 }}>
+    <div style={{ borderBottom: "0.5px solid var(--border-strong)" }}>
       <button
         onClick={onToggle}
         style={{
@@ -35,7 +35,7 @@ export function HoldingsGroup({
         }}
       >
         <span style={{
-          fontSize: 15,
+          fontSize: 18,
           fontWeight: 500,
           color: "var(--text)",
           flexShrink: 0,
@@ -98,7 +98,7 @@ export function HoldingsGroup({
       </button>
 
       {expanded && (
-        <div style={{ paddingBottom: 16 }}>
+        <div style={{ paddingBottom: 4 }}>
           {children}
         </div>
       )}
