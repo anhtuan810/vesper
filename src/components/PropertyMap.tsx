@@ -54,22 +54,9 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
 
 export function PropertyMap({ asset }: Props) {
   const router = useRouter();
-  const supabase = createBrowserSupabase();
-  const { resolvedTheme } = useTheme();
 
-  // Compute the per-theme cache path and URL synchronously
-  const themeCachePath = `${asset.user_id}/${asset.id}-${resolvedTheme}.png`;
-  const { data: { publicUrl: themeCacheUrl } } = supabase.storage
-    .from("property-photos")
-    .getPublicUrl(themeCachePath);
-
-  const [cachedUrl, setCachedUrl] = useState<string | null>(themeCacheUrl);
-
-  // When theme changes, try the new theme's cached URL
-  useEffect(() => {
-    setCachedUrl(themeCacheUrl);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedTheme]);
+  // asset.photo_url is server-provided and confirmed to exist in storage — safe initial value
+  const [cachedUrl, setCachedUrl] = useState<string | null>(asset.photo_url ?? null);
 
   const handleImgError = useCallback(() => {
     setCachedUrl(null);
@@ -94,6 +81,16 @@ export function PropertyMap({ asset }: Props) {
           onError={handleImgError}
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
         />
+        {/* Map is always centered on the property, so the pin is always at 50%/50% */}
+        <div style={{
+          position: "absolute", left: "50%", top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 20, height: 20, borderRadius: "50%",
+          background: "var(--accent)",
+          border: "3px solid rgba(255,255,255,0.9)",
+          boxShadow: "0 0 0 4px rgba(74, 124, 94, 0.25), 0 2px 6px rgba(0,0,0,0.25)",
+          pointerEvents: "none",
+        }} />
         <OpenInMapsOverlay asset={asset} />
       </div>
     );
@@ -122,10 +119,7 @@ export function PropertyMap({ asset }: Props) {
     <MapLibreMap
       asset={asset}
       skipCaching={false}
-      onCached={(url) => {
-        setCachedUrl(url);
-        router.refresh();
-      }}
+      onCached={setCachedUrl}
     />
   );
 }
@@ -180,22 +174,21 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
         hasUploadedRef.current = true;
         try {
           const canvas = map.getCanvas();
-          const blob = await new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error("canvas toBlob failed")); }, "image/png");
-          });
-          const theme = resolvedTheme === "dark" ? "dark" : "light";
-          const path = `${asset.user_id}/${asset.id}-${theme}.png`;
-          const { error } = await supabase.storage.from("property-photos").upload(path, blob, { upsert: true, contentType: "image/png" });
-          if (error) {
-            console.warn(`Thumbnail upload failed for ${asset.id}:`, error);
-            onCached("");
-            return;
-          }
-          const { data: { publicUrl } } = supabase.storage.from("property-photos").getPublicUrl(path);
-          await supabase.from("assets").update({ photo_url: publicUrl }).eq("id", asset.id);
-          onCached(publicUrl);
+          // Show immediately via data URL — no storage round-trip, no CDN race
+          const dataUrl = canvas.toDataURL("image/png");
+          onCached(dataUrl);
+          // Upload to storage in the background so future page loads use the cached PNG
+          canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            const theme = resolvedTheme === "dark" ? "dark" : "light";
+            const path = `${asset.user_id}/${asset.id}-${theme}.png`;
+            const { error } = await supabase.storage.from("property-photos").upload(path, blob, { upsert: true, contentType: "image/png" });
+            if (error) { console.warn("Thumbnail upload failed:", error); return; }
+            const { data: { publicUrl } } = supabase.storage.from("property-photos").getPublicUrl(path);
+            await supabase.from("assets").update({ photo_url: publicUrl }).eq("id", asset.id);
+          }, "image/png");
         } catch (err) {
-          console.warn(`Thumbnail capture failed for ${asset.id}:`, err);
+          console.warn("Thumbnail capture failed:", err);
           onCached("");
         }
       });

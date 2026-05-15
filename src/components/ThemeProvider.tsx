@@ -31,7 +31,9 @@ export function ThemeProvider({
   children: ReactNode;
 }) {
   const [theme, setThemeState] = useState<ThemeMode>(initialTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
+    initialTheme === "dark" ? "dark" : "light"
+  );
 
   useEffect(() => {
     const resolved = theme === "auto" ? resolveAuto() : theme;
