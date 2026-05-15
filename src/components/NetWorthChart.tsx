@@ -81,17 +81,17 @@ function computeNiceLevels(dataMin: number, dataMax: number): NiceLevels {
   return { niceMin: dataMin, niceMax: dataMax, labels: [dataMin, mid, dataMax] };
 }
 
+const CHART_PAD_TOP = 6;
+
 function buildPath(
   values: number[], W: number, H: number, yMin: number, yMax: number
-): { line: string; area: string } {
-  if (values.length < 2) return { line: "", area: "" };
+): { line: string; area: string; projectY: (v: number) => number } {
+  const projectY = makeProjectY(H, yMin, yMax);
 
-  const yRange = Math.max(yMax - yMin, 1);
+  if (values.length < 2) return { line: "", area: "", projectY };
 
   const toX = (i: number) => (i / (values.length - 1)) * W;
-  const toY = (v: number) => H - ((v - yMin) / yRange) * H;
-
-  const pts = values.map((c, i) => ({ x: toX(i), y: toY(c) }));
+  const pts = values.map((c, i) => ({ x: toX(i), y: projectY(c) }));
   let line = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
   // Catmull-Rom → cubic Bézier: curve passes through every data point
   for (let i = 0; i < pts.length - 1; i++) {
@@ -108,7 +108,13 @@ function buildPath(
 
   const area = line + ` L ${pts[pts.length - 1].x.toFixed(2)} ${H} L 0 ${H} Z`;
 
-  return { line, area };
+  return { line, area, projectY };
+}
+
+function makeProjectY(H: number, yMin: number, yMax: number): (v: number) => number {
+  const yRange = Math.max(yMax - yMin, 1);
+  const drawH = H - CHART_PAD_TOP;
+  return (v) => CHART_PAD_TOP + drawH - ((v - yMin) / yRange) * drawH;
 }
 
 export function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotPoint[] {
@@ -150,12 +156,9 @@ export function NetWorthChart(props: Props) {
   const { niceMin, niceMax, labels: yLabels } = computeNiceLevels(dataMin, dataMax);
   const yRange = Math.max(niceMax - niceMin, 1);
 
-  const { line, area } = buildPath(values, W, H, niceMin, niceMax);
+  const { line, area, projectY } = buildPath(values, W, H, niceMin, niceMax);
 
-  const lastY =
-    values.length >= 2
-      ? H - ((values[values.length - 1] - niceMin) / yRange) * H
-      : H / 2;
+  const lastY = values.length >= 2 ? projectY(values[values.length - 1]) : H / 2;
 
   // Scrub marker — same projection as buildPath / lastY
   const selectedX =
@@ -164,7 +167,7 @@ export function NetWorthChart(props: Props) {
       : null;
   const selectedY =
     selectedIndex !== null && values.length >= 2
-      ? H - ((values[selectedIndex] - niceMin) / yRange) * H
+      ? projectY(values[selectedIndex])
       : null;
 
   const showEndMarker = selectedIndex === null || selectedIndex === series.length - 1;
