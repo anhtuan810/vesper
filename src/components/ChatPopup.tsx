@@ -498,13 +498,16 @@ export default function ChatPopup({
             }}
             onPaste={handlePaste}
             maxLength={500}
-            placeholder={
-              remaining === 0
-                ? "Daily limit reached — back tomorrow"
-                : imageData
-                ? "Add a note or send…"
-                : "Ask anything about your portfolio…"
-            }
+            placeholder={(() => {
+              if (remaining === 0) return "Daily limit reached — back tomorrow";
+              if (imageData) return "Add a note or send…";
+              const lastMsg = messages[messages.length - 1];
+              const chipsVisible = seedMessage !== null || (
+                lastMsg?.from === "assistant" &&
+                (lastMsg.suggestedReplies?.length ?? 0) > 0
+              );
+              return chipsVisible ? "Or type something else…" : "Ask anything about your portfolio…";
+            })()}
             className="flex-1 outline-none"
             style={{
               background: "transparent",

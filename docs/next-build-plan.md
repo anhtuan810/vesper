@@ -2,6 +2,17 @@
 
 This is the prioritized roadmap for Volnar. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
 
+## What just shipped — Decision 12: Chips first, typing as fallback (PR 22)
+
+Four PRs shipped together as the Decision 12 implementation:
+
+- **PR 22a — `claude.ts`: require chips on every assistant turn.** Both `buildStaticSystem` and `buildOnboardingPrompt` now include a `CHIPS` block requiring Claude to emit a `<suggested_replies>` JSON array on every response (3–4 strings). `route.ts` parses the tag, saves `suggested_replies` to the `messages` table, and returns it in the API response. The full chip catalogue (onboarding steps, asset add/confirm, performance Q&A, insight follow-ups, diversification) is in `claude.ts`.
+- **PR 22b — `chat-seeds.ts`: static seed system.** New `src/lib/chat-seeds.ts` exports `getChatSeed(source, key, message?)` returning a `{message, chips}` pair for three seed sources: `onboarding-class` (6 asset-class slugs with hardcoded copy), `asset` (fixed 3-chip Q&A set, message built from asset name), `insight` (fixed 3-chip follow-up set, message passed in from InsightBand via sessionStorage). Both `chat/page.tsx` and `ChatPopup.tsx` read `?seed=<source>&key=<key>` on mount, resolve the seed, and render it as a synthetic assistant message with chips. The seed is local-only — never persisted. It disappears when the user sends their first message.
+- **PR 22c — Entry points: empty state, asset detail, insight band.** Portfolio empty state in `page.tsx` replaces the single "Tell me what you own" button with a 6-row serif italic asset-class picker (Stocks & ETFs / Real estate / Crypto / Cash & savings / Pension & retirement / Other) plus a subordinated 7th row for free-text entry. Each row routes to `/chat?seed=onboarding-class&key=<slug>`. `BottomNav.tsx` routes the Chat tab from asset detail to `/chat?seed=asset&key=<id>` (was `?asset=<id>`). `InsightBand.tsx` writes the insight sentence to `sessionStorage` then routes to `/chat?seed=insight&key=current`.
+- **PR 22d — Placeholder copy.** When a seed is showing OR the last assistant message carries chips, both chat surfaces show "Or type something else…" as the input placeholder instead of the default. Pure derived boolean, no new state.
+
+---
+
 ## What just shipped — Redesign migration (PR 1 → PR 21)
 
 A multi-chat migration moved Volnar from the old amber/Fraunces dark-only design to the locked redesign — cream/ink in light mode, warm-black/cream in dark, single accent green (`#4A7C5E`), Source Serif 4 + Albert Sans typography. Beyond the visual swap, the migration enforced the 11 locked decisions in `redesign-decisions.md` and absorbed all manual edit paths into chat.
