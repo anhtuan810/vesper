@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useUser, useAssets, useDisplayCurrency, primeInsightCache } from "@/lib/hooks";
+import { useUser, useAssets, primeInsightCache } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { computeCurrentBalance } from "@/lib/mortgage";
-import { formatMoney, toUsdClient } from "@/lib/money";
+import { toUsdClient } from "@/lib/money";
+import { ONBOARDING_OPENER } from "@/lib/copy";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 
@@ -18,7 +19,6 @@ export default function Dashboard() {
     assets, loading: assetsLoading, error: assetsError, refreshing,
     refreshPrices, refetchAssets, lastUpdated, priceHealth,
   } = useAssets(user?.id);
-  const displayCurrency = useDisplayCurrency();
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
@@ -128,8 +128,16 @@ export default function Dashboard() {
     );
   }
 
+  const isEmpty = assets.length === 0;
+
   return (
-    <div className="min-h-screen bg-bg">
+    <div
+      className="min-h-screen bg-bg"
+      style={isEmpty ? {
+        backgroundImage:
+          "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(212,165,116,0.05), transparent 50%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(107,170,117,0.03), transparent 50%)",
+      } : undefined}
+    >
       <NavBar
         tab="portfolio"
         setTab={setTab}
@@ -139,6 +147,7 @@ export default function Dashboard() {
         refreshing={refreshing}
         refreshPrices={refreshPrices}
         lastUpdated={lastUpdated}
+        empty={isEmpty}
       />
 
       <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-4 pb-36">
@@ -174,10 +183,13 @@ export default function Dashboard() {
             </button>
           </div>
         )}
-        {assets.length === 0 ? (
-          <div className="flex flex-col items-center pt-24 text-center">
+        {isEmpty ? (
+          <div
+            className="flex flex-col items-center text-center pt-24"
+            style={{ minHeight: "calc(100dvh - var(--nav-height) - 10rem)" }}
+          >
             <div
-              className="flex items-center justify-center mb-6 font-serif text-accent"
+              className="logo-pulse flex items-center justify-center mb-10 font-serif text-accent"
               style={{
                 width: 56, height: 56, borderRadius: 14,
                 background: "var(--accent-soft)",
@@ -187,23 +199,39 @@ export default function Dashboard() {
             >
               V
             </div>
-            <div
-              className="font-serif font-light text-fg leading-none mb-3"
-              style={{ fontSize: 48, letterSpacing: "-0.035em", fontVariationSettings: "'opsz' 144" }}
+
+            <p
+              className="font-serif italic"
+              style={{
+                fontSize: 17, lineHeight: 1.42, maxWidth: 260,
+                fontVariationSettings: "'opsz' 22",
+                color: "var(--text)",
+              }}
             >
-              {formatMoney(0, "USD", displayCurrency)}
-            </div>
-            <div className="text-sm text-dim mb-2">No positions yet</div>
-            <p className="text-faint text-xs max-w-xs leading-relaxed mb-8">
-              Tell the assistant what you own — stocks, real estate, cash — and it will build your portfolio automatically.
+              {ONBOARDING_OPENER}
             </p>
+
             <button
               onClick={() => router.push('/chat')}
-              className="font-mono text-bg bg-accent hover:opacity-90 transition-opacity"
-              style={{ fontSize: 12, padding: "10px 20px", borderRadius: 12, letterSpacing: "0.06em" }}
+              className="mt-8 text-bg bg-accent hover:opacity-90 transition-opacity"
+              style={{
+                fontFamily: "var(--sans)",
+                fontSize: 14, padding: "10px 22px", borderRadius: 12,
+              }}
             >
-              Add your first asset →
+              Tell me what you own
             </button>
+
+            <p
+              className="font-serif italic"
+              style={{
+                marginTop: "auto",
+                fontSize: 12.5, lineHeight: 1.5, maxWidth: 230,
+                color: "var(--text-faint)",
+              }}
+            >
+              Nothing leaves this conversation.
+            </p>
           </div>
         ) : (
           <PortfolioTab

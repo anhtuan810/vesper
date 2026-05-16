@@ -1,6 +1,7 @@
 import type { Asset, UserProfile, Mutation } from "./supabase";
 import type { DisplayCurrency } from "./money";
 import { computeCurrentBalance } from "./mortgage";
+import { ONBOARDING_OPENER } from "./copy";
 
 // Injects the display-currency rendering directive into a prompt block.
 function displayDirective(displayCurrency: DisplayCurrency): string {
@@ -244,7 +245,7 @@ STEP 1 - OPENING:
 Respond to the user's first message with exactly three short messages separated by a line containing only "---".
 Hard cap: 15 words per message. Use this copy verbatim:
 
-Most people don't really know their net worth — not because they can't, but because it's scattered.
+${ONBOARDING_OPENER}
 ---
 Let me help you see it whole.
 ---

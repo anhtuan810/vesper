@@ -16,6 +16,7 @@ interface NavBarProps {
   refreshing: boolean;
   refreshPrices: () => void;
   lastUpdated?: Date | null;
+  empty?: boolean;
 }
 
 function formatRelativeTime(date: Date): string {
@@ -31,7 +32,7 @@ function formatRelativeTime(date: Date): string {
 
 
 export function NavBar({
-  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated,
+  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty,
 }: NavBarProps) {
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -101,7 +102,7 @@ export function NavBar({
               {firstName}
             </span>
           )}
-          {lastUpdated && (
+          {!empty && lastUpdated && (
             <span
               className="font-mono text-faint hidden sm:inline"
               style={{ fontSize: 10, letterSpacing: "0.04em" }}
@@ -109,7 +110,7 @@ export function NavBar({
               {formatRelativeTime(lastUpdated)}
             </span>
           )}
-          <button
+          {!empty && <button
             onClick={refreshPrices}
             disabled={refreshing}
             aria-label="Refresh prices"
@@ -156,7 +157,7 @@ export function NavBar({
                 />
               );
             })()}
-          </button>
+          </button>}
         </div>
       </div>
     </nav>

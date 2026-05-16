@@ -126,7 +126,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
           setMessages(mapped);
           if (data.messages.length < CHAT_LOAD_LIMIT) setHasMore(false);
         })
-        .catch((err) => { console.error("Chat history fetch failed:", err); });
+        .catch((err) => { if (err?.name !== "AbortError") console.error("Chat history fetch failed:", err); });
     }
 
     return () => { controller.abort(); };

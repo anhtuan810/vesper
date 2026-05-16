@@ -94,6 +94,16 @@
 .insight-band p { margin: 0; }
 .insight-band p + p { margin-top: 0.6em; }
 
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes logo-pulse {
+    0%, 100% { filter: saturate(1); }
+    50%       { filter: saturate(0.42) brightness(1.06); }
+  }
+  .logo-pulse {
+    animation: logo-pulse 4s ease-in-out infinite;
+  }
+}
+
 html {
   scroll-padding-top: var(--nav-height);
 }
