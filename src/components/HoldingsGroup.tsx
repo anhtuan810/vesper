@@ -39,7 +39,7 @@ export function HoldingsGroup({
           fontWeight: 500,
           color: "var(--text)",
           flexShrink: 0,
-          minWidth: 100,
+          minWidth: 140,
           textAlign: "left",
         }}>
           {label}

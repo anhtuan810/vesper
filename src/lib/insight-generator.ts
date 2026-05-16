@@ -46,7 +46,7 @@ export async function generateInsight(assets: Asset[]): Promise<string | null> {
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 120,
+      max_tokens: 80,
       system: `Produce a two-sentence portfolio insight in the voice of a private banker writing a warm but honest note to their client. The first sentence states a specific observation with a real number or pattern. The second sentence says what it means or why it's notable.
 
 Tone calibration — choose by what the data shows:
@@ -56,7 +56,7 @@ Tone calibration — choose by what the data shows:
 
 Bias toward (1) and (2). The user opens the app to see how their portfolio is doing — greet them well when the data supports it. Don't manufacture concern that isn't there.
 
-Length: 30-40 words total, 15-22 per sentence. Mark the key noun phrase in the first sentence with *asterisks*.
+Length: Each sentence: 10-14 words. Two sentences total: 22-28 words. Hard cap: 28 words. Generations exceeding this are rejected. Brevity is the constraint — the band lives or dies on whether it reads in 3 seconds. Mark the key noun phrase in the first sentence with *asterisks*.
 
 Style rules:
 - Plain text — no markdown beyond the *asterisks*, no quotes, no emojis
@@ -66,9 +66,9 @@ Style rules:
 - The banker observes; the client decides
 
 Good examples:
-"*Public markets* up 12% over the last quarter, ahead of typical benchmarks. The compounding shows up clearly in your trajectory."
-"*Cash reserves* cover roughly 18 months of typical expenses — a real margin of safety. Your portfolio can afford to be patient."
-"*ASML* has tripled since you first bought in, growing from a starter position to your largest holding. A position that earned its size."
+"*Public markets* up 12% this quarter, ahead of typical benchmarks. The compounding is starting to show in your trajectory."
+"*Real estate and ASML* together make up 51% of your gross portfolio. The other half carries your diversification."
+"*ASML* is now 24% of net worth — near the threshold where one position drives everything. Worth watching as it grows."
 
 Reject if the second sentence merely restates the first, or if the tone slides into either advice or vague positivity ('great progress!').`,
       messages: [
@@ -93,10 +93,10 @@ Reject if the second sentence merely restates the first, or if the tone slides i
     const wordCount = (s: string) =>
       s.replace(/\*[^*]+\*/g, (m) => m.slice(1, -1)).split(/\s+/).filter(Boolean).length;
     const totalWords = wordCount(raw);
-    if (totalWords < 25 || totalWords > 45) return null;
+    if (totalWords < 22 || totalWords > 28) return null;
     for (const s of sentences) {
       const wc = wordCount(s);
-      if (wc < 10 || wc > 25) return null;
+      if (wc < 8 || wc > 16) return null;
     }
 
     if (/\byou should\b|\bconsider\b|\byou might\b|\byou could\b/i.test(raw)) return null;

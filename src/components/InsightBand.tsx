@@ -64,7 +64,9 @@ export function InsightBand() {
           fontVariationSettings: "'opsz' 18",
         }}
       >
-        {renderWithEmphasis(detail)}
+        {detail.split(/(?<=\.) /).map((s, i) => (
+          <p key={i}>{renderWithEmphasis(s)}</p>
+        ))}
       </div>
 
       {/* Chevron */}

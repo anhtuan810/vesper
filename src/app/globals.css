@@ -91,6 +91,8 @@
   font-style: normal;
   font-weight: 500;
 }
+.insight-band p { margin: 0; }
+.insight-band p + p { margin-top: 0.6em; }
 
 html {
   scroll-padding-top: var(--nav-height);
