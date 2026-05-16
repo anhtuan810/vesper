@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { LogoMark } from "@/components/Logo";
+import { VolnarLogo } from "@/components/VolnarLogo";
 
 function LoginInner() {
   const params = useSearchParams();
@@ -61,7 +61,7 @@ function LoginInner() {
               alignItems: "center", gap: 16, marginBottom: 20,
             }}
           >
-            <LogoMark size={48} />
+            <VolnarLogo size={48} />
             <span
               style={{
                 fontFamily: "var(--font-sans)",
@@ -78,6 +78,98 @@ function LoginInner() {
             style={{ fontSize: 14, lineHeight: 1.5, fontVariationSettings: "'opsz' 144" }}
           >
             Quiet confidence over your portfolio.
+          </p>
+          <div
+            className="mx-auto mt-6 max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+            style={{ boxShadow: "0 1px 2px rgba(26,24,22,0.04), 0 8px 20px rgba(26,24,22,0.05)" }}
+          >
+            {/* Meta row */}
+            <div className="flex items-center gap-1.5 px-4 pt-3.5 pb-2.5 text-[10.5px] font-medium uppercase tracking-[0.025em] text-[var(--text-dim)]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+              Live · today
+            </div>
+
+            {/* Asset class rows */}
+            <div className="flex flex-col gap-1.5 px-4 pb-2.5">
+              {[
+                {
+                  name: "Property",
+                  change: "−0.3%",
+                  tone: "down" as const,
+                  icon: (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2V10z" />
+                    </svg>
+                  ),
+                },
+                {
+                  name: "Public markets",
+                  change: "+1.8%",
+                  tone: "up" as const,
+                  icon: (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="3 17 9 11 13 15 21 7" />
+                      <polyline points="15 7 21 7 21 13" />
+                    </svg>
+                  ),
+                },
+                {
+                  name: "Reserves",
+                  change: "0.0%",
+                  tone: "flat" as const,
+                  icon: (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="3" y="6" width="18" height="13" rx="2" />
+                      <path d="M3 10h18" />
+                    </svg>
+                  ),
+                },
+                {
+                  name: "Crypto",
+                  change: "+2.8%",
+                  tone: "up" as const,
+                  icon: (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polygon points="12 3 21 8 21 16 12 21 3 16 3 8" />
+                    </svg>
+                  ),
+                },
+              ].map((row) => (
+                <div key={row.name} className="flex items-center gap-2.5">
+                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-[var(--surface-elev)] text-[var(--text-dim)]">
+                    {row.icon}
+                  </div>
+                  <div className="flex-1 text-[13px] font-medium text-[var(--text)]">{row.name}</div>
+                  <div
+                    className={`text-[13px] font-semibold tabular-nums tracking-tight ${
+                      row.tone === "up"
+                        ? "text-[var(--accent)]"
+                        : row.tone === "down"
+                        ? "text-[var(--negative-text)]"
+                        : "text-[var(--text-dim)]"
+                    }`}
+                  >
+                    {row.change}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Worth knowing band */}
+            <div className="border-t border-[var(--border)] bg-[var(--surface-elev)] px-4 py-3">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.012em] text-[var(--text-dim)]">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+                Worth knowing
+              </div>
+              <p className="m-0 font-serif text-[13px] italic leading-snug text-[var(--text-dim)]">
+                <strong className="font-semibold text-[var(--text)]">NVIDIA reports tonight</strong>. Your largest position, ASML, sits in the same AI supply chain.
+              </p>
+            </div>
+          </div>
+
+          <p className="mx-auto mt-4 mb-2 max-w-[320px] px-2 text-center text-[12.5px] leading-snug text-[var(--text-dim)]">
+            Every asset. Every market event.{" "}
+            <strong className="font-medium text-[var(--text)]">Every reason why.</strong>
           </p>
         </div>
 

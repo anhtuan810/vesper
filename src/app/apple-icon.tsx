@@ -17,9 +17,9 @@ export default function AppleIcon() {
           borderRadius: 36,
         }}
       >
-        <svg viewBox="0 0 72 60" width="124" height="103" fill="none">
-          <path fill="#F5F1EA" d="M 4 4 L 16 4 L 36 50 L 56 4 L 68 4 L 42 56 L 30 56 Z" />
-          <path fill="#4A7C5E" d="M 20 4 L 30 4 L 36 28 L 42 4 L 52 4 L 41 36 L 31 36 Z" />
+        <svg viewBox="0 0 60 60" width="120" height="120" fill="none">
+          <polygon points="4,8 16,8 30,46 44,8 56,8 33,54 27,54" fill="#F5F1EA" />
+          <polygon points="18,10 42,10 30,42" fill="#4A7C5E" />
         </svg>
       </div>
     ),
