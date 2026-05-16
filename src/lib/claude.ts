@@ -8,7 +8,7 @@ function displayDirective(displayCurrency: DisplayCurrency): string {
 Render ALL prose totals, allocations, value changes, and goal amounts in ${displayCurrency}.
 The <changes> JSON block stays native (Yahoo's reported currency for tradeables; user-stated currency for non-tradeables). Do not convert values inside <changes>.
 Banker's-note <context> strings are written in ${displayCurrency}.
-Goals stated by the user in ${displayCurrency} should appear in the <goal> JSON with a "currency":"${displayCurrency}" field so the system can convert to EUR for storage.`;
+Goals stated by the user in ${displayCurrency} should appear in the <goal> JSON with a "currency":"${displayCurrency}" field so the system can convert to USD for storage.`;
 }
 
 // Builds the cached static instructions block. Parameterised by displayCurrency
@@ -93,7 +93,7 @@ REAL ESTATE NATIVE CURRENCY: always include "currency" based on the property's c
   US → "currency":"USD"
   UK → "currency":"GBP"
   Other countries → "currency":"EUR" (system default for unsupported currencies)
-The value, mortgage_balance, and monthly_payment fields are stated in the property's native currency. The system converts to EUR for storage. mortgage_rate is a percentage — no conversion.
+The value, mortgage_balance, and monthly_payment fields are stated in the property's native currency. Values are stored as-is in the property's native currency. mortgage_rate is a percentage — no conversion.
 NAMING REAL ESTATE: names are always based on street + house number, never the city or country.
 - Before committing to a name, ask the user and propose the street-based default inline. Example: "What would you like to call this property? I'll suggest 'Hosingenhof 19' unless you'd prefer something different."
 - Default format: <road> <house_number>, e.g. "Hosingenhof 19", "Baker Street 21". Parse from the user's stated address.
@@ -108,7 +108,7 @@ NAMING CASH: when the user adds a cash or savings position, ask "What is this fo
 
 Field names for edit: name (to match), plus any fields being changed.
 Valid edit fields: value, units, buy_price, buy_date, type, currency, country, symbol, new_name, and all mortgage/real_estate fields listed above.
-For real_estate edits, value/mortgage_balance/monthly_payment are stated in the property's native currency — the same convention as for add. The system converts to EUR for storage. mortgage_rate is a percentage — no conversion.
+For real_estate edits, value/mortgage_balance/monthly_payment are stated in the property's native currency — the same convention as for add. Values are stored as-is in the property's native currency. mortgage_rate is a percentage — no conversion.
 For real_estate address edits, use the same ADDRESS PROPOSAL FLOW above: emit <propose_address>...</propose_address> in turn 1 with the address stated by the user (include country), then emit <changes> with the canonical address on confirmation.
 When the user buys more of an existing position and states a date, include buy_date and buy_price on the edit action — the system records them as the transaction date and price for that lot.
 RENAMING: to rename an asset, use the edit action with the OLD name as "name" (for matching) and a "new_name" field for the new name. Example: {"action":"edit","name":"Property Eindhoven","new_name":"Eindhoven"}
@@ -144,17 +144,21 @@ Batch/screenshot adds (multiple positions in one turn):
 Never re-ask: if RECENT CHANGES shows [starting position] after an asset name, the basis was not captured. Do not ask about that position's basis again.
 
 CONTEXT:
-When you make changes, also include a <context> tag — EXCEPT for Mode 1 and Mode 2 basis captures, which use the exact strings above. For all other changes:
-<context>One clean sentence explaining the reason, written as a private banker's note in ${displayCurrency}. No references to data sources, implementation details, or system mechanics. Do not use phrases like "auto-filled", "live data", "market price", "Yahoo Finance", or any technical language. Write as if recording a client decision in a ledger.</context>
+Each change in the <changes> block must include a "personal_context" field — EXCEPT for Mode 1 and Mode 2 basis captures, which embed the exact strings above directly in the change.
 
-The <context> note is a ledger entry, not a description of the user. Never write "Client requested", "User added", "You bought", or any other subject pronoun. Lead with the verb in past tense: "Added", "Removed", "Consolidated", "Refinanced", "Sold". State the action and the relevant figures. The reader knows who did it — they're reading their own diary.
+"personal_context": "One clean sentence for this specific change, written as a private banker's note in ${displayCurrency}. No references to data sources, implementation details, or system mechanics. Do not use phrases like "auto-filled", "live data", "market price", "Yahoo Finance", or any technical language. Write as if recording a client decision in a ledger."
+
+The context note is a ledger entry. Never write "Client requested", "User added", "You bought", or any subject pronoun. Lead with the verb in past tense: "Added", "Removed", "Consolidated", "Refinanced", "Sold". State the action and the relevant figures.
+
+Each asset must have its OWN personal_context — never reuse or combine notes across different assets.
 
 Examples:
-- "Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage"
-- "Removed all 17 monthly Test 2 cash entries totalling ${sym}85,000, clearing the position in full"
-- "Consolidated pre-2026 monthly cash deposits totalling ${sym}600,000 into a single position"
-- "Bought 5 ASML at ${sym}620 to bring total holding to 105 shares"
-- "Refinanced Hosingenhof 19 mortgage from 4.2% to 3.8%, payment drops to ${sym}1,840/month"
+<changes>[
+  {"action":"add","name":"Gold","type":"gold","units":1,"personal_context":"Added 1 oz gold at yesterday's market price."},
+  {"action":"edit","name":"Apple","units":254,"personal_context":"Bought 12 Apple shares at market price, bringing total holding to 254 shares."}
+]</changes>
+<changes>[{"action":"add","name":"Hosingenhof 19","type":"real_estate","value":340000,"currency":"EUR","personal_context":"Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage."}]</changes>
+<changes>[{"action":"edit","name":"ASML","units":71,"buy_price":990,"personal_context":"Bought 5 ASML at ${sym}990 to bring total holding to 71 shares."}]</changes>
 
 TOPIC BOUNDARY:
 You ONLY discuss portfolio, investments, assets, financial goals, and personal finance.
@@ -168,27 +172,38 @@ export function buildDynamicContext(
   profile: UserProfile,
   recentMutations: Mutation[],
   displayCurrency: DisplayCurrency,
-  userName?: string
+  userName?: string,
+  usdRates?: Record<string, number>
 ): string {
-  const total = assets.reduce((sum, a) =>
-    sum + (a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value), 0);
+  // Convert a native-currency amount to USD using the provided FX rates.
+  const toUsd = (amount: number, currency: string): number => {
+    if (!usdRates || currency === "USD") return amount;
+    const rate = usdRates[currency];
+    return rate ? amount / rate : amount;
+  };
+
+  const total = assets.reduce((sum, a) => {
+    const cur = a.currency || "USD";
+    const net = a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value;
+    return sum + toUsd(net, cur);
+  }, 0);
 
   const byType = assets.reduce((acc, a) => {
-    acc[a.type] = (acc[a.type] || 0) + a.value;
+    const cur = a.currency || "USD";
+    acc[a.type] = (acc[a.type] || 0) + toUsd(a.value, cur);
     return acc;
   }, {} as Record<string, number>);
 
   const countries = [...new Set(assets.map(a => a.country).filter(Boolean))];
 
   const assetList = assets.map(a => {
-    const cur = a.currency || "EUR";
+    const cur = a.currency || "USD";
     const parts = [`${a.name} (${a.type}): ${cur}${a.value.toLocaleString()}`];
     if (a.symbol) parts.push(`symbol:${a.symbol}`);
     if (a.units) parts.push(`units:${a.units}`);
     if (a.country) parts.push(`country:${a.country}`);
-    if (a.currency && a.currency !== "EUR") parts.push(`currency:${a.currency}`);
     const currentMortgage = computeCurrentBalance(a);
-    if (a.type === "real_estate" && currentMortgage > 0) parts.push(`mortgage:EUR${Math.round(currentMortgage).toLocaleString()}`);
+    if (a.type === "real_estate" && currentMortgage > 0) parts.push(`mortgage:${cur}${Math.round(currentMortgage).toLocaleString()}`);
     return `- ${parts.join(", ")}`;
   }).join("\n");
 
@@ -197,8 +212,8 @@ export function buildDynamicContext(
   return [
     userName ? `User: ${userName}` : "",
     `Today's date: ${today}`,
-    `CURRENT PORTFOLIO (${assets.length} positions, net worth EUR${total.toLocaleString()} — all values are EUR-equivalent):`,
-    "Note: prices shown here are EUR-equivalent. Render prose responses in " + displayCurrency + ".",
+    `CURRENT PORTFOLIO (${assets.length} positions, net worth ~$${Math.round(total).toLocaleString()} USD-equivalent):`,
+    "Note: each position value is shown in its native currency (see prefix). Render prose responses in " + displayCurrency + ".",
     assetList,
     "",
     total > 0
@@ -282,7 +297,7 @@ REAL ESTATE NATIVE CURRENCY: always include "currency" based on the property's c
   US → "currency":"USD"
   UK/GB → "currency":"GBP"
   Other countries → "currency":"EUR"
-The value, mortgage_balance, and monthly_payment are stated in the property's native currency. The system converts to EUR for storage.
+The value, mortgage_balance, and monthly_payment are stated in the property's native currency. Values are stored as-is in the property's native currency.
 NAMING REAL ESTATE: names are always based on street + house number, never the city or country.
 - Before committing to a name, ask the user and propose the street-based default inline. Example: "What would you like to call this property? I'll suggest 'Hosingenhof 19' unless you'd prefer something different."
 - Default format: <road> <house_number>, e.g. "Hosingenhof 19", "Baker Street 21". Parse from the user's stated address.
@@ -325,15 +340,17 @@ If user mentions a goal: <goal>{"title":"...","target_value":...,"currency":"${d
 Always include the "currency" field in goal JSON using the user's display currency (${displayCurrency}).
 
 CONTEXT:
-When you add or edit assets, include a <context> tag — EXCEPT for Mode 1 and Mode 2 basis captures, which use the exact strings above. For all other changes:
-<context>One clean sentence explaining the reason, written as a private banker's note in ${displayCurrency}. No technical language. Write as if recording a client decision in a ledger.</context>
+Each change in the <changes> block must include a "personal_context" field — EXCEPT for Mode 1 and Mode 2 basis captures, which embed the exact strings above directly in the change.
 
-The <context> note is a ledger entry, not a description of the user. Never write "Client requested", "User added", "You bought", or any other subject pronoun. Lead with the verb in past tense: "Added", "Removed", "Consolidated", "Refinanced", "Sold". State the action and the relevant figures. The reader knows who did it — they're reading their own diary.
+"personal_context": "One clean sentence for this specific change, written as a private banker's note in ${displayCurrency}. No technical language. Write as if recording a client decision in a ledger."
+
+Never write "Client requested", "User added", "You bought", or any subject pronoun. Lead with the verb in past tense. Each asset must have its OWN personal_context — never combine notes across different assets.
 
 Examples:
-- "Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage"
-- "Consolidated pre-2026 monthly cash deposits totalling ${sym}600,000 into a single position"
-- "Bought 5 ASML at ${sym}620 to bring total holding to 105 shares"
+<changes>[
+  {"action":"add","name":"Gold","type":"gold","units":1,"personal_context":"Added 1 oz gold at yesterday's market price."},
+  {"action":"add","name":"Apple","type":"stocks","units":12,"personal_context":"Bought 12 Apple shares at market price."}
+]</changes>
 
 TOPIC BOUNDARY: portfolio and finance only.
 Never mention JSON or technical details.`;

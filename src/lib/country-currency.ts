@@ -7,7 +7,7 @@ import type { DisplayCurrency } from "./money";
  * To add a new currency: add its supported countries here AND add the currency
  * to the DisplayCurrency union in money.ts, to SUPPORTED_CURRENCIES, to CURRENCY_META,
  * and to the milestone step table in projection.ts (if the step pattern differs).
- * Countries with unsupported native currencies (CH→CHF, SE→SEK, etc.) fall back to EUR.
+ * Countries with unsupported native currencies (CH→CHF, SE→SEK, etc.) fall back to EUR as the closest supported native currency; apply-changes converts that to USD for storage via toUsd().
  */
 const COUNTRY_TO_CURRENCY: Record<string, DisplayCurrency> = {
   // EUR zone (eurozone member states; extend as needed)
@@ -24,7 +24,8 @@ const COUNTRY_TO_CURRENCY: Record<string, DisplayCurrency> = {
 /**
  * Returns the property's native currency for a given country code.
  * Defaults to EUR for null, empty, or unmapped countries
- * (e.g. Switzerland → CHF is out of scope at launch; falls back to EUR).
+ * (e.g. Switzerland → CHF is out of scope at launch; falls back to EUR as best approximation).
+ * The returned currency is the native denomination — apply-changes.ts converts to USD for storage.
  */
 export function countryToCurrency(country: string | null | undefined): DisplayCurrency {
   if (!country) return "EUR";

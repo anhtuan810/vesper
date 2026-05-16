@@ -35,7 +35,27 @@ function Monogram({ symbol, name, type, size }: { type: string | null; symbol: s
   );
 }
 
-function WalletIcon({ size }: { size: number }) {
+function BanknoteIcon({ size }: { size: number }) {
+  const iconSize = Math.round(size * 0.6);
+  return (
+    <svg
+      width={iconSize}
+      height={iconSize}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--accent)"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="7" cy="9.5" r="2" />
+      <circle cx="17" cy="14.5" r="2" />
+    </svg>
+  );
+}
+
+function PensionIcon({ size }: { size: number }) {
   const iconSize = Math.round(size * 0.6);
   return (
     <svg
@@ -48,9 +68,7 @@ function WalletIcon({ size }: { size: number }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <rect x="2" y="7" width="20" height="13" rx="2" />
-      <path d="M2 12h20" />
-      <circle cx="17" cy="16" r="1.5" fill="var(--accent)" stroke="none" />
+      <path d="M12 3L4 7v5C4 17 8 21 12 21C16 21 20 17 20 12V7Z" />
     </svg>
   );
 }
@@ -93,6 +111,25 @@ function HouseIcon({ size }: { size: number }) {
   );
 }
 
+function GoldIcon({ size }: { size: number }) {
+  const iconSize = Math.round(size * 0.6);
+  return (
+    <svg
+      width={iconSize}
+      height={iconSize}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--category-reserves)"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="2" y="10" width="20" height="9" rx="2" />
+      <path d="M6 10V8a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
 export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -112,14 +149,22 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
     type !== "real_estate" &&
     type !== "cash" &&
     type !== "pension" &&
-    type !== "bonds";
-  const borderWidth = isMonogram ? "0.5px" : "1px";
+    type !== "bonds" &&
+    type !== "gold";
+  const borderWidth = (isMonogram || type === "cash") ? "0.5px" : "1px";
   const imgDisplaySize = Math.round(size * 0.7);
+
+  const containerBg =
+    type === "cash" || type === "pension"
+      ? "var(--surface-elev)"
+      : "var(--surface)";
 
   const renderIcon = () => {
     if (type === "real_estate") return <HouseIcon size={size} />;
-    if (type === "cash" || type === "pension") return <WalletIcon size={size} />;
+    if (type === "cash") return <BanknoteIcon size={size} />;
+    if (type === "pension") return <PensionIcon size={size} />;
     if (type === "bonds") return <CertificateIcon size={size} />;
+    if (type === "gold") return <GoldIcon size={size} />;
     return <Monogram type={type} symbol={symbol} name={name} size={size} />;
   };
 
@@ -130,7 +175,7 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
         width: size,
         height: size,
         borderRadius: 10,
-        background: "var(--surface)",
+        background: containerBg,
         border: showBorder ? `${borderWidth} solid var(--border)` : "none",
         position: "relative",
       }}

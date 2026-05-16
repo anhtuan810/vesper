@@ -5,17 +5,17 @@ import {
   FETCH_TIMEOUT_MS,
   FX_STALE_AFTER_MS,
   FX_MEM_CACHE_TTL_MS,
-  EUR_FALLBACK_RATES,
+  USD_FALLBACK_RATES,
 } from "@/lib/constants";
 
 export interface FxRates {
-  [quote: string]: number; // rate: 1 EUR = N quote
+  [quote: string]: number; // rate: 1 USD = N quote
 }
 
 // In-process cache so a burst of price fetches in one request cycle shares one lookup
 let memCache: { rates: FxRates; ts: number } | null = null;
 
-export async function getEurRates(): Promise<FxRates> {
+export async function getUsdRates(): Promise<FxRates> {
   if (memCache && Date.now() - memCache.ts < FX_MEM_CACHE_TTL_MS) {
     return memCache.rates;
   }
@@ -26,7 +26,7 @@ export async function getEurRates(): Promise<FxRates> {
   const { data: rows } = await supabase
     .from("fx_rates")
     .select("quote, rate, fetched_at")
-    .eq("base", "EUR");
+    .eq("base", "USD");
 
   const now = Date.now();
 
@@ -64,20 +64,20 @@ export async function getEurRates(): Promise<FxRates> {
     // next request treats them as maximally stale and attempts a live refresh.
     Sentry.captureMessage("FX rates unavailable — using hardcoded fallback", "warning");
     console.warn("FX rates unavailable; using hardcoded fallback:", err);
-    const fallbackRows = Object.entries(EUR_FALLBACK_RATES).map(([quote, rate]) => ({
-      base: "EUR",
+    const fallbackRows = Object.entries(USD_FALLBACK_RATES).map(([quote, rate]) => ({
+      base: "USD",
       quote,
       rate,
       fetched_at: new Date(0).toISOString(),
     }));
     await supabase.from("fx_rates").upsert(fallbackRows, { onConflict: "base,quote" });
-    memCache = { rates: EUR_FALLBACK_RATES, ts: now };
-    return EUR_FALLBACK_RATES;
+    memCache = { rates: USD_FALLBACK_RATES, ts: now };
+    return USD_FALLBACK_RATES;
   }
 
   // Upsert all pairs
   const upsertRows = Object.entries(fresh).map(([quote, rate]) => ({
-    base: "EUR",
+    base: "USD",
     quote,
     rate,
     fetched_at: new Date().toISOString(),
@@ -89,19 +89,19 @@ export async function getEurRates(): Promise<FxRates> {
   return fresh;
 }
 
-// Converts a native-currency amount to EUR.
+// Converts a native-currency amount to USD.
 // Returns null only when the FX table is empty AND the API is down.
-export async function toEur(amount: number, nativeCurrency: string): Promise<number | null> {
-  // EUR → EUR is a no-op
-  if (nativeCurrency === "EUR") return amount;
+export async function toUsd(amount: number, nativeCurrency: string): Promise<number | null> {
+  // USD → USD is a no-op
+  if (nativeCurrency === "USD") return amount;
   // GBp (pence) normalisation is handled upstream; treat GBp as GBP here
   const quote = nativeCurrency === "GBp" ? "GBP" : nativeCurrency;
 
   try {
-    const rates = await getEurRates();
+    const rates = await getUsdRates();
     const rate = rates[quote];
     if (!rate) return null;
-    // rate = how many `quote` per 1 EUR → to get EUR divide by rate
+    // rate = how many `quote` per 1 USD → to get USD divide by rate
     return amount / rate;
   } catch {
     return null;

@@ -16,7 +16,20 @@ interface Props {
   asset: TradeableAsset;
 }
 
+const ONE_DAY_MS = 86_400_000;
 
+function rangeToStartDate(range: Range): Date {
+  const now = new Date();
+  const ms: Record<Range, number> = {
+    "1D": ONE_DAY_MS,
+    "1W": 7 * ONE_DAY_MS,
+    "1M": 30 * ONE_DAY_MS,
+    "3M": 90 * ONE_DAY_MS,
+    "1Y": 365 * ONE_DAY_MS,
+    "3Y": 3 * 365 * ONE_DAY_MS,
+  };
+  return new Date(now.getTime() - ms[range]);
+}
 
 function ActivityDate({ dateStr }: { dateStr: string }) {
   return (
@@ -42,6 +55,7 @@ export function TradeableDetail({ asset }: Props) {
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [periodInfo, setPeriodInfo] = useState<{ pct: number; range: Range; label: string } | null>(null);
   const [scrubInfo, setScrubInfo] = useState<ScrubInfo | null>(null);
+  const [earliestBuyDate, setEarliestBuyDate] = useState<Date | null>(null);
   const onPeriodChange = useRef((pct: number | null, range: Range, label: string) => {
     setPeriodInfo(pct !== null ? { pct, range, label } : null);
   }).current;
@@ -49,6 +63,26 @@ export function TradeableDetail({ asset }: Props) {
     setScrubInfo(info);
   }).current;
   const supabase = createBrowserSupabase();
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("mutations")
+      .select("occurred_at")
+      .eq("asset_id", asset.id)
+      .eq("action", "add")
+      .order("occurred_at", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) {
+          setEarliestBuyDate(
+            data ? new Date(data.occurred_at) : asset.buy_date ? new Date(asset.buy_date) : null
+          );
+        }
+      });
+    return () => { cancelled = true; };
+  }, [asset.id, asset.buy_date]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!asset.symbol) return;
@@ -90,11 +124,15 @@ export function TradeableDetail({ asset }: Props) {
       : null;
   const up = dailyChg != null && dailyChg >= 0;
 
-  const avgBuyPrice = asset.buy_price ?? null;
   const avgBuyYear = asset.buy_date ? new Date(asset.buy_date).getFullYear() : null;
 
-  const totalReturnAbs = nativePrice != null && asset.buy_price && asset.buy_price > 0 && asset.units
-    ? (nativePrice - asset.buy_price) * asset.units
+  // livePrice and nativePrice are both in native Yahoo currency, so no FX conversion needed.
+  // buy_price is also stored in native currency — avgBuyPrice stays native.
+  const avgBuyPrice = asset.buy_price ?? null;
+  const assetCur = asset.currency || "USD";
+
+  const totalReturnAbs = avgBuyPrice != null && avgBuyPrice > 0 && asset.units != null && livePrice != null
+    ? (livePrice - avgBuyPrice) * asset.units
     : null;
 
   const noun = asset.type === "crypto" ? "units" : asset.type === "gold" ? "oz" : "shares";
@@ -182,20 +220,63 @@ export function TradeableDetail({ asset }: Props) {
               scrubInfo && livePrice != null
                 ? Math.round(livePrice * scrubInfo.ratio)
                 : livePrice != null ? livePrice : (asset.buy_price ?? 0),
+              assetCur,
               displayCurrency
             )}</span>
           </div>
           {(() => {
-            const active = scrubInfo ?? periodInfo;
-            if (active) {
-              const isUp = active.pct >= 0;
-              const label = scrubInfo ? scrubInfo.label : (active as typeof periodInfo)!.label;
+            // Scrubbing always shows scrub data unchanged
+            if (scrubInfo) {
+              const isUp = scrubInfo.pct >= 0;
               return (
                 <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
                   <span style={{ fontWeight: 500, color: isUp ? "var(--positive-text)" : "var(--negative-text)" }}>
-                    {isUp ? "+" : "−"}{Math.abs(active.pct).toFixed(2)}%
+                    {isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2)}%
                   </span>
-                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{label}</span>
+                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{scrubInfo.label}</span>
+                </div>
+              );
+            }
+            if (periodInfo) {
+              if (earliestBuyDate) {
+                const now = new Date();
+                const ageMs = now.getTime() - earliestBuyDate.getTime();
+                // Case C: position added today
+                if (ageMs < ONE_DAY_MS) {
+                  return (
+                    <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
+                      <span style={{ color: "var(--text-faint)" }}>Just added</span>
+                    </div>
+                  );
+                }
+                const chartRangeStart = rangeToStartDate(periodInfo.range);
+                const effectiveStartMs = Math.max(chartRangeStart.getTime(), earliestBuyDate.getTime());
+                // Case B: chart range extends more than 1 day before earliest buy
+                if (effectiveStartMs - chartRangeStart.getTime() > ONE_DAY_MS) {
+                  const pct = avgBuyPrice != null && avgBuyPrice > 0 && livePrice != null
+                    ? ((livePrice - avgBuyPrice) / avgBuyPrice) * 100
+                    : null;
+                  const dateLabel = `since ${formatDate(earliestBuyDate.toISOString())}`;
+                  return (
+                    <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
+                      {pct !== null && (
+                        <span style={{ fontWeight: 500, color: "var(--text-faint)" }}>
+                          {pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2)}%
+                        </span>
+                      )}
+                      <span style={{ color: "var(--text-faint)", marginLeft: pct !== null ? 6 : 0 }}>{dateLabel}</span>
+                    </div>
+                  );
+                }
+              }
+              // Case A: chart range fits inside holding period (or no buy date yet)
+              const isUp = periodInfo.pct >= 0;
+              return (
+                <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
+                  <span style={{ fontWeight: 500, color: isUp ? "var(--positive-text)" : "var(--negative-text)" }}>
+                    {isUp ? "+" : "−"}{Math.abs(periodInfo.pct).toFixed(2)}%
+                  </span>
+                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{periodInfo.label}</span>
                 </div>
               );
             }
@@ -203,7 +284,7 @@ export function TradeableDetail({ asset }: Props) {
               return (
                 <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
                   <span style={{ fontWeight: 500, color: up ? "var(--positive-text)" : "var(--negative-text)" }}>
-                    {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), displayCurrency)} · `}
+                    {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), assetCur, displayCurrency)} · `}
                     {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2)}%
                   </span>
                   <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>today</span>
@@ -240,7 +321,7 @@ export function TradeableDetail({ asset }: Props) {
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Current value</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18" }}>
-                  {formatMoney(currentValue, displayCurrency)}
+                  {formatMoney(currentValue, assetCur, displayCurrency)}
                 </span>
               </div>
             </div>
@@ -248,17 +329,17 @@ export function TradeableDetail({ asset }: Props) {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border)", gap: 14 }}>
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Total return</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                <span style={{ fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18" }}>
-                  {totalReturnAbs != null ? `${totalReturnAbs >= 0 ? "+" : ""}${formatMoney(Math.abs(totalReturnAbs), displayCurrency)}` : "—"}
+                <span style={{ fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 500, color: totalReturnAbs != null && totalReturnAbs < 0 ? "var(--negative-text)" : "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18" }}>
+                  {totalReturnAbs != null ? `${totalReturnAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(totalReturnAbs), assetCur, displayCurrency)}` : "—"}
                 </span>
-                {totalReturnAbs != null && avgBuyPrice && asset.buy_price && asset.buy_price > 0 && nativePrice != null && (
+                {totalReturnAbs != null && avgBuyPrice != null && avgBuyPrice > 0 && livePrice != null && (
                   <span style={{
                     fontSize: 11, fontWeight: 500,
                     color: totalReturnAbs >= 0 ? "var(--positive-text)" : "var(--negative-text)",
                     letterSpacing: "0.01em",
                     fontFeatureSettings: '"tnum" 1',
                   }}>
-                    {totalReturnAbs >= 0 ? "+" : ""}{(((nativePrice - asset.buy_price) / asset.buy_price) * 100).toFixed(1)}%
+                    {totalReturnAbs >= 0 ? "+" : "−"}{Math.abs((livePrice - avgBuyPrice) / avgBuyPrice * 100).toFixed(1)}%
                   </span>
                 )}
               </div>
@@ -268,7 +349,7 @@ export function TradeableDetail({ asset }: Props) {
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Avg buy</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18" }}>
-                  {avgBuyPrice != null ? formatMoney(avgBuyPrice, displayCurrency) : "—"}
+                  {avgBuyPrice != null ? formatMoney(avgBuyPrice, assetCur, displayCurrency) : "—"}
                 </span>
                 {avgBuyYear && (
                   <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em" }}>
@@ -316,12 +397,13 @@ export function TradeableDetail({ asset }: Props) {
                 delta = `−${m.before_units.toLocaleString()} ${noun}`; deltaPositive = false;
               } else if (m.after_value != null) {
                 // No unit data: fall back to signed value delta
+                const mCur = m.currency || assetCur;
                 if (m.action === "add" && m.before_value == null) {
-                  delta = `${formatMoney(m.after_value, displayCurrency)}`; deltaNeutral = true;
+                  delta = `${formatMoney(m.after_value, mCur, displayCurrency)}`; deltaNeutral = true;
                 } else {
                   const d = (m.after_value ?? 0) - (m.before_value ?? 0);
                   if (d !== 0) {
-                    delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                    delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), mCur, displayCurrency)}`; deltaPositive = d >= 0;
                   }
                 }
               }

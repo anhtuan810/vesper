@@ -1,5 +1,4 @@
 import { normalizePrice } from "@/lib/prices";
-import { toEur } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL, FETCH_TIMEOUT_MS, PRICE_CACHE_TTL_MS } from "@/lib/constants";
 
 // ── Price history ─────────────────────────────────────────────────────────────
@@ -59,9 +58,9 @@ interface YahooResult {
 
 export interface PriceResult {
   symbol: string;
-  price: number;          // EUR-converted
-  previousClose: number;  // raw — used for % change only, no FX needed
-  nativePrice: number;    // original Yahoo price in nativeCurrency
+  price: number;          // native currency (Yahoo's original, after GBp normalisation)
+  previousClose: number;  // native currency — same base, so % change is always correct
+  nativePrice: number;    // alias for price; kept for backwards compatibility
   nativeCurrency: string;
   error?: string;
 }
@@ -92,26 +91,9 @@ export async function fetchYahooPrice(symbol: string): Promise<PriceResult> {
       nativeCurrency: yahooCurrency === "GBp" ? "GBP" : yahooCurrency,
     };
 
-    const [eurPrice, eurPrevClose] = await Promise.all([
-      toEur(yahoo.price, yahoo.nativeCurrency),
-      toEur(yahoo.previousClose, yahoo.nativeCurrency),
-    ]);
-
-    if (eurPrice === null) {
-      // FX unavailable — return raw price so the app still shows something
-      const result: Omit<PriceResult, "symbol"> = {
-        price: yahoo.price,
-        previousClose: yahoo.previousClose,
-        nativePrice: yahoo.price,
-        nativeCurrency: yahoo.nativeCurrency,
-      };
-      priceCache.set(symbol, { data: result, ts: Date.now() });
-      return { symbol, ...result };
-    }
-
     const result: Omit<PriceResult, "symbol"> = {
-      price: eurPrice,
-      previousClose: eurPrevClose ?? yahoo.previousClose,
+      price: yahoo.price,
+      previousClose: yahoo.previousClose,
       nativePrice: yahoo.price,
       nativeCurrency: yahoo.nativeCurrency,
     };

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { writeSnapshot } from "@/lib/snapshot";
 import { computeNetWorth } from "@/lib/utils";
+import { getUsdRates } from "@/lib/fx";
 
 const ALLOWED_FIELDS = new Set([
   "type", "name", "value", "currency", "country", "symbol", "units",
@@ -57,9 +58,15 @@ export async function POST(req: NextRequest) {
 
     const { data: allAssets } = await supabase
       .from("assets")
-      .select("type, value, mortgage_balance")
+      .select("type, value, currency, mortgage_balance")
       .eq("user_id", user.id);
-    const portfolioTotal = computeNetWorth(allAssets || []);
+    const usdRates = await getUsdRates();
+    const toUsdSync = (amount: number, currency: string) => {
+      if (currency === "USD") return amount;
+      const rate = usdRates[currency];
+      return rate ? amount / rate : amount;
+    };
+    const portfolioTotal = computeNetWorth(allAssets || [], toUsdSync);
 
     const { data: mutation } = await supabase
       .from("mutations")

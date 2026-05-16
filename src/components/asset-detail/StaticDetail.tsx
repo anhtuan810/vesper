@@ -13,8 +13,8 @@ interface Props {
   asset: StaticAsset | BondsAsset;
 }
 
-function HeroPrice({ amount, displayCurrency }: { amount: number; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
-  const parts = formatMoneyParts(amount, displayCurrency);
+function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; fromCurrency: string; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
+  const parts = formatMoneyParts(amount, fromCurrency, displayCurrency);
   return (
     <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.1em" }}>
       {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
@@ -149,7 +149,7 @@ export function StaticDetail({ asset }: Props) {
             fontVariationSettings: "'opsz' 60",
             marginBottom: 10,
           }}>
-            <HeroPrice amount={asset.value} displayCurrency={displayCurrency} />
+            <HeroPrice amount={asset.value} fromCurrency={asset.currency || "USD"} displayCurrency={displayCurrency} />
           </div>
           {showPill && (
             <div style={{
@@ -170,11 +170,11 @@ export function StaticDetail({ asset }: Props) {
                   : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />
                 }
               </svg>
-              {thisYearDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(thisYearDelta), displayCurrency)} this year
+              {thisYearDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(thisYearDelta), asset.currency || "USD", displayCurrency)} this year
             </div>
           )}
           {/* Native currency subtitle */}
-          {asset.currency && asset.currency !== "EUR" && (
+          {asset.currency && asset.currency !== "USD" && (
             <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-sans)" }}>
               Native currency: {asset.currency}
             </div>
@@ -196,17 +196,18 @@ export function StaticDetail({ asset }: Props) {
               let deltaPositive = true;
               let deltaNeutral = false;
 
+              const mCur = m.currency || asset.currency || "USD";
               if (m.after_value != null) {
                 if (m.action === "add" && m.before_value == null) {
-                  delta = `Bought ${formatMoney(m.after_value, displayCurrency)}`; deltaNeutral = true;
+                  delta = `Bought ${formatMoney(m.after_value, mCur, displayCurrency)}`; deltaNeutral = true;
                 } else if (m.action === "add" && m.before_value != null) {
                   const d = m.after_value - m.before_value;
-                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), mCur, displayCurrency)}`; deltaPositive = d >= 0;
                 } else if (m.action === "edit" && m.before_value != null) {
                   const d = m.after_value - m.before_value;
-                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                  delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), mCur, displayCurrency)}`; deltaPositive = d >= 0;
                 } else {
-                  delta = formatMoney(m.after_value, displayCurrency); deltaNeutral = true;
+                  delta = formatMoney(m.after_value, mCur, displayCurrency); deltaNeutral = true;
                 }
               }
 

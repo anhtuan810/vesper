@@ -88,7 +88,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series }: NetWort
   }
 
   const sign = isPositive ? "" : "−";
-  const formattedAbs = activeAbs != null ? formatMoney(Math.abs(activeAbs), displayCurrency) : null;
+  const formattedAbs = activeAbs != null ? formatMoney(Math.abs(activeAbs), "USD", displayCurrency) : null;
   const formattedPct = activePct != null ? fmtPct(Math.abs(activePct)) : null;
 
   return (
@@ -108,7 +108,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series }: NetWort
           fontVariationSettings: "'opsz' 60",
         }}
       >
-        <span>{formatMoney(displayValue, displayCurrency)}</span>
+        <span>{formatMoney(displayValue, "USD", displayCurrency)}</span>
       </div>
 
       {/* Change line — IBKR-style plain text, no pill */}

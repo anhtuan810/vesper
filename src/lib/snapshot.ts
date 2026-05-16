@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
-import { getEurRates } from "@/lib/fx";
+import { getUsdRates } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 
 // TODO: live-price snapshots — tradeable asset values here are DB-stored, not real-time.
@@ -13,26 +13,35 @@ export async function writeSnapshot(userId: string): Promise<void> {
 
     const { data: assets, error } = await supabase
       .from("assets")
-      .select("type, value, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
+      .select("type, value, currency, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
       .eq("user_id", userId);
 
     if (error) throw error;
     if (!assets || assets.length === 0) return;
 
+    const fx = await getUsdRates();
+    const toUsd = (amount: number, currency: string) => {
+      if (currency === "USD") return amount;
+      const rate = fx[currency];
+      return rate ? amount / rate : amount;
+    };
+
     const now = new Date();
     const netTotal = assets.reduce((sum, a) => {
-      if (a.type === "real_estate") {
-        return sum + (a.value as number) - computeCurrentBalance(a, now);
-      }
-      return sum + (a.value as number);
+      const cur = (a.currency as string | null) || "USD";
+      const equity = a.type === "real_estate"
+        ? (a.value as number) - computeCurrentBalance(a, now)
+        : (a.value as number);
+      return sum + toUsd(equity, cur);
     }, 0);
 
     const breakdown: Record<string, number> = {};
     for (const a of assets) {
-      const contribution = a.type === "real_estate"
+      const cur = (a.currency as string | null) || "USD";
+      const equity = a.type === "real_estate"
         ? (a.value as number) - computeCurrentBalance(a, now)
         : (a.value as number);
-      breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + contribution;
+      breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + toUsd(equity, cur);
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -169,7 +178,7 @@ export async function backfillSnapshots(userId: string): Promise<void> {
     // Load all assets
     const { data: assets, error: aErr } = await supabase
       .from("assets")
-      .select("id, type, value, symbol, created_at, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
+      .select("id, type, value, currency, symbol, created_at, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
       .eq("user_id", userId);
     if (aErr) throw aErr;
     if (!assets || assets.length === 0) return;
@@ -226,7 +235,7 @@ export async function backfillSnapshots(userId: string): Promise<void> {
       }),
     );
 
-    const fx = await getEurRates();
+    const fx = await getUsdRates();
     const dates = targetSnapshotDates(earliest, todayStr);
     if (dates.length === 0) return;
 
@@ -253,17 +262,20 @@ export async function backfillSnapshots(userId: string): Promise<void> {
                 const raw = normalizePrice(priceEntry.price, priceEntry.currency);
                 const cur = priceEntry.currency === "GBp" ? "GBP" : priceEntry.currency;
                 const native = raw * units;
-                contribution = cur === "EUR" ? native : (fx[cur] ? native / fx[cur] : 0);
+                contribution = cur === "USD" ? native : (fx[cur] ? native / fx[cur] : 0);
               }
             }
           }
         } else if (type === "real_estate") {
-          // computeCurrentBalance projects the mortgage balance backwards correctly
-          contribution = (asset.value as number) - computeCurrentBalance(asset, asOf);
+          const cur = (asset.currency as string | null) || "USD";
+          const equity = (asset.value as number) - computeCurrentBalance(asset, asOf);
+          contribution = cur === "USD" ? equity : (fx[cur] ? equity / fx[cur] : 0);
         } else {
           // Cash / bonds / pension / other: use current value from inception date onward
           if (date >= inception) {
-            contribution = asset.value as number;
+            const cur = (asset.currency as string | null) || "USD";
+            const val = asset.value as number;
+            contribution = cur === "USD" ? val : (fx[cur] ? val / fx[cur] : 0);
           }
         }
 

@@ -20,9 +20,9 @@ function buildPortfolioSummary(assets: Asset[]): string {
       const pct = grossTotal > 0 ? ((a.value / grossTotal) * 100).toFixed(0) : "0";
       if (a.type === "real_estate") {
         const equity = Math.round(a.value - computeCurrentBalance(a));
-        return `- ${a.name} (real_estate): €${equity.toLocaleString()} equity, ${pct}% of gross`;
+        return `- ${a.name} (real_estate): $${equity.toLocaleString()} equity, ${pct}% of gross`;
       }
-      let line = `- ${a.name} (${a.type}): €${Math.round(a.value).toLocaleString()} (${pct}%)`;
+      let line = `- ${a.name} (${a.type}): $${Math.round(a.value).toLocaleString()} (${pct}%)`;
       if (a.units && a.symbol) line += `, ${a.units} ${a.symbol} shares`;
       return line;
     })
@@ -34,7 +34,7 @@ function buildPortfolioSummary(assets: Asset[]): string {
     .join(", ");
 
   return [
-    `Net worth: €${Math.round(netTotal).toLocaleString()} (gross: €${Math.round(grossTotal).toLocaleString()})`,
+    `Net worth: $${Math.round(netTotal).toLocaleString()} (gross: $${Math.round(grossTotal).toLocaleString()})`,
     `Positions:\n${positions}`,
     `Allocation: ${alloc}`,
   ].join("\n");

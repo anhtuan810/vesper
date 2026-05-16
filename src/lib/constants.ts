@@ -3,7 +3,7 @@ export const YAHOO_FINANCE_BASE_URL =
   "https://query1.finance.yahoo.com/v8/finance/chart";
 
 export const FRANKFURTER_URL =
-  "https://api.frankfurter.app/latest?base=EUR&symbols=USD,GBP,CHF,JPY,CAD,AUD,HKD";
+  "https://api.frankfurter.app/latest?base=USD&symbols=EUR,GBP,CHF,JPY,CAD,AUD,HKD";
 
 // ── Fetch ──────────────────────────────────────────────────────────────────────
 export const FETCH_TIMEOUT_MS = 6000;
@@ -28,16 +28,16 @@ export const DIARY_PAGE_SIZE        = 100;
 export const PRICES_POLL_INTERVAL_MS   = 10 * 60 * 1000; // 10 minutes
 export const PRICES_SAFETY_TIMEOUT_MS  = 3000;           // 3 seconds
 
-// ── FX fallback rates (EUR as base) ───────────────────────────────────────────
+// ── FX fallback rates (USD as base, 1 USD = N quote) ─────────────────────────
 // Last reviewed: 2026. These drift over time; review annually.
-export const EUR_FALLBACK_RATES: Record<string, number> = {
-  USD: 1.12,
-  GBP: 0.85,
-  CHF: 0.94,
-  JPY: 160,
-  CAD: 1.56,
-  AUD: 1.75,
-  HKD: 8.72,
+export const USD_FALLBACK_RATES: Record<string, number> = {
+  EUR: 0.89,
+  GBP: 0.76,
+  CHF: 0.84,
+  JPY: 143,
+  CAD: 1.39,
+  AUD: 1.56,
+  HKD: 7.79,
 };
 
 // ── Client-side sessionStorage cache key helpers ───────────────────────────────

@@ -1,6 +1,8 @@
 "use client";
 
 import type { BondsAsset } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 
 interface Props {
   asset: BondsAsset;
@@ -34,6 +36,7 @@ function formatMaturityDate(str: string): string {
 }
 
 export function BondBlock({ asset }: Props) {
+  const displayCurrency = useDisplayCurrency();
   const { issuer, coupon_rate, maturity_date, isin } = asset;
   const timeToMaturity = maturity_date ? computeTimeToMaturity(maturity_date) : null;
   const maturityDisplay = maturity_date ? formatMaturityDate(maturity_date) : "—";
@@ -43,7 +46,7 @@ export function BondBlock({ asset }: Props) {
 
   const rows = [
     { label: "Issuer", value: issuer ?? "—", meta: null, isin: false },
-    { label: "Coupon", value: coupon_rate != null ? `${coupon_rate.toFixed(1)}%` : "—", meta: annualCoupon != null ? `€${Math.round(annualCoupon).toLocaleString("en")} / year` : null, isin: false },
+    { label: "Coupon", value: coupon_rate != null ? `${coupon_rate.toFixed(1)}%` : "—", meta: annualCoupon != null ? `${formatMoney(annualCoupon, asset.currency || "USD", displayCurrency)} / year` : null, isin: false },
     { label: "Maturity", value: maturityDisplay, meta: timeToMaturity, isin: false },
     { label: "ISIN", value: isin ?? "—", meta: null, isin: true },
   ];

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { validateEnv } from "@/lib/env";
-import { getEurRates } from "@/lib/fx";
+import { getUsdRates } from "@/lib/fx";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
 import { DIARY_DAILY_LIMIT } from "@/lib/constants";
 
@@ -12,14 +12,14 @@ validateEnv();
 
 const anthropic = new Anthropic();
 
-/** Format a EUR-stored value in the user's display currency using server-side rates. */
-function fmtDisplay(eurValue: number, currency: DisplayCurrency, rates: Record<string, number>): string {
-  if (currency === "EUR") {
-    return `€${Math.round(eurValue).toLocaleString("en")}`;
+/** Format a USD-stored value in the user's display currency using server-side rates. */
+function fmtDisplay(usdValue: number, currency: DisplayCurrency, rates: Record<string, number>): string {
+  if (currency === "USD") {
+    return `$${Math.round(usdValue).toLocaleString("en")}`;
   }
   const rate = rates[currency] ?? 1;
-  const displayValue = Math.round(eurValue * rate);
-  const sym = currency === "USD" ? "$" : "£";
+  const displayValue = Math.round(usdValue * rate);
+  const sym = currency === "EUR" ? "€" : "£";
   return `${sym}${displayValue.toLocaleString("en")}`;
 }
 
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       .single();
     const displayCurrency: DisplayCurrency = isSupportedCurrency(userData?.display_currency)
       ? (userData?.display_currency as DisplayCurrency)
-      : "EUR";
+      : "USD";
 
     // 5. Compute cache key
     const mutationsForHash = (mutations as MutationRow[])
@@ -95,8 +95,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 8. Build prompt + call Claude
-    const rates = await getEurRates();
+    const rates = await getUsdRates();
+    // startVal/endVal are snapshot total_value rows (USD). Mutation values are in m.currency (native).
     const fmt = (v: number) => fmtDisplay(v, displayCurrency, rates);
+    const fmtNative = (v: number, currency: string | null) => {
+      // Convert native currency → USD, then format for display.
+      const cur = currency || "USD";
+      const usd = cur === "USD" ? v : (rates[cur] ? v / rates[cur] : v);
+      return fmtDisplay(usd, displayCurrency, rates);
+    };
 
     const change = endVal - startVal;
     const changePct = startVal > 0 ? ((change / startVal) * 100).toFixed(1) : "0";
@@ -106,11 +113,11 @@ export async function POST(req: NextRequest) {
         const date = m.occurred_at ? ` (${m.occurred_at})` : "";
         const ctx = m.personal_context ? ` — "${m.personal_context}"` : "";
         if (m.action === "add")
-          return `Added ${m.asset_name}: ${fmt(m.after_value ?? 0)}${date}${ctx}`;
+          return `Added ${m.asset_name}: ${fmtNative(m.after_value ?? 0, m.currency)}${date}${ctx}`;
         if (m.action === "edit")
-          return `Updated ${m.asset_name}: ${fmt(m.before_value ?? 0)} → ${fmt(m.after_value ?? 0)}${date}${ctx}`;
+          return `Updated ${m.asset_name}: ${fmtNative(m.before_value ?? 0, m.currency)} → ${fmtNative(m.after_value ?? 0, m.currency)}${date}${ctx}`;
         if (m.action === "remove")
-          return `Removed ${m.asset_name}: ${fmt(m.before_value ?? 0)}${date}${ctx}`;
+          return `Removed ${m.asset_name}: ${fmtNative(m.before_value ?? 0, m.currency)}${date}${ctx}`;
         return null;
       })
       .filter(Boolean)

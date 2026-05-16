@@ -22,9 +22,9 @@ function formatAmount(n: number, compact: boolean): { main: string; suf: string 
 }
 
 // columnGap (not marginRight) keeps the symbol gap immune to parent's negative letter-spacing
-export function PriceDisplay({ amount, currency = "EUR", compact = false, displayCurrency }: PriceDisplayProps) {
+export function PriceDisplay({ amount, currency = "USD", compact = false, displayCurrency }: PriceDisplayProps) {
   if (displayCurrency) {
-    const parts = formatMoneyParts(amount, displayCurrency);
+    const parts = formatMoneyParts(amount, currency, displayCurrency);
     return (
       <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.12em" }}>
         {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}

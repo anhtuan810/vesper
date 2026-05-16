@@ -16,8 +16,8 @@ interface Props {
   asset: RealEstateAsset;
 }
 
-function HeroPrice({ amount, displayCurrency }: { amount: number; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
-  const parts = formatMoneyParts(amount, displayCurrency);
+function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; fromCurrency: string; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
+  const parts = formatMoneyParts(amount, fromCurrency, displayCurrency);
   return (
     <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.1em" }}>
       {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
@@ -71,7 +71,7 @@ export function RealEstateDetail({ asset }: Props) {
     : null;
 
   const propertyRows = [
-    { label: "Value", value: formatMoney(asset.value, displayCurrency), meta: null },
+    { label: "Value", value: formatMoney(asset.value, asset.currency || "USD", displayCurrency), meta: null },
     asset.size_sqm ? { label: "Size", value: `${asset.size_sqm} m²`, meta: null } : null,
     purchaseDate ? { label: "Owned since", value: purchaseDate, meta: yearsOwned != null ? `${yearsOwned} years` : null } : null,
   ].filter(Boolean) as { label: string; value: string; meta: string | null }[];
@@ -139,7 +139,7 @@ export function RealEstateDetail({ asset }: Props) {
             fontVariationSettings: "'opsz' 60",
             marginBottom: 10,
           }}>
-            <HeroPrice amount={equity} displayCurrency={displayCurrency} />
+            <HeroPrice amount={equity} fromCurrency={asset.currency || "USD"} displayCurrency={displayCurrency} />
           </div>
           {purchaseYear != null && valueGain != null && (
             <div style={{
@@ -160,7 +160,7 @@ export function RealEstateDetail({ asset }: Props) {
                   : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />
                 }
               </svg>
-              {valueGain >= 0 ? "+" : "−"}{formatMoney(Math.abs(valueGain), displayCurrency)} since {purchaseYear}
+              {valueGain >= 0 ? "+" : "−"}{formatMoney(Math.abs(valueGain), asset.currency || "USD", displayCurrency)} since {purchaseYear}
             </div>
           )}
         </div>
@@ -229,13 +229,14 @@ export function RealEstateDetail({ asset }: Props) {
               let deltaPositive = true;
               let deltaNeutral = false;
 
+              const mCur = m.currency || asset.currency || "USD";
               if (m.after_value != null) {
                 if (m.action === "add" && m.before_value == null) {
-                  delta = `Bought ${formatMoney(m.after_value, displayCurrency)}`; deltaNeutral = true;
+                  delta = `Bought ${formatMoney(m.after_value, mCur, displayCurrency)}`; deltaNeutral = true;
                 } else {
                   const d = (m.after_value ?? 0) - (m.before_value ?? 0);
                   if (d !== 0) {
-                    delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), displayCurrency)}`; deltaPositive = d >= 0;
+                    delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), mCur, displayCurrency)}`; deltaPositive = d >= 0;
                   }
                 }
               }

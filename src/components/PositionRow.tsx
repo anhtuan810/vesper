@@ -85,7 +85,7 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
             className="text-fg"
             style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
           >
-            {formatMoney(asset.value, displayCurrency)}
+            {formatMoney(asset.value, asset.currency || "USD", displayCurrency)}
           </div>
           {isTradeable && chg !== null && (
             <div

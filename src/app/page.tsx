@@ -7,7 +7,7 @@ import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { computeCurrentBalance } from "@/lib/mortgage";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, toUsdClient } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 
@@ -66,9 +66,13 @@ export default function Dashboard() {
   const {
     netTotal, grossTotal, liveCount, totalSymbols,
   } = useMemo(() => {
-    const netTotal = assets.reduce((sum, a) =>
-      sum + (a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value), 0);
-    const grossTotal = assets.reduce((sum, a) => sum + a.value, 0);
+    const netTotal = assets.reduce((sum, a) => {
+      const cur = a.currency || "USD";
+      const valueUsd = toUsdClient(a.value, cur);
+      const mortUsd = a.type === "real_estate" ? toUsdClient(computeCurrentBalance(a), cur) : 0;
+      return sum + valueUsd - mortUsd;
+    }, 0);
+    const grossTotal = assets.reduce((sum, a) => sum + toUsdClient(a.value, a.currency || "USD"), 0);
     const liveCount = assets.filter((a) => a.livePrice).length;
     const totalSymbols = assets.filter((a) => a.symbol).length;
     return { netTotal, grossTotal, liveCount, totalSymbols };
@@ -187,7 +191,7 @@ export default function Dashboard() {
               className="font-serif font-light text-fg leading-none mb-3"
               style={{ fontSize: 48, letterSpacing: "-0.035em", fontVariationSettings: "'opsz' 144" }}
             >
-              {formatMoney(0, displayCurrency)}
+              {formatMoney(0, "USD", displayCurrency)}
             </div>
             <div className="text-sm text-dim mb-2">No positions yet</div>
             <p className="text-faint text-xs max-w-xs leading-relaxed mb-8">

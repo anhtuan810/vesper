@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney, type DisplayCurrency } from "@/lib/money";
+import { formatMoney, toUsdClient, type DisplayCurrency } from "@/lib/money";
 import type { Mutation } from "@/lib/supabase";
 import { AssetLogo } from "@/components/AssetLogo";
 
@@ -54,10 +54,11 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
     }
   }
 
+  const cur = m.currency || "USD";
   if (m.action === "add" && m.after_value != null) {
     return (
       <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
-        +{formatMoney(m.after_value, displayCurrency)}
+        +{formatMoney(m.after_value, cur, displayCurrency)}
       </span>
     );
   }
@@ -65,19 +66,19 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
     const valDelta = m.before_value != null && m.after_value != null ? m.after_value - m.before_value : null;
     if (valDelta !== null && valDelta !== 0) return (
       <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
-        {valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, displayCurrency)}
+        {valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, cur, displayCurrency)}
       </span>
     );
     if (m.after_value != null) return (
       <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>
-        {formatMoney(m.after_value, displayCurrency)}
+        {formatMoney(m.after_value, cur, displayCurrency)}
       </span>
     );
   }
   if (m.action === "remove" && m.before_value != null) {
     return (
       <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
-        {formatMoney(m.before_value, displayCurrency)}
+        {formatMoney(m.before_value, cur, displayCurrency)}
       </span>
     );
   }
@@ -200,18 +201,17 @@ function buildDisplayItems(mutations: Mutation[], disableGrouping: boolean): Dia
   return items;
 }
 
-function abbrevMoney(value: number, displayCurrency: DisplayCurrency): string {
-  if (value >= 1_000_000) {
-    const sym = displayCurrency === "USD" ? "$" : displayCurrency === "GBP" ? "£" : "€";
-    return `${sym}${(value / 1_000_000).toFixed(1)}m`;
-  }
-  return formatMoney(value, displayCurrency);
+function abbrevMoney(usdValue: number, displayCurrency: DisplayCurrency): string {
+  const sym = displayCurrency === "USD" ? "$" : displayCurrency === "GBP" ? "£" : "€";
+  if (usdValue >= 1_000_000) return `${sym}${(usdValue / 1_000_000).toFixed(1)}m`;
+  return formatMoney(usdValue, "USD", displayCurrency);
 }
 
 function buildGroupAggregate(members: Mutation[], displayCurrency: DisplayCurrency): React.ReactNode {
   const action = members[0].action;
+  // Convert each mutation's value to USD before summing across potentially different currencies.
   if (action === "remove") {
-    const total = members.reduce((s, m) => s + (m.before_value ?? 0), 0);
+    const total = members.reduce((s, m) => s + toUsdClient(m.before_value ?? 0, m.currency || "USD"), 0);
     if (total === 0) return null;
     return (
       <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>
@@ -220,7 +220,7 @@ function buildGroupAggregate(members: Mutation[], displayCurrency: DisplayCurren
     );
   }
   if (action === "add") {
-    const total = members.reduce((s, m) => s + (m.after_value ?? 0), 0);
+    const total = members.reduce((s, m) => s + toUsdClient(m.after_value ?? 0, m.currency || "USD"), 0);
     if (total === 0) return null;
     return (
       <span style={{ fontSize: 13, fontWeight: 500, color: "var(--positive-text)" }}>
@@ -229,7 +229,9 @@ function buildGroupAggregate(members: Mutation[], displayCurrency: DisplayCurren
     );
   }
   const netDelta = members.reduce((s, m) => {
-    return s + (m.before_value != null && m.after_value != null ? m.after_value - m.before_value : 0);
+    if (m.before_value == null || m.after_value == null) return s;
+    const cur = m.currency || "USD";
+    return s + toUsdClient(m.after_value - m.before_value, cur);
   }, 0);
   if (netDelta === 0) return null;
   return (

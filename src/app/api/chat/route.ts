@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
-import { toEur } from "@/lib/fx";
+import { toUsd, getUsdRates } from "@/lib/fx";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
@@ -111,15 +111,16 @@ export async function POST(req: NextRequest) {
     const userName = userData?.name || undefined;
     const displayCurrency: DisplayCurrency = isSupportedCurrency(userData?.display_currency)
       ? (userData!.display_currency as DisplayCurrency)
-      : "EUR";
+      : "USD";
     const isNewUser = currentAssets.length === 0;
 
     // --- Build system prompt ---
+    const usdRates = isNewUser ? undefined : await getUsdRates();
     const systemBlocks: Anthropic.Messages.TextBlockParam[] = isNewUser
       ? [{ type: "text", text: buildOnboardingPrompt(displayCurrency), cache_control: { type: "ephemeral" } }]
       : [
           { type: "text", text: buildStaticSystem(displayCurrency), cache_control: { type: "ephemeral" } },
-          { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], displayCurrency, userName) },
+          { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], displayCurrency, userName, usdRates) },
         ];
 
     // --- Build conversation history (last 6 messages) ---
@@ -329,16 +330,16 @@ export async function POST(req: NextRequest) {
     if (goalRaw) {
       try {
         const goal = JSON.parse(goalRaw.trim());
-        // Convert goal target from display currency to EUR for storage.
-        let targetEur: number | null = goal.target_value ?? null;
-        if (targetEur !== null && goal.currency && goal.currency !== "EUR") {
-          const converted = await toEur(targetEur, goal.currency);
-          if (converted !== null) targetEur = Math.round(converted);
+        // Convert goal target from display currency to USD for storage.
+        let targetUsd: number | null = goal.target_value ?? null;
+        if (targetUsd !== null && goal.currency && goal.currency !== "USD") {
+          const converted = await toUsd(targetUsd, goal.currency);
+          if (converted !== null) targetUsd = Math.round(converted);
         }
         await supabase.from("goals").insert({
           user_id: userId,
           title: goal.title,
-          target_value: targetEur,
+          target_value: targetUsd,
           target_date: goal.target_date || null,
         });
       } catch (err) {

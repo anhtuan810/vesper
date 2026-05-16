@@ -154,7 +154,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
 
   const dataMin = closes.length >= 2 ? Math.min(...closes) : 0;
   const dataMax = closes.length >= 2 ? Math.max(...closes) : 1;
-  const { niceMin, niceMax, labels: yLabels } = computeNiceLevels(dataMin, dataMax);
+  const { niceMin, niceMax, labels: yLabels } = computeNiceLevels(dataMin * 0.97, dataMax * 1.03);
   const yRange = Math.max(niceMax - niceMin, 1);
 
   const up = closes.length >= 2 && closes[closes.length - 1] >= closes[0];

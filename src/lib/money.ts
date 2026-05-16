@@ -1,4 +1,4 @@
-import { EUR_FALLBACK_RATES, FX_STALE_AFTER_MS } from "@/lib/constants";
+import { USD_FALLBACK_RATES, FX_STALE_AFTER_MS } from "@/lib/constants";
 
 export type DisplayCurrency = "EUR" | "USD" | "GBP";
 
@@ -20,13 +20,13 @@ const CURRENCY_META: Record<DisplayCurrency, CurrencyMeta> = {
 };
 
 const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
-  USD: EUR_FALLBACK_RATES.USD,
-  GBP: EUR_FALLBACK_RATES.GBP,
+  EUR: USD_FALLBACK_RATES.EUR,
+  GBP: USD_FALLBACK_RATES.GBP,
 };
 
-// Client-side module-level EUR→X rate cache, seeded with fallback rates.
-// Populated at runtime by useFxRate() / useDisplayCurrency() via setEurRate().
-const eurRateCache: Partial<Record<DisplayCurrency, number>> = {
+// Client-side module-level USD→X rate cache, seeded with fallback rates.
+// Populated at runtime by useFxRate() / useDisplayCurrency() via setUsdRate().
+const usdRateCache: Partial<Record<DisplayCurrency, number>> = {
   ...FALLBACK_RATES,
 };
 
@@ -38,23 +38,21 @@ const STALE_MS  = FX_STALE_AFTER_MS;
 
 export type FxFreshness = "fresh" | "stale" | "unavailable";
 
-export function setEurRate(currency: DisplayCurrency, rate: number): void {
-  eurRateCache[currency] = rate;
+export function setUsdRate(currency: DisplayCurrency, rate: number): void {
+  usdRateCache[currency] = rate;
   rateTimestamps.set(currency, Date.now());
 }
 
-export function getEurRate(currency: DisplayCurrency): number {
-  if (currency === "EUR") return 1;
-  return eurRateCache[currency] ?? FALLBACK_RATES[currency] ?? 1;
+export function getUsdRate(currency: DisplayCurrency): number {
+  if (currency === "USD") return 1;
+  return usdRateCache[currency] ?? FALLBACK_RATES[currency] ?? 1;
 }
 
 export function getRateFreshness(currency: DisplayCurrency): FxFreshness {
-  if (currency === "EUR") return "fresh";
+  if (currency === "USD") return "fresh";
   const ts = rateTimestamps.get(currency);
   if (ts === undefined) {
-    // Fallback rate present but never live-fetched — treat as stale.
-    // 'unavailable' is reserved for when there is truly no rate at all.
-    return eurRateCache[currency] !== undefined ? "stale" : "unavailable";
+    return usdRateCache[currency] !== undefined ? "stale" : "unavailable";
   }
   const age = Date.now() - ts;
   if (age <= FRESH_MS)  return "fresh";
@@ -63,13 +61,24 @@ export function getRateFreshness(currency: DisplayCurrency): FxFreshness {
 }
 
 /**
- * Converts a display-currency amount to EUR.
- * Synchronous — reads from the in-process rate cache.
- * Returns a fractional EUR value; callers should round as appropriate.
+ * Converts an amount in any currency to USD using the client-side rate cache.
+ * Uses USD as the internal bridge. Works precisely for EUR and GBP;
+ * other currencies fall back to treating 1:1 with USD.
  */
-export function convertToEur(displayValue: number, displayCurrency: DisplayCurrency): number {
-  if (displayCurrency === "EUR") return displayValue;
-  const rate = getEurRate(displayCurrency);
+export function toUsdClient(amount: number, fromCurrency: string): number {
+  if (!fromCurrency || fromCurrency === "USD") return amount;
+  const rate = getUsdRate(fromCurrency as DisplayCurrency);
+  // rate = 1 USD = N fromCurrency → USD = fromCurrency / rate
+  return rate > 0 ? amount / rate : amount;
+}
+
+/**
+ * Converts a display-currency amount to USD.
+ * Synchronous — reads from the in-process rate cache.
+ */
+export function convertToUsd(displayValue: number, displayCurrency: DisplayCurrency): number {
+  if (displayCurrency === "USD") return displayValue;
+  const rate = getUsdRate(displayCurrency);
   return displayValue / rate;
 }
 
@@ -80,39 +89,45 @@ export interface MoneyParts {
   sign: string;
 }
 
+/**
+ * Formats a monetary amount for display.
+ * @param amount       Value in `fromCurrency`.
+ * @param fromCurrency The currency the value is stored in (e.g. "EUR", "USD", "GBP").
+ * @param displayCurrency The user's chosen display currency.
+ */
 export function formatMoney(
-  eurValue: number,
+  amount: number,
+  fromCurrency: string,
   displayCurrency: DisplayCurrency
 ): string {
-  const rate = getEurRate(displayCurrency);
-  const displayValue = Math.round(eurValue * rate);
+  const usdAmount = toUsdClient(amount, fromCurrency);
+  const rate = getUsdRate(displayCurrency);
+  const displayValue = Math.round(usdAmount * rate);
   const absValue = Math.abs(displayValue);
   const sign = displayValue < 0 ? "-" : "";
   const { symbol, locale } = CURRENCY_META[displayCurrency];
-  const amount = new Intl.NumberFormat(locale, {
+  const amount_ = new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
   }).format(absValue);
-  return `${sign}${symbol}${amount}`;
+  return `${sign}${symbol}${amount_}`;
 }
 
 const inFlightFetches = new Map<DisplayCurrency, Promise<number | null>>();
 
 /**
- * Fetches the latest EUR→currency rate, deduping concurrent calls.
- * If a fetch for the same currency is already in flight, all callers await
- * the same Promise.
+ * Fetches the latest USD→currency rate, deduping concurrent calls.
  */
-export function fetchEurRate(currency: DisplayCurrency): Promise<number | null> {
-  if (currency === "EUR") return Promise.resolve(1);
+export function fetchUsdRate(currency: DisplayCurrency): Promise<number | null> {
+  if (currency === "USD") return Promise.resolve(1);
 
   const existing = inFlightFetches.get(currency);
   if (existing) return existing;
 
-  const promise = fetch(`/api/fx?base=EUR&quote=${currency}`)
+  const promise = fetch(`/api/fx?base=USD&quote=${currency}`)
     .then((r) => r.json())
     .then((data) => {
       if (typeof data.rate === "number") {
-        setEurRate(currency, data.rate);
+        setUsdRate(currency, data.rate);
         return data.rate as number;
       }
       return null;
@@ -127,16 +142,18 @@ export function fetchEurRate(currency: DisplayCurrency): Promise<number | null> 
 }
 
 export function formatMoneyParts(
-  eurValue: number,
+  amount: number,
+  fromCurrency: string,
   displayCurrency: DisplayCurrency
 ): MoneyParts {
-  const rate = getEurRate(displayCurrency);
-  const displayValue = Math.round(eurValue * rate);
+  const usdAmount = toUsdClient(amount, fromCurrency);
+  const rate = getUsdRate(displayCurrency);
+  const displayValue = Math.round(usdAmount * rate);
   const absValue = Math.abs(displayValue);
   const sign = displayValue < 0 ? "-" : "";
   const { symbol, locale } = CURRENCY_META[displayCurrency];
-  const amount = new Intl.NumberFormat(locale, {
+  const amount_ = new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
   }).format(absValue);
-  return { symbol, amount, code: displayCurrency, sign };
+  return { symbol, amount: amount_, code: displayCurrency, sign };
 }

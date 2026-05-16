@@ -56,3 +56,18 @@ export async function fetchHistoricalPrice(
 export function normalizePrice(price: number, currency: string): number {
   return currency === "GBp" ? price / 100 : price;
 }
+
+export function priceAtDate(closes: number[], timestamps: number[], date: Date): number | null {
+  if (closes.length === 0) return null;
+  const targetTs = date.getTime() / 1000;
+  let closest: number | null = null;
+  let minDiff = Infinity;
+  timestamps.forEach((ts, i) => {
+    const diff = Math.abs(ts - targetTs);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = closes[i];
+    }
+  });
+  return closest;
+}

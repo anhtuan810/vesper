@@ -12,6 +12,7 @@ import { InsightBand } from "@/components/InsightBand";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines } from "@/lib/hooks";
+import { toUsdClient } from "@/lib/money";
 import type { LiveAsset } from "@/lib/supabase";
 
 // Semantic category mapping — 4 groups, regardless of how many asset types exist
@@ -111,7 +112,7 @@ export function PortfolioTab({
         category: cat,
         label: CATEGORY_LABEL[cat] ?? cat,
         items: [...items].sort((a, b) => b.value - a.value),
-        total: items.reduce((s, a) => s + a.value, 0),
+        total: items.reduce((s, a) => s + toUsdClient(a.value, a.currency || "USD"), 0),
       }))
       .sort((a, b) => b.total - a.total);
   }, [assets]);

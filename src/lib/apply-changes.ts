@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { computeNetWorth } from "./utils";
-import { toEur } from "./fx";
+import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
 
 type CurrentAsset = {
@@ -40,6 +40,7 @@ type PortfolioChange = {
   size_sqm?: number;
   latitude?: number;
   longitude?: number;
+  personal_context?: string;
 };
 
 export async function applyPortfolioChanges({
@@ -55,7 +56,14 @@ export async function applyPortfolioChanges({
   currentAssets: CurrentAsset[];
   contextNote: string | null;
 }): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[] }> {
-  let runningTotal = computeNetWorth(currentAssets);
+  // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
+  const usdRates = await getUsdRates();
+  const toUsdSync = (amount: number, currency: string): number => {
+    if (currency === "USD") return amount;
+    const rate = usdRates[currency];
+    return rate ? amount / rate : amount;
+  };
+  let runningTotal = computeNetWorth(currentAssets, toUsdSync);
   const duplicateWarnings: string[] = [];
   const fxWarnings: string[] = [];
   let changed = false;
@@ -102,9 +110,9 @@ export async function applyPortfolioChanges({
       const isRealEstate = (change.type || "other") === "real_estate";
 
       // For real estate, derive native currency from country when Claude omits it.
-      // For tradeables, Yahoo overrides this below. Other types default to EUR.
+      // For tradeables, Yahoo overrides this below. Other types default to USD.
       let resolvedCurrency = change.currency || (
-        isRealEstate ? countryToCurrency(change.country) : "EUR"
+        isRealEstate ? countryToCurrency(change.country) : "USD"
       );
 
       const resolved = resolvedPrices[i];
@@ -114,20 +122,10 @@ export async function applyPortfolioChanges({
         if (resolved.yahooCurrency) resolvedCurrency = resolved.yahooCurrency;
       }
 
-      // Real estate: convert stated value and mortgage money fields from the property's
-      // native currency to EUR. mortgage_rate is a percentage — not converted.
+      // Monetary fields stay in the asset's native currency — no conversion to USD.
+      // toUsdSync is used only for the runningTotal metadata below.
       let resolvedMortgageBalance = change.mortgage_balance ?? null;
       let resolvedMonthlyPayment = change.monthly_payment ?? null;
-      if (isRealEstate && resolvedCurrency !== "EUR") {
-        const [convVal, convBal, convPmt] = await Promise.all([
-          resolvedValue > 0 ? toEur(resolvedValue, resolvedCurrency) : Promise.resolve(0),
-          resolvedMortgageBalance != null ? toEur(resolvedMortgageBalance, resolvedCurrency) : Promise.resolve(null),
-          resolvedMonthlyPayment != null ? toEur(resolvedMonthlyPayment, resolvedCurrency) : Promise.resolve(null),
-        ]);
-        if (convVal !== null) resolvedValue = Math.round(convVal);
-        if (convBal !== null) resolvedMortgageBalance = Math.round(convBal);
-        if (convPmt !== null) resolvedMonthlyPayment = Math.round(convPmt);
-      }
 
       const resolvedLat: number | null = change.latitude ?? null;
       const resolvedLng: number | null = change.longitude ?? null;
@@ -162,7 +160,7 @@ export async function applyPortfolioChanges({
         console.error("ADD ERROR:", error);
       } else {
         changed = true;
-        runningTotal += resolvedValue;
+        runningTotal += toUsdSync(resolvedValue, resolvedCurrency);
         await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
@@ -174,7 +172,7 @@ export async function applyPortfolioChanges({
           before_units: null,
           after_units: change.units || null,
           currency: resolvedCurrency,
-          personal_context: contextNote,
+          personal_context: change.personal_context || contextNote,
           portfolio_total: runningTotal,
           occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
         });
@@ -211,43 +209,7 @@ export async function applyPortfolioChanges({
         if (change.latitude !== undefined) updateData.latitude = change.latitude;
         if (change.longitude !== undefined) updateData.longitude = change.longitude;
 
-        // Convert monetary fields from native currency to EUR for non-EUR real-estate edits.
-        // Claude states values in the property's native currency (same convention as add).
-        // mortgage_rate is a percentage — never converted.
-        if (existing.type === "real_estate" && existing.currency && existing.currency !== "EUR") {
-          const nativeCurrency = existing.currency;
-          const monetaryFields = ["value", "mortgage_balance", "monthly_payment"] as const;
-          const fieldLabels: Record<typeof monetaryFields[number], string> = {
-            value: "property value",
-            mortgage_balance: "mortgage balance",
-            monthly_payment: "monthly payment",
-          };
-          const toConvert = monetaryFields.filter((f) => updateData[f] !== undefined);
-          if (toConvert.length > 0) {
-            const conversions = await Promise.all(
-              toConvert.map((f) => toEur(updateData[f] as number, nativeCurrency))
-            );
-            const droppedLabels: string[] = [];
-            const succeededLabels: string[] = [];
-            toConvert.forEach((f, idx) => {
-              const converted = conversions[idx];
-              if (converted !== null) {
-                updateData[f] = Math.round(converted);
-                succeededLabels.push(fieldLabels[f]);
-              } else {
-                delete updateData[f];
-                droppedLabels.push(fieldLabels[f]);
-              }
-            });
-            if (droppedLabels.length > 0) {
-              const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-              const warning = succeededLabels.length === 0
-                ? `${cap(droppedLabels.join(" and "))} not updated — couldn't get a current ${nativeCurrency} rate. Try again in a moment.`
-                : `Updated ${succeededLabels.join(" and ")}. ${cap(droppedLabels.join(" and "))} not updated — ${nativeCurrency} rate unavailable. Try again in a moment.`;
-              fxWarnings.push(warning);
-            }
-          }
-        }
+        // Monetary fields stay in the asset's native currency — no conversion.
 
         const { error } = await supabase.from("assets").update(updateData).eq("id", existing.id);
 
@@ -256,7 +218,8 @@ export async function applyPortfolioChanges({
         } else {
           changed = true;
           const afterValue = updateData.value !== undefined ? (updateData.value as number) : existing.value;
-          runningTotal += afterValue - existing.value;
+          const editCur = change.currency || existing.currency || "USD";
+          runningTotal += toUsdSync(afterValue, editCur) - toUsdSync(existing.value, existing.currency || "USD");
 
           const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
           if (!onlyNameChanged) {
@@ -271,8 +234,8 @@ export async function applyPortfolioChanges({
               after_value: afterValue,
               before_units: existing.units || null,
               after_units: change.units !== undefined ? change.units : (existing.units || null),
-              currency: change.currency || existing.currency || "EUR",
-              personal_context: contextNote,
+              currency: change.currency || existing.currency || "USD",
+              personal_context: change.personal_context || contextNote,
               portfolio_total: runningTotal,
               occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
             });
@@ -287,7 +250,11 @@ export async function applyPortfolioChanges({
       );
 
       for (const existing of matching) {
-        const newRunningTotal = runningTotal - existing.value;
+        // Match how computeNetWorth counted this asset: equity for real estate, value for others.
+        const existingContribution = existing.type === "real_estate"
+          ? existing.value - (existing.mortgage_balance ?? 0)
+          : existing.value;
+        const newRunningTotal = runningTotal - toUsdSync(existingContribution, existing.currency || "USD");
 
         // INSERT the mutation row while asset_id still exists, then DELETE.
         // mutations.asset_id is ON DELETE SET NULL, so it nulls out post-delete and the row persists.
@@ -303,7 +270,7 @@ export async function applyPortfolioChanges({
           before_units: existing.units || null,
           after_units: null,
           currency: existing.currency || "EUR",
-          personal_context: contextNote,
+          personal_context: change.personal_context || contextNote,
           portfolio_total: newRunningTotal,
           occurred_at: new Date().toISOString().split("T")[0],
         });

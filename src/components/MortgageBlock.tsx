@@ -104,9 +104,9 @@ export function MortgageBlock({ asset }: Props) {
     : null;
 
   const rows = [
-    { label: "Balance", value: formatMoney(balance, displayCurrency), meta: null },
+    { label: "Balance", value: formatMoney(balance, asset.currency || "USD", displayCurrency), meta: null },
     { label: "Rate", value: rate != null ? `${rate.toFixed(1)}%` : "—", meta: null },
-    { label: "Payment", value: payment != null ? formatMoney(payment, displayCurrency) : "—", meta: "per month" },
+    { label: "Payment", value: payment != null ? formatMoney(payment, asset.currency || "USD", displayCurrency) : "—", meta: "per month" },
     { label: "Type", value: typeLabel, meta: null },
     { label: "Mortgage-free", value: mortgageFreeDate, meta: yearsToGo != null ? `${yearsToGo} years to go` : null },
   ];

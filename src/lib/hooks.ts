@@ -10,10 +10,10 @@ import {
   type DisplayCurrency,
   type FxFreshness,
   isSupportedCurrency,
-  setEurRate,
-  getEurRate,
+  setUsdRate,
+  getUsdRate,
   getRateFreshness,
-  fetchEurRate,
+  fetchUsdRate,
 } from "@/lib/money";
 import {
   SPARKLINES_TTL_MS,
@@ -220,11 +220,12 @@ export function useAssets(userId: string | undefined) {
     () => assets.map((a) => {
       if (a.symbol && a.units && prices[a.symbol]) {
         const p = prices[a.symbol];
-        // p.price is already EUR-converted by /api/prices
-        const eurValue = Math.round(p.price * a.units);
+        // p.price is the native Yahoo price (not USD-converted); value stays in native currency.
+        const nativeValue = Math.round(p.price * a.units);
         return {
           ...a,
-          value: eurValue,
+          value: nativeValue,
+          currency: p.nativeCurrency,
           livePrice: p.price,
           livePrev: p.previousClose,
           nativePrice: p.nativePrice,
@@ -326,7 +327,7 @@ export function useLivePrice(symbol: string | undefined) {
       .then((r) => r.json())
       .then((data: PriceResult) => {
         if (!cancelled && !data.error) {
-          // normalizePrice handles only the GBp edge case; price is already EUR-converted
+          // normalizePrice handles only the GBp edge case; price is already USD-converted
           setLivePrice(normalizePrice(data.price, data.nativeCurrency));
           setLivePrev(data.previousClose ?? null);
           setNativePrice(data.nativePrice ?? null);
@@ -344,17 +345,17 @@ export function useFxRate(currency: DisplayCurrency): { rate: number; freshness:
   const [, tick] = useState(0);  // force re-render when fetch resolves
 
   useEffect(() => {
-    if (currency === "EUR") return;
+    if (currency === "USD") return;
     // Skip fetch if rate is already fresh
     if (getRateFreshness(currency) === "fresh") return;
     let cancelled = false;
-    fetchEurRate(currency).then((rate) => {
+    fetchUsdRate(currency).then((rate) => {
       if (!cancelled && rate !== null) tick((n) => n + 1);
     });
     return () => { cancelled = true; };
   }, [currency]);
 
-  return { rate: getEurRate(currency), freshness: getRateFreshness(currency) };
+  return { rate: getUsdRate(currency), freshness: getRateFreshness(currency) };
 }
 
 export function useDisplayCurrency(): DisplayCurrency {
@@ -363,7 +364,7 @@ export function useDisplayCurrency(): DisplayCurrency {
 
 export function useDisplayCurrencyState(): { currency: DisplayCurrency; loaded: boolean } {
   const { user, loading: userLoading } = useUser();
-  const [currency, setCurrency] = useState<DisplayCurrency>("EUR");
+  const [currency, setCurrency] = useState<DisplayCurrency>("USD");
   const [loaded, setLoaded] = useState(false);
   const supabase = createBrowserSupabase();
 
@@ -386,7 +387,7 @@ export function useDisplayCurrencyState(): { currency: DisplayCurrency; loaded: 
 
   const { freshness } = useFxRate(currency);
 
-  const fullyLoaded = loaded && (currency === "EUR" || freshness !== "unavailable");
+  const fullyLoaded = loaded && (currency === "USD" || freshness !== "unavailable");
 
   return { currency, loaded: fullyLoaded };
 }

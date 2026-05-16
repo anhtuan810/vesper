@@ -73,7 +73,7 @@ export function HoldingsGroup({
           color: "var(--text)",
           flexShrink: 0,
         }}>
-          {formatMoney(total, displayCurrency)}
+          {formatMoney(total, "USD", displayCurrency)}
         </span>
 
         {/* Chevron */}
