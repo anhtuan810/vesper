@@ -18,6 +18,10 @@ function LoginInner() {
     ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
     : undefined;
 
+  const confirmUrl = (typeof window !== "undefined")
+    ? `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`
+    : undefined;
+
   async function signInWithGoogle() {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -33,7 +37,7 @@ function LoginInner() {
     setError(null);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: callbackUrl },
+      options: { emailRedirectTo: confirmUrl },
     });
     if (error) {
       setError(error.message);
@@ -251,7 +255,7 @@ function LoginInner() {
                 fontSize: 12, lineHeight: 1.55,
               }}
             >
-              Check your email for a sign-in link. You can close this tab.
+              Check your email. We've sent you a link to continue. You can close this tab.
             </div>
           )}
 

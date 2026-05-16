@@ -236,7 +236,7 @@ Added in PR 8 per Decision 10. The user enters mortgage values once. After that,
 - `middleware.ts` checks the session on every protected route and redirects to `/login`
 - The `users` table is auto-populated by a Supabase trigger on `auth.users` insert
 - Service role key used server-side; anon key used client-side (RLS enforces user scope)
-- Site URL: `https://app.novahub.nl`. Redirect URLs include `http://localhost:3000/auth/callback` for local dev.
+- Site URL: `https://app.volnar.nl`. Redirect URLs: `http://localhost:3000/**`, `https://app.volnar.nl/**` (wildcards cover all auth routes including `/auth/callback` and `/auth/confirm`).
 - Safari OAuth on localhost is broken due to ITP third-party cookie blocking — works in Chrome and other browsers; production unaffected.
 
 ## HTTP Cache-Control Headers
