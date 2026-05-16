@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { FormatText } from "@/components/FormatText";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
+import { getChatSeed, type ChatSeed, type SeedSource } from "@/lib/chat-seeds";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -31,6 +32,8 @@ export default function ChatPage() {
 
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
+  const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
+  const [pendingSeed, setPendingSeed] = useState<{ source: SeedSource; key: string } | null>(null);
 
   // Restore scroll position after prepending older messages (loadMore).
   // useLayoutEffect runs before paint so there's no visible jump.
@@ -65,19 +68,39 @@ export default function ChatPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const assetId = params.get("asset");
-    const seed = params.get("seed");
+    const seedParam = params.get("seed") as SeedSource | null;
+    const keyParam = params.get("key");
     const src = params.get("source");
     if (src) setSource(src);
     if (assetId) {
+      // Legacy ?asset=<id> path — defer until assets load
       setPendingAssetId(assetId);
       router.replace("/chat", { scroll: false });
-    } else if (seed) {
-      setInput(decodeURIComponent(seed));
+    } else if (seedParam && keyParam) {
+      if (seedParam === "asset") {
+        // Defer until assets load to build the message from asset name
+        setPendingSeed({ source: seedParam, key: keyParam });
+      } else if (seedParam === "insight") {
+        const msg = sessionStorage.getItem("volnar.insight.seed") || "";
+        sessionStorage.removeItem("volnar.insight.seed");
+        const seed = getChatSeed("insight", keyParam, msg || undefined);
+        if (seed) setSeedMessage(seed);
+      } else {
+        const seed = getChatSeed(seedParam, keyParam);
+        if (seed) setSeedMessage(seed);
+      }
       router.replace("/chat", { scroll: false });
-      setTimeout(() => inputRef.current?.focus(), 100);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Clear seed when the user sends their first message (typed or chip tap).
+  useEffect(() => {
+    if (!seedMessage) return;
+    const latestMsg = messages[messages.length - 1];
+    if (latestMsg?.from === "user") setSeedMessage(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -99,17 +122,26 @@ export default function ChatPage() {
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, loadMore]);
 
-  // When assets finish loading and we have a pending asset id, pre-fill the input.
+  // When assets finish loading, resolve pending asset seed (new path) or legacy pre-fill.
   useEffect(() => {
-    if (!pendingAssetId || assetsLoading) return;
-    const found = assets.find((a) => a.id === pendingAssetId);
-    setPendingAssetId(null);
-    if (found) {
-      setInput(`Tell me about my ${found.name}.`);
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (assetsLoading) return;
+    if (pendingSeed?.source === "asset") {
+      const found = assets.find((a) => a.id === pendingSeed.key);
+      setPendingSeed(null);
+      if (found) {
+        const seed = getChatSeed("asset", found.id, `What would you like to know about ${found.name}?`);
+        if (seed) setSeedMessage(seed);
+      }
+    } else if (pendingAssetId) {
+      const found = assets.find((a) => a.id === pendingAssetId);
+      setPendingAssetId(null);
+      if (found) {
+        const seed = getChatSeed("asset", found.id, `What would you like to know about ${found.name}?`);
+        if (seed) setSeedMessage(seed);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingAssetId, assetsLoading]);
+  }, [pendingAssetId, pendingSeed, assetsLoading]);
 
   return (
     <>
@@ -156,7 +188,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          {messages.length === 0 && (
+          {messages.length === 0 && !seedMessage && (
             <div>
               <div
                 className="text-dim mb-5 leading-relaxed"
@@ -275,6 +307,48 @@ export default function ChatPage() {
               );
             });
           })()}
+
+          {/* Synthetic seed message — local only, not persisted */}
+          {seedMessage && !loading && (
+            <div className="chat-msg flex flex-col items-start">
+              <div
+                style={{
+                  maxWidth: "92%",
+                  padding: "0",
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text)",
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  overflowWrap: "break-word",
+                  minWidth: 0,
+                }}
+              >
+                <FormatText text={seedMessage.message} />
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {seedMessage.chips.map((chip) => (
+                  <button
+                    key={chip}
+                    onClick={() => sendText(chip)}
+                    style={{
+                      height: 32,
+                      padding: "0 14px",
+                      borderRadius: 999,
+                      fontSize: 14,
+                      background: "var(--surface-elev)",
+                      color: "var(--text)",
+                      border: "1px solid var(--border)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {thinking && (
             <div className="flex items-center gap-0.5 py-1">

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { FormatText } from "@/components/FormatText";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useDisplayCurrency, useAssets } from "@/lib/hooks";
+import { getChatSeed, type ChatSeed } from "@/lib/chat-seeds";
 
 interface ChatPopupProps {
   userId?: string;
@@ -30,6 +31,7 @@ export default function ChatPopup({
     loadMore, hasMore, isLoadingMore,
   } = useChatSession({ userId, onPortfolioUpdate, onNewMessage });
 
+  const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
   const [size, setSize] = useState({ width: 400, height: 560 });
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
@@ -52,17 +54,26 @@ export default function ChatPopup({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Context-aware seed: when opened on /asset/[id] and input is empty, pre-fill.
+  // Context-aware seed: when opened on /asset/[id], show a seed message with chips.
   useEffect(() => {
     if (!isOpen || assets.length === 0) return;
     const match = pathname?.match(/^\/asset\/([^/]+)$/);
     if (!match) return;
     const found = assets.find((a) => a.id === match[1]);
-    if (found && !input) {
-      setInput(`Tell me about my ${found.name}.`);
+    if (found) {
+      const seed = getChatSeed("asset", found.id, `What would you like to know about ${found.name}?`);
+      if (seed) setSeedMessage(seed);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, pathname, assets]);
+
+  // Clear seed when the user sends their first message.
+  useEffect(() => {
+    if (!seedMessage) return;
+    const latestMsg = messages[messages.length - 1];
+    if (latestMsg?.from === "user") setSeedMessage(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -222,7 +233,7 @@ export default function ChatPopup({
             Loading older messages…
           </div>
         )}
-        {messages.length === 0 && (
+        {messages.length === 0 && !seedMessage && (
           <div>
             <div
               className="text-dim mb-4 leading-relaxed"
@@ -323,6 +334,48 @@ export default function ChatPopup({
             </div>
           ));
         })()}
+
+        {/* Synthetic seed message — local only, not persisted */}
+        {seedMessage && !loading && (
+          <div className="chat-msg flex flex-col items-start">
+            <div
+              style={{
+                maxWidth: "92%",
+                padding: "0",
+                background: "transparent",
+                border: "none",
+                color: "var(--text)",
+                fontSize: 14,
+                lineHeight: 1.55,
+                overflowWrap: "break-word",
+                minWidth: 0,
+              }}
+            >
+              <FormatText text={seedMessage.message} />
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {seedMessage.chips.map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => sendText(chip)}
+                  style={{
+                    height: 32,
+                    padding: "0 14px",
+                    borderRadius: 999,
+                    fontSize: 13,
+                    background: "var(--surface-elev)",
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {thinking && (
           <div className="flex items-center gap-0.5 py-1">
