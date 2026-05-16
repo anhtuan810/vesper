@@ -18,7 +18,7 @@ validateEnv();
 const anthropic = new Anthropic();
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
-const TAG_RE = /<(changes|update|context|goal|propose_address)>[\s\S]*?<\/\1>/g;
+const TAG_RE = /<(changes|update|context|goal|propose_address|suggested_replies)>[\s\S]*?<\/\1>/g;
 function stripTags(text: string) { return text.replace(TAG_RE, "").trim(); }
 function extractTag(text: string, tag: string) {
   return text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))?.[1] ?? null;
@@ -185,7 +185,20 @@ export async function POST(req: NextRequest) {
     const contextRaw = extractTag(raw, "context");
     const goalRaw = extractTag(raw, "goal");
     const proposeAddressRaw = extractTag(raw, "propose_address");
+    const suggestedRepliesRaw = extractTag(raw, "suggested_replies");
     let displayText = stripTags(raw);
+
+    let suggestedReplies: string[] | null = null;
+    if (suggestedRepliesRaw) {
+      try {
+        const parsed = JSON.parse(suggestedRepliesRaw.trim());
+        if (Array.isArray(parsed) && parsed.every((s) => typeof s === "string")) {
+          suggestedReplies = parsed;
+        }
+      } catch {
+        // malformed — skip
+      }
+    }
 
     // --- Address proposal flow (real estate adds / address edits) ---
     // When Claude emits <propose_address>, geocode and return chips — no DB write this turn.
@@ -350,7 +363,7 @@ export async function POST(req: NextRequest) {
     // --- Save user + assistant messages together after Claude succeeds ---
     await supabase.from("messages").insert(timestampedPair(
       { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
-      { user_id: userId, role: "assistant", content: displayText },
+      { user_id: userId, role: "assistant", content: displayText, suggested_replies: suggestedReplies },
     ));
 
     // --- Profile extraction ---
@@ -409,6 +422,7 @@ export async function POST(req: NextRequest) {
       message: displayText || "Done.",
       assets: updatedAssets,
       remaining: CHAT_DAILY_LIMIT - used,
+      suggested_replies: suggestedReplies,
     });
   } catch (err) {
     console.error("[/api/chat] unhandled error:", err);
