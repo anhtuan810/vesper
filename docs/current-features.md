@@ -159,8 +159,9 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 
 ### Conversational Assistant
 - **Single continuous thread per user** (per Decision 3). No "new chat", "clear history", or "session list" affordances anywhere. The mental model is "talking to a person," not "starting a new chat."
-- Mobile: full-page route at `/chat` with a 4-suggestion empty state and a context-aware seed when arrived from an asset detail page (`?asset=<id>` query param)
-- Desktop: floating popup (`ChatPopup`). Context-aware: when opened over `/asset/[id]`, pre-fills the input with `Tell me about my <name>.` (unless the user already has draft text)
+- **Chips on every assistant turn** (per Decision 12). Every response emits 3–4 `suggested_replies` representing the user's most likely next moves. Chips render below the last assistant message on both chat surfaces. Exceptions: bare save confirmations ("Done.") and turns where prose already enumerates choices.
+- Mobile: full-page route at `/chat`. Empty state shows an asset-class chip picker (Stocks & ETFs / Real estate / Crypto / Cash & savings / Pension & retirement / Other) that seeds the chat with context. Context-aware entry from asset detail or insight band opens with a synthetic assistant seed message + chips — typed input starts empty, not pre-filled.
+- Desktop: floating popup (`ChatPopup`). Context-aware: when opened over `/asset/[id]`, renders a synthetic assistant seed message ("What would you like to know about \<name\>?") with asset-detail chips — input is empty, not pre-filled.
 - **Cursor-based pagination on `/api/messages`** (`before=<message_id>&limit=20`) for scroll-back. Both surfaces use an IntersectionObserver sentinel at the top of the message list to trigger `loadMore()` from `useChatSession`. "Loading older messages…" indicator while in flight.
 - localStorage cache holds latest 20 messages with 24h TTL; older history fetched via scroll-back does NOT enter localStorage
 - Image paste support (Claude vision reads broker app screenshots)

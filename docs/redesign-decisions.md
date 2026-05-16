@@ -1,6 +1,6 @@
 # Redesign decisions
 
-## Status: all 11 decisions shipped
+## Status: all 12 decisions shipped
 
 | Decision | Shipped in |
 |---|---|
@@ -15,6 +15,7 @@
 | 9 — Property visual is the auto-generated map | PR 8 (with PR 12 cleanup) |
 | 10 — Mortgage auto-amortizes invisibly | PR 8 |
 | 11 — Cash is purpose-pot | PR 8 |
+| 12 — Chips first, typing as fallback | PR 22 |
 
 This file is preserved as the source-of-truth record of the rationale for each decision. The fold-into-other-docs notes inside each decision (telling you where to update `current-features.md`, `technical-decisions.md`, etc.) are now historical — those rewrites happened in the post-migration doc reconciliation pass. The decisions themselves remain authoritative.
 
@@ -270,6 +271,43 @@ Onboarding / chat prompts
 
 Data model
 - No schema changes.
+
+---
+
+## Decision 12 — Chips first, typing as fallback
+
+**The change:** Every assistant turn that has an enumerable next
+move offers chips for those moves. Typing is always available
+below the chips, never removed, never gated. Free typing is never
+the first ask — on every screen and every assistant turn, the
+first move is tappable.
+
+**Chip-mandatory turns:**
+- Onboarding — every step
+- Asset-add confirmations (Confirm / Edit / Cancel / Add more)
+- Asset-edit mode pickers (Update value / Add units / Sell /
+  Rename / Remove)
+- Asset-detail Q&A seeds (How is it performing? / When did I buy?
+  / What's my return?)
+- Insight band follow-ups (Tell me more / Why does this matter?
+  / What should I do?)
+- Diary entry follow-ups
+- After every freeform answer — 3-4 anticipated next questions
+
+**Where typing remains:**
+- Arbitrary numbers (units, values, dates) — only after a
+  chip-driven mode has narrowed the decision
+- Custom asset names not in any enumeration
+- Genuinely expressive questions the model can't pre-anticipate
+
+**Edge case:** If the user types instead of tapping, the assistant
+answers their typed input fully and conversationally — never
+"please tap an option." Chips are guidance, not rails.
+
+**Rationale:** Mobile-first users avoid typing in cold-start
+moments. Chips remove friction in known finite flows. Conversational
+expressiveness — and the typed input — remain the moat against
+form-based competitors. Both coexist; chips are the default.
 
 ---
 
