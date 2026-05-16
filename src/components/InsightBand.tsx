@@ -31,10 +31,18 @@ export function InsightBand() {
         background: "var(--accent-soft)",
         cursor: "pointer",
       }}
-      onClick={() => router.push("/chat?source=portfolio")}
+      onClick={() => {
+        sessionStorage.setItem("volnar.insight.seed", detail);
+        router.push("/chat?seed=insight&key=current");
+      }}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/chat?source=portfolio"); }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          sessionStorage.setItem("volnar.insight.seed", detail);
+          router.push("/chat?seed=insight&key=current");
+        }
+      }}
     >
       {/* Eyebrow */}
       <div

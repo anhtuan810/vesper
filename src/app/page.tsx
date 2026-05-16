@@ -12,6 +12,129 @@ import { ONBOARDING_OPENER } from "@/lib/copy";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 
+const ASSET_CLASS_ROWS = [
+  { label: "Stocks & ETFs",        slug: "stocks" },
+  { label: "Real estate",          slug: "real-estate" },
+  { label: "Crypto",               slug: "crypto" },
+  { label: "Cash & savings",       slug: "cash" },
+  { label: "Pension & retirement", slug: "pension" },
+  { label: "Other",                slug: "other" },
+] as const;
+
+function EmptyState() {
+  const router = useRouter();
+  const [pressed, setPressed] = useState<string | null>(null);
+
+  return (
+    <div
+      className="flex flex-col items-center text-center pt-24"
+      style={{ minHeight: "calc(100dvh - var(--nav-height) - 10rem)" }}
+    >
+      <div
+        className="logo-pulse flex items-center justify-center mb-10 font-serif text-accent"
+        style={{
+          width: 56, height: 56, borderRadius: 14,
+          background: "var(--accent-soft)",
+          border: "1px solid var(--border)",
+          fontSize: 22, fontVariationSettings: "'opsz' 144",
+        }}
+      >
+        V
+      </div>
+
+      <p
+        className="font-serif italic"
+        style={{
+          fontSize: 17, lineHeight: 1.42, maxWidth: 260,
+          fontVariationSettings: "'opsz' 22",
+          color: "var(--text)",
+          marginBottom: 28,
+        }}
+      >
+        {ONBOARDING_OPENER}
+      </p>
+
+      {/* Asset-class row picker */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          borderTop: "0.5px solid var(--border)",
+          borderBottom: "0.5px solid var(--border)",
+        }}
+      >
+        {ASSET_CLASS_ROWS.map(({ label, slug }) => (
+          <button
+            key={slug}
+            onClick={() => router.push(`/chat?seed=onboarding-class&key=${slug}`)}
+            onPointerDown={() => setPressed(slug)}
+            onPointerUp={() => setPressed(null)}
+            onPointerLeave={() => setPressed(null)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              padding: "16px 4px",
+              background: pressed === slug ? "var(--accent-soft)" : "transparent",
+              border: "none",
+              borderBottom: "0.5px solid var(--border)",
+              cursor: "pointer",
+              transition: "background 0.1s",
+            }}
+            className="last:border-b-0"
+          >
+            <span
+              className="font-serif"
+              style={{ fontSize: 17, fontStyle: "italic", color: "var(--text)" }}
+            >
+              {label}
+            </span>
+            <svg
+              viewBox="0 0 256 256"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={20}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ width: 14, height: 14, color: "var(--accent-text)", opacity: 0.5, flexShrink: 0 }}
+            >
+              <polyline points="96 48 176 128 96 208" />
+            </svg>
+          </button>
+        ))}
+      </div>
+
+      {/* 7th row — free-text fallback, visually subordinated */}
+      <button
+        onClick={() => router.push("/chat")}
+        style={{
+          marginTop: 12,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontSize: 13,
+          color: "var(--text-faint)",
+          fontFamily: "var(--sans)",
+        }}
+      >
+        Or describe it in your own words →
+      </button>
+
+      <p
+        className="font-serif italic"
+        style={{
+          marginTop: "auto",
+          fontSize: 12.5, lineHeight: 1.5, maxWidth: 230,
+          color: "var(--text-faint)",
+        }}
+      >
+        Nothing leaves this conversation.
+      </p>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
@@ -184,55 +307,7 @@ export default function Dashboard() {
           </div>
         )}
         {isEmpty ? (
-          <div
-            className="flex flex-col items-center text-center pt-24"
-            style={{ minHeight: "calc(100dvh - var(--nav-height) - 10rem)" }}
-          >
-            <div
-              className="logo-pulse flex items-center justify-center mb-10 font-serif text-accent"
-              style={{
-                width: 56, height: 56, borderRadius: 14,
-                background: "var(--accent-soft)",
-                border: "1px solid var(--border)",
-                fontSize: 22, fontVariationSettings: "'opsz' 144",
-              }}
-            >
-              V
-            </div>
-
-            <p
-              className="font-serif italic"
-              style={{
-                fontSize: 17, lineHeight: 1.42, maxWidth: 260,
-                fontVariationSettings: "'opsz' 22",
-                color: "var(--text)",
-              }}
-            >
-              {ONBOARDING_OPENER}
-            </p>
-
-            <button
-              onClick={() => router.push('/chat')}
-              className="mt-8 text-bg bg-accent hover:opacity-90 transition-opacity"
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: 14, padding: "10px 22px", borderRadius: 12,
-              }}
-            >
-              Tell me what you own
-            </button>
-
-            <p
-              className="font-serif italic"
-              style={{
-                marginTop: "auto",
-                fontSize: 12.5, lineHeight: 1.5, maxWidth: 230,
-                color: "var(--text-faint)",
-              }}
-            >
-              Nothing leaves this conversation.
-            </p>
-          </div>
+          <EmptyState />)
         ) : (
           <PortfolioTab
             assets={assets as LiveAsset[]}

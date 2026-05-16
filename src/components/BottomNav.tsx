@@ -66,7 +66,7 @@ export function BottomNav() {
   if (pathname === "/login") return null;
 
   const assetIdMatch = pathname.match(/^\/asset\/([^/]+)$/);
-  const chatHref = assetIdMatch ? `/chat?asset=${assetIdMatch[1]}` : "/chat";
+  const chatHref = assetIdMatch ? `/chat?seed=asset&key=${assetIdMatch[1]}` : "/chat";
 
   return (
     <nav
