@@ -307,7 +307,7 @@ export default function Dashboard() {
           </div>
         )}
         {isEmpty ? (
-          <EmptyState />)
+          <EmptyState />
         ) : (
           <PortfolioTab
             assets={assets as LiveAsset[]}
