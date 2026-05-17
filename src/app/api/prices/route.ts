@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateEnv } from "@/lib/env";
 import { getAuthUser } from "@/lib/supabase";
-import { fetchYahooPrice } from "@/lib/prices-server";
+import { fetchYahooPrice, fetchPriceWithFallback } from "@/lib/prices-server";
 
 validateEnv();
 
@@ -32,12 +32,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Symbols array required" }, { status: 400 });
   }
 
-  const validSymbols = symbols.filter((s): s is string => typeof s === "string" && s.length > 0);
-  if (validSymbols.length === 0) {
+  type Entry = { symbol: string; country?: string | null };
+  const entries: Entry[] = (symbols as unknown[]).flatMap((item) => {
+    if (typeof item === "string") return item.length > 0 ? [{ symbol: item }] : [];
+    if (item && typeof item === "object" && typeof (item as Entry).symbol === "string" && (item as Entry).symbol.length > 0) {
+      return [{ symbol: (item as Entry).symbol, country: (item as Entry).country }];
+    }
+    return [];
+  });
+
+  if (entries.length === 0) {
     return NextResponse.json({ error: "No valid symbols" }, { status: 400 });
   }
 
-  const results = await Promise.allSettled(validSymbols.map((s) => fetchYahooPrice(s)));
+  const results = await Promise.allSettled(
+    entries.map(({ symbol, country }) => fetchPriceWithFallback(symbol, country ?? undefined))
+  );
   const prices = results.map((r) => r.status === "fulfilled" ? r.value : null).filter(Boolean);
   return NextResponse.json({ prices });
 }

@@ -11,6 +11,7 @@ import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges } from "@/lib/apply-changes";
 import { validatePortfolioChanges } from "@/lib/validations";
 import { geocodeAddress } from "@/lib/geocode";
+import { venueChipsFor } from "@/lib/venues";
 import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 
 validateEnv();
@@ -18,7 +19,7 @@ validateEnv();
 const anthropic = new Anthropic();
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
-const TAG_RE = /<(changes|update|context|goal|propose_address|suggested_replies)>[\s\S]*?<\/\1>/g;
+const TAG_RE = /<(changes|update|context|goal|propose_address|propose_venue|suggested_replies)>[\s\S]*?<\/\1>/g;
 function stripTags(text: string) { return text.replace(TAG_RE, "").trim(); }
 function extractTag(text: string, tag: string) {
   return text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))?.[1] ?? null;
@@ -185,6 +186,7 @@ export async function POST(req: NextRequest) {
     const contextRaw = extractTag(raw, "context");
     const goalRaw = extractTag(raw, "goal");
     const proposeAddressRaw = extractTag(raw, "propose_address");
+    const proposeVenueRaw = extractTag(raw, "propose_venue");
     const suggestedRepliesRaw = extractTag(raw, "suggested_replies");
     let displayText = stripTags(raw);
 
@@ -227,6 +229,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         message: proposalText,
         suggested_replies: suggestedReplies,
+        assets: null,
+        remaining: CHAT_DAILY_LIMIT - used,
+      });
+    }
+
+    // --- Venue proposal flow (ETF adds) ---
+    if (proposeVenueRaw) {
+      const countryCounts = new Map<string, number>();
+      for (const a of currentAssets) {
+        if (a.country) countryCounts.set(a.country, (countryCounts.get(a.country) ?? 0) + 1);
+      }
+      let dominantCountry: string | null = null;
+      let maxCount = 0;
+      for (const [c, n] of countryCounts) {
+        if (n > maxCount) { dominantCountry = c; maxCount = n; }
+      }
+      const chips = venueChipsFor(dominantCountry ?? "");
+
+      await supabase.from("messages").insert(timestampedPair(
+        { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
+        { user_id: userId, role: "assistant", content: displayText, suggested_replies: chips },
+      ));
+
+      return NextResponse.json({
+        message: displayText,
+        suggested_replies: chips,
         assets: null,
         remaining: CHAT_DAILY_LIMIT - used,
       });

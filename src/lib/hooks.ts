@@ -141,8 +141,13 @@ export function useAssets(userId: string | undefined) {
   }, [userId]);
 
   const fetchPrices = useCallback(async () => {
-    const symbols = [...new Set(assets.filter((a) => a.symbol).map((a) => a.symbol!))];
-    if (symbols.length === 0) return;
+    // Build deduped {symbol, country} list — first occurrence wins when a symbol spans multiple assets
+    const seen = new Map<string, { symbol: string; country: string | null }>();
+    assets.filter((a) => a.symbol).forEach((a) => {
+      if (!seen.has(a.symbol!)) seen.set(a.symbol!, { symbol: a.symbol!, country: a.country ?? null });
+    });
+    const items = [...seen.values()];
+    if (items.length === 0) return;
 
     setRefreshing(true);
     const timer = setTimeout(() => setPricesLoaded(true), PRICES_SAFETY_TIMEOUT_MS);
@@ -150,36 +155,41 @@ export function useAssets(userId: string | undefined) {
       const res = await fetch("/api/prices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbols }),
+        body: JSON.stringify({ symbols: items }),
       });
       const data = await res.json();
       const priceMap: Record<string, PriceResult> = {};
+      // Key by requested_symbol so the lookup matches what the asset row has stored,
+      // even when the resolver rewrote the symbol (e.g. ZPRR → ZPRR.DE).
       (data.prices as PriceResult[])?.forEach((p) => {
-        if (!p.error) priceMap[p.symbol] = p;
+        if (!p.error) priceMap[p.requested_symbol ?? p.symbol] = p;
       });
       setPrices(priceMap);
       const now = new Date();
       setLastUpdated(now);
       if (userId) writePriceTimestamp(userId);
       const successCount = Object.keys(priceMap).length;
-      const healthRatio = symbols.length > 0 ? successCount / symbols.length : 1;
+      const healthRatio = items.length > 0 ? successCount / items.length : 1;
       setPriceHealth(healthRatio < 0.5 ? "degraded" : "healthy");
 
-      // Self-heal: if Yahoo's reported currency differs from what the DB has stored,
-      // update both currency AND value so they stay coherent.
+      // Self-heal: if Yahoo's resolved symbol or currency differs from what the DB has stored,
+      // update the asset so the stored values stay coherent with what Yahoo returns.
       const stale = assets.filter(
         (asset) =>
           asset.symbol &&
           priceMap[asset.symbol] &&
           priceMap[asset.symbol].nativeCurrency &&
-          priceMap[asset.symbol].nativeCurrency !== asset.currency
+          (priceMap[asset.symbol].nativeCurrency !== asset.currency ||
+            priceMap[asset.symbol].symbol !== asset.symbol)
       );
       if (stale.length > 0) {
         await Promise.all(
           stale.map((asset) => {
             const p = priceMap[asset.symbol!];
-            const update: Record<string, unknown> = { currency: p.nativeCurrency };
+            const update: Record<string, unknown> = {};
             if (asset.units) update.value = Math.round(p.price * asset.units);
+            if (p.symbol !== asset.symbol) update.symbol = p.symbol;
+            if (p.nativeCurrency !== asset.currency) update.currency = p.nativeCurrency;
             return supabase
               .from("assets")
               .update(update)
@@ -187,7 +197,7 @@ export function useAssets(userId: string | undefined) {
               .then(() => undefined);
           })
         );
-        // Re-fetch so the local state reflects corrected currency tags
+        // Re-fetch so the local state reflects corrected symbol/currency tags
         await fetchAssets();
       }
     } catch {

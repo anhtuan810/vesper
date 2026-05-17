@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
+import { fetchPriceWithFallback } from "./prices-server";
 import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
@@ -68,11 +69,23 @@ export async function applyPortfolioChanges({
   const fxWarnings: string[] = [];
   let changed = false;
 
+  // Pre-resolve venue-qualified symbols for add ops, in parallel
+  const resolvedSymbols = await Promise.all(
+    changes.map(async (change) => {
+      if (change.action === "add" && change.symbol) {
+        const result = await fetchPriceWithFallback(change.symbol, change.country);
+        if (!result.error) return { symbol: result.symbol, nativeCurrency: result.nativeCurrency };
+      }
+      return null;
+    })
+  );
+
   // Pre-resolve historical prices for add ops that need auto-fill, in parallel
   const resolvedPrices = await Promise.all(
-    changes.map(async (change) => {
+    changes.map(async (change, i) => {
       if (change.action === "add" && (change.value || 0) === 0 && change.symbol && change.units) {
-        const priceData = await fetchHistoricalPrice(change.symbol, change.buy_date || null);
+        const effectiveSymbol = resolvedSymbols[i]?.symbol ?? change.symbol;
+        const priceData = await fetchHistoricalPrice(effectiveSymbol, change.buy_date || null);
         if (priceData) {
           const p = normalizePrice(priceData.price, priceData.currency);
           return {
@@ -115,6 +128,8 @@ export async function applyPortfolioChanges({
         isRealEstate ? countryToCurrency(change.country) : "USD"
       );
 
+      if (resolvedSymbols[i]?.nativeCurrency) resolvedCurrency = resolvedSymbols[i]!.nativeCurrency;
+
       const resolved = resolvedPrices[i];
       if (resolved) {
         if (resolvedValue === 0) resolvedValue = resolved.value;
@@ -136,7 +151,7 @@ export async function applyPortfolioChanges({
         value: resolvedValue,
         currency: resolvedCurrency,
         country: change.country || null,
-        symbol: change.symbol || null,
+        symbol: resolvedSymbols[i]?.symbol ?? change.symbol ?? null,
         units: change.units || null,
         buy_price: resolvedBuyPrice,
         buy_date: change.buy_date || null,

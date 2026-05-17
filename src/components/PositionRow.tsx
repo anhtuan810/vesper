@@ -7,6 +7,7 @@ import { AssetLogo } from "@/components/AssetLogo";
 import { usePriceHistory, useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
 import type { LiveAsset } from "@/lib/supabase";
+import { venueLabel } from "@/lib/venues";
 
 const TRADEABLE_TYPES: ReadonlySet<string> = new Set(["stocks", "etf", "crypto", "gold"]);
 
@@ -27,6 +28,10 @@ function subLine(asset: LiveAsset): string {
           ? asset.symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toUpperCase()
           : displayTicker(asset.symbol).toUpperCase();
       parts.push(ticker);
+      if (asset.type !== "crypto" && asset.symbol) {
+        const label = venueLabel(asset.symbol);
+        if (label) parts.push(label);
+      }
     }
     if (asset.units != null) {
       const unitLabel =

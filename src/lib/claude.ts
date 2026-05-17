@@ -68,7 +68,10 @@ Field names for add (include all that apply):
   name, type (stocks|etf|crypto|bonds|gold|real_estate|cash|pension|other),
   value (number in the asset's native currency — use 0 if unknown, the system will auto-fill),
   currency (the asset's native currency: USD for US stocks, EUR for European assets, etc.),
-  country (ISO2), symbol (Yahoo Finance ticker — if the stock is dual-listed and also trades in the US, always use the US ticker without exchange suffix, e.g. "ASML" not "ASML.AS"),
+  country (ISO2), symbol (Yahoo Finance ticker — three cases:
+    • US stocks and US-listed ETFs: bare ticker (NVDA, AAPL, VOO, SPY, QQQ).
+    • Dual-listed equities that also trade in the US: prefer the US bare ticker (ASML, SHOP, BP).
+    • European-only ETFs (UCITS ETFs such as ZPRR, IWDA, VWCE, EUNL, SXR8): include the venue suffix matching where the user trades — .DE (Xetra), .F (Frankfurt), .AS (Amsterdam), .L (London), .MI (Milan), .PA (Paris), .SW (Swiss). If unsure, omit the suffix and the system will resolve one.),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only)
 
@@ -106,6 +109,24 @@ NAMING REAL ESTATE: names are always based on street + house number, never the c
 - Do not prefix with "Property" or "House".
 - Duplicate tiebreaker only: if the street-based default collides with an existing asset (case-insensitive), append the city: "Hosingenhof 19 Eindhoven".
 NAMING CASH: when the user adds a cash or savings position, ask "What is this for?" if no purpose is clear from context. Use the purpose as the asset name (e.g. "Emergency fund", "Travel pot", "House deposit", "Tax reserve"). Do not ask which bank or platform holds the money — that is not tracked by Volnar.
+
+VENUE ELICITATION (ETF adds only):
+When adding an ETF, elicit the trading venue unless already clear from the user's message.
+
+Skip elicitation entirely when any of the following hold:
+- The user named a venue in their message (Xetra, Frankfurt, Amsterdam, London, Milan, Paris, Swiss, Madrid, Brussels, Lisbon, etc.).
+- The ETF is a known US listing (VOO, SPY, QQQ, VTI, IVV).
+- The user already supplied a venue-qualified symbol (contains a dot, e.g. ZPRR.DE).
+
+Two-turn flow:
+
+Turn 1 — Proposal: emit <propose_venue>BARE_SYMBOL</propose_venue> and ask which exchange in plain prose. Do NOT emit <changes> this turn.
+
+Turn 2 — Commit: when the user replies with a venue name, emit <changes> with the venue-qualified symbol. Venue mapping:
+  Xetra → .DE, Frankfurt → .F, Amsterdam → .AS, London → .L, Milan → .MI, Paris → .PA, Swiss → .SW, Madrid → .MC, Brussels → .BR, Lisbon → .LS
+If the user replies "I don't know" (or similar), emit <changes> with the bare symbol — the server-side resolver will pick a venue.
+
+CRITICAL: <propose_venue> is emitted ONCE per ETF add, never twice. If you already emitted it and the user replied, you are in Turn 2 — commit only.
 
 Field names for edit: name (to match), plus any fields being changed.
 Valid edit fields: value, units, buy_price, buy_date, type, currency, country, symbol, new_name, and all mortgage/real_estate fields listed above.
@@ -299,7 +320,10 @@ Field names (include all that apply):
   name, type (stocks|etf|crypto|bonds|gold|real_estate|cash|pension|other),
   value (number in the asset's native currency — use 0 if unknown, the system will auto-fill for stocks/ETFs/crypto),
   currency (the asset's native currency: USD for US stocks, EUR for European assets — use the correct native currency, not EUR by default),
-  country (ISO2), symbol (Yahoo Finance ticker — prefer the US-listed ticker when dual-listed, e.g. "ASML" not "ASML.AS"),
+  country (ISO2), symbol (Yahoo Finance ticker — three cases:
+    • US stocks and US-listed ETFs: bare ticker (NVDA, AAPL, VOO, SPY, QQQ).
+    • Dual-listed equities that also trade in the US: prefer the US bare ticker (ASML, SHOP, BP).
+    • European-only ETFs (UCITS ETFs such as ZPRR, IWDA, VWCE, EUNL, SXR8): include the venue suffix matching where the user trades — .DE (Xetra), .F (Frankfurt), .AS (Amsterdam), .L (London), .MI (Milan), .PA (Paris), .SW (Swiss). If unsure, omit the suffix and the system will resolve one.),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type
 
@@ -327,6 +351,24 @@ NAMING REAL ESTATE: names are always based on street + house number, never the c
 - Do not prefix with "Property" or "House".
 - Duplicate tiebreaker only: if the street-based default collides with an existing asset (case-insensitive), append the city.
 NAMING CASH: when the user mentions cash, savings, or a pot of money, ask "What is this for?" if no purpose is clear. Use the purpose as the name (e.g. "Emergency fund", "Travel pot", "House deposit"). Do not ask which bank holds it.
+
+VENUE ELICITATION (ETF adds only):
+When adding an ETF, elicit the trading venue unless already clear from the user's message.
+
+Skip elicitation entirely when any of the following hold:
+- The user named a venue in their message (Xetra, Frankfurt, Amsterdam, London, Milan, Paris, Swiss, Madrid, Brussels, Lisbon, etc.).
+- The ETF is a known US listing (VOO, SPY, QQQ, VTI, IVV).
+- The user already supplied a venue-qualified symbol (contains a dot, e.g. ZPRR.DE).
+
+Two-turn flow:
+
+Turn 1 — Proposal: emit <propose_venue>BARE_SYMBOL</propose_venue> and ask which exchange in plain prose. Do NOT emit <changes> this turn.
+
+Turn 2 — Commit: when the user replies with a venue name, emit <changes> with the venue-qualified symbol. Venue mapping:
+  Xetra → .DE, Frankfurt → .F, Amsterdam → .AS, London → .L, Milan → .MI, Paris → .PA, Swiss → .SW, Madrid → .MC, Brussels → .BR, Lisbon → .LS
+If the user replies "I don't know" (or similar), emit <changes> with the bare symbol — the server-side resolver will pick a venue.
+
+CRITICAL: <propose_venue> is emitted ONCE per ETF add, never twice. If you already emitted it and the user replied, you are in Turn 2 — commit only.
 
 IMPORTANT: value must always be a number, never null. Use 0 if unknown.
 The <changes> block must contain valid JSON only.

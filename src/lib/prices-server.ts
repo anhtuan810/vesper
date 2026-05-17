@@ -1,5 +1,6 @@
 import { normalizePrice } from "@/lib/prices";
 import { YAHOO_FINANCE_BASE_URL, FETCH_TIMEOUT_MS, PRICE_CACHE_TTL_MS } from "@/lib/constants";
+import { venuePriorityFor } from "@/lib/venues";
 
 // ── Price history ─────────────────────────────────────────────────────────────
 
@@ -63,6 +64,9 @@ export interface PriceResult {
   nativePrice: number;    // alias for price; kept for backwards compatibility
   nativeCurrency: string;
   error?: string;
+  // Set by fetchPriceWithFallback when the resolver rewrote the symbol (e.g. ZPRR → ZPRR.DE).
+  // Callers can compare requested_symbol !== symbol to detect the rewrite and self-heal stored values.
+  requested_symbol?: string;
 }
 
 const priceCache = new Map<string, { data: Omit<PriceResult, "symbol">; ts: number }>();
@@ -102,4 +106,24 @@ export async function fetchYahooPrice(symbol: string): Promise<PriceResult> {
   } catch {
     return { symbol, price: 0, previousClose: 0, nativePrice: 0, nativeCurrency: "", error: "fetch failed" };
   }
+}
+
+export async function fetchPriceWithFallback(symbol: string, country?: string): Promise<PriceResult> {
+  const primary = await fetchYahooPrice(symbol);
+  if (!primary.error) return { ...primary, requested_symbol: symbol };
+
+  if (symbol.includes(".")) return { ...primary, requested_symbol: symbol };
+
+  const suffixes = venuePriorityFor(country ?? "");
+  const candidates = suffixes.map((s) => `${symbol}.${s}`);
+
+  const settled = await Promise.allSettled(candidates.map(fetchYahooPrice));
+
+  for (const outcome of settled) {
+    if (outcome.status === "fulfilled" && !outcome.value.error) {
+      return { ...outcome.value, requested_symbol: symbol };
+    }
+  }
+
+  return { ...primary, requested_symbol: symbol };
 }
