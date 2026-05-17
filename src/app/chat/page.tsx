@@ -29,6 +29,7 @@ export default function ChatPage() {
   const isLoadMoreUpdate = useRef(false);
   const savedScrollMetrics = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
   const hasScrolled = useRef(false);
+  const autoSubmitRef = useRef(false);
 
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
@@ -72,6 +73,30 @@ export default function ChatPage() {
     const keyParam = params.get("key");
     const src = params.get("source");
     if (src) setSource(src);
+
+    // Text typed in the portfolio empty-state input
+    const prefill = sessionStorage.getItem("volnar.empty.input");
+    if (prefill) {
+      sessionStorage.removeItem("volnar.empty.input");
+      setInput(prefill);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+
+    // Image/file picked in the portfolio empty-state
+    const storedImage = sessionStorage.getItem("volnar.empty.image");
+    if (storedImage) {
+      sessionStorage.removeItem("volnar.empty.image");
+      const shouldAutoSubmit = sessionStorage.getItem("volnar.chat.autosubmit") === "1";
+      sessionStorage.removeItem("volnar.chat.autosubmit");
+      if (shouldAutoSubmit) autoSubmitRef.current = true;
+      try {
+        const { base64, mediaType } = JSON.parse(storedImage);
+        const bytes = atob(base64);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        handleFile(new File([arr], "upload", { type: mediaType }));
+      } catch {}
+    }
     if (assetId) {
       // Legacy ?asset=<id> path — defer until assets load
       setPendingAssetId(assetId);
@@ -93,6 +118,14 @@ export default function ChatPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-send when an image from the empty-state input lands in the composer
+  useEffect(() => {
+    if (!autoSubmitRef.current || !imageData) return;
+    autoSubmitRef.current = false;
+    send();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageData]);
 
   // Clear seed when the user sends their first message (typed or chip tap).
   useEffect(() => {
