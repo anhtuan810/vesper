@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useProfile, useSignOut, useTheme } from "@/lib/hooks";
+import { NavBar } from "@/components/NavBar";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { uploadAvatar } from "@/lib/avatar-upload";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
@@ -157,8 +158,22 @@ export default function ProfilePage() {
   const themeLabel = THEME_OPTIONS.find(o => o.value === currentTheme)?.label ?? "Light";
   const visibleFields = PROFILE_FIELDS.filter(({ key }) => !!(profile?.profile?.[key]));
 
+  const setTab = (t: "portfolio" | "diary" | "profile") => {
+    router.push(t === "portfolio" ? "/" : "/" + t);
+  };
+
   return (
     <div className="min-h-screen bg-bg">
+      <NavBar
+        tab="profile"
+        setTab={setTab}
+        mutationCount={mutationCount}
+        liveCount={0}
+        totalSymbols={0}
+        refreshing={false}
+        refreshPrices={() => {}}
+        empty
+      />
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 22px 110px" }}>
 
         {/* Page title */}
