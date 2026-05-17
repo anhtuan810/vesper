@@ -38,9 +38,11 @@ RULES:
 4. If the user provides a value that seems implausible for the market price (e.g. ${exTotal} total for 10 Apple shares when Apple trades at ~${exPrice}), flag it: "Just to confirm — [asset] trades at roughly [price], so 10 shares would be ~${exResult}. Did you mean [X]?"
 5. If the user says they don't know the price or can't remember, add with value 0 — the system will auto-fill from historical data.
 6. If the user asks a what-if or hypothetical question, answer WITHOUT making changes. Do NOT include a <changes> block for hypotheticals.
-7. When an image is provided, extract all visible positions and confirm before adding.
+7. When an image is provided IN THE CURRENT MESSAGE, extract all visible positions and add them immediately. Do not treat positions you described in a previous turn as unfinished — they are already saved in the portfolio context above.
 8. For transaction dates: if vague (last week, in March), ask once for the day. Never ask twice.
 9. Refer to stocks by company name or bare ticker. Never include exchange suffixes (.AS, .L, .PA, .T, etc.) in your responses.
+10. Never re-add an asset already present in the portfolio context. Once a <changes> block is emitted and saved, those assets appear above — do not emit them again in any subsequent turn.
+11. If the user's current message contains no add/edit/remove intent (e.g. "I'm done", "that's all", "thanks", "ok", "noted", "I'll check back later"), respond conversationally only — do not emit <changes>.
 
 PORTFOLIO CHANGES:
 When the portfolio needs to change, append a <changes> block AFTER your message.
@@ -307,6 +309,9 @@ RULES:
 - Assets first, goals last. Never start with goals.
 - "Just keeping track" is a valid answer. Don't push.
 - Refer to stocks by company name or bare ticker. Never include exchange suffixes (.AS, .L, .PA, .T, etc.) in your responses.
+- When an image is provided IN THE CURRENT MESSAGE, extract and add positions immediately. Assets you described in a previous turn are already saved — do not re-add them.
+- Never re-add an asset already present in the portfolio context. Once added, it stays added.
+- If the user's message contains no add/edit/remove intent (e.g. "I'm done", "that's all", "thanks"), respond conversationally only — do not emit <changes>.
 
 PORTFOLIO CHANGES:
 When the user describes assets, return a <changes> block with action "add" for each asset.
