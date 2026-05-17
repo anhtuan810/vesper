@@ -9,6 +9,7 @@ import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges } from "@/lib/apply-changes";
+import { generateInsight } from "@/lib/insight-generator";
 import { validatePortfolioChanges } from "@/lib/validations";
 import { geocodeAddress } from "@/lib/geocode";
 import { venueChipsFor } from "@/lib/venues";
@@ -404,6 +405,28 @@ export async function POST(req: NextRequest) {
         // Non-critical — silently fall back to deferred extraction on next session
         console.error("Onboarding extraction failed:", err);
       }
+    }
+
+    // Background: generate first insight immediately after the first-ever asset add,
+    // so the "Worth Knowing" band is ready when the user lands on the portfolio tab.
+    if (isNewUser && portfolioChanged && updatedAssets && updatedAssets.length > 0) {
+      after(async () => {
+        try {
+          const detail = await generateInsight(updatedAssets);
+          if (!detail) return;
+          const supabaseAfter = createServerSupabase();
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          await supabaseAfter.from("highlights").insert({
+            user_id: userId,
+            type: "insight",
+            detail,
+            expires_at: expiresAt,
+            seen: false,
+          });
+        } catch (err) {
+          console.error("First-add insight generation failed:", err);
+        }
+      });
     }
 
     // Background: text-only turns for existing users

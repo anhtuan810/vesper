@@ -19,8 +19,42 @@ export function InsightBand() {
   const { detail, loading } = useInsight();
   const router = useRouter();
 
-  // Render nothing while loading or when no insight is available
-  if (loading || !detail) return null;
+  if (loading) {
+    return (
+      <div
+        className="-mx-4 sm:-mx-8 mb-5"
+        style={{
+          padding: "14px 52px 14px 16px",
+          background: "var(--accent-soft)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "var(--accent-text)",
+            opacity: 0.7,
+            marginBottom: 6,
+          }}
+        >
+          Worth knowing
+        </div>
+        <div
+          style={{
+            height: 14,
+            width: "72%",
+            borderRadius: 4,
+            background: "var(--accent-text)",
+            opacity: 0.12,
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (!detail) return null;
 
   return (
     <div

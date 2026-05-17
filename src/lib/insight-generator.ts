@@ -56,7 +56,7 @@ Tone calibration — choose by what the data shows:
 
 Bias toward (1) and (2). The user opens the app to see how their portfolio is doing — greet them well when the data supports it. Don't manufacture concern that isn't there.
 
-Length: Each sentence: 10-14 words. Two sentences total: 22-28 words. Hard cap: 28 words. Generations exceeding this are rejected. Brevity is the constraint — the band lives or dies on whether it reads in 3 seconds. Mark the key noun phrase in the first sentence with *asterisks*.
+Length: Two sentences. Aim for 12-15 words each, 25-32 words total. Brevity is the constraint — the band reads in 3 seconds. Mark the key noun phrase in the first sentence with *asterisks*.
 
 Style rules:
 - Plain text — no markdown beyond the *asterisks*, no quotes, no emojis
@@ -88,16 +88,12 @@ Reject if the second sentence merely restates the first, or if the tone slides i
     if (!raw) return null;
 
     const sentences = raw.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
-    if (sentences.length !== 2) return null;
+    if (sentences.length < 1 || sentences.length > 3) return null;
 
     const wordCount = (s: string) =>
       s.replace(/\*[^*]+\*/g, (m) => m.slice(1, -1)).split(/\s+/).filter(Boolean).length;
     const totalWords = wordCount(raw);
-    if (totalWords < 22 || totalWords > 28) return null;
-    for (const s of sentences) {
-      const wc = wordCount(s);
-      if (wc < 8 || wc > 16) return null;
-    }
+    if (totalWords < 10 || totalWords > 60) return null;
 
     if (/\byou should\b|\bconsider\b|\byou might\b|\byou could\b/i.test(raw)) return null;
 

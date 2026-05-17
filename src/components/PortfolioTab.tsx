@@ -168,7 +168,7 @@ export function PortfolioTab({
       )}
 
       {/* AI insight band — replaces milestone bar */}
-      <InsightBand />
+      {assets.length > 0 && <InsightBand />}
 
       {/* Holdings list — 4 semantic categories */}
       <div>
