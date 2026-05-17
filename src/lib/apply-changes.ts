@@ -1,12 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
-import { fetchPriceWithFallback, fetchYahooQuote } from "./prices-server";
+import { fetchPriceWithFallback, fetchYahooPrice, fetchYahooQuote } from "./prices-server";
 import { resolveSymbol } from "./symbol-aliases";
 import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
+
+// Price-freshness check: if proposal → commit gap exceeds this window,
+// re-fetch the live price and reject if it moved more than the threshold.
+const PRICE_FRESHNESS_WINDOW_MS = 60_000; // 60 seconds
+const PRICE_MOVE_THRESHOLD = 0.01;       // 1%
 
 type CurrentAsset = {
   id: string;
@@ -44,8 +49,26 @@ type PortfolioChange = {
   size_sqm?: number;
   latitude?: number;
   longitude?: number;
+  value_delta?: number;
   personal_context?: string;
 };
+
+export class ValueModeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ValueModeError";
+  }
+}
+
+// USD-bridged cross-currency conversion using the app's existing FX rates.
+// rates[X] = how many X per 1 USD, so: amount_from / rates[from] * rates[to]
+async function convertCurrency(amount: number, from: string, to: string): Promise<number> {
+  if (from === to) return amount;
+  const rates = await getUsdRates();
+  const fromRate = from === "USD" ? 1 : (rates[from] ?? 1);
+  const toRate   = to   === "USD" ? 1 : (rates[to]   ?? 1);
+  return (amount / fromRate) * toRate;
+}
 
 export async function applyPortfolioChanges({
   supabase,
@@ -53,12 +76,14 @@ export async function applyPortfolioChanges({
   changes,
   currentAssets,
   contextNote,
+  proposalTimestamp,
 }: {
   supabase: SupabaseClient;
   userId: string;
   changes: PortfolioChange[];
   currentAssets: CurrentAsset[];
   contextNote: string | null;
+  proposalTimestamp?: string | null;
 }): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[] }> {
   // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
   const usdRates = await getUsdRates();
@@ -165,6 +190,65 @@ export async function applyPortfolioChanges({
         if (resolved.yahooCurrency) resolvedCurrency = resolved.yahooCurrency;
       }
 
+      // Value-mode: user stated a monetary amount; derive units from live Yahoo price.
+      // Only fires for tradeable adds that have a value but no units.
+      const isTradeable = TRADEABLE_TYPES.has(change.type ?? "");
+      const hasUnits = typeof change.units === "number" && change.units > 0;
+      const hasValue = typeof change.value === "number" && change.value > 0;
+
+      if (isTradeable && effectiveSymbol && !hasUnits && hasValue) {
+        const priceResult = await fetchYahooPrice(effectiveSymbol);
+
+        if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
+          throw new ValueModeError(
+            `Couldn't fetch a live price for ${effectiveSymbol} right now — could you state the unit count instead?`
+          );
+        }
+
+        const statedCurrency = change.currency ?? priceResult.nativeCurrency;
+        let valueInYahooCurrency = change.value!;
+        if (statedCurrency !== priceResult.nativeCurrency) {
+          valueInYahooCurrency = await convertCurrency(
+            change.value!,
+            statedCurrency,
+            priceResult.nativeCurrency,
+          );
+        }
+
+        // crypto → 8 decimal places (Bitcoin convention); stocks/etf/gold → 4 (fractional shares)
+        const decimals = change.type === "crypto" ? 8 : 4;
+        const rawUnits = valueInYahooCurrency / priceResult.price;
+        const derivedUnits = Math.round(rawUnits * Math.pow(10, decimals)) / Math.pow(10, decimals);
+        const derivedValue = Math.round(derivedUnits * priceResult.price * 100) / 100;
+
+        change.units = derivedUnits;
+        change.value = derivedValue;
+        change.currency = priceResult.nativeCurrency;
+        resolvedValue = derivedValue;
+        resolvedCurrency = priceResult.nativeCurrency;
+        // buy_price intentionally omitted — this is "at market price", not a basis declaration.
+      }
+
+      // Price-freshness check for Turn-2 commits (resolved units + value from a prior proposal).
+      // Only runs when the proposal is stale (> PRICE_FRESHNESS_WINDOW_MS) and the change has
+      // both units and value (the shape Claude emits on Turn 2 after confirming a proposal).
+      if (
+        isTradeable && effectiveSymbol && hasUnits && hasValue &&
+        proposalTimestamp &&
+        Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS
+      ) {
+        const freshPrice = await fetchYahooPrice(effectiveSymbol);
+        if (!freshPrice.error && freshPrice.price && freshPrice.price > 0) {
+          const impliedPrice = change.value! / change.units!;
+          const priceDiff = Math.abs(freshPrice.price - impliedPrice) / impliedPrice;
+          if (priceDiff > PRICE_MOVE_THRESHOLD) {
+            throw new ValueModeError(
+              "The market moved while you were confirming — would you like to see updated numbers?"
+            );
+          }
+        }
+      }
+
       // Monetary fields stay in the asset's native currency — no conversion to USD.
       // toUsdSync is used only for the runningTotal metadata below.
       let resolvedMortgageBalance = change.mortgage_balance ?? null;
@@ -228,6 +312,91 @@ export async function applyPortfolioChanges({
       );
 
       if (existing) {
+        const hasValueDelta = typeof change.value_delta === "number" && change.value_delta !== 0;
+        const editHasUnits = typeof change.units === "number";
+        const isTradeable = TRADEABLE_TYPES.has(existing.type);
+
+        if (hasValueDelta && isTradeable && !editHasUnits) {
+          if (!existing.symbol) {
+            throw new ValueModeError(
+              `Couldn't apply a value-based change to ${existing.name} — no symbol on file. Could you state the unit count instead?`
+            );
+          }
+
+          const priceResult = await fetchYahooPrice(existing.symbol);
+
+          if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
+            throw new ValueModeError(
+              `Couldn't fetch a live price for ${existing.symbol} right now — could you state the unit count instead?`
+            );
+          }
+
+          const statedCurrency = change.currency ?? existing.currency ?? priceResult.nativeCurrency;
+          let deltaInYahooCurrency: number = change.value_delta!;
+          if (statedCurrency !== priceResult.nativeCurrency) {
+            deltaInYahooCurrency = await convertCurrency(
+              change.value_delta!,
+              statedCurrency,
+              priceResult.nativeCurrency,
+            );
+          }
+
+          const rawUnitsDelta = deltaInYahooCurrency / priceResult.price;
+          const decimals = existing.type === "crypto" ? 8 : 4;
+          const factor = Math.pow(10, decimals);
+          const unitsDelta = Math.round(rawUnitsDelta * factor) / factor;
+
+          const currentUnits = typeof existing.units === "number" ? existing.units : 0;
+          const newUnits = Math.round((currentUnits + unitsDelta) * factor) / factor;
+
+          const newValue = Math.round(newUnits * priceResult.price * 100) / 100;
+
+          change.units = newUnits;
+          change.value = newValue;
+          change.currency = priceResult.nativeCurrency;
+          delete change.value_delta;
+        }
+
+        // Historical re-derivation: edit with value + buy_date, no units, no value_delta.
+        // Fires when the user provides a historical buy_date after a value-mode add — the units
+        // recorded at today's price must be recomputed at the stated historical price.
+        const editHasAbsoluteValue = typeof change.value === "number" && change.value > 0;
+        if (!hasValueDelta && !editHasUnits && editHasAbsoluteValue && change.buy_date && isTradeable && existing.symbol) {
+          const historical = await fetchHistoricalPrice(existing.symbol, change.buy_date);
+          if (historical) {
+            const p = normalizePrice(historical.price, historical.currency);
+            const decimals = existing.type === "crypto" ? 8 : 4;
+            const factor = Math.pow(10, decimals);
+            const derivedUnits = Math.round((change.value! / p) * factor) / factor;
+            const derivedValue = Math.round(derivedUnits * p * 100) / 100;
+            change.units = derivedUnits;
+            change.value = derivedValue;
+            change.buy_price = Math.round(p * 100) / 100;
+            change.currency = historical.currency === "GBp" ? "GBP" : historical.currency;
+          }
+        }
+
+        // Price-freshness check for Turn-2 edit commits (resolved units + value from a prior proposal).
+        const editIsTradeable = TRADEABLE_TYPES.has(existing.type);
+        const editHasResolvedUnitsAndValue =
+          typeof change.units === "number" && typeof change.value === "number";
+        if (
+          editIsTradeable && existing.symbol && editHasResolvedUnitsAndValue &&
+          proposalTimestamp &&
+          Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS
+        ) {
+          const freshPrice = await fetchYahooPrice(existing.symbol);
+          if (!freshPrice.error && freshPrice.price && freshPrice.price > 0) {
+            const impliedPrice = change.value! / change.units!;
+            const priceDiff = Math.abs(freshPrice.price - impliedPrice) / impliedPrice;
+            if (priceDiff > PRICE_MOVE_THRESHOLD) {
+              throw new ValueModeError(
+                "The market moved while you were confirming — would you like to see updated numbers?"
+              );
+            }
+          }
+        }
+
         const updateData: Record<string, unknown> = {};
         if (change.new_name !== undefined && change.new_name !== existing.name) updateData.name = change.new_name;
         if (change.value !== undefined) updateData.value = change.value;
