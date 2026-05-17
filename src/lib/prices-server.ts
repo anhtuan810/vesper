@@ -69,6 +69,12 @@ export interface PriceResult {
   requested_symbol?: string;
 }
 
+export interface YahooQuote {
+  symbol: string;
+  longName: string | null;
+  shortName: string | null;
+}
+
 const priceCache = new Map<string, { data: Omit<PriceResult, "symbol">; ts: number }>();
 
 export async function fetchYahooPrice(symbol: string): Promise<PriceResult> {
@@ -126,4 +132,31 @@ export async function fetchPriceWithFallback(symbol: string, country?: string): 
   }
 
   return { ...primary, requested_symbol: symbol };
+}
+
+// ── Quote (name) ──────────────────────────────────────────────────────────────
+
+const NAME_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const nameCache = new Map<string, { data: Pick<YahooQuote, "longName" | "shortName">; ts: number }>();
+
+export async function fetchYahooQuote(symbol: string): Promise<YahooQuote> {
+  const cached = nameCache.get(symbol);
+  if (cached && Date.now() - cached.ts < NAME_CACHE_TTL_MS) {
+    return { symbol, ...cached.data };
+  }
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    if (!res.ok) return { symbol, longName: null, shortName: null };
+    const data = await res.json();
+    const q = data?.quoteResponse?.result?.[0];
+    const longName = typeof q?.longName === "string" ? q.longName : null;
+    const shortName = typeof q?.shortName === "string" ? q.shortName : null;
+    if (longName !== null || shortName !== null) {
+      nameCache.set(symbol, { data: { longName, shortName }, ts: Date.now() });
+    }
+    return { symbol, longName, shortName };
+  } catch {
+    return { symbol, longName: null, shortName: null };
+  }
 }

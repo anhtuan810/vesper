@@ -70,7 +70,10 @@ Field names for add (include all that apply):
   currency (the asset's native currency: USD for US stocks, EUR for European assets, etc.),
   country (ISO2), symbol (Yahoo Finance ticker — three cases:
     • US stocks and US-listed ETFs: bare ticker (NVDA, AAPL, VOO, SPY, QQQ).
-    • Dual-listed equities that also trade in the US: prefer the US bare ticker (ASML, SHOP, BP).
+    • Dual-listed equities: always use the US ticker without exchange suffix:
+        Tesla → TSLA (not TL0.DE), Apple → AAPL (not APC.DE), Amazon → AMZN (not AMZ.DE),
+        Google → GOOGL (not ABEA.DE), Microsoft → MSFT (not MSF.DE), ASML → ASML (not ASML.AS), Shell → SHEL (not SHEL.L).
+      For the "name" field, always use the canonical company name (e.g. "Tesla", "Apple"), never the ticker.
     • European-only ETFs (UCITS ETFs such as ZPRR, IWDA, VWCE, EUNL, SXR8): include the venue suffix matching where the user trades — .DE (Xetra), .F (Frankfurt), .AS (Amsterdam), .L (London), .MI (Milan), .PA (Paris), .SW (Swiss). If unsure, omit the suffix and the system will resolve one.),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only)
@@ -322,7 +325,10 @@ Field names (include all that apply):
   currency (the asset's native currency: USD for US stocks, EUR for European assets — use the correct native currency, not EUR by default),
   country (ISO2), symbol (Yahoo Finance ticker — three cases:
     • US stocks and US-listed ETFs: bare ticker (NVDA, AAPL, VOO, SPY, QQQ).
-    • Dual-listed equities that also trade in the US: prefer the US bare ticker (ASML, SHOP, BP).
+    • Dual-listed equities: always use the US ticker without exchange suffix:
+        Tesla → TSLA (not TL0.DE), Apple → AAPL (not APC.DE), Amazon → AMZN (not AMZ.DE),
+        Google → GOOGL (not ABEA.DE), Microsoft → MSFT (not MSF.DE), ASML → ASML (not ASML.AS), Shell → SHEL (not SHEL.L).
+      For the "name" field, always use the canonical company name (e.g. "Tesla", "Apple"), never the ticker.
     • European-only ETFs (UCITS ETFs such as ZPRR, IWDA, VWCE, EUNL, SXR8): include the venue suffix matching where the user trades — .DE (Xetra), .F (Frankfurt), .AS (Amsterdam), .L (London), .MI (Milan), .PA (Paris), .SW (Swiss). If unsure, omit the suffix and the system will resolve one.),
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type

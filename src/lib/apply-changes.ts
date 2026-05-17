@@ -1,9 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
-import { fetchPriceWithFallback } from "./prices-server";
+import { fetchPriceWithFallback, fetchYahooQuote } from "./prices-server";
+import { resolveSymbol } from "./symbol-aliases";
 import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
+
+const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 
 type CurrentAsset = {
   id: string;
@@ -69,11 +72,17 @@ export async function applyPortfolioChanges({
   const fxWarnings: string[] = [];
   let changed = false;
 
+  // Alias-resolve symbols synchronously before any I/O (e.g. TL0.DE → TSLA)
+  const aliasedSymbols = changes.map((change) =>
+    change.action === "add" && change.symbol ? resolveSymbol(change.symbol) : null
+  );
+
   // Pre-resolve venue-qualified symbols for add ops, in parallel
   const resolvedSymbols = await Promise.all(
-    changes.map(async (change) => {
-      if (change.action === "add" && change.symbol) {
-        const result = await fetchPriceWithFallback(change.symbol, change.country);
+    changes.map(async (change, i) => {
+      const sym = aliasedSymbols[i];
+      if (change.action === "add" && sym) {
+        const result = await fetchPriceWithFallback(sym, change.country);
         if (!result.error) return { symbol: result.symbol, nativeCurrency: result.nativeCurrency };
       }
       return null;
@@ -84,7 +93,7 @@ export async function applyPortfolioChanges({
   const resolvedPrices = await Promise.all(
     changes.map(async (change, i) => {
       if (change.action === "add" && (change.value || 0) === 0 && change.symbol && change.units) {
-        const effectiveSymbol = resolvedSymbols[i]?.symbol ?? change.symbol;
+        const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol;
         const priceData = await fetchHistoricalPrice(effectiveSymbol, change.buy_date || null);
         if (priceData) {
           const p = normalizePrice(priceData.price, priceData.currency);
@@ -99,6 +108,19 @@ export async function applyPortfolioChanges({
     })
   );
 
+  // Fetch canonical names from Yahoo for tradeable adds, in parallel
+  const resolvedNames = await Promise.all(
+    changes.map(async (change, i) => {
+      if (change.action === "add" && change.symbol && TRADEABLE_TYPES.has(change.type ?? "")) {
+        const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol;
+        const quote = await fetchYahooQuote(effectiveSymbol);
+        const resolved = (quote.longName ?? quote.shortName ?? "").trim();
+        return resolved || null;
+      }
+      return null;
+    })
+  );
+
   for (let i = 0; i < changes.length; i++) {
     const change = changes[i];
     const { action, name } = change;
@@ -106,12 +128,18 @@ export async function applyPortfolioChanges({
     if (!name?.trim()) continue;
 
     if (action === "add") {
-      const isDuplicate = change.symbol
-        ? currentAssets.some((a) => a.symbol && a.symbol.toLowerCase() === change.symbol!.toLowerCase())
-        : currentAssets.some((a) => a.name.trim().toLowerCase() === name.trim().toLowerCase());
+      const resolvedAssetName =
+        TRADEABLE_TYPES.has(change.type ?? "") && resolvedNames[i]
+          ? resolvedNames[i]!
+          : name;
+      const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol ?? null;
+
+      const isDuplicate = effectiveSymbol
+        ? currentAssets.some((a) => a.symbol && a.symbol.toLowerCase() === effectiveSymbol.toLowerCase())
+        : currentAssets.some((a) => a.name.trim().toLowerCase() === resolvedAssetName.trim().toLowerCase());
 
       if (isDuplicate) {
-        const id = change.symbol ? change.symbol.toUpperCase() : `"${name}"`;
+        const id = effectiveSymbol ? effectiveSymbol.toUpperCase() : `"${resolvedAssetName}"`;
         duplicateWarnings.push(
           `${id} already exists in your portfolio. If you want to update the existing position, ask me to edit it — or give the new entry a different name to keep both.`
         );
@@ -146,12 +174,12 @@ export async function applyPortfolioChanges({
       const resolvedLng: number | null = change.longitude ?? null;
 
       const { data: inserted, error } = await supabase.from("assets").insert({
-        name,
+        name: resolvedAssetName,
         type: change.type || "other",
         value: resolvedValue,
         currency: resolvedCurrency,
         country: change.country || null,
-        symbol: resolvedSymbols[i]?.symbol ?? change.symbol ?? null,
+        symbol: effectiveSymbol,
         units: change.units || null,
         buy_price: resolvedBuyPrice,
         buy_date: change.buy_date || null,
@@ -179,10 +207,10 @@ export async function applyPortfolioChanges({
         await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
-          asset_name: name,
+          asset_name: resolvedAssetName,
           action: "add",
           asset_type: change.type || "other",
-          symbol: change.symbol || null,
+          symbol: effectiveSymbol,
           after_value: resolvedValue,
           before_units: null,
           after_units: change.units || null,

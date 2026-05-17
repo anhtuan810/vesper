@@ -190,7 +190,8 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "var(--surface)",
+            background: "var(--surface-elev)",
+            boxShadow: "inset 0 0 0 0.5px var(--border)",
           }}
         >
           <img
@@ -199,6 +200,7 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
             height={imgDisplaySize}
             style={{ objectFit: "contain", display: "block" }}
             onError={() => setImgFailed(true)}
+            onLoad={(e) => { const img = e.currentTarget; if (img.naturalWidth < 2 || img.naturalHeight < 2) setImgFailed(true); }}
             alt=""
           />
         </div>

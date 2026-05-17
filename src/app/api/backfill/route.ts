@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
+import { fetchYahooQuote } from "@/lib/prices-server";
+import { resolveSymbol } from "@/lib/symbol-aliases";
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userId = user.id;
+
+    // Dispatch on job key if present; fall through to default price backfill otherwise.
+    let body: Record<string, unknown> = {};
+    try { const t = await req.text(); if (t) body = JSON.parse(t); } catch { /* no-op */ }
+    if (body.job === "rename-tickers") return handleRenameTickersJob(userId);
 
     const supabase = createServerSupabase();
 
@@ -106,4 +113,67 @@ export async function POST(req: NextRequest) {
     console.error("Backfill error:", err);
     return NextResponse.json({ error: "Backfill failed" }, { status: 500 });
   }
+}
+
+// ── rename-tickers job ────────────────────────────────────────────────────────
+// Finds tradeable assets whose name looks like a bare ticker and renames them
+// using Yahoo's longName/shortName. Writes no mutation rows (data correction).
+
+const TICKER_RE = "^[A-Z0-9]{1,6}(\\.[A-Z]{1,4})?$";
+const BATCH_LIMIT = 50;
+
+async function handleRenameTickersJob(userId: string): Promise<NextResponse> {
+  const supabase = createServerSupabase();
+
+  const { data: candidates, error: selectError } = await supabase
+    .from("assets")
+    .select("id, name, symbol")
+    .eq("user_id", userId)
+    .in("type", ["stocks", "etf", "crypto", "gold"])
+    .not("symbol", "is", null)
+    .filter("name", "~", TICKER_RE);
+
+  if (selectError) {
+    console.error("rename-tickers select error:", selectError.message);
+    return NextResponse.json({ error: selectError.message }, { status: 500 });
+  }
+
+  const all = candidates ?? [];
+  const total = all.length;
+  const batch = all.slice(0, BATCH_LIMIT);
+  const cappedCount = total - batch.length;
+
+  let renamed = 0;
+  let skipped = cappedCount;
+  let errors = 0;
+
+  for (const asset of batch) {
+    const sym = asset.symbol;
+    if (!sym) { skipped++; continue; }
+
+    const resolvedSym = resolveSymbol(sym) ?? sym;
+    const quote = await fetchYahooQuote(resolvedSym);
+    const canonicalName = (quote.longName ?? quote.shortName ?? "").trim();
+
+    if (!canonicalName) { skipped++; continue; }
+
+    const { error: updateError } = await supabase
+      .from("assets")
+      .update({ name: canonicalName, symbol: resolvedSym, updated_at: new Date().toISOString() })
+      .eq("id", asset.id)
+      .eq("user_id", userId);
+
+    if (updateError) {
+      console.error("rename-tickers update error:", asset.id, updateError.message);
+      errors++;
+    } else {
+      renamed++;
+    }
+  }
+
+  const result: Record<string, unknown> = { scanned: total, renamed, skipped, errors };
+  if (cappedCount > 0) {
+    result.note = `${cappedCount} asset(s) beyond the ${BATCH_LIMIT}-row cap were not processed — re-invoke to continue.`;
+  }
+  return NextResponse.json(result);
 }
