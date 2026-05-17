@@ -218,10 +218,11 @@ export function TradeableDetail({ asset }: Props) {
           >
             <span>{formatMoney(
               scrubInfo && livePrice != null
-                ? Math.round(livePrice * scrubInfo.ratio)
+                ? livePrice * scrubInfo.ratio
                 : livePrice != null ? livePrice : (asset.buy_price ?? 0),
               assetCur,
-              displayCurrency
+              displayCurrency,
+              2
             )}</span>
           </div>
           {(() => {

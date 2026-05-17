@@ -28,7 +28,7 @@ function fmtSelectedDate(dateStr: string): string {
 }
 
 function fmtPct(n: number): string {
-  return new Intl.NumberFormat("nl-NL", {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(n);

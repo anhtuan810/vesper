@@ -11,7 +11,7 @@ import { venueLabel } from "@/lib/venues";
 
 const TRADEABLE_TYPES: ReadonlySet<string> = new Set(["stocks", "etf", "crypto", "gold"]);
 
-const fmtPct = new Intl.NumberFormat("nl-NL", {
+const fmtPct = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
   signDisplay: "always",

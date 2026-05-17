@@ -14,9 +14,9 @@ interface CurrencyMeta {
 }
 
 const CURRENCY_META: Record<DisplayCurrency, CurrencyMeta> = {
-  EUR: { symbol: "€", locale: "nl-NL" },
-  USD: { symbol: "$", locale: "nl-NL" },
-  GBP: { symbol: "£", locale: "nl-NL" },
+  EUR: { symbol: "€", locale: "en-US" },
+  USD: { symbol: "$", locale: "en-US" },
+  GBP: { symbol: "£", locale: "en-US" },
 };
 
 const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
@@ -98,16 +98,18 @@ export interface MoneyParts {
 export function formatMoney(
   amount: number,
   fromCurrency: string,
-  displayCurrency: DisplayCurrency
+  displayCurrency: DisplayCurrency,
+  decimals: number = 0
 ): string {
   const usdAmount = toUsdClient(amount, fromCurrency);
   const rate = getUsdRate(displayCurrency);
-  const displayValue = Math.round(usdAmount * rate);
+  const displayValue = usdAmount * rate;
   const absValue = Math.abs(displayValue);
   const sign = displayValue < 0 ? "-" : "";
   const { symbol, locale } = CURRENCY_META[displayCurrency];
   const amount_ = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 0,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(absValue);
   return `${sign}${symbol}${amount_}`;
 }
@@ -144,16 +146,18 @@ export function fetchUsdRate(currency: DisplayCurrency): Promise<number | null> 
 export function formatMoneyParts(
   amount: number,
   fromCurrency: string,
-  displayCurrency: DisplayCurrency
+  displayCurrency: DisplayCurrency,
+  decimals: number = 0
 ): MoneyParts {
   const usdAmount = toUsdClient(amount, fromCurrency);
   const rate = getUsdRate(displayCurrency);
-  const displayValue = Math.round(usdAmount * rate);
+  const displayValue = usdAmount * rate;
   const absValue = Math.abs(displayValue);
   const sign = displayValue < 0 ? "-" : "";
   const { symbol, locale } = CURRENCY_META[displayCurrency];
   const amount_ = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 0,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(absValue);
   return { symbol, amount: amount_, code: displayCurrency, sign };
 }
