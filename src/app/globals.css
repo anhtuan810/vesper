@@ -6,6 +6,11 @@
   --sans:  var(--font-sans), system-ui, sans-serif;
   --mono:  var(--font-mono), "SF Mono", monospace;
   --nav-height: 56px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  20px;
+  --radius-2xl: 28px;
+  --wrap-pad:   clamp(20px, 4vw, 32px);
 }
 
 :root,
@@ -33,6 +38,17 @@
   --category-reserves:       #B89968;
   --category-property:       #4A7C5E;
   --category-crypto:         #B5564B;
+  --bg-deep:           #EDE6D7;
+  --cat-property:      #5E7A6A;
+  --cat-property-soft: #E0E6E1;
+  --cat-markets:       #6B8AA6;
+  --cat-markets-soft:  #DDE5ED;
+  --cat-reserves:      #B89968;
+  --cat-reserves-soft: #EFE7D6;
+  --cat-crypto:        #B5564B;
+  --cat-crypto-soft:   #F4DDD9;
+  --cat-tangible:      #8C7B5E;
+  --cat-tangible-soft: #E8E1D2;
 }
 
 [data-theme="dark"] {
@@ -59,6 +75,17 @@
   --category-reserves:       #C9A87A;
   --category-property:       #6FAD8A;
   --category-crypto:         #E89086;
+  --bg-deep:           #1A1610;
+  --cat-property:      #6FAD8A;
+  --cat-property-soft: rgba(111, 173, 138, 0.14);
+  --cat-markets:       #7AAFD4;
+  --cat-markets-soft:  rgba(122, 175, 212, 0.14);
+  --cat-reserves:      #C9A87A;
+  --cat-reserves-soft: rgba(201, 168, 122, 0.14);
+  --cat-crypto:        #E89086;
+  --cat-crypto-soft:   rgba(232, 144, 134, 0.14);
+  --cat-tangible:      #B5A48A;
+  --cat-tangible-soft: rgba(181, 164, 138, 0.14);
 }
 
 @theme inline {
@@ -80,10 +107,28 @@
   --color-negative-text: var(--negative-text);
   --color-border:        var(--border);
   --color-border-strong: var(--border-strong);
-  --color-nav-surface:   var(--nav-surface);
-  --font-serif:          var(--serif);
-  --font-sans:           var(--sans);
-  --font-mono:           var(--mono);
+  --color-nav-surface:       var(--nav-surface);
+  --color-bg-deep:           var(--bg-deep);
+  --color-cat-property:      var(--cat-property);
+  --color-cat-property-soft: var(--cat-property-soft);
+  --color-cat-markets:       var(--cat-markets);
+  --color-cat-markets-soft:  var(--cat-markets-soft);
+  --color-cat-reserves:      var(--cat-reserves);
+  --color-cat-reserves-soft: var(--cat-reserves-soft);
+  --color-cat-crypto:        var(--cat-crypto);
+  --color-cat-crypto-soft:   var(--cat-crypto-soft);
+  --color-cat-tangible:      var(--cat-tangible);
+  --color-cat-tangible-soft: var(--cat-tangible-soft);
+  --font-serif:              var(--serif);
+  --font-sans:               var(--sans);
+  --font-mono:               var(--mono);
+}
+
+@theme {
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  20px;
+  --radius-2xl: 28px;
 }
 
 /* Insight band: italic serif body; emphasized phrase renders upright + medium */

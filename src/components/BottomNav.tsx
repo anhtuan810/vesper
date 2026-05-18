@@ -63,7 +63,7 @@ const STATIC_TABS = [
 export function BottomNav() {
   const pathname = usePathname();
 
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname.startsWith("/marketing")) return null;
 
   const assetIdMatch = pathname.match(/^\/asset\/([^/]+)$/);
   const chatHref = assetIdMatch ? `/chat?seed=asset&key=${assetIdMatch[1]}` : "/chat";

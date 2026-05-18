@@ -29,8 +29,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // If not logged in and not on login page, redirect to login
-  if (!user && !request.nextUrl.pathname.startsWith("/login")) {
+  // If not logged in and not on a public path, redirect to login
+  const isPublic =
+    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/marketing");
+
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const next = request.nextUrl.pathname + request.nextUrl.search;
