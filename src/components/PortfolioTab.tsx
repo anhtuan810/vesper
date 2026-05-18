@@ -13,6 +13,7 @@ import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines } from "@/lib/hooks";
 import { toUsdClient } from "@/lib/money";
+import { computeCurrentBalance } from "@/lib/mortgage";
 import type { LiveAsset } from "@/lib/supabase";
 
 // Semantic category mapping — 4 groups, regardless of how many asset types exist
@@ -112,7 +113,10 @@ export function PortfolioTab({
         category: cat,
         label: CATEGORY_LABEL[cat] ?? cat,
         items: [...items].sort((a, b) => b.value - a.value),
-        total: items.reduce((s, a) => s + toUsdClient(a.value, a.currency || "USD"), 0),
+        total: items.reduce((s, a) => {
+          const equity = a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value;
+          return s + toUsdClient(equity, a.currency || "USD");
+        }, 0),
       }))
       .sort((a, b) => b.total - a.total);
   }, [assets]);
@@ -149,23 +153,24 @@ export function PortfolioTab({
 
   return (
     <>
-      {/* Hero: Net worth — no card wrapper, directly on bg */}
-      <div className="mb-5">
-        <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} />
-      </div>
-
-      {/* Net worth chart */}
-      {netTotal > 0 && (
-        <div className="mb-6">
-          <NetWorthChart
-            range={range}
-            onRangeChange={setRange}
-            series={series}
-            loading={loading}
-            onSelectPoint={setSelectedPoint}
-          />
+      {/* Hero + chart — constrained so the chart never stretches past a readable aspect ratio */}
+      <div style={{ maxWidth: 660 }}>
+        <div className="mb-5">
+          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} />
         </div>
-      )}
+
+        {netTotal > 0 && (
+          <div className="mb-6">
+            <NetWorthChart
+              range={range}
+              onRangeChange={setRange}
+              series={series}
+              loading={loading}
+              onSelectPoint={setSelectedPoint}
+            />
+          </div>
+        )}
+      </div>
 
       {/* AI insight band — replaces milestone bar */}
       {assets.length > 0 && <InsightBand />}
@@ -192,7 +197,7 @@ export function PortfolioTab({
               key={group.category}
               label={group.label}
               barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
-              barPct={grossTotal > 0 ? Math.max((group.total / grossTotal) * 100, 2) : 2}
+              barPct={netTotal > 0 ? Math.max((group.total / netTotal) * 100, 2) : 2}
               total={group.total}
               expanded={isExpanded(group.category)}
               onToggle={() => toggleGroup(group.category)}

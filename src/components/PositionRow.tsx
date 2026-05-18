@@ -8,6 +8,7 @@ import { usePriceHistory, useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
 import type { LiveAsset } from "@/lib/supabase";
 import { venueLabel } from "@/lib/venues";
+import { computeCurrentBalance } from "@/lib/mortgage";
 
 const TRADEABLE_TYPES: ReadonlySet<string> = new Set(["stocks", "etf", "crypto", "gold"]);
 
@@ -56,6 +57,10 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
   const displayCurrency = useDisplayCurrency();
   const hasSparkline = closes.length >= 2;
   const isTradeable = TRADEABLE_TYPES.has(asset.type);
+  const displayValue =
+    asset.type === "real_estate"
+      ? asset.value - computeCurrentBalance(asset)
+      : asset.value;
 
   return (
     <Link href={`/asset/${asset.id}`} className="block">
@@ -90,7 +95,7 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
             className="text-fg"
             style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
           >
-            {formatMoney(asset.value, asset.currency || "USD", displayCurrency)}
+            {formatMoney(displayValue, asset.currency || "USD", displayCurrency)}
           </div>
           {isTradeable && chg !== null && (
             <div
