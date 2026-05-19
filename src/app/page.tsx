@@ -35,8 +35,8 @@ export default function Dashboard() {
     if (!user?.id) return;
     const res = await fetch("/api/dashboard-init");
     if (!res.ok) return;
-    const { insight, snapshots, mutations } = await res.json();
-    primeInsightCache(insight);
+    const { insight, portfolio, market, snapshots, mutations } = await res.json();
+    primeInsightCache(insight, portfolio ?? [], market ?? []);
     setInitialSnapshots(snapshots ?? []);
     setMutations(mutations ?? []);
   }, [user?.id]);

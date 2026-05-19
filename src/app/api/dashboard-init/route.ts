@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { backfillSnapshots } from "@/lib/snapshot";
+import { parseMarketDetail } from "@/lib/market-highlights";
 
 const RANGE_DAYS = 30; // default 1M
 
@@ -13,16 +14,34 @@ export async function GET(request: NextRequest) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - RANGE_DAYS);
 
-  const [insightRes, snapshotsRes, mutationsRes] = await Promise.all([
+  const now = new Date().toISOString();
+
+  const [portfolioRes, insightRes, marketRes, snapshotsRes, mutationsRes] = await Promise.all([
+    supabase
+      .from("highlights")
+      .select("detail")
+      .eq("user_id", user.id)
+      .eq("type", "portfolio")
+      .gt("expires_at", now)
+      .order("created_at", { ascending: false })
+      .limit(3),
     supabase
       .from("highlights")
       .select("detail")
       .eq("user_id", user.id)
       .eq("type", "insight")
-      .gt("expires_at", new Date().toISOString())
+      .gt("expires_at", now)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from("highlights")
+      .select("id, title, detail")
+      .eq("user_id", user.id)
+      .eq("type", "market")
+      .gt("expires_at", now)
+      .order("created_at", { ascending: false })
+      .limit(3),
 
     supabase
       .from("snapshots")
@@ -54,8 +73,17 @@ export async function GET(request: NextRequest) {
     snapshots = refetch.data ?? [];
   }
 
+  const portfolio = (portfolioRes.data ?? []).map((r) => r.detail ?? "").filter(Boolean);
+
+  const market = (marketRes.data ?? []).map((row) => {
+    const { text, impact_eur, symbol } = parseMarketDetail(row.detail ?? "");
+    return { id: row.id, title: row.title ?? "", detail: text, impact_eur, symbol };
+  });
+
   return NextResponse.json({
+    portfolio,
     insight: insightRes.data?.detail ?? null,
+    market,
     snapshots,
     mutations: mutationsRes.data ?? [],
   }, {

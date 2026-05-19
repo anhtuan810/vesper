@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
+import type { MarketHighlight } from "@/lib/market-highlights";
 import { useThemeContext } from "@/components/ThemeProvider";
 import { useUserContext } from "@/components/UserProvider";
 import { normalizePrice } from "@/lib/prices";
@@ -416,12 +417,10 @@ export function useSignOut() {
 }
 
 // Module-level session cache — survives re-renders, cleared on page reload
-let _insightCache: { detail: string | null; fetchedAt: number } | null = null;
+let _insightCache: { detail: string | null; portfolio: string[]; market: MarketHighlight[]; fetchedAt: number } | null = null;
 
-export function primeInsightCache(detail: string | null) {
-  if (detail !== null) {
-    _insightCache = { detail, fetchedAt: Date.now() };
-  }
+export function primeInsightCache(detail: string | null, portfolio: string[] = [], market: MarketHighlight[] = []) {
+  _insightCache = { detail, portfolio, market, fetchedAt: Date.now() };
 }
 
 export function invalidateInsightCache() {
@@ -432,11 +431,15 @@ export function invalidateInsightCache() {
 
 export function useInsight() {
   const [detail, setDetail] = useState<string | null>(null);
+  const [portfolio, setPortfolio] = useState<string[]>([]);
+  const [market, setMarket] = useState<MarketHighlight[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (_insightCache && Date.now() - _insightCache.fetchedAt < INSIGHT_CACHE_TTL_MS) {
       setDetail(_insightCache.detail);
+      setPortfolio(_insightCache.portfolio);
+      setMarket(_insightCache.market);
       setLoading(false);
       return;
     }
@@ -444,13 +447,18 @@ export function useInsight() {
     // cache: "no-store" bypasses the browser HTTP cache so a cleared _insightCache always hits the server.
     fetch("/api/insight", { cache: "no-store" })
       .then((r) => r.json())
-      .then(({ detail }: { detail: string | null }) => {
-        _insightCache = { detail, fetchedAt: Date.now() };
-        setDetail(detail);
+      .then(({ insight, portfolio: p, market: m }: { insight: { detail: string | null }; portfolio: string[]; market: MarketHighlight[] }) => {
+        const d = insight?.detail ?? null;
+        const pt = Array.isArray(p) ? p : [];
+        const mk = Array.isArray(m) ? m : [];
+        _insightCache = { detail: d, portfolio: pt, market: mk, fetchedAt: Date.now() };
+        setDetail(d);
+        setPortfolio(pt);
+        setMarket(mk);
       })
-      .catch(() => setDetail(null))
+      .catch(() => { setDetail(null); setPortfolio([]); setMarket([]); })
       .finally(() => setLoading(false));
   }, []);
 
-  return { detail, loading };
+  return { detail, portfolio, market, loading };
 }
