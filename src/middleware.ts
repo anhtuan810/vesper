@@ -2,6 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // Rewrite marketing domains to /marketing/* without changing the URL bar.
+  const host = request.headers.get("host")?.toLowerCase().replace(/:\d+$/, "") ?? "";
+  const isMarketingDomain = host === "volnar.nl" || host === "www.volnar.nl";
+
+  if (isMarketingDomain) {
+    const { pathname } = request.nextUrl;
+    const url = request.nextUrl.clone();
+    if (!pathname.startsWith("/marketing")) {
+      url.pathname = pathname === "/" ? "/marketing" : `/marketing${pathname}`;
+    }
+    return NextResponse.rewrite(url);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
