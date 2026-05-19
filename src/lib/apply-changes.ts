@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { fetchPriceWithFallback, fetchYahooPrice, fetchYahooQuote } from "./prices-server";
-import { resolveSymbol } from "./symbol-aliases";
+import { resolveSymbol, normalizeCryptoSymbol } from "./symbol-aliases";
 import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
@@ -107,7 +107,8 @@ export async function applyPortfolioChanges({
     changes.map(async (change, i) => {
       const sym = aliasedSymbols[i];
       if (change.action === "add" && sym) {
-        const result = await fetchPriceWithFallback(sym, change.country);
+        const normalizedSym = normalizeCryptoSymbol(sym, change.type);
+        const result = await fetchPriceWithFallback(normalizedSym, change.country);
         if (!result.error) return { symbol: result.symbol, nativeCurrency: result.nativeCurrency };
       }
       return null;
@@ -237,7 +238,7 @@ export async function applyPortfolioChanges({
         proposalTimestamp &&
         Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS
       ) {
-        const freshPrice = await fetchYahooPrice(effectiveSymbol);
+        const freshPrice = await fetchYahooPrice(normalizeCryptoSymbol(effectiveSymbol, change.type));
         if (!freshPrice.error && freshPrice.price && freshPrice.price > 0) {
           const impliedPrice = change.value! / change.units!;
           const priceDiff = Math.abs(freshPrice.price - impliedPrice) / impliedPrice;
@@ -323,7 +324,7 @@ export async function applyPortfolioChanges({
             );
           }
 
-          const priceResult = await fetchYahooPrice(existing.symbol);
+          const priceResult = await fetchYahooPrice(normalizeCryptoSymbol(existing.symbol, existing.type));
 
           if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
             throw new ValueModeError(
@@ -385,7 +386,7 @@ export async function applyPortfolioChanges({
           proposalTimestamp &&
           Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS
         ) {
-          const freshPrice = await fetchYahooPrice(existing.symbol);
+          const freshPrice = await fetchYahooPrice(normalizeCryptoSymbol(existing.symbol, existing.type));
           if (!freshPrice.error && freshPrice.price && freshPrice.price > 0) {
             const impliedPrice = change.value! / change.units!;
             const priceDiff = Math.abs(freshPrice.price - impliedPrice) / impliedPrice;

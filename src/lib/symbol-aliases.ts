@@ -33,3 +33,12 @@ export function resolveSymbol(symbol: string | null | undefined): string | null 
   const upper = symbol.toUpperCase();
   return US_EQUIVALENTS[upper] ?? symbol;
 }
+
+// Appends -USD to bare crypto symbols so Yahoo Finance returns the correct asset
+// instead of an unrelated stock that happens to share the ticker (e.g. BTC → Bit Brother Ltd).
+export function normalizeCryptoSymbol(symbol: string, type?: string | null): string {
+  if (type === "crypto" && !symbol.includes("-")) {
+    return `${symbol.toUpperCase()}-USD`;
+  }
+  return symbol;
+}

@@ -16,6 +16,7 @@ import { validatePortfolioChanges } from "@/lib/validations";
 import { geocodeAddress } from "@/lib/geocode";
 import { venueChipsFor } from "@/lib/venues";
 import { CHAT_DAILY_LIMIT } from "@/lib/constants";
+import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
 
 validateEnv();
 
@@ -148,7 +149,8 @@ async function resolveProposal(proposal: ProposalChange, currentAssets: CurrentA
         `Couldn't resolve a value-based change for ${name} — no symbol on file. Could you state the unit count instead?`
       );
     }
-    const priceResult = await fetchYahooPrice(existing.symbol);
+    const lookupSymbolDelta = normalizeCryptoSymbol(existing.symbol, existing.type);
+    const priceResult = await fetchYahooPrice(lookupSymbolDelta);
     if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
       throw new ValueModeError(
         `Couldn't fetch a live price for ${existing.symbol} right now — could you state the unit count instead?`
@@ -199,7 +201,8 @@ async function resolveProposal(proposal: ProposalChange, currentAssets: CurrentA
 
     if (isTradeable && proposal.symbol && !hasUnits && hasValue) {
       // value-mode add: derive units from live price
-      const priceResult = await fetchYahooPrice(proposal.symbol);
+      const lookupSymbol = normalizeCryptoSymbol(proposal.symbol, proposal.type);
+      const priceResult = await fetchYahooPrice(lookupSymbol);
       if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
         throw new ValueModeError(
           `Couldn't fetch a live price for ${proposal.symbol} right now — could you state the unit count instead?`
@@ -209,7 +212,18 @@ async function resolveProposal(proposal: ProposalChange, currentAssets: CurrentA
       const price = priceResult.price;
       const decimals = proposal.type === "crypto" ? 8 : 4;
       const factor = Math.pow(10, decimals);
-      const derivedUnits = Math.round((proposal.value! / price) * factor) / factor;
+
+      // Convert stated value to the price's native currency before deriving units.
+      const statedCurrency = proposal.currency ?? cur;
+      let valueInPriceCurrency = proposal.value!;
+      if (statedCurrency !== cur) {
+        const rates = await getUsdRates();
+        const fromRate = statedCurrency === "USD" ? 1 : (rates[statedCurrency] ?? 1);
+        const toRate = cur === "USD" ? 1 : (rates[cur] ?? 1);
+        valueInPriceCurrency = (proposal.value! / fromRate) * toRate;
+      }
+
+      const derivedUnits = Math.round((valueInPriceCurrency / price) * factor) / factor;
       const derivedValue = Math.round(derivedUnits * price * 100) / 100;
       return `Add ${derivedUnits} ${proposal.symbol} shares at ${cur} ${price.toFixed(2)} per share = ${cur} ${derivedValue.toLocaleString()}`;
     }
