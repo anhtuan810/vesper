@@ -364,7 +364,7 @@ export default function ProfilePage() {
                         {label}
                       </div>
                       <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55 }}>
-                        {value.split(/\.\.\s*/).filter(s => s.trim()).slice(0, 2).map((sentence, i) => (
+                        {value?.split(/\.\.\s*/).filter(s => s.trim()).slice(0, 2).map((sentence, i) => (
                           <div key={i} style={{ marginBottom: 5 }}>{sentence.trim()}</div>
                         ))}
                       </div>
