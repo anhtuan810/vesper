@@ -80,24 +80,28 @@ export function PortfolioTab({
   }, [initialSnapshots]);
 
   useEffect(() => {
-    if (range === "1M" && initialSnapshots && series.length > 0) {
-      // Skip the network fetch but keep today's endpoint in sync with live netTotal
-      const today = new Date().toISOString().slice(0, 10);
-      setSeries((prev) => [
-        ...prev.filter((p) => p.date !== today),
-        { date: today, total_value: netTotal },
-      ]);
+    if (range === "1M" && initialSnapshots) {
+      // Re-seed from dashboard-init data; covers both the initial 1M load and
+      // re-selection of "1M" after the user browsed another range.
+      setSeries(buildSeries(initialSnapshots, netTotal));
+      setLoading(false);
       return;
     }
     setLoading(true);
     setSelectedPoint(null);
-    fetch(`/api/snapshots?range=${range}`)
+    const controller = new AbortController();
+    fetch(`/api/snapshots?range=${range}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((body) => {
         setSeries(buildSeries(body.data ?? [], netTotal));
+        setLoading(false);
       })
-      .catch((err) => { console.error("Snapshots fetch failed:", err); })
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        console.error("Snapshots fetch failed:", err);
+        setLoading(false);
+      });
+    return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, netTotal]);
 

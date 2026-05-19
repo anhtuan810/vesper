@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       .select("date, total_value")
       .eq("user_id", user.id)
       .gte("date", cutoff.toISOString().slice(0, 10))
+      .gt("total_value", 0)
       .order("date", { ascending: true }),
 
     supabase
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
       .select("date, total_value")
       .eq("user_id", user.id)
       .gte("date", cutoff.toISOString().slice(0, 10))
+      .gt("total_value", 0)
       .order("date", { ascending: true });
     snapshots = refetch.data ?? [];
   }

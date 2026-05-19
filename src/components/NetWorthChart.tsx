@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
+import { getUsdRate } from "@/lib/money";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -82,15 +83,17 @@ function computeNiceLevels(dataMin: number, dataMax: number): NiceLevels {
 }
 
 const CHART_PAD_TOP = 6;
+const CHART_PAD_RIGHT = 8;   // room for end-point halo (r=6) to sit inside the viewBox
+const CHART_PAD_BOTTOM = 8;  // same — prevents clipping when current value is near niceMin
 
 function buildPath(
-  values: number[], W: number, H: number, yMin: number, yMax: number
+  values: number[], W: number, H: number, yMin: number, yMax: number, drawW: number
 ): { line: string; area: string; projectY: (v: number) => number } {
   const projectY = makeProjectY(H, yMin, yMax);
 
   if (values.length < 2) return { line: "", area: "", projectY };
 
-  const toX = (i: number) => (i / (values.length - 1)) * W;
+  const toX = (i: number) => (i / (values.length - 1)) * drawW;
   const pts = values.map((c, i) => ({ x: toX(i), y: projectY(c) }));
   let line = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
   // Catmull-Rom → cubic Bézier: curve passes through every data point
@@ -113,7 +116,7 @@ function buildPath(
 
 function makeProjectY(H: number, yMin: number, yMax: number): (v: number) => number {
   const yRange = Math.max(yMax - yMin, 1);
-  const drawH = H - CHART_PAD_TOP;
+  const drawH = H - CHART_PAD_TOP - CHART_PAD_BOTTOM;
   return (v) => CHART_PAD_TOP + drawH - ((v - yMin) / yRange) * drawH;
 }
 
@@ -145,25 +148,35 @@ export function NetWorthChart(props: Props) {
   const W = 280;
   const H = 140;
 
-  const values = series.map((p) => p.total_value);
-  const up = series.length >= 2 && series[series.length - 1].total_value >= series[0].total_value;
+  // Convert all series values to display currency so the axis and curve are in
+  // the same unit as the hero number above the chart.
+  const displayRate = getUsdRate(displayCurrency);
+  const converted = series.map((p) => ({ ...p, total_value: p.total_value * displayRate }));
+
+  const values = converted.map((p) => p.total_value);
+  const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
   const gradId = "netWorthChartFill";
 
-  // Nice Y-axis bounds — shared by the curve projection, end-point marker, and label positions
-  const dataMin = values.length >= 2 ? Math.min(...values) : 0;
-  const dataMax = values.length >= 2 ? Math.max(...values) : 1;
+  // Nice Y-axis bounds — shared by the curve projection, end-point marker, and label positions.
+  // rawMin * 0.9 prevents the floor from collapsing to 0 when the data range far exceeds the minimum.
+  const rawMin = values.length >= 2 ? Math.min(...values) : 0;
+  const rawMax = values.length >= 2 ? Math.max(...values) : 1;
+  const pad = (rawMax - rawMin) * 0.05;
+  const dataMin = Math.max(rawMin - pad, rawMin * 0.9);
+  const dataMax = rawMax + pad;
   const { niceMin, niceMax, labels: yLabels } = computeNiceLevels(dataMin, dataMax);
   const yRange = Math.max(niceMax - niceMin, 1);
 
-  const { line, area, projectY } = buildPath(values, W, H, niceMin, niceMax);
+  const drawW = W - CHART_PAD_RIGHT;
+  const { line, area, projectY } = buildPath(values, W, H, niceMin, niceMax, drawW);
 
   const lastY = values.length >= 2 ? projectY(values[values.length - 1]) : H / 2;
 
   // Scrub marker — same projection as buildPath / lastY
   const selectedX =
     selectedIndex !== null && series.length >= 2
-      ? (selectedIndex / (series.length - 1)) * W
+      ? (selectedIndex / (series.length - 1)) * drawW
       : null;
   const selectedY =
     selectedIndex !== null && values.length >= 2
@@ -249,8 +262,8 @@ export function NetWorthChart(props: Props) {
               {/* Static end-point marker — hidden while scrubbing a non-last point */}
               {showEndMarker && (
                 <>
-                  <circle cx={W} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
-                  <circle cx={W} cy={lastY} r={3} fill={strokeColor} />
+                  <circle cx={drawW} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
+                  <circle cx={drawW} cy={lastY} r={3} fill={strokeColor} />
                 </>
               )}
               {/* Scrub marker — vertical guide + halo + dot */}
