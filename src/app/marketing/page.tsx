@@ -44,17 +44,6 @@ export default function MarketingPage() {
       <WhatItIsnt />
       <Privacy />
 
-      {/* ── Footer ── */}
-      <div className="max-w-[1200px] mx-auto w-full mt-auto" style={{ padding: "0 var(--wrap-pad)" }}>
-        <footer
-          className="border-t border-border flex justify-between items-center gap-3 text-[13px] text-faint max-[480px]:flex-col max-[480px]:items-start"
-          style={{ padding: "36px 0 calc(40px + env(safe-area-inset-bottom, 0))" }}
-        >
-          <div className="font-serif">Volnar</div>
-<div>Eindhoven, Netherlands · volnar.nl</div>
-        </footer>
-      </div>
-
     </div>
   );
 }
