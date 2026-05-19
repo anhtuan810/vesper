@@ -52,6 +52,19 @@ const ALLOWED_CHIPS: ReadonlySet<string> = new Set([
   "Keep TL0.DE",
 ]);
 
+// Chips that mean "go ahead and apply" — if the user sends one of these,
+// skip the propose_change flow even if Claude mistakenly re-emits it.
+const CONFIRMATION_CHIPS: ReadonlySet<string> = new Set([
+  "Confirm and save",
+  "Use the proposed name",
+  "Yes, add them",
+  "Replace the previous one",
+  "Add on top of it",
+  "Today",
+  "Yesterday",
+  "Skip — track from today",
+]);
+
 function sanitizeChips(raw: unknown): string[] | null {
   if (!Array.isArray(raw)) return null;
   const cleaned = raw
@@ -219,9 +232,13 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userId = user.id;
 
-    const { message, imageData } = await req.json();
+    const { message, images: rawImages } = await req.json();
+    // Normalise: accept array (new) or single object (old clients)
+    const images: Array<{ base64: string; mediaType: string }> = Array.isArray(rawImages)
+      ? rawImages
+      : rawImages ? [rawImages] : [];
 
-    if (!message && !imageData) {
+    if (!message && images.length === 0) {
       return NextResponse.json({ message: "No message provided" }, { status: 400 });
     }
 
@@ -229,13 +246,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Message is too long — keep it under 500 characters." }, { status: 400 });
     }
 
-    // ~7 MB base64 ≈ 5 MB binary — matches the client-side paste limit
-    if (imageData?.base64 && imageData.base64.length > 7_000_000) {
-      return NextResponse.json({ message: "Screenshot is too large — under 5 MB please." }, { status: 400 });
-    }
-
-    if (imageData && !ALLOWED_IMAGE_TYPES.has(imageData.mediaType)) {
-      return NextResponse.json({ message: "That image format isn't supported. Try PNG, JPG, GIF, or WebP." }, { status: 400 });
+    for (const img of images) {
+      // ~7 MB base64 ≈ 5 MB binary — matches the client-side paste limit
+      if (img.base64.length > 7_000_000) {
+        return NextResponse.json({ message: "One of the screenshots is too large — keep each under 5 MB." }, { status: 400 });
+      }
+      if (!ALLOWED_IMAGE_TYPES.has(img.mediaType)) {
+        return NextResponse.json({ message: "That image format isn't supported. Try PNG, JPG, GIF, or WebP." }, { status: 400 });
+      }
     }
 
     const supabase = createServerSupabase();
@@ -312,16 +330,16 @@ export async function POST(req: NextRequest) {
       }))
       .filter((m) => m.content.length > 0);
 
-    // --- Build current message (with optional image) ---
+    // --- Build current message (with optional images) ---
     const userContent: Anthropic.Messages.ContentBlockParam[] = [];
 
-    if (imageData) {
+    for (const img of images) {
       userContent.push({
         type: "image",
         source: {
           type: "base64",
-          media_type: imageData.mediaType || "image/png",
-          data: imageData.base64,
+          media_type: (img.mediaType || "image/png") as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+          data: img.base64,
         },
       });
     }
@@ -488,7 +506,10 @@ export async function POST(req: NextRequest) {
 
     // --- Change proposal flow (value-mode adds, value_delta edits, removes, batch/screenshot) ---
     // When Claude emits <propose_change>, resolve numbers and return chips — no DB write this turn.
-    if (proposeChangeRaw && !proposeAddressRaw) {
+    // Skip if the user just sent a confirmation chip — Claude sometimes echoes <propose_change>
+    // in the confirmation response, which would cause the chips to appear a second time.
+    const isConfirmationTurn = typeof message === "string" && CONFIRMATION_CHIPS.has(message.trim());
+    if (proposeChangeRaw && !proposeAddressRaw && !isConfirmationTurn) {
       try {
         const proposals = JSON.parse(proposeChangeRaw.trim());
         if (!Array.isArray(proposals) || proposals.length === 0) throw new Error("empty proposals");

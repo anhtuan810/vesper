@@ -9,7 +9,7 @@ export interface ChatMessage {
   id?: string;
   from: "user" | "assistant";
   text: string;
-  imagePreview?: string;
+  imagePreviews?: string[];
   suggestedReplies?: string[] | null;
 }
 
@@ -60,8 +60,8 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const [loading, setLoading] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageData, setImageData] = useState<{ base64: string; mediaType: string } | null>(null);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageData, setImageData] = useState<Array<{ base64: string; mediaType: string }>>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreInFlight = useRef(false);
@@ -184,9 +184,16 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     }
   }, [userId, hasMore, messages]);
 
+  const MAX_IMAGES = 5;
+
   const clearImage = useCallback(() => {
-    setImagePreview(null);
-    setImageData(null);
+    setImagePreviews([]);
+    setImageData([]);
+  }, []);
+
+  const removeImage = useCallback((index: number) => {
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    setImageData((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleFile = useCallback((file: File) => {
@@ -195,8 +202,8 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      setImageData({ base64: result.split(",")[1], mediaType: file.type });
-      setImagePreview(result);
+      setImageData((prev) => prev.length < MAX_IMAGES ? [...prev, { base64: result.split(",")[1], mediaType: file.type }] : prev);
+      setImagePreviews((prev) => prev.length < MAX_IMAGES ? [...prev, result] : prev);
     };
     reader.readAsDataURL(file);
   }, []);
@@ -212,8 +219,8 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          setImageData({ base64: result.split(",")[1], mediaType: item.type });
-          setImagePreview(result);
+          setImageData((prev) => prev.length < MAX_IMAGES ? [...prev, { base64: result.split(",")[1], mediaType: item.type }] : prev);
+          setImagePreviews((prev) => prev.length < MAX_IMAGES ? [...prev, result] : prev);
         };
         reader.readAsDataURL(file);
         break;
@@ -223,19 +230,19 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
   const send = useCallback(async () => {
     const text = input.trim();
-    if ((!text && !imageData) || loading || !userId) return;
+    if ((!text && !imageData.length) || loading || !userId) return;
 
-    const displayText = text || "Screenshot uploaded";
+    const displayText = text || (imageData.length > 1 ? "Screenshots uploaded" : "Screenshot uploaded");
     const userMsg: ChatMessage = { from: "user", text: displayText };
-    if (imagePreview) userMsg.imagePreview = imagePreview;
+    if (imagePreviews.length > 0) userMsg.imagePreviews = imagePreviews;
 
     setInput("");
     setLoading(true);
     setThinking(true);
     setMessages((prev) => [...prev, userMsg]);
 
-    const payload: { message: string; imageData?: { base64: string; mediaType: string } } = { message: text };
-    if (imageData) payload.imageData = imageData;
+    const payload: { message: string; images?: Array<{ base64: string; mediaType: string }> } = { message: text };
+    if (imageData.length > 0) payload.images = imageData;
     clearImage();
 
     try {
@@ -277,7 +284,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       ]);
     }
     setLoading(false);
-  }, [input, imageData, loading, userId, clearImage]);
+  }, [input, imageData, imagePreviews, loading, userId, clearImage]);
 
   // Send a specific text string without going through the input state — used by suggestion chips.
   const sendText = useCallback(async (text: string) => {
@@ -336,12 +343,13 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     loading,
     thinking,
     remaining,
-    imagePreview,
+    imagePreviews,
     imageData,
-    canSend: !loading && !!(input.trim() || imageData) && (remaining === null || remaining > 0),
+    canSend: !loading && !!(input.trim() || imageData.length) && (remaining === null || remaining > 0),
     send,
     sendText,
     clearImage,
+    removeImage,
     handlePaste,
     handleFile,
     loadMore,

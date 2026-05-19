@@ -27,7 +27,7 @@ export default function ChatPopup({
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
   const {
     messages, input, setInput, loading, thinking, remaining,
-    imagePreview, imageData, canSend, send, sendText, clearImage, handlePaste, handleFile,
+    imagePreviews, imageData, canSend, send, sendText, clearImage, removeImage, handlePaste, handleFile,
     loadMore, hasMore, isLoadingMore,
   } = useChatSession({ userId, onPortfolioUpdate, onNewMessage });
 
@@ -37,6 +37,7 @@ export default function ChatPopup({
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -289,20 +290,24 @@ export default function ChatPopup({
                   <FormatText text={msg.text} />
                 ) : (
                   <>
-                    {msg.imagePreview && (
-                      <img
-                        src={msg.imagePreview}
-                        alt=""
-                        style={{
-                          display: "block",
-                          maxWidth: "100%",
-                          maxHeight: 200,
-                          borderRadius: 10,
-                          marginBottom: msg.text && msg.text !== "Screenshot uploaded" ? 8 : 0,
-                        }}
-                      />
+                    {msg.imagePreviews && msg.imagePreviews.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.text && msg.text !== "Screenshot uploaded" && msg.text !== "Screenshots uploaded" ? 8 : 0 }}>
+                        {msg.imagePreviews.map((src, idx) => (
+                          <img
+                            key={idx}
+                            src={src}
+                            alt=""
+                            style={{
+                              display: "block",
+                              maxWidth: "100%",
+                              maxHeight: 200,
+                              borderRadius: 10,
+                            }}
+                          />
+                        ))}
+                      </div>
                     )}
-                    {(!msg.imagePreview || (msg.text && msg.text !== "Screenshot uploaded")) && msg.text}
+                    {(!msg.imagePreviews?.length || (msg.text && msg.text !== "Screenshot uploaded" && msg.text !== "Screenshots uploaded")) && msg.text}
                   </>
                 )}
               </div>
@@ -387,23 +392,31 @@ export default function ChatPopup({
         <div ref={bottomRef} />
       </div>
 
-      {/* Image preview */}
-      {imagePreview && (
-        <div className="px-4 pb-2 flex items-center gap-2 shrink-0">
-          <img
-            src={imagePreview}
-            alt="Preview"
-            className="w-10 h-10 rounded-lg object-cover"
-            style={{ border: "1px solid var(--border)" }}
-          />
-          <span className="text-dim flex-1" style={{ fontSize: 12 }}>Screenshot ready to send</span>
-          <button
-            onClick={clearImage}
-            className="text-faint hover:text-dim transition-colors"
-            style={{ fontSize: 12, background: "none", border: "none", cursor: "pointer" }}
-          >
-            ✕
-          </button>
+      {/* Image previews */}
+      {imagePreviews.length > 0 && (
+        <div className="px-4 pb-2 flex items-center gap-2 flex-wrap shrink-0">
+          {imagePreviews.map((src, i) => (
+            <div key={i} style={{ position: "relative", display: "inline-block" }}>
+              <img
+                src={src}
+                alt={`Preview ${i + 1}`}
+                className="rounded-lg object-cover"
+                style={{ width: 40, height: 40, border: "1px solid var(--border)", display: "block" }}
+              />
+              <button
+                onClick={() => removeImage(i)}
+                style={{
+                  position: "absolute", top: -5, right: -5,
+                  width: 16, height: 16, borderRadius: "50%",
+                  background: "var(--text-faint)", color: "var(--bg)",
+                  border: "none", cursor: "pointer",
+                  fontSize: 9, lineHeight: "16px", textAlign: "center", padding: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -446,6 +459,7 @@ export default function ChatPopup({
         >
           {/* Image attach */}
           <input
+            key={fileInputKey}
             ref={fileInputRef}
             type="file"
             accept="image/*"
@@ -453,7 +467,7 @@ export default function ChatPopup({
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFile(file);
-              e.target.value = "";
+              setFileInputKey((k) => k + 1);
             }}
           />
           <button
@@ -500,7 +514,7 @@ export default function ChatPopup({
             maxLength={500}
             placeholder={(() => {
               if (remaining === 0) return "Daily limit reached — back tomorrow";
-              if (imageData) return "Add a note or send…";
+              if (imageData.length) return "Add a note or send…";
               const lastMsg = messages[messages.length - 1];
               const chipsVisible = seedMessage !== null || (
                 lastMsg?.from === "assistant" &&
