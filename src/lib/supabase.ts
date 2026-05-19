@@ -130,6 +130,7 @@ export interface Message {
   content: string;
   created_at: string;
   suggested_replies?: string[] | null;
+
 }
 
 export interface Mutation {

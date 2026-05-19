@@ -424,6 +424,12 @@ export function primeInsightCache(detail: string | null) {
   }
 }
 
+export function invalidateInsightCache() {
+  _insightCache = null;
+  // Best-effort: purge the server-side DB cache so the next fetch regenerates from current assets.
+  fetch("/api/insight", { method: "DELETE" }).catch(() => {});
+}
+
 export function useInsight() {
   const [detail, setDetail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -435,7 +441,8 @@ export function useInsight() {
       return;
     }
 
-    fetch("/api/insight")
+    // cache: "no-store" bypasses the browser HTTP cache so a cleared _insightCache always hits the server.
+    fetch("/api/insight", { cache: "no-store" })
       .then((r) => r.json())
       .then(({ detail }: { detail: string | null }) => {
         _insightCache = { detail, fetchedAt: Date.now() };

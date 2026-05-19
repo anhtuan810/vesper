@@ -705,14 +705,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Background: generate first insight immediately after the first-ever asset add,
-    // so the "Worth Knowing" band is ready when the user lands on the portfolio tab.
-    if (isNewUser && portfolioChanged && updatedAssets && updatedAssets.length > 0) {
+    // Background: refresh insight whenever the portfolio changes.
+    // Delete the stale cached insight first so the next client fetch never sees outdated content.
+    // If assets remain, generate and cache a fresh insight immediately.
+    if (portfolioChanged && updatedAssets !== null) {
       after(async () => {
         try {
+          const supabaseAfter = createServerSupabase();
+          await supabaseAfter.from("highlights").delete().eq("user_id", userId).eq("type", "insight");
+          if (updatedAssets.length === 0) return;
           const detail = await generateInsight(updatedAssets);
           if (!detail) return;
-          const supabaseAfter = createServerSupabase();
           const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
           await supabaseAfter.from("highlights").insert({
             user_id: userId,
@@ -722,7 +725,7 @@ export async function POST(req: NextRequest) {
             seen: false,
           });
         } catch (err) {
-          console.error("First-add insight generation failed:", err);
+          Sentry.captureException(err, { tags: { background: "insight-regen" } });
         }
       });
     }

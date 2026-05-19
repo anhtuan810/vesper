@@ -5,8 +5,6 @@ import { generateInsight } from "@/lib/insight-generator";
 
 validateEnv();
 
-const INSIGHT_CC = { headers: { "Cache-Control": "private, max-age=3600, stale-while-revalidate=86400" } };
-
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,7 +24,7 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (cached?.detail) {
-    return NextResponse.json({ detail: cached.detail, expires_at: cached.expires_at }, INSIGHT_CC);
+    return NextResponse.json({ detail: cached.detail, expires_at: cached.expires_at });
   }
 
   // 2. Fetch the user's assets to build context
@@ -37,13 +35,13 @@ export async function GET(request: NextRequest) {
     .order("value", { ascending: false });
 
   if (!assets || assets.length === 0) {
-    return NextResponse.json({ detail: null }, INSIGHT_CC);
+    return NextResponse.json({ detail: null });
   }
 
   // 3. Generate a fresh insight via Claude Haiku
   const detail = await generateInsight(assets);
   if (!detail) {
-    return NextResponse.json({ detail: null }, INSIGHT_CC);
+    return NextResponse.json({ detail: null });
   }
 
   // 4. Cache for 24 hours — best-effort, do not throw on failure
@@ -52,5 +50,15 @@ export async function GET(request: NextRequest) {
     .from("highlights")
     .insert({ user_id: user.id, type: "insight", detail, expires_at: expiresAt, seen: false });
 
-  return NextResponse.json({ detail, expires_at: expiresAt }, INSIGHT_CC);
+  return NextResponse.json({ detail, expires_at: expiresAt });
+}
+
+export async function DELETE(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createServerSupabase();
+  await supabase.from("highlights").delete().eq("user_id", user.id).eq("type", "insight");
+
+  return NextResponse.json({ ok: true });
 }
