@@ -51,12 +51,7 @@ export default function MarketingPage() {
           style={{ padding: "36px 0 calc(40px + env(safe-area-inset-bottom, 0))" }}
         >
           <div className="font-serif">Volnar</div>
-          <div>
-            A product of{" "}
-            <strong className="text-fg font-medium">NovaHub B.V.</strong>{" "}
-            · KVK 92194923
-          </div>
-          <div>Eindhoven, Netherlands · volnar.nl</div>
+<div>Eindhoven, Netherlands · volnar.nl</div>
         </footer>
       </div>
 

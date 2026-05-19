@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Source_Serif_4, Albert_Sans, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
-import { BottomNav } from "@/components/BottomNav";
 import { UndoDeleteToast } from "@/components/UndoDeleteToast";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
@@ -55,8 +54,7 @@ export default async function RootLayout({
         <ThemeProvider initialTheme={theme}>
           <UserProvider>
             {children}
-            <BottomNav />
-            <UndoDeleteToast />
+<UndoDeleteToast />
           </UserProvider>
         </ThemeProvider>
       </body>
