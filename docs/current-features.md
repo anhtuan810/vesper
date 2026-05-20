@@ -92,17 +92,18 @@
 - Country-agnostic — pure math, no tax assumptions
 - Files: `src/components/asset-detail/RealEstateDetail.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/lib/mortgage.ts`, `src/lib/maps.ts`, `src/app/api/geocode/route.ts`, `src/lib/geocode.ts`, `src/styles/map-light.json`, `src/styles/map-dark.json`
 
-### Real-time Prices with Currency Conversion
+### Real-time Prices
 - Yahoo Finance via server-side API route at `/api/prices`
-- Server-side conversion to EUR using cached FX rates from `fx_rates` table
-- Returns `{ price (EUR), previousClose (EUR), nativePrice, nativeCurrency }` per symbol
-- FX cache refreshed lazily on first miss with 24h TTL via `/api/fx`. In-process 60s memo cache layer prevents redundant table hits during active polling
-- FX source: frankfurter.app (no key, ECB-backed). EUR base matches the storage plan.
-- Self-heal: when Yahoo's reported currency differs from `assets.currency`, the row is corrected on next price refresh — currency tag and freshly-converted EUR value updated together in the same write
+- **No EUR conversion in the price pipeline.** Returns native Yahoo prices: `{ symbol, price (native), previousClose (native), nativePrice, nativeCurrency, requested_symbol? }`
+- GBp→GBP normalisation applied for UK pence-priced assets; all other currencies pass through unchanged
+- Venue fallback: bare ticker symbols fan out to `venuePriorityFor(country)` exchange suffixes; first success wins. `requested_symbol` on the result reveals when a bare symbol was resolved to a qualified one (e.g. ZPRR → ZPRR.DE)
+- FX rates (USD base) cached in `fx_rates` table with 24h TTL; 1-minute in-process memo; fallback to hardcoded constants. Source: frankfurter.app (ECB-backed, no key)
+- Self-heal (in `useAssets`): when `nativeCurrency !== assets.currency` or resolver rewrote the symbol, writes `{ value = price × units, currency?, symbol? }` back in native currency
+- `liveAssets` memo overlays `value = price × units` and `currency = nativeCurrency` on every asset — display code always uses these overlaid values
 - Status dot in NavBar — age-based (see Portfolio Dashboard above for full definition)
 - Manual refresh button in NavBar
-- Day-change pills per position; previous-close is also EUR-converted for like-for-like comparison
-- Files: `src/app/api/prices/route.ts`, `src/app/api/fx/route.ts`, `src/lib/hooks.ts` (`useAssets`, `useLivePrice`)
+- Day-change pills per position; `%` change is currency-neutral since `price` and `previousClose` share the same native currency
+- Files: `src/app/api/prices/route.ts`, `src/app/api/fx/route.ts`, `src/lib/hooks.ts` (`useAssets`, `useLivePrice`), `src/lib/prices-server.ts`, `src/lib/venues.ts`
 
 ### Asset Logos
 - Shared `AssetLogo` component used in DiaryTab and PositionRow
@@ -118,19 +119,18 @@
 - Files: `src/components/AssetLogo.tsx`, `src/app/api/logo/route.ts`
 
 ### Display Currency Parameterization (Phases A–D shipped)
-- Per-user display currency stored on `users.display_currency` (EUR / USD / GBP, default EUR). Picker lives on Profile → Preferences (the originally-planned `/settings` route was dropped per Decision 5).
-- Storage stays EUR on every numeric column. FX pivot: EUR via frankfurter.app (ECB-backed).
-- **Number formatting is forced to `nl-NL` locale** for all currencies regardless of user locale — `€616.086`, `$616.086`, `£616.086` (dot thousand separator, comma decimal). Intentional brand-consistency choice; overrides locale-aware formatting.
-- **Phase A**: `formatMoney(eurValue, displayCurrency)`, `formatMoneyParts`, `useDisplayCurrency()`, picker on Profile, `PATCH /api/users/me`
-- **Phase B**: Every visible number renders in display currency. `PriceDisplay` extended with `displayCurrency` prop. First-switch toast appears once, tracked in localStorage.
-- **Phase C**: Manual inputs would accept display currency and convert to EUR — but with all asset detail pages now read-only and Profile context fields read-only, the only remaining input path is chat. Chat prompts are parameterized with `displayCurrency`; prose responses render in display currency, `<changes>` JSON stays native. Goal targets stated in display currency are converted to EUR server-side.
-- **Phase D**: Real estate native currency captured at add time from country (NL→EUR, US→USD, UK→GBP). `countryToCurrency()` helper in `src/lib/country-currency.ts`.
-- Files: `src/lib/money.ts`, `src/lib/hooks.ts`, `src/lib/projection.ts`, `src/lib/claude.ts`, `src/lib/apply-changes.ts`, `src/lib/country-currency.ts`, `src/components/PriceDisplay.tsx`, `src/components/NetWorthHero.tsx`, `src/components/PositionRow.tsx`, `src/components/PortfolioTab.tsx`, `src/components/HoldingsGroup.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/components/asset-detail/*`, `src/components/DiaryTab.tsx`, `src/app/page.tsx`, `src/app/profile/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/diary-summary/route.ts`
+- Per-user display currency stored on `users.display_currency` (EUR / USD / GBP, default EUR). Picker lives on Profile → Preferences.
+- **Storage is native-per-asset.** `assets.value` holds the asset's native currency (Yahoo-reported for tradeables; country-derived for real estate). USD is the bridge for aggregation (`snapshots.total_value`, `mutations.portfolio_total`). EUR and GBP are display-only at render time.
+- `formatMoney(nativeValue, nativeCurrency, displayCurrency)` — pipeline: `toUsdClient(amount, from)` → `× getUsdRate(displayCurrency)` → format.
+- **Number formatting is forced to `nl-NL` locale** for all currencies — `€616.086`, `$616.086`, `£616.086` (dot thousand separator, comma decimal). Intentional brand-consistency choice.
+- Chat prompts are parameterized with `displayCurrency`; prose responses render in display currency, `<changes>` JSON stays native. Goal targets stated in display currency are converted to USD server-side before INSERT.
+- Real estate native currency captured at add time from country (NL/DE/FR/ES/IT→EUR, US→USD, UK→GBP, other→EUR). `countryToCurrency()` helper in `src/lib/country-currency.ts`.
+- Files: `src/lib/money.ts`, `src/lib/hooks.ts`, `src/lib/claude.ts`, `src/lib/apply-changes.ts`, `src/lib/country-currency.ts`, `src/lib/fx.ts`, `src/components/NetWorthHero.tsx`, `src/components/PositionRow.tsx`, `src/components/PortfolioTab.tsx`, `src/components/HoldingsGroup.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/components/asset-detail/*`, `src/components/DiaryTab.tsx`, `src/app/page.tsx`, `src/app/profile/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/diary-summary/route.ts`
 
 ### Theme System
-- Two modes in the UI picker: **Light**, **Dark**. `auto` (system preference) was removed from the Profile picker — the column still accepts `'auto'` for database constraint compatibility, but existing `auto` users will see "Light" as their picker selection until they actively choose.
+- Two modes: **Light**, **Dark**. `auto` is not supported — `PATCH /api/users/me` rejects `theme=auto` with 400. The DB check constraint still lists `'auto'` for backward compatibility only.
 - Stored on `users.theme` (text, check constraint `in ('auto', 'light', 'dark')`)
-- `ThemeProvider` resolves the active theme client-side from cookie + system preference, applies `data-theme="light"` or `data-theme="dark"` to the document root; tokens in `globals.css` swap automatically
+- `ThemeProvider` applies `data-theme="light"` or `data-theme="dark"` to the document root; tokens in `globals.css` swap automatically
 - Picker lives on Profile → Preferences alongside the currency picker
 - Cookie (`volnar.theme`) read in the root layout to set initial `data-theme` before hydration, avoiding flash
 - `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `/api/users/me`
@@ -171,7 +171,7 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 - Edit mutations propagate user-stated `buy_date` from Claude's `<changes>` block to `mutations.occurred_at`
 - Currency on insert: derived from Yahoo's reported currency when symbol is known, else country-mapped for real estate, else EUR default
 - Strict topic boundary in system prompt — declines off-topic requests with a fixed redirect
-- Rate limit: 50 messages per user per day; input cap: 500 characters; auto-retry on Claude API failure (3 attempts with backoff)
+- Rate limit: 200 messages per user per day (testing value — lower to 50 before release); input cap: 500 characters; auto-retry on Claude API failure (3 attempts with backoff)
 - Cold-load fallback: `useChatSession` reads localStorage first; on miss or expiry, issues `GET /api/messages?limit=20` and warms the cache
 - Files: `src/components/ChatPopup.tsx`, `src/app/chat/page.tsx`, `src/app/api/chat/route.ts`, `src/app/api/messages/route.ts`, `src/lib/claude.ts`, `src/lib/use-chat-session.ts`, `src/lib/apply-changes.ts`
 
@@ -213,11 +213,11 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 ### Investor Profile (Self-Building)
 - Background Claude call after each non-onboarding conversation extracts lasting facts and a fingerprint sentence
 - Stored in `users.profile` (jsonb) and `users.fingerprint` (text)
-- Six context fields (reduced from nine; `goal`, `risk_behaviour`, `interests` removed per the mockup): `investment_style`, `life_context`, `concerns`, `preferences`, `blind_spots`, `decision_patterns`
-- Field labels render in sentence case (`Investment style`, not `Investment Style`)
-- Never overwrites — only adds or refines
+- Four context fields: `life_and_direction`, `approach`, `currently_exploring`, `worth_raising`
+- Field labels render in title case on Profile
+- Never overwrites — only adds or refines. Each field capped at 200 chars.
 - **Fingerprint**: single italic-serif sentence (12–18 words) generated by the same extraction call, rendered on Profile below the user's name when non-null. Example: `Long-horizon investor concentrated in semiconductors and residential property.`
-- **Context fields are read-only** (per the decision in PR 18). Tap-to-edit and the `InlineEdit` component were removed entirely. To correct a wrong context field, the user updates it through conversation; the extractor refreshes the field on the next chat. All field text renders in full inline — no truncation, no chevron, no tap interaction. Empty fields render italic 'Not yet shared' in faint color.
+- **Context fields are read-only.** To correct a wrong field, the user updates it through conversation; the extractor refreshes on the next chat. Fields with no content are hidden entirely (not shown as placeholder).
 - Avatar: tap-to-upload on Profile → Supabase Storage → PATCH `users.avatar_url`. Defaults to Google profile photo on OAuth signup. Falls back to two-letter initials in an accent-bg circle when null.
 - Profile page also hosts the Preferences section (Display currency, Theme) as collapsible rows
 - Sign-out button at the bottom (negative-text color)
@@ -240,8 +240,7 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 - **Middleware deprecation warning** in Next.js 16 — file convention is being renamed to `proxy`, currently functional
 - **Token usage grows with portfolio size** — at 50+ assets the system prompt gets large; no compression layer
 - **No retry on Yahoo Finance failures** — if Yahoo is down, prices show as offline (acceptable, not gracefully handled)
-- **Historical mutations have currency-implicit-EUR values** — rows logged before the currency normalization fix have `before_value` and `after_value` stored as if EUR even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP.
-- **`before_value` / `after_value` semantic muddle** — values are stored EUR-equivalent but `currency` column is native. Pre-existing semantic inconsistency.
+- **Historical mutations have currency-implicit-EUR values** — rows logged before the native-storage migration have `before_value` and `after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency).
 - **Two-write atomicity** — asset update + mutation insert is not transactional. If the asset write succeeds and the mutation write fails, the diary skips an entry. Sentry captures the failure. Acceptable for MVP.
 - **Money input round-trip rounding** — historical concern, less relevant now that all input flows have moved to chat (chat doesn't echo a typed-display-currency value back)
 - **Goal targets drift with FX** — goal `target_value` is stored in EUR at the rate active when set. As FX drifts, a user who set a $1,000,000 goal may see the displayed target shift slightly. Economic intent preserved.

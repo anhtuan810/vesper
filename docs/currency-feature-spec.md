@@ -11,6 +11,8 @@
 
 Amendments applied since this spec was written:
 
+- **Post-Phase-D: native-per-asset storage (breaking change to the spec's core architecture).** `assets.value` now stores the asset's **native** currency, not EUR-equivalent. USD is the bridge for aggregation (`snapshots.total_value`, `mutations.portfolio_total`). EUR and GBP are display-only at render time. The Architecture → Storage and Math table below is therefore outdated — treat it as historical. `formatMoney` now takes three arguments: `(nativeValue, nativeCurrency, displayCurrency)`. `fx_rates` uses USD as base (not EUR). See `technical-decisions.md` → Currency Rules for the current authoritative description.
+
 - **Phase A's `src/app/settings/page.tsx` was never created.** Per `redesign-decisions.md` Decision 5, the entire `/settings` route was dropped and the currency picker landed on Profile in the Preferences section. The `users.theme` column was added in the same migration as `users.display_currency`.
 - **Phase C's input flows were narrower than originally planned.** Per Decision 8, asset detail pages became read-only (`InlineEdit.tsx` deleted entirely), and per the PR 18/19 cleanup the Profile context fields also became read-only. The only remaining input path is chat, where prompts are parameterized with `displayCurrency` and goal targets are server-converted to EUR via `toEur()` before INSERT. Avg buy price, mortgage balance, property value — all now flow through chat, not inline edits.
 - **`PriceDisplay`'s "native superscript" path was simplified during the visual restyle** (PR 9). The display currency hero treatment now uses `formatMoneyParts` with the editorial dimmed-prefix styling per the locked mockup; native currency for cash/bonds is shown as a small uppercase subtitle below the hero.
@@ -200,8 +202,10 @@ No schema migration required — `assets.currency` already exists.
 
 # Always-on rules
 
-1. **Storage stays EUR.** Every numeric column holds EUR-equivalent values. Native currency lives on `assets.currency` only.
-2. **Math stays EUR.** No allocation, concentration, milestone, or snapshot calculation is done in display currency.
-3. **Mutation logging.** Any code path that changes an asset (add/edit/remove) writes a row to `mutations`. Currency on the mutation row matches the asset's native currency. `before_value` and `after_value` are EUR-equivalent.
+> **Note:** Rules 1–3 below reflect the original spec. Post-Phase-D, storage and aggregation changed — see the amendment at the top of this file and `technical-decisions.md → Currency Rules` for the current authoritative model.
+
+1. ~~**Storage stays EUR.**~~ *(Superseded — `assets.value` is now stored in the asset's native currency; USD is the aggregation bridge.)*
+2. **Math never uses display currency.** No allocation, concentration, milestone, or snapshot calculation is done in display currency. Aggregation uses USD; per-asset arithmetic uses native currency.
+3. **Mutation logging.** Any code path that changes an asset (add/edit/remove) writes a row to `mutations`. `currency` on the mutation row matches the asset's native currency. `before_value` and `after_value` are in that native currency.
 4. **No new dependencies.** Use existing FX cache and frankfurter.app.
 5. **Do not refactor unrelated files.**

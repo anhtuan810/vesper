@@ -25,7 +25,7 @@ A single web dashboard where a user can:
 
 - **Frontend**: Next.js 16 (Turbopack), React, Tailwind CSS, TypeScript
 - **Fonts**: Source Serif 4 (serif), Albert Sans (body, tabular numbers via `tnum`), Geist Mono (sparing use)
-- **Theme**: three modes (auto / light / dark) via `users.theme`, with light and dark CSS variable sets in `globals.css`
+- **Theme**: two modes (light / dark) via `users.theme`; `auto` is not accepted by the API. Light and dark CSS variable sets in `globals.css`.
 - **Accent**: single green (`#4A7C5E`) on a cream + ink palette (light) / warm-black + cream (dark)
 - **Database**: Supabase (Postgres) with Row Level Security
 - **Auth**: Supabase Auth — Google OAuth + email magic link
@@ -38,14 +38,14 @@ A single web dashboard where a user can:
 - **Asset logos**: cryptocurrency-icons via jsdelivr (crypto), Financial Modeling Prep (stocks/ETFs), inline SVG (real estate, cash/pension wallet, bonds certificate)
 - **Cron**: Vercel Cron (one job: daily snapshots at midnight UTC)
 - **Hosting**: Vercel
-- **Domain**: app.novahub.nl
+- **Domain**: app.volnar.nl
 
 ## Deployment Info
 
-- Production URL: https://app.novahub.nl
+- Production URL: https://app.volnar.nl
 - Auto-deploys from `main` branch on GitHub push
 - Environment variables in Vercel dashboard: Supabase URL, anon key, service role key, Anthropic API key, CRON_SECRET, optional Sentry DSN
-- Custom domain via CNAME from Bluehost-managed novahub.nl → cname.vercel-dns.com
+- Custom domain via CNAME from Bluehost-managed volnar.nl → cname.vercel-dns.com
 
 ## Repository
 
@@ -67,7 +67,7 @@ src/
     api/
       chat/route.ts             Claude assistant + portfolio mutations + snapshot trigger (sole modification path)
       messages/route.ts         Chat history fetch with cursor pagination (before=<id>&limit=20)
-      prices/route.ts           Yahoo Finance proxy with EUR conversion
+      prices/route.ts           Yahoo Finance proxy — returns native prices, no conversion
       prices/history/route.ts   Historical price series for charts
       prices/history/batch/route.ts   Batch historical fetch
       fx/route.ts               FX rate fetch + cache (frankfurter.app)
