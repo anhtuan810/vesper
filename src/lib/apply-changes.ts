@@ -70,6 +70,13 @@ async function convertCurrency(amount: number, from: string, to: string): Promis
   return (amount / fromRate) * toRate;
 }
 
+export type MutationMeta = {
+  id: string;
+  symbol: string | null;
+  occurredAt: string;
+  assetType: string | null;
+};
+
 export async function applyPortfolioChanges({
   supabase,
   userId,
@@ -84,7 +91,7 @@ export async function applyPortfolioChanges({
   currentAssets: CurrentAsset[];
   contextNote: string | null;
   proposalTimestamp?: string | null;
-}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[] }> {
+}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[] }> {
   // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
   const usdRates = await getUsdRates();
   const toUsdSync = (amount: number, currency: string): number => {
@@ -95,6 +102,7 @@ export async function applyPortfolioChanges({
   let runningTotal = computeNetWorth(currentAssets, toUsdSync);
   const duplicateWarnings: string[] = [];
   const fxWarnings: string[] = [];
+  const mutationMetas: MutationMeta[] = [];
   let changed = false;
 
   // Alias-resolve symbols synchronously before any I/O (e.g. TL0.DE → TSLA)
@@ -289,7 +297,8 @@ export async function applyPortfolioChanges({
       } else {
         changed = true;
         runningTotal += toUsdSync(resolvedValue, resolvedCurrency);
-        await supabase.from("mutations").insert({
+        const addOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
+        const { data: addedMutation } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
           asset_name: resolvedAssetName,
@@ -302,8 +311,11 @@ export async function applyPortfolioChanges({
           currency: resolvedCurrency,
           personal_context: change.personal_context || contextNote,
           portfolio_total: runningTotal,
-          occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
-        });
+          occurred_at: addOccurredAt,
+        }).select("id").single();
+        if (addedMutation?.id) {
+          mutationMetas.push({ id: addedMutation.id, symbol: effectiveSymbol, occurredAt: addOccurredAt, assetType: change.type || "other" });
+        }
       }
 
     } else if (action === "edit") {
@@ -436,7 +448,8 @@ export async function applyPortfolioChanges({
 
           const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
           if (!onlyNameChanged) {
-            await supabase.from("mutations").insert({
+            const editOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
+            const { data: editedMutation } = await supabase.from("mutations").insert({
               user_id: userId,
               asset_id: existing.id,
               asset_name: change.new_name || name,
@@ -450,8 +463,11 @@ export async function applyPortfolioChanges({
               currency: change.currency || existing.currency || "USD",
               personal_context: change.personal_context || contextNote,
               portfolio_total: runningTotal,
-              occurred_at: change.buy_date || new Date().toISOString().split("T")[0],
-            });
+              occurred_at: editOccurredAt,
+            }).select("id").single();
+            if (editedMutation?.id) {
+              mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
+            }
           }
         }
       }
@@ -471,7 +487,8 @@ export async function applyPortfolioChanges({
 
         // INSERT the mutation row while asset_id still exists, then DELETE.
         // mutations.asset_id is ON DELETE SET NULL, so it nulls out post-delete and the row persists.
-        const { error: mutationError } = await supabase.from("mutations").insert({
+        const removeOccurredAt = new Date().toISOString().split("T")[0];
+        const { error: mutationError, data: removedMutation } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: existing.id,
           asset_name: existing.name,
@@ -485,10 +502,13 @@ export async function applyPortfolioChanges({
           currency: existing.currency || "EUR",
           personal_context: change.personal_context || contextNote,
           portfolio_total: newRunningTotal,
-          occurred_at: new Date().toISOString().split("T")[0],
-        });
+          occurred_at: removeOccurredAt,
+        }).select("id").single();
 
         if (mutationError) throw mutationError;
+        if (removedMutation?.id) {
+          mutationMetas.push({ id: removedMutation.id, symbol: existing.symbol || null, occurredAt: removeOccurredAt, assetType: existing.type });
+        }
 
         const { error } = await supabase.from("assets").delete().eq("id", existing.id);
 
@@ -502,5 +522,5 @@ export async function applyPortfolioChanges({
     }
   }
 
-  return { changed, duplicateWarnings, fxWarnings };
+  return { changed, duplicateWarnings, fxWarnings, mutationMetas };
 }

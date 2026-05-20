@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, Fragment } from "react";
 import { flushSync } from "react-dom";
-import { useRouter } from "next/navigation";
 import { formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney, toUsdClient, type DisplayCurrency } from "@/lib/money";
@@ -21,6 +20,7 @@ function unitNoun(assetType: string | null): string {
 function hasContent(m: Mutation): boolean {
   return m.before_value != null || m.after_value != null || !!m.personal_context;
 }
+
 
 function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.ReactNode {
   const isUnitEligible =
@@ -245,15 +245,16 @@ function buildGroupAggregate(members: Mutation[], displayCurrency: DisplayCurren
 
 function DiaryRowContent({
   logo, name, nameColor, valueNode, date,
-  contextText, isContextExpanded, subtitle, footer,
+  personalContext, marketContext,
+  subtitle, footer,
 }: {
   logo: React.ReactNode;
   name: string;
   nameColor: string;
   valueNode: React.ReactNode;
   date: string;
-  contextText: string | null;
-  isContextExpanded: boolean;
+  personalContext?: string | null;
+  marketContext?: string | null;
   subtitle?: React.ReactNode;
   footer?: React.ReactNode;
 }) {
@@ -261,7 +262,6 @@ function DiaryRowContent({
     <div style={{ display: "flex", gap: 10, padding: "8px 0", alignItems: "flex-start" }}>
       {logo}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Title line: name (flex) + right cluster (no-wrap) */}
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: nameColor }}>
             {name}
@@ -274,24 +274,29 @@ function DiaryRowContent({
           </span>
         </div>
         {subtitle}
-        {contextText && (
+        {personalContext && (
           <div
             className="font-serif"
             style={{
               fontStyle: "italic", fontSize: 13,
               color: "var(--text-dim)", lineHeight: 1.4,
               fontVariationSettings: "'opsz' 14",
-              ...(isContextExpanded
-                ? {}
-                : {
-                    overflow: "hidden",
-                    display: "-webkit-box",
-                    WebkitBoxOrient: "vertical",
-                    WebkitLineClamp: 2,
-                  }),
             }}
           >
-            {contextText === STARTING_POSITION_CTX ? "Started tracking from today." : contextText}
+            {personalContext === STARTING_POSITION_CTX ? "Started tracking from today." : personalContext}
+          </div>
+        )}
+        {marketContext && (
+          <div style={{ marginTop: personalContext ? 6 : 0, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+            <span
+              className="font-mono uppercase"
+              style={{ fontSize: 10, letterSpacing: "0.14em", color: "var(--text-faint)", flexShrink: 0 }}
+            >
+              Markets
+            </span>
+            <span style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
+              {marketContext}
+            </span>
           </div>
         )}
         {footer}
@@ -544,14 +549,6 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
               </li>
             ))}
           </ul>
-          {activityStr && (
-            <div
-              className="font-mono uppercase"
-              style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.14em", marginTop: 12 }}
-            >
-              {activityStr}
-            </div>
-          )}
         </>
       )}
     </div>
@@ -561,7 +558,6 @@ function PeriodHighlight({ mutations, period, customFrom, customTo }: {
 // ── Main component ─────────────────────────────────────────────────────────────
 export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const displayCurrency = useDisplayCurrency();
-  const router = useRouter();
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [period, setPeriod] = useState<PeriodKey>("all");
@@ -569,7 +565,6 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const [customTo, setCustomTo] = useState(thisMonth);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Anniversary: same MM-DD as today, at least 30 days in the past, oldest wins
@@ -599,7 +594,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       return (
         displayName(m).toLowerCase().includes(trimmedQuery) ||
         (m.symbol ?? "").toLowerCase().includes(trimmedQuery) ||
-        (m.personal_context ?? "").toLowerCase().includes(trimmedQuery)
+        (m.personal_context ?? "").toLowerCase().includes(trimmedQuery) ||
+        (m.market_context ?? "").toLowerCase().includes(trimmedQuery)
       );
     });
 
@@ -664,7 +660,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       </div>
 
       {/* Search input */}
-      <div style={{ position: "relative", marginBottom: 18 }}>
+      <div style={{ position: "relative", marginBottom: 8 }}>
         <svg
           viewBox="0 0 256 256"
           fill="none"
@@ -734,8 +730,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               key={key}
               onClick={() => setPeriod(key)}
               style={{
-                fontSize: 13,
-                padding: "6px 14px",
+                fontSize: 12,
+                padding: "4px 10px",
                 borderRadius: 999,
                 border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
                 background: active ? "var(--surface-elev)" : "transparent",
@@ -780,21 +776,12 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
 
       {/* AI summary card — shown when a non-all period is active */}
       {period !== "all" && (
-        <>
-          {/* Period label */}
-          <div
-            className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "0.18em", color: "var(--text-faint)", marginTop: 4, marginBottom: 10 }}
-          >
-            {getPeriodLabel(period, customFrom, customTo)}
-          </div>
-          <PeriodHighlight
-            mutations={periodMutations}
-            period={period}
-            customFrom={customFrom}
-            customTo={customTo}
-          />
-        </>
+        <PeriodHighlight
+          mutations={periodMutations}
+          period={period}
+          customFrom={customFrom}
+          customTo={customTo}
+        />
       )}
 
       {/* On this day — full-bleed accent-soft band */}
@@ -911,25 +898,11 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                   const valueNode = buildValueNode(m, displayCurrency);
                   const name = displayName(m);
                   const isRemovedAsset = !m.asset_id;
-                  const isExpanded = expandedIds.has(m.id);
-
                   return (
                     <div
                       key={m.id}
                       id={`diary-entry-${m.id}`}
-                      onClick={() => {
-                        if (m.asset_id) {
-                          router.push(`/asset/${m.asset_id}`);
-                        } else {
-                          setExpandedIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(m.id)) next.delete(m.id);
-                            else next.add(m.id);
-                            return next;
-                          });
-                        }
-                      }}
-                      className="diary-row last:border-0"
+                      className="last:border-0"
                       style={{
                         borderBottom: "0.5px solid var(--border)",
                         ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
@@ -941,8 +914,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
                         valueNode={valueNode}
                         date={date}
-                        contextText={m.personal_context ?? null}
-                        isContextExpanded={isExpanded}
+                        personalContext={m.personal_context ?? null}
+                        marketContext={m.market_context ?? null}
                       />
                     </div>
                   );
@@ -971,6 +944,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                       className="diary-row last:border-0"
                       style={{
                         borderBottom: "0.5px solid var(--border)",
+                        cursor: "pointer",
                         ...(highlightedId === anchor.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
                       }}
                     >
@@ -980,8 +954,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         nameColor={isRemovedGroup ? "var(--text-dim)" : "var(--text)"}
                         valueNode={groupAggNode}
                         date={anchorDate}
-                        contextText={anchorContext}
-                        isContextExpanded={false}
+                        personalContext={anchorContext}
+                        marketContext={null}
                         subtitle={
                           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.3, marginBottom: anchorContext ? 2 : 0 }}>
                             · {members.length} {verb}
@@ -1003,19 +977,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         <div
                           key={m.id}
                           id={`diary-entry-${m.id}`}
-                          onClick={() => {
-                            if (m.asset_id) {
-                              router.push(`/asset/${m.asset_id}`);
-                            } else {
-                              setExpandedIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(m.id)) next.delete(m.id);
-                                else next.add(m.id);
-                                return next;
-                              });
-                            }
-                          }}
-                          className="diary-row last:border-0"
+                          className="last:border-0"
                           style={{ borderBottom: "0.5px solid var(--border)" }}
                         >
                           <div style={{ display: "flex", gap: 10, padding: "5px 0 5px 38px", alignItems: "baseline" }}>

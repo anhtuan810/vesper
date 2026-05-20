@@ -9,6 +9,7 @@ import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges, ValueModeError } from "@/lib/apply-changes";
+import { generateMarketContext } from "@/lib/market-context";
 import { fetchYahooPrice } from "@/lib/prices-server";
 import { fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
 import { generateInsight } from "@/lib/insight-generator";
@@ -637,7 +638,7 @@ export async function POST(req: NextRequest) {
           // Enables the freshness check in apply-changes for confirmed proposals.
           const proposalTimestamp = (recentMessages || []).find((m) => m.role === "assistant")?.created_at ?? null;
 
-          const { changed, duplicateWarnings, fxWarnings } = await applyPortfolioChanges({
+          const { changed, duplicateWarnings, fxWarnings, mutationMetas } = await applyPortfolioChanges({
             supabase,
             userId,
             changes,
@@ -646,6 +647,21 @@ export async function POST(req: NextRequest) {
             proposalTimestamp,
           });
           portfolioChanged = changed;
+          if (mutationMetas.length > 0) {
+            after(async () => {
+              try {
+                const supabaseAfter = createServerSupabase();
+                for (const meta of mutationMetas) {
+                  const ctx = await generateMarketContext(meta.symbol, meta.occurredAt, meta.assetType);
+                  if (ctx) {
+                    await supabaseAfter.from("mutations").update({ market_context: ctx }).eq("id", meta.id);
+                  }
+                }
+              } catch (err) {
+                console.error("market_context update failed", err);
+              }
+            });
+          }
           if (duplicateWarnings.length > 0) {
             const suffix = duplicateWarnings.join(" ");
             displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;

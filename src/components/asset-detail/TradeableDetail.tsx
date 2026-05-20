@@ -139,7 +139,7 @@ export function TradeableDetail({ asset }: Props) {
 
   return (
     <div className="min-h-screen bg-bg">
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "0 22px 110px" }}>
+      <div className="px-4 sm:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
 
         {/* Top bar: back left, refresh right */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 18px" }}>
