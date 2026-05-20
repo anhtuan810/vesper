@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { getUsdRate } from "@/lib/money";
 
@@ -122,6 +122,19 @@ export function NetWorthChart(props: Props) {
   const { range, onRangeChange, series, loading } = props;
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const { currency: displayCurrency } = useDisplayCurrencyState();
+  const [chartWidth, setChartWidth] = useState(280);
+  const svgContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = svgContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setChartWidth(Math.floor(w));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Clear selection whenever the series reference changes (range switch or data reload)
   useEffect(() => {
@@ -136,7 +149,7 @@ export function NetWorthChart(props: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
 
-  const W = 280;
+  const W = chartWidth;
   const H = 140;
 
   // Convert all series values to display currency so the axis and curve are in
@@ -208,6 +221,7 @@ export function NetWorthChart(props: Props) {
 
         {/* Chart SVG — interaction target; handlers attached here so getBoundingClientRect covers only the curve area */}
         <div
+          ref={svgContainerRef}
           style={{ flex: 1, position: "relative", touchAction: interactive ? "none" : undefined }}
           {...chartHandlers}
         >

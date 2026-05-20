@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   description: "Your personal portfolio assistant",
 };
 
-type ThemeMode = "auto" | "light" | "dark";
+type ThemeMode = "light" | "dark";
 
 export default async function RootLayout({
   children,
@@ -42,9 +42,7 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const raw = cookieStore.get("volnar.theme")?.value;
-  const theme: ThemeMode =
-    raw === "light" || raw === "dark" || raw === "auto" ? raw : "auto";
-  const resolved = theme === "auto" ? "light" : theme;
+  const theme: ThemeMode = raw === "dark" ? "dark" : "light";
 
   const headersList = await headers();
   const isMarketing = headersList.get("x-volnar-domain") === "marketing";
@@ -52,13 +50,15 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      data-theme={resolved}
+      data-theme={theme}
       className={`${sourceSerif.variable} ${albertSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
         <ThemeProvider initialTheme={theme}>
           <UserProvider>
-            {children}
+            <div className="mx-auto w-full max-w-[720px] px-5">
+              {children}
+            </div>
             {!isMarketing && <BottomNav />}
             {!isMarketing && <UndoDeleteToast />}
           </UserProvider>

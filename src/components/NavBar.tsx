@@ -56,7 +56,7 @@ export function NavBar({
       className="sticky top-0 z-20 border-b border-border backdrop-blur-xl"
       style={{ background: "var(--nav-surface)", WebkitBackdropFilter: "blur(20px)" }}
     >
-      <div className="max-w-[960px] mx-auto flex items-center justify-between px-6 sm:px-8 h-14">
+      <div className="max-w-[720px] mx-auto flex items-center justify-between px-5 h-14">
         {/* Left: brand · desktop tabs */}
         <div className="flex items-center gap-4">
           <Logo size={20} />

@@ -126,7 +126,7 @@ export function PortfolioTab({
   }, [assets]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>(
-    Object.fromEntries(ALL_CATEGORIES.map((c) => [c, false]))
+    Object.fromEntries(ALL_CATEGORIES.map((c) => [c, true]))
   );
 
   useEffect(() => {
@@ -134,11 +134,7 @@ export function PortfolioTab({
       const raw = sessionStorage.getItem("volnar.holdings.expanded");
       if (raw) {
         const keys: string[] = JSON.parse(raw);
-        setExpanded((prev) => {
-          const next = { ...prev };
-          for (const k of keys) next[k] = true;
-          return next;
-        });
+        setExpanded(Object.fromEntries(ALL_CATEGORIES.map((c) => [c, keys.includes(c)])));
       }
     } catch {}
   }, []);

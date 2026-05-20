@@ -107,7 +107,7 @@ export interface UserRow {
     worth_raising?: string | null;
   } | null;
   display_currency: DisplayCurrency;
-  theme: "auto" | "light" | "dark";
+  theme: "light" | "dark";
   last_backfill_at?: string | null;
 }
 

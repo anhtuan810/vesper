@@ -2,12 +2,11 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
-type ThemeMode = "auto" | "light" | "dark";
-type ResolvedTheme = "light" | "dark";
+type ThemeMode = "light" | "dark";
 
 interface ThemeContextValue {
   theme: ThemeMode;
-  resolvedTheme: ResolvedTheme;
+  resolvedTheme: ThemeMode;
   setTheme: (mode: ThemeMode) => void;
 }
 
@@ -19,10 +18,6 @@ export function useThemeContext(): ThemeContextValue {
   return ctx;
 }
 
-function resolveAuto(): ResolvedTheme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 export function ThemeProvider({
   initialTheme,
   children,
@@ -31,25 +26,9 @@ export function ThemeProvider({
   children: ReactNode;
 }) {
   const [theme, setThemeState] = useState<ThemeMode>(initialTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
-    initialTheme === "dark" ? "dark" : "light"
-  );
 
   useEffect(() => {
-    const resolved = theme === "auto" ? resolveAuto() : theme;
-    setResolvedTheme(resolved);
-    document.documentElement.setAttribute("data-theme", resolved);
-
-    if (theme !== "auto") return;
-
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      const next: ResolvedTheme = e.matches ? "dark" : "light";
-      setResolvedTheme(next);
-      document.documentElement.setAttribute("data-theme", next);
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
   const setTheme = useCallback((mode: ThemeMode) => {
@@ -63,7 +42,7 @@ export function ThemeProvider({
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme: theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

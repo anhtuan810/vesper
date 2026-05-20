@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { usePriceHistory } from "@/lib/hooks";
 import { useDisplayCurrencyState } from "@/lib/hooks";
@@ -135,6 +135,19 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
   const router = useRouter();
   const [range, setRange] = useState<Range>(defaultRange);
   const { currency: displayCurrency } = useDisplayCurrencyState();
+  const [chartWidth, setChartWidth] = useState(320);
+  const svgContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = svgContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setChartWidth(Math.floor(w));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -148,7 +161,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
   const totalPoints = range === "1D" ? Math.max(FULL_DAY_POINTS, closes.length) : closes.length;
   const n = Math.max(totalPoints - 1, 1);
 
-  const W = 320;
+  const W = chartWidth;
   const H = 140;
   const gradId = `chartFill_${symbol.replace(/[^a-zA-Z0-9]/g, "")}`;
 
@@ -251,6 +264,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
 
         {/* Chart SVG — interaction target */}
         <div
+          ref={svgContainerRef}
           style={{ flex: 1, position: "relative", touchAction: interactive ? "none" : undefined }}
           {...chartHandlers}
         >
