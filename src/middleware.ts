@@ -12,7 +12,12 @@ export async function middleware(request: NextRequest) {
     if (!pathname.startsWith("/marketing")) {
       url.pathname = pathname === "/" ? "/marketing" : `/marketing${pathname}`;
     }
-    return NextResponse.rewrite(url);
+    // Forward a header so the root layout can skip app chrome server-side.
+    // usePathname() on the client still returns the original URL ("/"), not the
+    // rewritten path, so the BottomNav's own pathname guard would miss it.
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-volnar-domain", "marketing");
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   }
 
   let supabaseResponse = NextResponse.next({ request });

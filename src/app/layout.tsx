@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Source_Serif_4, Albert_Sans, Geist_Mono } from "next/font/google";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
@@ -46,6 +46,9 @@ export default async function RootLayout({
     raw === "light" || raw === "dark" || raw === "auto" ? raw : "auto";
   const resolved = theme === "auto" ? "light" : theme;
 
+  const headersList = await headers();
+  const isMarketing = headersList.get("x-volnar-domain") === "marketing";
+
   return (
     <html
       lang="en"
@@ -56,8 +59,8 @@ export default async function RootLayout({
         <ThemeProvider initialTheme={theme}>
           <UserProvider>
             {children}
-            <BottomNav />
-            <UndoDeleteToast />
+            {!isMarketing && <BottomNav />}
+            {!isMarketing && <UndoDeleteToast />}
           </UserProvider>
         </ThemeProvider>
         <Analytics />
