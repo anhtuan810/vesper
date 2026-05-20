@@ -114,10 +114,10 @@
        HERO — "Throw it all at us"
        ============================================================ */
     .hero {
-      padding: clamp(32px, 6vw, 80px) 0 clamp(80px, 12vw, 140px);
+      padding: clamp(20px, 3vw, 40px) 0 clamp(28px, 4vw, 56px);
       display: grid;
       grid-template-columns: 1fr;
-      gap: clamp(48px, 8vw, 64px);
+      gap: clamp(24px, 4vw, 40px);
       align-items: center;
     }
     @media (min-width: 920px) {
@@ -436,9 +436,49 @@
        Section base
        ============================================================ */
     section {
-      padding: clamp(48px, 7vw, 80px) 0;
+      padding: clamp(24px, 3.5vw, 44px) 0;
     }
     section.bordered { border-top: 1px solid var(--border); }
+
+    /* ============================================================
+       BANDS — full-width tonal sections
+       ============================================================ */
+    .band { width: 100%; }
+    .band-deep { background: var(--bg-deep); }
+    .band-dark { background: var(--hero); color: rgba(255,255,255,0.85); }
+    .band-deep section.bordered,
+    .band-dark section.bordered { border-top: none; }
+
+    /* Dark section overrides */
+    .band-dark .eyebrow { color: rgba(255,255,255,0.45); }
+    .band-dark .eyebrow.soon { color: rgba(255,255,255,0.35); }
+    .band-dark .section-title { color: #FFFFFF; }
+    .band-dark .section-title .it { color: rgba(255,255,255,0.5); }
+    .band-dark .section-title .accent { color: var(--accent-soft); }
+    .band-dark .section-lede { color: rgba(255,255,255,0.6); }
+
+    .band-dark .qna-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .band-dark .qna-q { color: rgba(255,255,255,0.92); }
+    .band-dark .qna-a { color: rgba(255,255,255,0.7); }
+    .band-dark .qna-a .who { color: var(--accent-soft); }
+    .band-dark .qna-a strong { color: #FFFFFF; }
+    .band-dark .qna-a em { color: rgba(255,255,255,0.5); }
+
+    .band-dark .signal-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .band-dark .sig-source { color: rgba(255,255,255,0.55); }
+    .band-dark .sig-source .sig-time { color: rgba(255,255,255,0.35); }
+    .band-dark .sig-headline { color: #FFFFFF; }
+    .band-dark .sig-impact { color: rgba(255,255,255,0.78); }
+    .band-dark .sig-i-label { color: rgba(255,255,255,0.5); }
+    .band-dark .sig-impact strong { color: #FFFFFF; }
+    .band-dark .sig-i-arrow.neg { color: #E89890; }
+    .band-dark .sig-i-arrow.pos { color: var(--accent-soft); }
 
     .eyebrow {
       font-size: 11px;
@@ -454,7 +494,7 @@
     .section-title {
       font-family: var(--font-serif);
       font-weight: 500;
-      font-size: clamp(36px, 7.5vw, 56px);
+      font-size: clamp(30px, 6.5vw, 46px);
       line-height: 1.02;
       letter-spacing: -0.025em;
       color: var(--hero);
@@ -471,7 +511,7 @@
       margin-top: 18px;
       line-height: 1.55;
     }
-    .section-head { margin-bottom: clamp(28px, 5vw, 44px); }
+    .section-head { margin-bottom: clamp(14px, 2.5vw, 22px); }
     .section-head.center { text-align: center; }
     .section-head.center .section-title,
     .section-head.center .section-lede { margin-left: auto; margin-right: auto; }
@@ -485,16 +525,16 @@
       gap: 16px;
     }
     @media (min-width: 720px) {
-      .qna-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; }
+      .qna-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
     }
     .qna-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-2xl);
-      padding: clamp(24px, 4vw, 32px);
+      padding: clamp(18px, 3vw, 24px);
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 14px;
     }
     .qna-q {
       font-family: var(--font-serif);
@@ -536,24 +576,202 @@
     }
 
     /* ============================================================
+       SCENARIO — mini-visuals inside qna cards on dark
+       ============================================================ */
+    .sc-viz {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .band-dark .qna-a strong { color: #FFFFFF; }
+
+    /* Concentration donut pair */
+    .sc-donuts {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .sc-donut {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .sc-donut svg { width: 64px; height: 64px; }
+    .sc-donut .sc-d-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .sc-d-track { stroke: rgba(255,255,255,0.08); }
+    .sc-d-fill-warn { stroke: #E89890; }
+    .sc-d-fill-ok { stroke: var(--accent-soft); }
+    .sc-d-pct {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 500;
+      fill: #FFFFFF;
+      font-variation-settings: 'opsz' 16;
+    }
+    .sc-arrow {
+      width: 28px;
+      height: 28px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* Mortgage payment bars */
+    .sc-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sc-bar-row {
+      display: grid;
+      grid-template-columns: 64px 1fr 64px;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .sc-bar-row .sc-b-label {
+      color: rgba(255,255,255,0.5);
+      font-variant-numeric: tabular-nums;
+    }
+    .sc-bar-row .sc-b-track {
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .sc-bar-row .sc-b-fill {
+      height: 100%;
+      background: rgba(255,255,255,0.4);
+      border-radius: 999px;
+    }
+    .sc-bar-row .sc-b-fill.warn { background: #E89890; }
+    .sc-bar-row .sc-b-value {
+      color: #FFFFFF;
+      font-weight: 500;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-serif);
+      font-size: 14px;
+    }
+
+    /* Retirement timeline */
+    .sc-timeline {
+      position: relative;
+      padding: 26px 12px 10px;
+    }
+    .sc-tl-line {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 32px;
+      height: 1px;
+      background: rgba(255,255,255,0.12);
+    }
+    .sc-tl-points {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      z-index: 1;
+    }
+    .sc-tl-point {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .sc-tl-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      border: 2px solid var(--hero);
+    }
+    .sc-tl-dot.new {
+      background: var(--accent-soft);
+      box-shadow: 0 0 0 4px rgba(221,235,225,0.15);
+    }
+    .sc-tl-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .sc-tl-label.new {
+      color: var(--accent-soft);
+    }
+    .sc-tl-delta {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--accent-soft);
+      font-style: italic;
+      font-family: var(--font-serif);
+    }
+
+    /* ============================================================
+       ASK — mini line chart card
+       ============================================================ */
+    .qna-card.chart {
+      display: flex;
+      flex-direction: column;
+      padding: clamp(18px, 3vw, 24px);
+    }
+    .qna-card.chart .qna-q { margin-bottom: 14px; }
+    .mini-chart {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .mini-chart svg { width: 100%; height: auto; display: block; }
+    .mini-chart .mc-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-dim);
+      flex-wrap: wrap;
+    }
+    .mini-chart .mc-legend .lg {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mini-chart .mc-legend .sw {
+      width: 12px;
+      height: 2px;
+      border-radius: 1px;
+    }
+    .mini-chart .mc-legend .sw.you { background: var(--accent); }
+    .mini-chart .mc-legend .sw.bench { background: var(--text-faint); }
+    .mini-chart .mc-legend strong { color: var(--text); font-weight: 500; }
+    .mc-yours { stroke: var(--accent); }
+    .mc-bench { stroke: var(--text-faint); stroke-dasharray: 3 3; }
+
+    /* ============================================================
        MARKET EVENTS — signal, not noise
        ============================================================ */
     .signal-stage {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 16px;
+      gap: 12px;
       max-width: 1080px;
       margin: 0 auto;
     }
     @media (min-width: 820px) {
-      .signal-stage { grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+      .signal-stage { grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; }
     }
 
     .signal-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-2xl);
-      padding: clamp(24px, 4vw, 32px);
+      padding: clamp(18px, 3vw, 24px);
     }
     .sig-source {
       display: flex;
@@ -563,7 +781,7 @@
       color: var(--text-faint);
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .sig-source .sig-badge {
       width: 20px; height: 20px;
@@ -598,45 +816,6 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-    }
-    .sig-impact {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-    .sig-i-arrow {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 700;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-    .sig-i-arrow.neg { background: var(--negative-soft); color: var(--negative-text); }
-    .sig-i-arrow.pos { background: var(--positive-soft); color: var(--positive-text); }
-    .sig-i-text {
-      flex: 1;
-      font-size: 14px;
-      color: var(--text);
-      line-height: 1.5;
-    }
-    .sig-i-label {
-      display: block;
-      font-size: 10.5px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--text-faint);
-      font-weight: 500;
-      margin-bottom: 2px;
-    }
-    .sig-i-text strong {
-      font-family: var(--font-serif);
-      font-weight: 500;
-      font-variation-settings: 'opsz' 15;
     }
 
     /* Filter proof — what was rejected */
@@ -864,7 +1043,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-2xl);
-      padding: clamp(20px, 3vw, 28px);
+      padding: clamp(16px, 2.5vw, 22px);
     }
     @media (min-width: 820px) {
       .diary-card {
@@ -943,7 +1122,7 @@
       background: var(--bg-deep);
       color: var(--text);
       border-radius: var(--radius-2xl);
-      padding: clamp(20px, 3vw, 28px);
+      padding: clamp(16px, 2.5vw, 22px);
       display: flex;
       flex-direction: column;
     }
@@ -1323,6 +1502,99 @@
       color: var(--accent);
     }
 
+    /* Quiet "Coming soon" footnote under the chat showcase */
+    .way-in-soon {
+      max-width: 720px;
+      margin: clamp(24px, 4vw, 32px) auto 0;
+      padding-top: clamp(24px, 4vw, 28px);
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .way-in-soon .eyebrow.soon {
+      margin-bottom: 8px;
+    }
+    .way-in-soon .ws-text {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.55;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .way-in-soon .ws-text strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       PRIVACY — upper, journey strip
+       ============================================================ */
+    .privacy-journey {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 28px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: clamp(20px, 4vw, 36px) clamp(4px, 2vw, 12px);
+    }
+    @media (min-width: 720px) {
+      .privacy-journey {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0;
+        position: relative;
+      }
+      /* Hairline connector behind the icons */
+      .privacy-journey::before {
+        content: "";
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: 28px;
+        height: 1px;
+        background: var(--border);
+        z-index: 0;
+      }
+    }
+    .pj-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .pj-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+    .pj-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+    .pj-label {
+      font-family: var(--font-serif);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--hero);
+      letter-spacing: -0.005em;
+      font-variation-settings: 'opsz' 16;
+      line-height: 1.25;
+      max-width: 130px;
+    }
+    .pj-sub {
+      font-size: 12px;
+      color: var(--text-faint);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
     /* ============================================================
        COMPACT ASSET GRID — all 15 classes
        ============================================================ */
@@ -1331,9 +1603,9 @@
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
     }
-    @media (min-width: 540px) { .ac-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+    @media (min-width: 540px) { .ac-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; } }
     @media (min-width: 820px) { .ac-grid { grid-template-columns: repeat(4, 1fr); } }
-    @media (min-width: 1080px) { .ac-grid { grid-template-columns: repeat(5, 1fr); gap: 14px; } }
+    @media (min-width: 1080px) { .ac-grid { grid-template-columns: repeat(5, 1fr); gap: 12px; } }
 
     .ac-card {
       background: var(--surface);
@@ -1987,25 +2259,45 @@
        ============================================================ */
     .privacy-line {
       text-align: center;
-      max-width: 720px;
+      max-width: 880px;
       margin: 0 auto;
-      padding-top: clamp(56px, 8vw, 80px);
+      padding: clamp(32px, 5vw, 56px) 0 clamp(24px, 4vw, 40px);
     }
     .privacy-line h3 {
       font-family: var(--font-serif);
       font-weight: 500;
-      font-size: clamp(22px, 4.5vw, 30px);
-      line-height: 1.2;
-      letter-spacing: -0.015em;
+      font-size: clamp(34px, 6.5vw, 52px);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
       color: var(--hero);
+      font-variation-settings: 'opsz' 56;
+      margin-bottom: 18px;
     }
-    .privacy-line h3 .it { font-style: italic; color: var(--text-dim); font-weight: 400; }
-    .privacy-line p {
-      font-size: 14.5px;
+    .privacy-line h3 .it {
+      font-style: italic;
+      font-weight: 400;
       color: var(--text-dim);
-      margin-top: 12px;
-      line-height: 1.55;
     }
+    .privacy-line p {
+      font-size: clamp(14px, 3vw, 16px);
+      color: var(--text-dim);
+      line-height: 1.55;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .privacy-lock {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 24px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+    .privacy-lock svg { width: 22px; height: 22px; }
 
     .final {
       text-align: center;
@@ -2032,17 +2324,546 @@
 
     /* Footer */
     footer {
-      padding: 36px 0 calc(40px + env(safe-area-inset-bottom, 0));
+      padding: 24px 0 calc(28px + env(safe-area-inset-bottom, 0));
       border-top: 1px solid var(--border);
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
       gap: 12px;
       font-size: 13px;
       color: var(--text-faint);
     }
-    @media (max-width: 480px) { footer { flex-direction: column; align-items: flex-start; } }
-    footer .left { font-family: var(--font-serif); }
+    @media (max-width: 480px) { footer { flex-direction: column; align-items: center; } }
+    footer .left { font-family: var(--font-serif); font-size: 15px; color: var(--text-dim); }
+
+    /* ============================================================
+       ATMOSPHERE — grain on cream, glow on dark, card depth
+       ============================================================ */
+    body {
+      position: relative;
+    }
+    /* Subtle paper grain across the whole page */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.5;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+      mix-blend-mode: multiply;
+    }
+    /* Ensure content sits above grain */
+    body > * { position: relative; z-index: 2; }
+
+    /* Dark bands get a soft inner glow at top-left and warmer character */
+    .band-dark {
+      position: relative;
+      overflow: hidden;
+    }
+    .band-dark::before {
+      content: "";
+      position: absolute;
+      top: -30%;
+      left: -10%;
+      width: 60%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(180,210,190,0.10), transparent 70%);
+      pointer-events: none;
+      filter: blur(40px);
+    }
+    .band-dark::after {
+      content: "";
+      position: absolute;
+      bottom: -20%;
+      right: -10%;
+      width: 50%;
+      height: 60%;
+      background: radial-gradient(ellipse at center, rgba(110,145,130,0.08), transparent 70%);
+      pointer-events: none;
+      filter: blur(50px);
+    }
+    .band-dark > * { position: relative; z-index: 1; }
+
+    /* Inner highlight on dark-section cards (1px top inset) */
+    .band-dark .qna-card,
+    .band-dark .signal-card {
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        0 2px 12px rgba(0,0,0,0.25);
+    }
+
+    /* Card lift on cream sections */
+    .qna-card,
+    .ac-card,
+    .signal-card,
+    .diary-card,
+    .diary-context {
+      transition: transform 0.4s cubic-bezier(0.2,0.7,0.2,1), box-shadow 0.4s ease;
+    }
+
+    /* ============================================================
+       MOTION — entry animations triggered by .in-view class
+       ============================================================ */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity 0.7s cubic-bezier(0.2,0.7,0.2,1), transform 0.7s cubic-bezier(0.2,0.7,0.2,1);
+      }
+      .reveal.in-view {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .reveal-delay-1 { transition-delay: 0.08s; }
+      .reveal-delay-2 { transition-delay: 0.16s; }
+      .reveal-delay-3 { transition-delay: 0.24s; }
+      .reveal-delay-4 { transition-delay: 0.32s; }
+      .reveal-delay-5 { transition-delay: 0.40s; }
+
+      /* Notification chips: slide-in from right + stagger */
+      .alert-chip {
+        opacity: 0;
+        transform: translateX(20px);
+        transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.2,0.7,0.2,1);
+      }
+      .alert-chip.in-view { opacity: 1; transform: translateX(0); }
+      .alert-chip.in-view:nth-child(1) { transition-delay: 0.5s; }
+      .alert-chip.in-view:nth-child(2) { transition-delay: 0.7s; }
+      .alert-chip.in-view:nth-child(3) { transition-delay: 0.9s; }
+
+      /* Hero chart line draws in */
+      .hero-line-anim {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: drawLine 1.6s cubic-bezier(0.2,0.7,0.2,1) 0.3s forwards;
+      }
+      @keyframes drawLine {
+        to { stroke-dashoffset: 0; }
+      }
+
+      /* Donut fills in */
+      .sc-donut-anim {
+        stroke-dasharray: 0 200;
+        animation: fillDonut 1.2s cubic-bezier(0.2,0.7,0.2,1) 0.4s forwards;
+      }
+      @keyframes fillDonut {
+        to { stroke-dasharray: var(--donut-target, 50) 200; }
+      }
+
+      /* Live pulse on alert dot */
+      .live-dot {
+        animation: livePulse 2s ease-in-out infinite;
+      }
+      @keyframes livePulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(74,124,94,0.4); }
+        50%      { box-shadow: 0 0 0 6px rgba(74,124,94,0); }
+      }
+    }
+
+    /* ============================================================
+       HERO — notifications overlap card edge
+       ============================================================ */
+    .alert-stack-float {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    @media (min-width: 921px) {
+      .alert-stack-float {
+        margin-top: 48px;
+        margin-left: -28px;
+        position: relative;
+        z-index: 4;
+      }
+    }
+    @media (max-width: 920px) {
+      .alert-stack-float {
+        margin-top: -28px;
+        position: relative;
+        z-index: 4;
+        max-width: 92%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+    }
+    .alert-chip-tight {
+      background: var(--hero);
+      color: rgba(255,255,255,0.92);
+      border-radius: 14px;
+      padding: 11px 14px;
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      font-size: 13px;
+      line-height: 1.35;
+      box-shadow: 0 12px 32px rgba(11,15,24,0.18), 0 2px 6px rgba(11,15,24,0.10);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .alert-chip-tight .ic {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .alert-chip-tight .ic svg { width: 14px; height: 14px; }
+    .alert-chip-tight .ic.warn { background: rgba(232,152,144,0.15); color: #E89890; }
+    .alert-chip-tight .ic.pos  { background: rgba(120,170,140,0.18); color: var(--accent-soft); }
+    .alert-chip-tight .ic.btc  { background: rgba(220,165,80,0.20); color: #DCA550; }
+    .alert-chip-tight .cat {
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      font-weight: 500;
+    }
+    .alert-chip-tight .msg {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .alert-chip-tight .msg strong { color: #FFFFFF; font-weight: 600; }
+
+    /* Live dot pulse */
+    .live-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* ============================================================
+       COVERAGE — new dimensional asset icons, no sub-text
+       ============================================================ */
+    .ac-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: clamp(14px, 2.2vw, 18px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      min-height: 100px;
+    }
+    .ac-card .ic-new {
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .ac-card .ic-new svg { width: 24px; height: 24px; }
+    .ac-card .nm {
+      font-family: var(--font-serif);
+      font-size: clamp(17px, 3.4vw, 19px);
+      font-weight: 500;
+      color: var(--hero);
+      letter-spacing: -0.005em;
+      font-variation-settings: 'opsz' 20;
+    }
+    .ac-card.soon { border-style: dashed; opacity: 0.7; }
+    .ac-card.soon .ic-new { background: rgba(11,15,24,0.04); color: var(--text-faint); }
+
+    /* Per-asset color tinting on icon backgrounds */
+    .ic-tint-green  { background: rgba(74,124,94,0.14);  color: #4A7C5E; }
+    .ic-tint-blue   { background: rgba(95,128,170,0.16); color: #5F80AA; }
+    .ic-tint-gold   { background: rgba(190,150,80,0.16); color: #BE9650; }
+    .ic-tint-red    { background: rgba(192,108,90,0.16); color: #C06C5A; }
+    .ic-tint-brown  { background: rgba(140,108,80,0.16); color: #8C6C50; }
+    .ic-tint-mortgage { background: rgba(192,108,90,0.16); color: #C06C5A; }
+
+    .ac-card .pill-new {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(74,124,94,0.15);
+      color: var(--accent-text);
+      font-weight: 500;
+    }
+    .ac-card.mortgage-pos {
+      background: rgba(192,108,90,0.08);
+    }
+    .ac-card.mortgage-pos .nm { color: #8B3A2A; }
+
+    /* ============================================================
+       BROKER MOCK SCREENS — replaces footnote in The way in
+       ============================================================ */
+    .broker-mock {
+      max-width: 880px;
+      margin: clamp(22px, 3.5vw, 32px) auto 0;
+      padding-top: clamp(18px, 3vw, 24px);
+      border-top: 1px solid var(--border);
+    }
+    .broker-mock .bm-eyebrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .broker-mock .bm-eyebrow .soon-badge {
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(74,124,94,0.15);
+      color: var(--accent-text);
+      font-weight: 500;
+    }
+    .broker-mock .bm-title {
+      text-align: center;
+      font-family: var(--font-serif);
+      font-size: clamp(20px, 3.8vw, 24px);
+      font-weight: 500;
+      color: var(--hero);
+      margin-bottom: 6px;
+      font-variation-settings: 'opsz' 24;
+    }
+    .broker-mock .bm-sub {
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 18px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .broker-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    @media (min-width: 600px) {
+      .broker-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .broker-grid { grid-template-columns: repeat(6, 1fr); }
+    }
+    .broker-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .broker-tile:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(11,15,24,0.06);
+    }
+    .broker-tile .bt-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: 14px;
+      color: #FFFFFF;
+      letter-spacing: -0.03em;
+    }
+    .broker-tile .bt-name {
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .broker-tile .bt-ro {
+      font-size: 9.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    /* Broker brand-color tinted marks (approximate, not literal logos) */
+    .bt-etoro    { background: linear-gradient(135deg, #00C26B, #008C4E); }
+    .bt-ibkr     { background: linear-gradient(135deg, #D62828, #A11D1D); }
+    .bt-degiro   { background: linear-gradient(135deg, #002677, #001E4F); }
+    .bt-t212     { background: linear-gradient(135deg, #0050F0, #003BB0); }
+    .bt-saxo     { background: linear-gradient(135deg, #5A8AB0, #34688E); }
+    .bt-bitvavo  { background: linear-gradient(135deg, #1E2F5C, #0F1A3D); }
+    .bt-coinbase { background: linear-gradient(135deg, #1652F0, #0D3FCC); }
+    .bt-kraken   { background: linear-gradient(135deg, #6F4FC8, #503795); }
+
+    /* ============================================================
+       ASYMMETRIC SCENARIO LAYOUT
+       ============================================================ */
+    @media (min-width: 900px) {
+      .scenario-asym {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 56px;
+        align-items: start;
+        max-width: 1080px;
+        margin: 0 auto;
+      }
+      .scenario-asym .scenario-title {
+        position: sticky;
+        top: 40px;
+      }
+    }
+    .scenario-title h2 {
+      font-family: var(--font-serif);
+      font-size: clamp(34px, 5.5vw, 48px);
+      font-weight: 500;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+      font-variation-settings: 'opsz' 56;
+      margin-bottom: 20px;
+    }
+    .scenario-title h2 .it {
+      font-style: italic;
+      color: rgba(255,255,255,0.55);
+      font-weight: 400;
+    }
+    .scenario-title p {
+      font-size: 14.5px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.55;
+      max-width: 280px;
+    }
+    .scenario-thread {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ============================================================
+       TYPOGRAPHIC MOMENT — pull quote between sections
+       ============================================================ */
+    .pull-quote {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: clamp(32px, 5vw, 56px) clamp(8px, 2vw, 20px);
+      text-align: center;
+    }
+    .pull-quote p {
+      font-family: var(--font-serif);
+      font-size: clamp(24px, 4.5vw, 42px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: var(--hero);
+      font-variation-settings: 'opsz' 56;
+    }
+    .pull-quote p .it {
+      font-style: italic;
+      color: var(--text-dim);
+    }
+    .pull-quote .pq-mark {
+      font-family: var(--font-serif);
+      font-size: clamp(48px, 6vw, 72px);
+      line-height: 0.4;
+      color: var(--accent);
+      opacity: 0.4;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    /* ============================================================
+       DECORATIVE TOUCHES — diamond divider
+       ============================================================ */
+    .divider-diamond {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--wrap-pad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+    }
+    .divider-diamond::before,
+    .divider-diamond::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      max-width: 200px;
+    }
+    .divider-diamond .dot {
+      width: 5px;
+      height: 5px;
+      background: var(--text-faint);
+      transform: rotate(45deg);
+      opacity: 0.5;
+    }
+
+    /* ============================================================
+       LOWER PRIVACY — typographic art treatment
+       ============================================================ */
+    .privacy-line h3 {
+      font-family: var(--font-serif);
+      font-weight: 500;
+      font-size: clamp(30px, 5.5vw, 48px);
+      line-height: 1.05;
+      letter-spacing: -0.022em;
+      color: var(--hero);
+      font-variation-settings: 'opsz' 72;
+      margin-bottom: 20px;
+    }
+
+    /* ============================================================
+       SIGNAL — fix overlapping impact rows
+       ============================================================ */
+    .sig-impacts { display: flex; flex-direction: column; gap: 14px; }
+    .sig-impact {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .sig-i-arrow {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sig-i-arrow.neg { background: rgba(232,152,144,0.16); }
+    .sig-i-arrow.pos { background: rgba(120,170,140,0.18); }
+    .sig-i-arrow.neutral { background: rgba(255,255,255,0.06); }
+    .sig-i-arrow svg { width: 14px; height: 14px; }
+    .sig-i-body { display: flex; flex-direction: column; gap: 2px; }
+    .sig-i-label {
+      font-size: 11px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      font-weight: 500;
+    }
+    .sig-i-text {
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .sig-i-text strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Scenario accent — vibrant moment */
+    .band-dark .sc-d-fill-ok { stroke: #6FE8A4; filter: drop-shadow(0 0 6px rgba(111,232,164,0.4)); }
+    .band-dark .sc-tl-dot.new { background: #6FE8A4; box-shadow: 0 0 0 4px rgba(111,232,164,0.18); }
+    .band-dark .sc-tl-delta { color: #6FE8A4; }
   </style>
 </head>
 <body>
@@ -2066,7 +2887,7 @@
         </p>
       </div>
 
-      <div class="hero-stage">
+      <div class="hero-stage hero-stack">
         <div class="hero-stage-grid">
 
           <!-- Main: clean portfolio card with total-worth trend -->
@@ -2087,7 +2908,7 @@
                 <line x1="0" y1="22" x2="320" y2="22" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2 4"/>
                 <line x1="0" y1="56" x2="320" y2="56" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2 4"/>
                 <path d="M0,72 C24,68 42,66 70,60 C100,54 122,56 152,46 C182,36 200,38 232,26 L280,14 L320,8 L320,90 L0,90 Z" fill="url(#trendGrad)"/>
-                <path d="M0,72 C24,68 42,66 70,60 C100,54 122,56 152,46 C182,36 200,38 232,26 L280,14 L320,8" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
+                <path class="hero-line-anim" d="M0,72 C24,68 42,66 70,60 C100,54 122,56 152,46 C182,36 200,38 232,26 L280,14 L320,8" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
                 <circle cx="320" cy="8" r="3.5" fill="var(--accent)"/>
                 <circle cx="320" cy="8" r="7" fill="var(--accent)" opacity="0.18"/>
               </svg>
@@ -2124,43 +2945,43 @@
             </div>
           </div>
 
-          <!-- 3 alert notifications, stacked next to the chart -->
-          <div class="alert-stack">
+          <!-- 3 tighter alert chips, overlapping the card -->
+          <div class="alert-stack-float">
 
-            <div class="alert-chip">
-              <div class="alert-ic alert-ic-warn">
+            <div class="alert-chip alert-chip-tight">
+              <div class="ic warn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 9v4M12 17h.01M4 19h16a2 2 0 001.7-3l-8-13.5a2 2 0 00-3.4 0L2.3 16A2 2 0 004 19z"/>
                 </svg>
               </div>
-              <div>
-                <div class="alert-cat">ECB · attention</div>
-                <div class="alert-msg">Rate <strong>+25 bps</strong> — affects your mortgage.</div>
+              <div style="flex:1; min-width: 0;">
+                <div class="cat"><span class="live-dot"></span>ECB · attention</div>
+                <div class="msg">Rate <strong>+25 bps</strong> — affects your mortgage.</div>
               </div>
             </div>
 
-            <div class="alert-chip">
-              <div class="alert-ic alert-ic-pos">
+            <div class="alert-chip alert-chip-tight">
+              <div class="ic pos">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M3 17l6-6 4 4 8-9"/><path d="M14 6h7v7"/>
                 </svg>
               </div>
-              <div>
-                <div class="alert-cat">ASML · earnings beat</div>
-                <div class="alert-msg"><strong>+€8.300</strong> on your 312 shares.</div>
+              <div style="flex:1; min-width: 0;">
+                <div class="cat">ASML · earnings beat</div>
+                <div class="msg"><strong>+€8.300</strong> on your 312 shares.</div>
               </div>
             </div>
 
-            <div class="alert-chip">
-              <div class="alert-ic alert-ic-gold">
+            <div class="alert-chip alert-chip-tight">
+              <div class="ic btc">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="9"/>
                   <path d="M9 7.5h5.5a2.5 2.5 0 010 5H9v-5zm0 5h6a2.5 2.5 0 010 5H9v-5z"/>
                 </svg>
               </div>
-              <div>
-                <div class="alert-cat">BTC · momentum</div>
-                <div class="alert-msg">Above $60k — <strong>+€4.100</strong> on 0,84 BTC.</div>
+              <div style="flex:1; min-width: 0;">
+                <div class="cat">BTC · momentum</div>
+                <div class="msg">Above $60k — <strong>+€4.100</strong>.</div>
               </div>
             </div>
 
@@ -2172,331 +2993,18 @@
   </div>
 
   <!-- ============================================================
-       SECTION 1: CHAT INPUT — "Throw it in"
-       ============================================================ -->
-  <div class="wrap">
-    <section class="bordered">
-      <div class="section-head center">
-        <span class="eyebrow">The way in</span>
-        <h2 class="section-title">Add anything.<br><span class="it">In any form.</span></h2>
-      </div>
-
-      <div class="chat-showcase">
-        <div class="cs-head">
-          <span class="dot"></span>
-          <span class="name">Volnar · adding</span>
-          <span class="meta">today, 14:08</span>
-        </div>
-
-        <div class="cs-msg user">Bought 50 ASML today at €642 each.</div>
-        <div class="cs-msg assistant">
-          Updated. 312 shares now at a blended €598.
-        </div>
-
-        <div class="cs-msg user">
-          <div class="cs-attach">
-            <div class="thumb doc"></div>
-            <div class="meta-r">
-              <span class="filename">Mortgage_statement.pdf</span>
-              <span class="size">ABN AMRO · May</span>
-            </div>
-          </div>
-        </div>
-        <div class="cs-msg assistant">
-          Read balance <strong>€132.040</strong>, rate <strong>3,2%</strong>. Save?
-        </div>
-
-        <div class="cs-msg user">
-          <div class="cs-attach">
-            <div class="thumb shot"></div>
-            <div class="meta-r">
-              <span class="filename">DEGIRO_portfolio.png</span>
-              <span class="size">Screenshot · 4 positions</span>
-            </div>
-          </div>
-        </div>
-        <div class="cs-msg assistant">
-          Found <strong>ASML, VWCE, IEFA</strong>, €4.740 cash. Save all? <em>I'll ask before overwriting.</em>
-        </div>
-
-        <div class="cs-input">
-          <div class="field">Type, paste, or attach anything…</div>
-          <div class="actions">
-            <div class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg></div>
-            <div class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3l7.5-7.5"/></svg></div>
-            <div class="btn send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- ============================================================
-       SECTION 2: ASSET OVERVIEW — every class, one grid
-       ============================================================ -->
-  <div class="wrap wrap-wide">
-    <section class="bordered">
-      <div class="section-head">
-        <span class="eyebrow">Coverage</span>
-        <h2 class="section-title">Every asset class.<br><span class="it">Already covered.</span></h2>
-      </div>
-
-      <div class="ac-grid">
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-property);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg>
-          </div>
-          <div><div class="nm">Real estate</div><div class="mt">Mortgage worked in</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-markets);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-9"/><path d="M14 6h7v7"/></svg>
-          </div>
-          <div><div class="nm">Stocks</div><div class="mt">Live priced</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-markets);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="18" height="6" rx="1"/><rect x="5" y="9" width="14" height="3" rx="1"/><rect x="7" y="4" width="10" height="3" rx="1"/></svg>
-          </div>
-          <div><div class="nm">ETFs</div><div class="mt">Live priced</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-reserves);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>
-          </div>
-          <div><div class="nm">Bonds</div><div class="mt">Coupon, maturity</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-reserves);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4v6c0 5-4 8-9 8s-9-3-9-8V7z"/><path d="M9 12l2 2 4-4"/></svg>
-          </div>
-          <div><div class="nm">Pension</div><div class="mt">DC plans</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-reserves);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8H3a2 2 0 00-2 2v8a2 2 0 002 2h18a2 2 0 002-2v-8a2 2 0 00-2-2z"/><path d="M3 8V6a2 2 0 012-2h14a2 2 0 012 2v2"/><circle cx="17" cy="14" r="1.2" fill="currentColor"/></svg>
-          </div>
-          <div><div class="nm">Cash</div><div class="mt">Purpose-based pots</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-crypto);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 7.5h5.5a2.5 2.5 0 010 5H9v-5zm0 5h6a2.5 2.5 0 010 5H9v-5z"/></svg>
-          </div>
-          <div><div class="nm">Crypto</div><div class="mt">Live priced</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-reserves);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-2 10H6L4 9z"/><path d="M6 9l1.5-4h9L18 9"/></svg>
-          </div>
-          <div><div class="nm">Gold</div><div class="mt">Physical or paper</div></div>
-        </div>
-
-        <div class="ac-card">
-          <span class="pill new">New</span>
-          <div class="ic" style="background: var(--cat-tangible);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="6"/><path d="M12 9v4l2 2"/><path d="M9 4h6l-1 3h-4z"/></svg>
-          </div>
-          <div><div class="nm">Collectibles</div><div class="mt">Watches, art, wine</div></div>
-        </div>
-
-        <div class="ac-card liability">
-          <div class="ic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 9v12h14V9"/><path d="M9 16h6M12 16v-3"/></svg>
-          </div>
-          <div><div class="nm">Mortgages</div><div class="mt">Annuity, linear, IO</div></div>
-        </div>
-
-        <div class="ac-card">
-          <div class="ic" style="background: var(--cat-tangible);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg>
-          </div>
-          <div><div class="nm">Anything else</div><div class="mt">Free-form, with photo</div></div>
-        </div>
-
-        <div class="ac-card soon">
-          <span class="pill">Coming soon</span>
-          <div class="ic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M16 3h4v4"/><path d="M14 7l3 3"/></svg>
-          </div>
-          <div><div class="nm">Employee equity</div><div class="mt">RSUs, options</div></div>
-        </div>
-
-        <div class="ac-card soon">
-          <span class="pill">Coming soon</span>
-          <div class="ic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          </div>
-          <div><div class="nm">Future pensions</div><div class="mt">DB and state</div></div>
-        </div>
-
-        <div class="ac-card soon">
-          <span class="pill">Coming soon</span>
-          <div class="ic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h.01M14 8h.01M9 13h.01M14 13h.01M9 18h6"/></svg>
-          </div>
-          <div><div class="nm">Private equity</div><div class="mt">Side businesses</div></div>
-        </div>
-
-        <div class="ac-card soon">
-          <span class="pill">Coming soon</span>
-          <div class="ic">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18"/><path d="M7 16h4"/></svg>
-          </div>
-          <div><div class="nm">Consumer debt</div><div class="mt">Cards, loans</div></div>
-        </div>
-
-      </div>
-    </section>
-  </div>
-
-  <!-- ============================================================
-       SECTION 3: CONVERSATIONAL Q&A — ask anything about your wealth
-       ============================================================ -->
-  <div class="wrap">
-    <section class="bordered">
-      <div class="section-head center">
-        <span class="eyebrow">Ask</span>
-        <h2 class="section-title">Ask anything<br>about your wealth.</h2>
-      </div>
-
-      <div class="qna-grid">
-
-        <div class="qna-card">
-          <div class="qna-q">"How is my house goal tracking?"</div>
-          <div class="qna-a">
-            <span class="who">Volnar</span>
-            You're at <strong>€184.000 of €250.000</strong> — 73,6%. At the current monthly contribution rate, you'd reach it in November 2027.
-            <em>Redirecting the bonus moves it to August.</em>
-          </div>
-        </div>
-
-        <div class="qna-card">
-          <div class="qna-q">"What's my biggest concentration risk?"</div>
-          <div class="qna-a">
-            <span class="who">Volnar</span>
-            <strong>ASML at 41% of the public-markets sleeve.</strong> Six percentage points above the 35% comfort you mentioned in October.
-            <em>Worth a look before the next add.</em>
-          </div>
-        </div>
-
-        <div class="qna-card">
-          <div class="qna-q">"Compare my YTD return to MSCI World."</div>
-          <div class="qna-a">
-            <span class="who">Volnar</span>
-            Public-markets sleeve <strong>+11,2% YTD</strong> vs <strong>MSCI World +9,4%</strong>. The 1,8-point lead is almost entirely ASML — strip it out and you trail by 0,6.
-          </div>
-        </div>
-
-      </div>
-    </section>
-  </div>
-
-  <!-- ============================================================
-       SECTION 4: MARKET EVENTS — signal, not noise
+       DIARY — past decisions mapped to market context (moved up)
        ============================================================ -->
   <div class="wrap">
     <section class="bordered">
       <div class="section-head">
-        <span class="eyebrow soon">Signal, not noise</span>
-        <h2 class="section-title">Markets move constantly.<br><span class="it">You hear only what affects you.</span></h2>
-      </div>
-
-      <div class="signal-stage">
-        <!-- Event 1: ECB rate decision with impacts on user's positions -->
-        <div class="signal-card">
-          <div class="sig-source">
-            <span class="sig-badge">€</span>
-            <span>ECB · Press release</span>
-            <span class="sig-time">15 May · 14:15</span>
-          </div>
-
-          <div class="sig-headline">Key rates raised by 25 basis points.</div>
-
-          <div class="sig-impacts">
-            <div class="sig-impact">
-              <span class="sig-i-arrow neg">↑</span>
-              <span class="sig-i-text">
-                <span class="sig-i-label">Your mortgage</span>
-                resets <strong>March 2027</strong>. Likely <strong>+€34</strong>/month.
-              </span>
-            </div>
-            <div class="sig-impact">
-              <span class="sig-i-arrow neg">↓</span>
-              <span class="sig-i-text">
-                <span class="sig-i-label">Dutch State 2,5% 2034</span>
-                small mark-to-market hit.
-              </span>
-            </div>
-            <div class="sig-impact">
-              <span class="sig-i-arrow pos">↑</span>
-              <span class="sig-i-text">
-                <span class="sig-i-label">Cash buffer</span>
-                <strong>€4.740</strong> earns more.
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Event 2: ASML earnings beat with impacts -->
-        <div class="signal-card">
-          <div class="sig-source">
-            <span class="sig-badge" style="background: var(--cat-markets);">A</span>
-            <span>ASML · Q1 earnings</span>
-            <span class="sig-time">Yesterday · 07:00</span>
-          </div>
-
-          <div class="sig-headline">Quarterly beat; bookings up 12% on AI capex.</div>
-
-          <div class="sig-impacts">
-            <div class="sig-impact">
-              <span class="sig-i-arrow pos">↑</span>
-              <span class="sig-i-text">
-                <span class="sig-i-label">Your 312 shares</span>
-                <strong>+€8.300</strong> on the open.
-              </span>
-            </div>
-            <div class="sig-impact">
-              <span class="sig-i-arrow neg">↑</span>
-              <span class="sig-i-text">
-                <span class="sig-i-label">Concentration</span>
-                Semis sleeve now <strong>43%</strong>. Above your 35% comfort.
-              </span>
-            </div>
-            <div class="sig-impact">
-              <span class="sig-i-arrow pos">↑</span>
-              <span class="sig-i-text">
-                <span class="sig-i-label">Sector tailwind</span>
-                EU chip subsidy expanded last week.
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- ============================================================
-       SECTION 5: DIARY — past decisions mapped to market context
-       ============================================================ -->
-  <div class="wrap">
-    <section class="bordered">
-      <div class="section-head">
-        <span class="eyebrow">Diary</span>
-        <h2 class="section-title">Look back.<br><span class="it">In context.</span></h2>
+        <h2 class="section-title reveal">Look back.<br><span class="it">In context.</span></h2>
       </div>
 
       <div class="diary-grid">
 
         <!-- The decision card -->
-        <div class="diary-card">
+        <div class="diary-card reveal reveal-delay-1">
           <div class="d-top">
             <span class="d-date">14 October 2024</span>
             <span class="d-tag d-trim">Trimmed</span>
@@ -2511,7 +3019,7 @@
         </div>
 
         <!-- The market context at that moment -->
-        <div class="context-card">
+        <div class="context-card reveal reveal-delay-2">
           <div class="ctx-h">
             <span class="ctx-ic">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -2558,28 +3066,578 @@
   </div>
 
   <!-- ============================================================
-       WHAT IT ISN'T
+       SIGNAL, NOT NOISE — moved up (was Section 4)
        ============================================================ -->
-  <div class="wrap">
-    <section>
-      <div class="isnt-block">
-        <span class="eyebrow">As deliberate as what it is</span>
-        <h2>
-          Not <span class="strike">a feed.</span> Not <span class="strike">a competition.</span> Not <span class="strike">a sales channel.</span>
-          <br>
-          <span class="strong">Just your portfolio, and a thoughtful assistant.</span>
-        </h2>
-        <div class="isnt-list">
-          <span class="item"><span class="x">×</span>Community feed</span>
-          <span class="item"><span class="x">×</span>Leaderboards</span>
-          <span class="item"><span class="x">×</span>Public portfolios</span>
-          <span class="item"><span class="x">×</span>Broker referrals</span>
-          <span class="item"><span class="x">×</span>Ads</span>
-          <span class="item"><span class="x">×</span>AUM fees</span>
-          <span class="item"><span class="x">×</span>Trade nudges</span>
+  <div class="band band-dark">
+    <div class="wrap">
+      <section>
+        <div class="section-head">
+          <h2 class="section-title reveal">Markets move constantly.<br><span class="it">You hear only what affects you.</span></h2>
+        </div>
+
+        <div class="signal-stage">
+
+          <div class="signal-card reveal reveal-delay-1">
+            <div class="sig-source">
+              <span class="sig-badge">€</span>
+              <span>ECB · Press release</span>
+              <span class="sig-time">15 May · 14:15</span>
+            </div>
+            <div class="sig-headline">Key rates raised by 25 basis points.</div>
+            <div class="sig-impacts">
+              <div class="sig-impact">
+                <span class="sig-i-arrow neg">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l5-5 5 5"/></svg>
+                </span>
+                <div class="sig-i-body">
+                  <span class="sig-i-label">Your mortgage</span>
+                  <span class="sig-i-text">Resets in <strong>March 2027</strong>. Payment goes up by roughly <strong>€34/month</strong>.</span>
+                </div>
+              </div>
+              <div class="sig-impact">
+                <span class="sig-i-arrow neg">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l5 5 5-5"/></svg>
+                </span>
+                <div class="sig-i-body">
+                  <span class="sig-i-label">Dutch state 2,5% 2034</span>
+                  <span class="sig-i-text">Loses about <strong>−€180</strong> on paper from this morning's repricing.</span>
+                </div>
+              </div>
+              <div class="sig-impact">
+                <span class="sig-i-arrow pos">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l5-5 5 5"/></svg>
+                </span>
+                <div class="sig-i-body">
+                  <span class="sig-i-label">Cash buffer</span>
+                  <span class="sig-i-text">Your <strong>€4.740</strong> now earns an extra <strong>0,25%</strong> annually.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="signal-card reveal reveal-delay-2">
+            <div class="sig-source">
+              <span class="sig-badge">A</span>
+              <span>ASML · Q1 earnings</span>
+              <span class="sig-time">Yesterday · 07:00</span>
+            </div>
+            <div class="sig-headline">Quarterly beat; bookings up 12% on AI capex.</div>
+            <div class="sig-impacts">
+              <div class="sig-impact">
+                <span class="sig-i-arrow pos">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l5-5 5 5"/></svg>
+                </span>
+                <div class="sig-i-body">
+                  <span class="sig-i-label">Your 312 ASML shares</span>
+                  <span class="sig-i-text">Worth <strong>+€8.300</strong> more at market open.</span>
+                </div>
+              </div>
+              <div class="sig-impact">
+                <span class="sig-i-arrow neg">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l5 5 5-5"/></svg>
+                </span>
+                <div class="sig-i-body">
+                  <span class="sig-i-label">Concentration</span>
+                  <span class="sig-i-text">Semis are now <strong>43%</strong> of public markets — above the <strong>35%</strong> comfort you set in October.</span>
+                </div>
+              </div>
+              <div class="sig-impact">
+                <span class="sig-i-arrow pos">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l5-5 5 5"/></svg>
+                </span>
+                <div class="sig-i-body">
+                  <span class="sig-i-label">Sector tailwind</span>
+                  <span class="sig-i-text">EU expanded its chip subsidy program last week — a tailwind for the sector.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 1: CHAT INPUT — "Throw it in"
+       ============================================================ -->
+  <div class="band band-deep">
+    <div class="wrap">
+      <section>
+        <div class="section-head center">
+          
+          <h2 class="section-title">Add anything.<br><span class="it">In any form.</span></h2>
+        </div>
+
+        <div class="chat-showcase">
+        <div class="cs-head">
+          <span class="dot"></span>
+          <span class="name">Volnar · adding</span>
+          <span class="meta">today, 14:08</span>
+        </div>
+
+        <div class="cs-msg user">Bought 50 ASML today at €642 each.</div>
+        <div class="cs-msg assistant">
+          Updated. 312 shares now at a blended €598.
+        </div>
+
+        <div class="cs-msg user">
+          <div class="cs-attach">
+            <div class="thumb doc"></div>
+            <div class="meta-r">
+              <span class="filename">Mortgage_statement.pdf</span>
+              <span class="size">ABN AMRO · May</span>
+            </div>
+          </div>
+        </div>
+        <div class="cs-msg assistant">
+          Read balance <strong>€132.040</strong>, rate <strong>3,2%</strong>. Save?
+        </div>
+
+        <div class="cs-msg user">
+          <div class="cs-attach">
+            <div class="thumb shot"></div>
+            <div class="meta-r">
+              <span class="filename">DEGIRO_portfolio.png</span>
+              <span class="size">Screenshot · 4 positions</span>
+            </div>
+          </div>
+        </div>
+        <div class="cs-msg assistant">
+          Found <strong>ASML, VWCE, IEFA</strong>, €4.740 cash. Save all? <em>I'll ask before overwriting.</em>
+        </div>
+
+        <div class="cs-input">
+          <div class="field">Type, paste, or attach anything…</div>
+          <div class="actions">
+            <div class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg></div>
+            <div class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3l7.5-7.5"/></svg></div>
+            <div class="btn send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="broker-mock">
+        <div class="bm-eyebrow">
+          <span class="soon-badge">Coming soon</span>
+        </div>
+        <div class="bm-title">Or connect a broker, <em>read-only</em>.</div>
+        <div class="bm-sub">For when you'd rather not type. Optional, never required.</div>
+
+        <div class="broker-grid">
+          <div class="broker-tile reveal">
+            <div class="bt-mark bt-etoro">e</div>
+            <div class="bt-name">eToro</div>
+            <div class="bt-ro">Read-only</div>
+          </div>
+          <div class="broker-tile reveal">
+            <div class="bt-mark bt-ibkr">IB</div>
+            <div class="bt-name">Interactive Brokers</div>
+            <div class="bt-ro">Read-only</div>
+          </div>
+          <div class="broker-tile reveal">
+            <div class="bt-mark bt-degiro">DG</div>
+            <div class="bt-name">DEGIRO</div>
+            <div class="bt-ro">Read-only</div>
+          </div>
+          <div class="broker-tile reveal">
+            <div class="bt-mark bt-t212">T<sub style="font-size:8px;">212</sub></div>
+            <div class="bt-name">Trading 212</div>
+            <div class="bt-ro">Read-only</div>
+          </div>
+          <div class="broker-tile reveal">
+            <div class="bt-mark bt-saxo">SX</div>
+            <div class="bt-name">Saxo Bank</div>
+            <div class="bt-ro">Read-only</div>
+          </div>
+          <div class="broker-tile reveal">
+            <div class="bt-mark bt-coinbase">CB</div>
+            <div class="bt-name">Coinbase</div>
+            <div class="bt-ro">Read-only</div>
+          </div>
         </div>
       </div>
     </section>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCENARIO ANALYSIS — try the move without making it
+       ============================================================ -->
+  <div class="band band-dark">
+    <div class="wrap">
+      <section>
+        <div class="section-head center">
+          
+          <h2 class="section-title">Try the move.<br><span class="it">Without making it.</span></h2>
+          <p class="section-lede" style="margin-left: auto; margin-right: auto;">Ask the question. Get the numbers. Decide later — or not at all.</p>
+        </div>
+
+        <div class="qna-grid">
+
+          <div class="qna-card reveal">
+            <div class="qna-q">"What if I sell €40k of ASML and put it in VWCE?"</div>
+            <div class="qna-a">
+              <span class="who">Volnar</span>
+              Concentration drops from <strong>41%</strong> to <strong>18%</strong>. Expected dividend drag about <strong>€1.100/year</strong>, offset by broader exposure.
+              <em>Tax impact at NL Box 3 is roughly flat.</em>
+            </div>
+            <div class="sc-viz">
+              <div class="sc-donuts">
+                <div class="sc-donut">
+                  <svg viewBox="0 0 64 64">
+                    <circle class="sc-d-track" cx="32" cy="32" r="26" stroke-width="6" fill="none"/>
+                    <circle class="sc-d-fill-warn" cx="32" cy="32" r="26" stroke-width="6" fill="none"
+                            stroke-dasharray="66.96 96.39" stroke-linecap="round"
+                            transform="rotate(-90 32 32)"/>
+                    <text class="sc-d-pct" x="32" y="37" text-anchor="middle">41%</text>
+                  </svg>
+                  <span class="sc-d-label">Now</span>
+                </div>
+                <svg class="sc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+                <div class="sc-donut">
+                  <svg viewBox="0 0 64 64">
+                    <circle class="sc-d-track" cx="32" cy="32" r="26" stroke-width="6" fill="none"/>
+                    <circle class="sc-d-fill-ok" cx="32" cy="32" r="26" stroke-width="6" fill="none"
+                            stroke-dasharray="29.4 134.0" stroke-linecap="round"
+                            transform="rotate(-90 32 32)"/>
+                    <text class="sc-d-pct" x="32" y="37" text-anchor="middle">18%</text>
+                  </svg>
+                  <span class="sc-d-label">After</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="qna-card reveal">
+            <div class="qna-q">"What if rates rise another 50 bps before my reset?"</div>
+            <div class="qna-a">
+              <span class="who">Volnar</span>
+              Mortgage payment goes from €1.420 to <strong>~€1.512</strong> in March 2027. Your cash buffer still covers <strong>14 months</strong> instead of 17.
+              <em>Within the comfort you set.</em>
+            </div>
+            <div class="sc-viz">
+              <div class="sc-bars">
+                <div class="sc-bar-row">
+                  <span class="sc-b-label">Now</span>
+                  <span class="sc-b-track"><span class="sc-b-fill" style="width: 78%;"></span></span>
+                  <span class="sc-b-value">€1.420</span>
+                </div>
+                <div class="sc-bar-row">
+                  <span class="sc-b-label">After</span>
+                  <span class="sc-b-track"><span class="sc-b-fill warn" style="width: 84%;"></span></span>
+                  <span class="sc-b-value">€1.512</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="qna-card reveal">
+            <div class="qna-q">"What if I redirect €1.500/month to pension for two years?"</div>
+            <div class="qna-a">
+              <span class="who">Volnar</span>
+              Retirement target hits <strong>4 months earlier</strong>. Public-markets sleeve loses roughly <strong>€38k of compounding</strong> by then.
+              <em>Worth weighing against the tax deduction.</em>
+            </div>
+            <div class="sc-viz">
+              <div class="sc-timeline">
+                <div class="sc-tl-line"></div>
+                <div class="sc-tl-points">
+                  <div class="sc-tl-point">
+                    <span class="sc-tl-dot new"></span>
+                    <span class="sc-tl-label new">Now reach</span>
+                  </div>
+                  <div class="sc-tl-point">
+                    <span class="sc-tl-dot"></span>
+                    <span class="sc-tl-label">Original target</span>
+                  </div>
+                </div>
+                <div class="sc-tl-delta">← 4 months earlier</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 2: ASSET OVERVIEW — every class, one grid
+       ============================================================ -->
+  <div class="wrap wrap-wide">
+    <section class="bordered">
+      <div class="section-head">
+        
+        <h2 class="section-title">Every asset class.<br><span class="it">Already covered.</span></h2>
+      </div>
+
+      <div class="ac-grid">
+
+        <div class="ac-card reveal">
+          <div class="ic-new ic-tint-green">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14L16 4l12 10" />
+              <path d="M7 12v14h18V12" />
+              <rect x="13" y="18" width="6" height="8" stroke-width="1.5"/>
+              <rect x="10" y="14" width="3" height="3"/>
+              <rect x="19" y="14" width="3" height="3"/>
+              <path d="M16 4v3" />
+              <rect x="15" y="6" width="2" height="2" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="nm">Real estate</div>
+        </div>
+
+        <div class="ac-card reveal reveal-delay-1">
+          <div class="ic-new ic-tint-blue">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 24V8" />
+              <path d="M4 24h24" />
+              <path d="M8 20l5-6 4 4 7-10" />
+              <circle cx="13" cy="14" r="1.4" fill="currentColor"/>
+              <circle cx="17" cy="18" r="1.4" fill="currentColor"/>
+              <circle cx="24" cy="8" r="1.4" fill="currentColor"/>
+              <path d="M21 6h4v4" />
+            </svg>
+          </div>
+          <div class="nm">Stocks</div>
+        </div>
+
+        <div class="ac-card reveal reveal-delay-2">
+          <div class="ic-new ic-tint-blue">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="20" width="24" height="6" rx="1"/>
+              <rect x="7" y="13" width="18" height="5" rx="1"/>
+              <rect x="10" y="6" width="12" height="5" rx="1"/>
+              <line x1="9" y1="23" x2="13" y2="23"/>
+              <line x1="11" y1="15.5" x2="14" y2="15.5"/>
+              <line x1="13" y1="8.5" x2="15" y2="8.5"/>
+            </svg>
+          </div>
+          <div class="nm">ETFs</div>
+        </div>
+
+        <div class="ac-card reveal reveal-delay-3">
+          <div class="ic-new ic-tint-gold">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="5" width="22" height="22" rx="1.5"/>
+              <line x1="9" y1="11" x2="23" y2="11"/>
+              <line x1="9" y1="15" x2="23" y2="15"/>
+              <line x1="9" y1="19" x2="19" y2="19"/>
+              <circle cx="22" cy="22.5" r="2.5"/>
+              <path d="M22 21v3M20.5 22.5h3" stroke-width="1"/>
+            </svg>
+          </div>
+          <div class="nm">Bonds</div>
+        </div>
+
+        <div class="ac-card reveal">
+          <div class="ic-new ic-tint-gold">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4l11 5v7c0 6-5 10-11 11-6-1-11-5-11-11V9z"/>
+              <path d="M11 16l3.5 3.5L21 13"/>
+            </svg>
+          </div>
+          <div class="nm">Pension</div>
+        </div>
+
+        <div class="ac-card reveal reveal-delay-1">
+          <div class="ic-new ic-tint-gold">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 11h22a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V13a2 2 0 012-2z"/>
+              <path d="M5 11V8a2 2 0 012-2h17l3 5"/>
+              <circle cx="23" cy="18" r="2" fill="currentColor"/>
+              <path d="M9 16h5" />
+            </svg>
+          </div>
+          <div class="nm">Cash</div>
+        </div>
+
+        <div class="ac-card reveal reveal-delay-2">
+          <div class="ic-new ic-tint-red">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="16" cy="16" r="12"/>
+              <path d="M11 8h7.5a3.5 3.5 0 010 7H11V8z"/>
+              <path d="M11 15h8.5a3.5 3.5 0 010 7H11v-7z"/>
+              <line x1="14" y1="5" x2="14" y2="9"/>
+              <line x1="18" y1="5" x2="18" y2="9"/>
+              <line x1="14" y1="23" x2="14" y2="27"/>
+              <line x1="18" y1="23" x2="18" y2="27"/>
+            </svg>
+          </div>
+          <div class="nm">Crypto</div>
+        </div>
+
+        <div class="ac-card reveal reveal-delay-3">
+          <div class="ic-new ic-tint-gold">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 22h18l-2 6H9z"/>
+              <path d="M9 16h14l-1.5 6H10.5z"/>
+              <path d="M11 10h10l-1 6H12z"/>
+              <path d="M12 4h8l-1 6H13z"/>
+            </svg>
+          </div>
+          <div class="nm">Gold</div>
+        </div>
+
+        <div class="ac-card reveal">
+          <span class="pill-new">New</span>
+          <div class="ic-new ic-tint-brown">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="16" cy="17" r="9"/>
+              <path d="M16 12v5l3.5 2.5"/>
+              <path d="M13 6h6l-1 4h-4z"/>
+              <circle cx="16" cy="17" r="1.2" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="nm">Collectibles</div>
+        </div>
+
+        <div class="ac-card mortgage-pos reveal reveal-delay-1">
+          <div class="ic-new ic-tint-mortgage">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 15L16 5l11 10"/>
+              <path d="M8 13v15h16V13"/>
+              <circle cx="20" cy="20" r="3"/>
+              <path d="M22 22l4 4"/>
+              <path d="M25 25l1.5-1.5"/>
+            </svg>
+          </div>
+          <div class="nm">Mortgages</div>
+        </div>
+
+        <div class="ac-card reveal reveal-delay-2">
+          <div class="ic-new ic-tint-brown">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="9" r="3" fill="currentColor"/>
+              <circle cx="23" cy="9" r="2.5"/>
+              <circle cx="9" cy="23" r="2.5"/>
+              <circle cx="23" cy="23" r="3.5"/>
+            </svg>
+          </div>
+          <div class="nm">Anything else</div>
+        </div>
+
+        <div class="ac-card soon reveal reveal-delay-3">
+          <span class="pill">Coming soon</span>
+          <div class="ic-new">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="9" width="22" height="16" rx="2"/>
+              <path d="M11 9V6h10v3"/>
+              <path d="M5 16h22"/>
+              <path d="M14 20h4"/>
+            </svg>
+          </div>
+          <div class="nm">Employee equity</div>
+        </div>
+
+        <div class="ac-card soon reveal">
+          <span class="pill">Coming soon</span>
+          <div class="ic-new">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="16" cy="16" r="11"/>
+              <path d="M16 9v7l5 3"/>
+              <path d="M5 5l3 3M27 5l-3 3" />
+            </svg>
+          </div>
+          <div class="nm">Future pensions</div>
+        </div>
+
+        <div class="ac-card soon reveal reveal-delay-1">
+          <span class="pill">Coming soon</span>
+          <div class="ic-new">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="8" width="24" height="16" rx="2"/>
+              <path d="M4 14h24"/>
+              <line x1="8" y1="20" x2="14" y2="20"/>
+              <line x1="22" y1="20" x2="25" y2="20"/>
+            </svg>
+          </div>
+          <div class="nm">Consumer debt</div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- ============================================================
+       SECTION 3: CONVERSATIONAL Q&A — ask anything about your wealth
+       ============================================================ -->
+  <div class="band band-deep">
+    <div class="wrap">
+      <section>
+        <div class="section-head center">
+          
+          <h2 class="section-title">Ask anything<br>about your wealth.</h2>
+        </div>
+
+        <div class="qna-grid">
+
+          <div class="qna-card reveal">
+            <div class="qna-q">"How is my house goal tracking?"</div>
+            <div class="qna-a">
+              <span class="who">Volnar</span>
+              You're at <strong>€184.000 of €250.000</strong> — 73,6%. At the current monthly contribution rate, you'd reach it in November 2027.
+              <em>Redirecting the bonus moves it to August.</em>
+            </div>
+          </div>
+
+          <div class="qna-card reveal">
+            <div class="qna-q">"What's my biggest concentration risk?"</div>
+            <div class="qna-a">
+              <span class="who">Volnar</span>
+              <strong>ASML at 41% of the public-markets sleeve.</strong> Six percentage points above the 35% comfort you mentioned in October.
+              <em>Worth a look before the next add.</em>
+            </div>
+          </div>
+
+          <div class="qna-card chart reveal">
+            <div class="qna-q">"How am I doing vs MSCI World?"</div>
+            <div class="mini-chart">
+              <svg viewBox="0 0 280 110" preserveAspectRatio="none" aria-hidden="true">
+                <!-- Bench (MSCI) dashed -->
+                <path class="mc-bench" fill="none" stroke-width="2"
+                      d="M8,72 L40,68 L72,74 L104,62 L136,58 L168,54 L200,50 L232,46 L264,42"/>
+                <!-- Yours -->
+                <path class="mc-yours" fill="none" stroke-width="2.4"
+                      d="M8,72 L40,66 L72,70 L104,58 L136,50 L168,42 L200,38 L232,32 L264,28"/>
+                <!-- End markers -->
+                <circle cx="264" cy="28" r="3" fill="var(--accent)"/>
+                <circle cx="264" cy="42" r="2.5" fill="var(--text-faint)"/>
+              </svg>
+              <div class="mc-legend">
+                <span class="lg"><span class="sw you"></span>You <strong>+11,2%</strong></span>
+                <span class="lg"><span class="sw bench"></span>MSCI World <strong>+9,4%</strong></span>
+              </div>
+              <div style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">
+                The 1,8-point lead is almost entirely ASML. <em style="font-family: var(--font-serif); color: var(--text-faint);">Strip it out and you trail by 0,6.</em>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PULL-QUOTE — typographic moment
+       ============================================================ -->
+  <div class="wrap">
+    <div class="pull-quote reveal">
+      <span class="pq-mark">"</span>
+      <p>
+        Wealth tells you what's worth knowing.<br>
+        <span class="it">You decide what's worth doing.</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="divider-diamond" aria-hidden="true">
+    <span class="dot"></span>
   </div>
 
   <!-- ============================================================
@@ -2588,6 +3646,13 @@
   <div class="wrap">
     <section style="padding-top: 0;">
       <div class="privacy-line">
+        <div class="privacy-lock" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="10" width="16" height="11" rx="2"/>
+            <path d="M8 10V7a4 4 0 018 0v3"/>
+            <circle cx="12" cy="15" r="1.2" fill="currentColor"/>
+          </svg>
+        </div>
         <h3>Your data is yours. <span class="it">Nothing more to say.</span></h3>
         <p>EU-hosted. Encrypted. Self-funded. Read-only by design. Export anytime.</p>
       </div>
@@ -2597,12 +3662,31 @@
   <div class="wrap">
     <footer>
       <div class="left">Volnar</div>
-      <div class="center" style="text-align: center; flex: 1;">
-        A product of <strong style="color: var(--text); font-weight: 500;">NovaHub B.V.</strong> · KVK 92194923
-      </div>
-      <div>Eindhoven, Netherlands · volnar.nl</div>
     </footer>
   </div>
 
+  <script>
+    // Reveal on scroll + alert chip stagger
+    (function() {
+      if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reveal, .alert-chip').forEach(function(el) {
+          el.classList.add('in-view');
+        });
+        return;
+      }
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+      document.querySelectorAll('.reveal, .alert-chip').forEach(function(el) {
+        io.observe(el);
+      });
+    })();
+  </script>
 </body>
 </html>
