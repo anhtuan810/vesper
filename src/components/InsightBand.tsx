@@ -87,23 +87,28 @@ export function InsightBand() {
 
   const hasMarket = market.length > 0;
 
-  const portfolioCard = (sentence: string, key: string | number, last: boolean) => (
-    <Band key={key} last={last}>
-      <div style={{ padding: "9px 16px" }}>
-        <div className="font-serif" style={{ ...titleStyle, WebkitLineClamp: 3 }}>
-          {renderWithEmphasis(sentence)}
-        </div>
-      </div>
-    </Band>
-  );
+  const allPortfolioSentences = portfolioCards.length > 0
+    ? portfolioCards
+    : insightSentence ? [insightSentence] : [];
 
   return (
     <>
-      {/* ── Portfolio cards — each in its own Band, no label ── */}
-      {portfolioCards.map((sentence, i) =>
-        portfolioCard(sentence, i, i === portfolioCards.length - 1 && !hasMarket)
+      {/* ── Portfolio cards — merged into one Band with paragraph spacing ── */}
+      {allPortfolioSentences.length > 0 && (
+        <Band last={!hasMarket}>
+          <div style={{ padding: "9px 16px" }}>
+            {allPortfolioSentences.map((sentence, i) => (
+              <div
+                key={i}
+                className="font-serif"
+                style={{ ...titleStyle, WebkitLineClamp: 3, marginTop: i > 0 ? 8 : 0 }}
+              >
+                {renderWithEmphasis(sentence)}
+              </div>
+            ))}
+          </div>
+        </Band>
       )}
-      {insightSentence && portfolioCard(insightSentence, "fallback", !hasMarket)}
 
       {/* ── MARKETS — up to 3 market news cards ── */}
       {hasMarket && (

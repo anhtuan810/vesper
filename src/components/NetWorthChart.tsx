@@ -35,6 +35,41 @@ function fmtYLabel(value: number, currency: string): string {
   return `${sign}${sym}${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
 }
 
+// Round value up to the next clean increment based on magnitude.
+function niceCeil(value: number): number {
+  if (value <= 0) return 0;
+  const step =
+    value < 10_000     ? 1_000 :
+    value < 100_000    ? 5_000 :
+    value < 1_000_000  ? 25_000 :
+    value < 10_000_000 ? 100_000 : 1_000_000;
+  return Math.ceil(value / step) * step;
+}
+
+// Generate Y-axis labels confined to [0, max] with a clean step.
+// Prefers 3–6 labels; always includes 0 and max.
+function computeNiceLabels(max: number): number[] {
+  if (max <= 0) return [0];
+  const rawBase = Math.pow(10, Math.floor(Math.log10(max)));
+  // Try coarser steps first so we get fewer, cleaner labels
+  for (const m of [2.5, 2, 1.5, 1, 0.5, 0.25, 0.2, 0.15, 0.1]) {
+    const step = rawBase * m;
+    const count = max / step;
+    if (Number.isInteger(count) && count >= 3 && count <= 6) {
+      return Array.from({ length: count + 1 }, (_, i) => step * i);
+    }
+  }
+  // Fallback: allow up to 8 labels
+  for (const m of [0.5, 0.25, 0.2, 0.1]) {
+    const step = rawBase * m;
+    const count = max / step;
+    if (Number.isInteger(count) && count >= 3 && count <= 8) {
+      return Array.from({ length: count + 1 }, (_, i) => step * i);
+    }
+  }
+  return [0, max / 2, max];
+}
+
 interface NiceLevels {
   niceMin: number;
   niceMax: number;
@@ -162,15 +197,11 @@ export function NetWorthChart(props: Props) {
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
   const gradId = "netWorthChartFill";
 
-  // Nice Y-axis bounds — shared by the curve projection, end-point marker, and label positions.
-  // rawMin * 0.9 prevents the floor from collapsing to 0 when the data range far exceeds the minimum.
-  const rawMin = values.length >= 2 ? Math.min(...values) : 0;
+  // Y domain: always floor at 0; cap at niceCeil(dataMax * 1.08) so the line sits in the upper third.
   const rawMax = values.length >= 2 ? Math.max(...values) : 1;
-  const pad = (rawMax - rawMin) * 0.05;
-  const dataMin = Math.max(rawMin - pad, rawMin * 0.9);
-  const dataMax = rawMax + pad;
-  const { niceMin, niceMax, labels: yLabels } = computeNiceLevels(dataMin, dataMax);
-  const yRange = Math.max(niceMax - niceMin, 1);
+  const niceMin = 0;
+  const niceMax = niceCeil(rawMax * 1.08);
+  const yLabels = computeNiceLabels(niceMax);
 
   const drawW = W - CHART_PAD_RIGHT;
   const { line, area, projectY } = buildPath(values, W, H, niceMin, niceMax, drawW);
