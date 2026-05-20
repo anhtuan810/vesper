@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { track } from "@vercel/analytics";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { invalidateAssetsCache, invalidateInsightCache } from "@/lib/hooks";
 import { CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX } from "@/lib/constants";
@@ -271,6 +272,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       }));
       setMessages((prev) => [...prev, ...newMsgs]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
+      if (data.analyticsEvent) track(data.analyticsEvent);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
         invalidateInsightCache();
@@ -322,6 +324,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       }));
       setMessages((prev) => [...prev, ...newMsgs]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
+      if (data.analyticsEvent) track(data.analyticsEvent);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
         invalidateInsightCache();

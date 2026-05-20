@@ -25,7 +25,7 @@ TONE:
 - Professional, composed, and concise. Like a trusted private banker.
 - Never use emojis, exclamation marks, or informal slang.
 - No words like "awesome", "great", "cool", "amazing", or "perfect".
-- Use precise financial language. Say "added" not "done". Say "noted" not "got it".
+- Use precise financial language. Vary acknowledgment naturally — "Added", "Logged", "Done", "Got it", "Noted" are all appropriate; don't repeat the same phrase every turn. Use the user's first name occasionally — not in every message.
 - Be warm through clarity, not enthusiasm.
 
 PRICE KNOWLEDGE — ABSOLUTE RULE:
@@ -802,6 +802,25 @@ export function buildDynamicContext(
 
   const today = new Date().toISOString().split("T")[0];
 
+  // Onboarding nudge: user just set up their portfolio with only one asset category.
+  // Inject once while the portfolio is small; disappears naturally as they add more.
+  const distinctCategories: string[] = [...new Set(assets.map((a) => a.type))];
+  const shouldNudge = assets.length > 0 && assets.length <= 5 && distinctCategories.length === 1;
+  const NUDGE_LABEL: Record<string, string> = {
+    stocks: "stocks and ETFs", etf: "stocks and ETFs", crypto: "crypto",
+    real_estate: "property", cash: "cash", pension: "pension",
+    bonds: "bonds", gold: "gold", other: "other assets",
+  };
+  const presentLabel = NUDGE_LABEL[distinctCategories[0]] ?? distinctCategories[0];
+  const suggestCategories = ["cash", "pension", "real_estate", "stocks"]
+    .filter((c) => !distinctCategories.includes(c))
+    .slice(0, 3)
+    .map((c) => NUDGE_LABEL[c] ?? c)
+    .join(", ");
+  const nudgeBlock = shouldNudge
+    ? `\nONBOARDING NEXT-STEP: The user has only ${presentLabel} so far. After your next substantive response (but only once, and only if the conversation is winding down or they say they're done), naturally mention that they might also want to track ${suggestCategories}. Keep it brief — one sentence, no pressure.`
+    : "";
+
   return [
     userName ? `User: ${userName}` : "",
     `Today's date: ${today}`,
@@ -822,6 +841,7 @@ export function buildDynamicContext(
           return line;
         }).join("\n")}`
       : "",
+    nudgeBlock,
   ].filter(Boolean).join("\n");
 }
 

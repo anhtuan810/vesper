@@ -81,7 +81,7 @@ export default function ChatPopup({
     if (!sentinel || !hasMore) return;
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) loadMore(); },
-      { threshold: 0 }
+      { threshold: 0, rootMargin: "200px 0px 0px 0px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();

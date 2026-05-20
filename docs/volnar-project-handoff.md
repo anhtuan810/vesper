@@ -30,6 +30,7 @@ A single web dashboard where a user can:
 - **Database**: Supabase (Postgres) with Row Level Security
 - **Auth**: Supabase Auth — Google OAuth + email magic link
 - **AI**: Anthropic Claude API (`claude-sonnet-4-6` for the assistant; `claude-haiku-4-5-20251001` for diary summary, profile extraction, and the AI insight band)
+- **Analytics**: Vercel Analytics (`@vercel/analytics`) — pageviews + 4 custom pilot events (signup, first_asset_added, first_chat_mutation, return_visit_day2_plus)
 - **Error tracking**: Sentry (free tier, graceful no-op when DSN unset)
 - **Market data**: Yahoo Finance via server-side proxy
 - **FX data**: frankfurter.app (no key, ECB-backed) cached in Postgres with 24h TTL
@@ -84,7 +85,7 @@ src/
     BottomNav.tsx               4-tab mobile nav (Portfolio/Diary/Chat/Profile)
     NavBar.tsx                  Top nav: avatar (28px) + first name on left, refresh + status dot on right
     NetWorthHero.tsx            Big serif net worth + change pill
-    NetWorthChart.tsx           Trajectory chart with range pills (1W/1M/3M/1Y/3Y/All), Catmull-Rom spline
+    NetWorthChart.tsx           Trajectory chart with range pills (1W/1M/3M/1Y/3Y/All), straight-line segments (no smoothing)
     InsightBand.tsx             "Worth knowing" italic-serif AI insight, links to /chat
     PortfolioTab.tsx            Portfolio page composition
     HoldingsGroup.tsx           Semantic groupings (Property / Public markets / Reserves) with proportional bars
@@ -171,7 +172,7 @@ docs/
 5. **Memory matters.** The investor profile builds itself over time. Six lasting context fields plus a one-line fingerprint, refined after every conversation. Field labels in sentence case.
 6. **Backend is source of truth.** AI parses and explains. Deterministic code calculates and validates.
 7. **Privacy over community.** No social features. No portfolio sharing.
-8. **Display currency is per-user.** Storage is EUR-equivalent. Each user picks a display currency (EUR / USD / GBP). Real estate carries its own native currency by location for transparency. Number formatting is forced to nl-NL locale across all currencies for brand consistency.
+8. **Display currency is per-user.** Storage is native-per-asset (`assets.value` in the asset's own currency). USD is the bridge for aggregation (`snapshots.total_value`, `mutations.portfolio_total`). EUR and GBP are display-only at render time. Each user picks a display currency (EUR / USD / GBP). Real estate carries its native currency by country for transparency. Number formatting is forced to nl-NL locale across all currencies for brand consistency.
 9. **The mockups are the literal source of truth.** Frozen HTML files at `docs/redesign_mockups/`. When the mockup and a locked decision conflict, the user decides; otherwise, the mockup wins. Deliberate downward deviations from the mockup happen (e.g. PR 21 sized the NavBar avatar and BottomNav icons smaller than the mockup specified, because real-world rendering reads chunkier than the static preview) and are noted explicitly in code comments.
 10. **Decisions over numbers.** The diary is a log of decisions and reasoning, not just a transaction history. Notes are write-once. Pure renames are metadata and don't log. Diary entries display each asset's current name via JOIN — the *thing* has one identity.
 11. **Mortgage balance auto-amortizes invisibly.** The user enters mortgage values once. After that, balance and equity move silently month by month. Only notable events (extra payment, refinance, value update) are logged.

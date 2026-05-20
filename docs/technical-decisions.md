@@ -96,7 +96,7 @@ Daily net worth records.
 - Written by daily Vercel cron at midnight UTC + fire-and-forget after every successful mutation in `/api/chat`
 - Shared writer: `src/lib/snapshot.ts` `writeSnapshot(userId)`
 - Served by `GET /api/snapshots?range=<range>`. Supported ranges: `1W` (7d), `1M` (30d), `3M` (90d), `1Y` (365d), `3Y` (1095d), `All` (no cutoff). The `1D` range is not used by the net worth chart (it remains only in the `PriceChart` for tradeable assets).
-- Net worth chart uses a **Catmull-Rom spline** (converted to cubic Bézier control points) so the curve passes exactly through every data point.
+- Net worth chart uses straight-line segments (`L` path commands) connecting each snapshot point exactly. No smoothing.
 
 ### goals
 Optional soft goals captured during onboarding.
@@ -146,7 +146,11 @@ Server-side validation in `src/lib/validations.ts` runs before any DB write. All
 After every non-onboarding chat, a separate Haiku call analyzes the exchange and updates `users.profile` and `users.fingerprint`. Fire-and-forget — never blocks the user response. The extractor emits four context fields (`life_and_direction`, `approach`, `currently_exploring`, `worth_raising`) plus a single-sentence fingerprint. Costs ~$0.003 per conversation.
 
 ### AI insight band
-After portfolio events, `/api/insight` may regenerate a single italic-serif "WORTH KNOWING" sentence via Haiku, cached 24h (server-side DB `expires_at`) in the `highlights` table. The client-side in-memory cache (`useInsight` via `INSIGHT_CACHE_TTL_MS`) has a 1-hour TTL, so a browser session may serve the cached sentence for up to 1 hour before re-fetching from the DB. The LLM marks the key noun phrase with `*asterisks*`; the frontend wraps that span in `<em>`. On Claude failure the route returns `{ detail: null }` and does not INSERT. Cost: ~$0.0001–0.0003 per call.
+After portfolio events, `/api/insight` may regenerate a single italic-serif "WORTH KNOWING" sentence, cached 24h (server-side DB `expires_at`) in the `highlights` table. The client-side in-memory cache (`useInsight` via `INSIGHT_CACHE_TTL_MS`) has a 1-hour TTL.
+
+**Thin-portfolio path** (≤3 assets): `generateInsight` returns deterministic copy — names the held positions and highlights common absent categories — without calling Claude Haiku. Zero LLM cost.
+
+**Standard path** (4+ assets): calls Claude Haiku (~80 tokens). The LLM marks the key noun phrase with `*asterisks*`; the frontend wraps that span in `<em>`. On failure the route returns `{ detail: null }` and does not INSERT. Cost: ~$0.0001–0.0003 per call.
 
 ### Strict topic boundary
 System prompt tells Claude to refuse off-topic requests with a fixed redirect message.
@@ -287,9 +291,9 @@ Assets are cached in `sessionStorage` under the key `volnar.assets.<userId>` for
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).
 - **System prompt is verbose**. At 50+ assets, ~50% token compression is achievable. Not yet implemented.
 - **No tests**. Zero unit, integration, or E2E coverage. Acceptable for MVP. See `testing-strategies.md` for the activation plan.
-- **No analytics**. Defer until user count justifies it.
+- ~~**No analytics**~~ — **shipped**: `@vercel/analytics` with 4 pilot events (signup, first_asset_added, first_chat_mutation, return_visit_day2_plus). See `current-features.md` → Pilot Analytics.
 - **Hardcoded FX fallback rates drift**. Review annually if both DB cache and frankfurter.app fail.
 - **Two-write atomicity**. Asset update + mutation insert is not transactional. Sentry captures failures.
 - **AAPL logo intermittently 404s from FMP**. Falls back to monogram. Display-only.
-- **Compound index on `messages (user_id, created_at DESC)`** would optimize cursor pagination. Not blocking at current scale.
+- ~~**Compound index on `messages (user_id, created_at DESC)`**~~ — **shipped** in `supabase/migrations/20260520_perf_indices.sql`. Also adds `snapshots(user_id, date DESC)` in the same file.
 - **Safari OAuth on localhost** is broken (ITP). Production unaffected.

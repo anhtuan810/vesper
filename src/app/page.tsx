@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { useUser, useAssets, primeInsightCache } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
@@ -28,8 +29,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("welcome")) {
       window.history.replaceState({}, "", "/");
+      track("signup");
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const createdAt = new Date(user.created_at).getTime();
+    if (Date.now() - createdAt > 24 * 60 * 60 * 1000) {
+      track("return_visit_day2_plus");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const fetchDashboardInit = useCallback(async () => {
     if (!user?.id) return;

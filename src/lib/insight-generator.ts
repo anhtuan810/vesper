@@ -40,7 +40,30 @@ function buildPortfolioSummary(assets: Asset[]): string {
   ].join("\n");
 }
 
+const COMMON_ABSENT_PRIORITY = ["cash", "pension", "real_estate", "crypto", "stocks"] as const;
+
+function buildThinPortfolioInsight(assets: Asset[]): string | null {
+  if (assets.length === 0) return null;
+  const categories = new Set(assets.map((a) => a.type));
+  const absent = COMMON_ABSENT_PRIORITY.filter((c) => !categories.has(c));
+  const topAbsent = absent.slice(0, 2).map((c) =>
+    c === "real_estate" ? "property" : c
+  );
+
+  if (assets.length === 1) {
+    const name = assets[0].name;
+    const gap = topAbsent.join(" and ") || "other asset classes";
+    return `*${name}* is your only tracked position. Adding ${gap} would give Volnar a fuller picture of your net worth.`;
+  }
+
+  const names = assets.slice(0, 2).map((a) => a.name).join(" and ");
+  const gap = topAbsent.join(" and ") || "other classes";
+  return `Your portfolio is anchored in *${names}*. Common additions at this stage: ${gap} — worth tracking for a complete net worth view.`;
+}
+
 export async function generateInsight(assets: Asset[]): Promise<string | null> {
+  if (assets.length <= 3) return buildThinPortfolioInsight(assets);
+
   try {
     const summary = buildPortfolioSummary(assets);
 

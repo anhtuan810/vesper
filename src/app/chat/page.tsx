@@ -150,7 +150,7 @@ export default function ChatPage() {
           loadMore();
         }
       },
-      { threshold: 0 }
+      { threshold: 0, rootMargin: "200px 0px 0px 0px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();

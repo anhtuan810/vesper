@@ -564,6 +564,7 @@ export async function POST(req: NextRequest) {
     let portfolioChanged = false;
     let needsBackfill = false;
     let hasAdds = false;
+    let analyticsEvent: string | null = null;
 
     // --- Apply portfolio changes ---
     if (changesRaw) {
@@ -580,6 +581,11 @@ export async function POST(req: NextRequest) {
             needsBackfill = true;
           }
           hasAdds = changes.some((c) => c.action === "add");
+          if (isNewUser && hasAdds) {
+            analyticsEvent = "first_asset_added";
+          } else if ((recentMutations || []).length === 0) {
+            analyticsEvent = "first_chat_mutation";
+          }
           const validationError = validatePortfolioChanges(changes, currentAssets);
           if (validationError) {
             await supabase.from("messages").insert(timestampedPair(
@@ -789,6 +795,7 @@ export async function POST(req: NextRequest) {
       assets: updatedAssets,
       remaining: CHAT_DAILY_LIMIT - used,
       suggested_replies: suggestedReplies,
+      ...(analyticsEvent ? { analyticsEvent } : {}),
     });
   } catch (err) {
     console.error("[/api/chat] unhandled error:", err);

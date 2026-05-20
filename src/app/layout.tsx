@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Source_Serif_4, Albert_Sans, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { UndoDeleteToast } from "@/components/UndoDeleteToast";
@@ -59,6 +60,7 @@ export default async function RootLayout({
             <UndoDeleteToast />
           </UserProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

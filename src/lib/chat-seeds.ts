@@ -7,7 +7,7 @@ export interface ChatSeed {
 
 const ONBOARDING_CLASS_SEEDS: Record<string, ChatSeed> = {
   stocks: {
-    message: "Let's start with what you hold publicly.",
+    message: "Tell me what you own — type it, paste a screenshot, or pick a category below.",
     chips: ["List them in chat", "Paste a screenshot", "Take a photo of my broker"],
   },
   "real-estate": {

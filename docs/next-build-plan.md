@@ -2,6 +2,21 @@
 
 This is the prioritized roadmap for Volnar. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
 
+## What just shipped — Pilot-readiness batch
+
+Implemented in one session against the audit results from `docs/`. All changes are in-place; no new schema tables.
+
+- **Pilot analytics** — `@vercel/analytics` added. 4 events: `signup`, `first_asset_added`, `first_chat_mutation`, `return_visit_day2_plus`. Server-side events returned as `analyticsEvent` flag from `/api/chat`, fired client-side in `use-chat-session.ts`.
+- **DB performance indices** — `supabase/migrations/20260520_perf_indices.sql` adds `messages(user_id, created_at DESC)` and `snapshots(user_id, date DESC)`. Apply via Supabase dashboard or `supabase db push`.
+- **IntersectionObserver `rootMargin`** — added `rootMargin: "200px 0px 0px 0px"` to both chat surfaces (`chat/page.tsx`, `ChatPopup.tsx`). Messages preload before the sentinel is fully visible. The existing `hasScrolled.current` guard (which already prevents chain-loading on cold open) is untouched.
+- **Insight thin-portfolio** — `generateInsight` returns deterministic copy for ≤3 assets, skipping the Haiku call. 1 asset: names the position + 2 absent categories. 2–3 assets: names anchors + common gaps.
+- **Onboarding next-step nudge** — `buildDynamicContext` injects a one-sentence ONBOARDING NEXT-STEP block when the portfolio has 1–5 assets all in one category, asking Claude to mention complementary asset types at the end of a winding-down turn. Disappears once the user diversifies.
+- **Tone variation** — replaced rigid `"Say 'added' not 'done'"` constraint in `buildStaticSystem` with a variety instruction. Adds first-name guidance (occasional, not every turn).
+- **Net worth chart** — removed Catmull-Rom spline smoothing; chart now uses straight `L` line segments between snapshot points.
+- **Onboarding seed copy** — stocks seed message updated to read "Tell me what you own — type it, paste a screenshot, or pick a category below."
+
+---
+
 ## What just shipped — Decision 12: Chips first, typing as fallback (PR 22)
 
 Four PRs shipped together as the Decision 12 implementation:
@@ -122,8 +137,8 @@ Build when there's enough portfolio history per user (3+ months of snapshots) an
 - Two-write atomicity (asset update + mutation insert) is not transactional — if this becomes a real reliability issue, move both writes into a Postgres function via Supabase RPC
 - Hardcoded FX fallback rates drift over time — review annually if the cache and frankfurter.app both fail
 - No tests — accepted for MVP. See `testing-strategies.md` for the activation plan.
-- No analytics (PostHog/Mixpanel) — defer until user count justifies it
-- Compound index on `messages (user_id, created_at DESC)` would optimize the cursor-paginated `/api/messages` fetch. Not blocking at current scale (hundreds of messages per user). File for a future migration when query latency becomes measurable.
+- ~~No analytics~~ — shipped: `@vercel/analytics` with 4 pilot events.
+- ~~Compound index on `messages (user_id, created_at DESC)`~~ — shipped in `20260520_perf_indices.sql` (also adds `snapshots` index).
 - Chat history mapper silently coerces unknown `role` values to `"assistant"`. Acceptable given the schema only ever writes `"user"` or `"assistant"`, but a `continue` in the mapper would be more defensive against future schema drift.
 - AAPL logo intermittently 404s from FMP — falls back to monogram. Display-only.
 - Safari OAuth on localhost — Google sign-in on localhost via Safari redirects to production due to Safari + ITP third-party cookie blocking. Works in Chrome and other browsers; production unaffected.
@@ -143,81 +158,31 @@ end-of-session triage.
 Symptom: cold load of `/` is slow in production. Noticeable wait
 before the page is interactive.
 
-Hypothesized root causes, ranked:
-- Page renders synchronously waiting for live prices instead of
-  using stored EUR values from Supabase (`assets.value`) as the
-  immediate render source.
-- Fetches may be serialized in `useEffect` chains rather than
-  truly parallel.
-- `/api/insight` cache miss rate may be high, triggering a Haiku
-  call on each page load (~1-2s).
-- Missing DB index on `snapshots(user_id, date)`.
-- Yahoo Finance latency is variable; 5-min cache means first hit
-  after expiry is full-cost.
+**Status: partially addressed.**
+- ✅ `/api/dashboard-init` batched endpoint — already shipped, parallel-fetches all data in one auth round-trip
+- ✅ Assets stale-while-revalidate (sessionStorage) — already shipped
+- ✅ `snapshots(user_id, date DESC)` DB index — added in `20260520_perf_indices.sql`
+- ✅ Thin-portfolio insight path — skips Haiku for ≤3 assets, eliminating the cold-insight latency for new users
+- ⬜ Server Component for the static shell — `src/app/page.tsx` is still a Client Component (`"use client"`). Moving layout + hero + holdings skeleton to a Server Component would get meaningful HTML before JS hydrates.
+- ⬜ Lazy per-category sparklines and day-change pills — currently load synchronously with `dashboard-init` data. Should wait until a group is expanded.
+- ⬜ Lazy per-range chart data — only 1M should load with the page; other ranges fetch on tap.
 
-Planned architectural approach:
+Remaining root causes worth investigating:
+- Yahoo Finance latency is variable; 5-min cache means first hit after expiry is full-cost.
+- `/api/insight` Haiku call for larger portfolios (~1–2s) still hits on cache miss.
 
-1. **Stale-while-revalidate for top-level values.** Hero total,
-   group allocation bars, and holdings list render immediately
-   using stored `assets.value` (already EUR, ≤5 min stale).
-   Live-price refresh happens in the background; numbers update
-   in place when the refresh returns. No skeleton, no blocking.
-2. **Server Component for the static shell.** If `src/app/page.tsx`
-   is fully client-rendered today, move the layout + hero +
-   holdings skeleton to a Server Component. Initial HTML contains
-   meaningful content before client JS hydrates. Live-price
-   refresh stays client-side.
-3. **Lazy per-category.** Sparklines, per-position day-change
-   pills, and other group-expanded detail wait until the group is
-   expanded. Top-level totals and allocation bars still render
-   eagerly — they need the full picture.
-4. **Lazy per-range.** Chart's 1M (default) loads with the page;
-   3M, 1Y, 3Y, All and other ranges fetch only when the user taps the
-   range pill.
-5. **DB indexes if missing.** Add `snapshots(user_id, date)`,
-   verify `assets(user_id)`.
-
-Eager (load with page): stored asset values, group bars, hero,
-range=1M chart, cached insight band.
-
-Lazy (load on interaction): live price refresh (background,
-post-paint), per-position sparklines, day-change pills, chart
-ranges beyond 1M.
-
-Next step: run a diagnostic in a fresh chat covering network
-waterfall, `/api/prices` behavior, `/api/insight` cache hit rate,
-page component type, DB indexes, render path. Apply fixes
-matching actual findings.
+Next step: run a network waterfall in production to confirm which of the remaining items is the bottleneck before further investment.
 
 ### Chat history slow open
 
 Symptom: reopening the chat surface with a long conversation
-history takes noticeably long. Feels like "loads the whole list"
-even though the architecture is supposed to be paginated (20-msg
-cursor pages).
+history takes noticeably long.
 
-Hypothesized root causes, ranked:
-- **IntersectionObserver chain-load bug (most likely).** The
-  sentinel for paginated scroll-back sits at the top of the
-  message list. On cold open with only 20 messages, the sentinel
-  is visible from page load and fires `loadMore()` automatically.
-  Repeats until full history is fetched. Looks like one long load.
-- Missing compound index on `messages(user_id, created_at DESC)`
-  (already in generic Tech Debts above).
-- localStorage cache 24h TTL — daily-or-less-frequent users
-  always pay cold-load cost.
-
-Planned fixes:
-1. Gate the IntersectionObserver with a "user has scrolled" flag.
-   Set true on first non-zero scroll event in the message
-   container; only allow `loadMore()` when true. Alternative:
-   attach the observer after first user interaction.
-2. Add the compound index on `messages(user_id, created_at DESC)`.
-3. Bump localStorage cache TTL from 24h to 7 days.
-
-Next step: diagnostic in a fresh chat to confirm which cause
-applies. The IntersectionObserver fix is cheap and worth doing
-regardless of the others.
+**Status: fixed.**
+- ✅ `hasScrolled.current` guard — was already in place; `loadMore()` only fires after the user has scrolled, blocking chain-loading on cold open.
+- ✅ `rootMargin: "200px 0px 0px 0px"` — added to both chat surfaces. Messages preload before the sentinel is fully visible, eliminating the "snap to load" UX.
+- ✅ `messages(user_id, created_at DESC)` index — added in `20260520_perf_indices.sql`.
+- ⬜ localStorage TTL bump (24h → 7d) — still worth doing for daily-or-less-frequent users. Low risk, no schema impact.
 
 ---
 
