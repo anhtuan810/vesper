@@ -1,5 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volnar Vitals — Canonical Mockup (polished final)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&family=Albert+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-.v { --vbg:#EFEAE0; --vsurface:#F8F4EC; --vsurface-elev:#E8E2D4; --vsurface-deep:#DDD6C5; --vtext:#1C1C18; --vtext-dim:#5E5A52; --vtext-faint:#968F84; --vaccent:#4A7C5E; --vaccent-deep:#3A5F4A; --vaccent-soft:#DCE5D2; --vaccent-text:#3A5F4A; --vhero:#181816; --vborder:rgba(28,28,24,0.10); --vborder-strong:rgba(28,28,24,0.18); --vneg:#B85C4A; --vneg-deep:#7A3B2D; --vneg-soft:rgba(184,92,74,0.10); --vpos:#4A7C5E; --vamber:#C4A06B; --vamber-deep:#7A5E3C; --vamber-soft:rgba(196,160,107,0.13); font-family:-apple-system,system-ui,sans-serif; color:var(--vtext); -webkit-font-smoothing:antialiased; }
+  body { margin:0; background:#E4DECF; font-family:"Albert Sans",-apple-system,system-ui,sans-serif; }
+  /* Token reference (mockup namespace --v*; see vitals-design-spec.md §1 for mapping to project tokens) */
+.v { --vbg:#EFEAE0; --vsurface:#F8F4EC; --vsurface-elev:#E8E2D4; --vsurface-deep:#DDD6C5; --vtext:#1C1C18; --vtext-dim:#5E5A52; --vtext-faint:#968F84; --vaccent:#4A7C5E; --vaccent-deep:#3A5F4A; --vaccent-soft:#DCE5D2; --vaccent-text:#3A5F4A; --vhero:#181816; --vborder:rgba(28,28,24,0.10); --vborder-strong:rgba(28,28,24,0.18); --vneg:#B85C4A; --vneg-deep:#7A3B2D; --vneg-soft:rgba(184,92,74,0.10); --vpos:#4A7C5E; --vamber:#C4A06B; --vamber-deep:#7A5E3C; --vamber-soft:rgba(196,160,107,0.13); font-family:"Albert Sans",-apple-system,system-ui,sans-serif; color:var(--vtext); -webkit-font-smoothing:antialiased; }
 .vserif { font-family:"Source Serif 4",Georgia,"Lora",serif; }
 .veb { font-size:9.5px; font-weight:500; letter-spacing:0.18em; text-transform:uppercase; color:var(--vtext-faint); }
 .vmi { font-size:10.5px; color:var(--vtext-dim); font-feature-settings:'tnum'; }
@@ -22,16 +33,25 @@
 .vleg { font-size:10px; color:var(--vtext-dim); display:inline-flex; align-items:center; gap:5px; }
 .vleg-dot { display:inline-block; width:8px; height:8px; border-radius:2px; flex-shrink:0; }
 </style>
-<h2 class="sr-only">Volnar Vitals tab — polished final render — complete with NavBar, Pulse synthesis, 4-stat strip, seven analytical Vital cards with distinct chart types, Perspective section, Library expander, and bottom navigation</h2>
+</head>
+<body>
+<!--
+  Volnar Vitals — CANONICAL MOCKUP (polished final).
+  This is the visual source of truth referenced by vitals-design-spec.md.
+  The .v scope uses --v* prefixed CSS variables; see design-spec §1 for the
+  mapping to the real project tokens in globals.css. HTML comments mark each
+  section (PULSE, 4-STAT STRIP, card 1..7, PERSPECTIVE CARD, LIBRARY EXPANDER,
+  BOTTOM NAV) so implementers can locate exact geometry.
+-->
 
 <div class="v" style="display:flex; justify-content:center; padding:1rem 0;">
   <div style="width:100%; max-width:410px;">
 
-    <div class="vlb" style="margin-bottom:8px; padding:0 4px;">Vitals tab · polished final · ready for code integration</div>
+    <div class="vlb" style="margin-bottom:8px; padding:0 4px;">Vitals tab · polished final · canonical mockup</div>
     <div style="background:var(--vbg); border:1px solid var(--vborder-strong); border-radius:24px; overflow:hidden; box-shadow:0 1px 0 rgba(28,28,24,0.04);">
 
       <!-- NavBar -->
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 17px; border-bottom:1px solid var(--vborder); background:rgba(248,244,236,0.72); backdrop-filter:blur(6px);">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 17px; border-bottom:1px solid var(--vborder); background:rgba(248,244,236,0.72);">
         <div style="display:flex; align-items:center; gap:9px;">
           <div style="width:26px; height:26px; border-radius:7px; background:var(--vaccent); display:flex; align-items:center; justify-content:center; color:#F8F4EC; font-size:11px; font-weight:600; letter-spacing:-0.01em;">AT</div>
           <span style="font-size:13px; color:var(--vtext-faint); font-weight:500;">Anh-Tuan</span>
@@ -86,7 +106,7 @@
               <div class="veb">Concentration</div>
               <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px;">
                 <div class="vbn">46%</div>
-                <div class="vmi">top position · 11 weeks &gt;40%</div>
+                <div class="vmi">top position · by gross value</div>
               </div>
             </div>
             <div class="vstat-r"><span class="vstat-r-l">Top 3</span><span class="vstat-r-v">81%</span></div>
@@ -126,7 +146,7 @@
               <div class="veb">Real-asset weight</div>
               <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px;">
                 <div class="vbn">46%</div>
-                <div class="vmi">property equity / net worth</div>
+                <div class="vmi">equity / net worth</div>
               </div>
             </div>
             <div class="vstat-r"><span class="vstat-r-l">12mo</span><span class="vstat-r-v" style="color:var(--vaccent-deep);">+4 pts</span></div>
@@ -463,7 +483,7 @@
                   <div style="position:absolute; left:0; top:0; height:100%; width:97%; background:var(--vaccent); border-radius:999px;"></div>
                   <div style="position:absolute; left:97%; top:-3px; width:9px; height:9px; border-radius:50%; background:var(--vaccent); border:2px solid #F8F4EC; transform:translateX(-50%); box-shadow:0 0 0 0.5px rgba(74,124,94,0.3);"></div>
                 </div>
-                <div style="font-size:9px; color:var(--vtext-faint); margin-top:6px;">below the world top 1% threshold (~€940k)</div>
+                <div style="font-size:9px; color:var(--vtext-faint); margin-top:6px;">below the world top 1% threshold (~€972k)</div>
               </div>
               <div style="flex:0 0 54px; text-align:right;">
                 <div class="vserif" style="font-size:19px; font-weight:600; color:var(--vhero); line-height:1; font-feature-settings:'tnum';">97<span style="font-size:11px; color:var(--vtext-dim);">th</span></div>
@@ -488,7 +508,7 @@
             <div>
               <div style="display:flex; align-items:baseline; gap:8px;">
                 <span style="font-size:13px; color:var(--vtext); font-weight:600;">Library</span>
-                <span style="font-size:11px; color:var(--vtext-faint);">11 vitals · 4 dormant</span>
+                <span style="font-size:11px; color:var(--vtext-faint);">7 vitals · dormant set varies by portfolio</span>
               </div>
               <div style="font-size:10.5px; color:var(--vtext-faint); margin-top:3px;">Tap to explore what surfaces when conditions change</div>
             </div>
@@ -501,12 +521,14 @@
       <!-- BOTTOM NAV -->
       <div style="display:flex; align-items:flex-end; height:62px; background:rgba(248,244,236,0.88); border-top:1px solid var(--vborder); padding-bottom:9px;">
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--vtext-faint);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:21px; height:21px;"><circle cx="12" cy="12" r="9.5"/><line x1="12" y1="12" x2="12" y2="3.5"/><line x1="12" y1="12" x2="18.5" y2="17"/></svg><span style="font-size:10.5px; font-weight:500;">Portfolio</span></div>
-        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--vaccent);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:21px; height:21px;"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12 L22 13 L16.5 13 L13.4 20.5 L9 9.5 L7 13 L2 13 Z"/></svg><span style="font-size:10.5px; font-weight:600;">Vitals</span></div>
-        <div style="flex:1.05; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--vaccent);"><div style="width:40px; height:40px; border-radius:50%; border:1.5px solid var(--vaccent); display:flex; align-items:center; justify-content:center; background:rgba(74,124,94,0.07);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px;"><path d="M21 12a8.96 8.96 0 0 1-12.85 8.15L3 21l1.55-4.65A9 9 0 1 1 21 12z"/></svg></div><span style="font-size:10.5px; font-weight:500;">Chat</span></div>
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--vtext-faint);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:21px; height:21px;"><path d="M12 7.5C13 5 15 4.5 17 4.5h4.5v15h-7C13 19.5 12 20.5 12 22"/><path d="M12 7.5C11 5 9 4.5 7 4.5H2.5v15h7C11 19.5 12 20.5 12 22"/></svg><span style="font-size:10.5px; font-weight:500;">Diary</span></div>
+        <div style="flex:1.05; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--vaccent);"><div style="width:40px; height:40px; border-radius:50%; border:1.5px solid var(--vaccent); display:flex; align-items:center; justify-content:center; background:rgba(74,124,94,0.07);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px;"><path d="M21 12a8.96 8.96 0 0 1-12.85 8.15L3 21l1.55-4.65A9 9 0 1 1 21 12z"/></svg></div><span style="font-size:10.5px; font-weight:500;">Chat</span></div>
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--vtext-faint);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:21px; height:21px;"><circle cx="12" cy="8.5" r="4.5"/><path d="M3.5 21a9.5 9.5 0 0 1 17 0"/></svg><span style="font-size:10.5px; font-weight:500;">Profile</span></div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--vaccent);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:21px; height:21px;"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12 L22 13 L16.5 13 L13.4 20.5 L9 9.5 L7 13 L2 13 Z"/></svg><span style="font-size:10.5px; font-weight:600;">Vitals</span></div>
       </div>
 
     </div>
   </div>
 </div>
+</body>
+</html>

@@ -38,6 +38,12 @@
   --category-reserves:       #B89968;
   --category-property:       #4A7C5E;
   --category-crypto:         #B5564B;
+  --surface-deep:  #DDD6C5;
+  --accent-deep:   #3A5F4A;
+  --negative-deep: #7A3B2D;
+  --amber:         #C4A06B;
+  --amber-deep:    #7A5E3C;
+  --amber-soft:    rgba(196, 160, 107, 0.13);
   --bg-deep:           #EDE6D7;
   --cat-property:      #5E7A6A;
   --cat-property-soft: #E0E6E1;
@@ -49,6 +55,12 @@
   --cat-crypto-soft:   #F4DDD9;
   --cat-tangible:      #8C7B5E;
   --cat-tangible-soft: #E8E1D2;
+  /* PerspectiveCard translucent surfaces — light values */
+  --perspective-card-grad-start: var(--accent-soft);
+  --perspective-card-grad-end:   rgba(220, 229, 210, 0.42);
+  --perspective-panel:           rgba(248, 244, 236, 0.50);
+  --perspective-chip-bg:         rgba(248, 244, 236, 0.65);
+  --perspective-dot-border:      #F8F4EC;
 }
 
 [data-theme="dark"] {
@@ -75,6 +87,12 @@
   --category-reserves:       #C9A87A;
   --category-property:       #6FAD8A;
   --category-crypto:         #E89086;
+  --surface-deep:  rgba(255, 250, 240, 0.06);
+  --accent-deep:   #A8C9B2;
+  --negative-deep: #E0A599;
+  --amber:         #C4A06B;
+  --amber-deep:    #D4B484;
+  --amber-soft:    rgba(196, 160, 107, 0.18);
   --bg-deep:           #1A1610;
   --cat-property:      #6FAD8A;
   --cat-property-soft: rgba(111, 173, 138, 0.14);
@@ -86,6 +104,12 @@
   --cat-crypto-soft:   rgba(232, 144, 134, 0.14);
   --cat-tangible:      #B5A48A;
   --cat-tangible-soft: rgba(181, 164, 138, 0.14);
+  /* PerspectiveCard translucent surfaces — dark values */
+  --perspective-card-grad-start: rgba(111, 173, 138, 0.22);
+  --perspective-card-grad-end:   rgba(111, 173, 138, 0.07);
+  --perspective-panel:           rgba(255, 250, 240, 0.06);
+  --perspective-chip-bg:         rgba(255, 250, 240, 0.08);
+  --perspective-dot-border:      #1E1B17;
 }
 
 @theme inline {

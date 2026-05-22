@@ -1,6 +1,8 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { writeSnapshot } from "@/lib/snapshot";
+import { writeVitalSnapshots } from "@/lib/vitals/persist";
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -13,7 +15,19 @@ export async function GET(req: NextRequest) {
 
   const userIds = [...new Set((rows || []).map((r) => r.user_id as string))];
 
-  await Promise.all(userIds.map((userId) => writeSnapshot(userId)));
+  await Promise.all(
+    userIds.map(async (userId) => {
+      await writeSnapshot(userId);
+      try {
+        await writeVitalSnapshots(supabase, userId);
+      } catch (err) {
+        Sentry.captureException(err, {
+          tags: { fn: "cron/snapshot", step: "writeVitalSnapshots" },
+          extra: { user_id: userId },
+        });
+      }
+    }),
+  );
 
   return NextResponse.json({ ok: true, users: userIds.length });
 }

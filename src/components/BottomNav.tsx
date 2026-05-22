@@ -23,11 +23,26 @@ function PortfolioIcon({ active }: { active: boolean }) {
   );
 }
 
+function VitalsIcon({ active }: { active: boolean }) {
+  if (active) {
+    return (
+      <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 21, height: 21 }}>
+        <path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12 L22 13 L16.5 13 L13.4 20.5 L9 9.5 L7 13 L2 13 Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ width: 21, height: 21 }}>
+      <path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12" />
+    </svg>
+  );
+}
+
 const STATIC_TABS = [
   {
     label: "Portfolio",
     href: "/",
-    icon: null, // handled separately via PortfolioIcon
+    icon: null,
   },
   {
     label: "Diary",
@@ -42,11 +57,7 @@ const STATIC_TABS = [
   {
     label: "Chat",
     href: "/chat",
-    icon: (
-      <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" className="w-[24px] h-[24px]">
-        <path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z" />
-      </svg>
-    ),
+    icon: null, // rendered as elevated ring — see render loop below
   },
   {
     label: "Profile",
@@ -57,6 +68,11 @@ const STATIC_TABS = [
         <path d="M30.99,224a112.04,112.04,0,0,1,194.02,0" />
       </svg>
     ),
+  },
+  {
+    label: "Vitals",
+    href: "/vitals",
+    icon: null, // rendered via VitalsIcon
   },
 ] as const;
 
@@ -82,14 +98,65 @@ export function BottomNav() {
         {STATIC_TABS.map(({ label, href, icon }) => {
           const resolvedHref = label === "Chat" ? chatHref : href;
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const isChat = label === "Chat";
+
+          let iconEl: React.ReactNode;
+          if (label === "Portfolio") {
+            iconEl = <PortfolioIcon active={active} />;
+          } else if (label === "Chat") {
+            iconEl = (
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  border: "1.5px solid var(--accent)",
+                  background: "rgba(74,124,94,0.07)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {active ? (
+                  <svg
+                    viewBox="0 0 256 256"
+                    fill="currentColor"
+                    style={{ width: 18, height: 18, color: "var(--accent)" }}
+                  >
+                    <path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z" />
+                  </svg>
+                ) : (
+                  <svg
+                    viewBox="0 0 256 256"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ width: 18, height: 18, color: "var(--text-faint)" }}
+                  >
+                    <path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z" />
+                  </svg>
+                )}
+              </div>
+            );
+          } else if (label === "Vitals") {
+            iconEl = <VitalsIcon active={active} />;
+          } else {
+            iconEl = icon;
+          }
+
           return (
             <Link
               key={href}
               href={resolvedHref}
-              className="flex flex-col items-center justify-center gap-1 flex-1 h-full"
-              style={{ color: active ? "var(--accent)" : "var(--text-faint)" }}
+              className="flex flex-col items-center justify-center gap-1 h-full"
+              style={{
+                flex: isChat ? 1.05 : 1,
+                color: active ? "var(--accent)" : "var(--text-faint)",
+              }}
             >
-              {label === "Portfolio" ? <PortfolioIcon active={active} /> : icon}
+              {iconEl}
               <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.02em" }}>
                 {label}
               </span>

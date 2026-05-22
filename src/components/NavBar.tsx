@@ -5,7 +5,7 @@ import { useUser, useProfile } from "@/lib/hooks";
 import { Logo } from "@/components/Logo";
 import { PRICE_CACHE_TTL_MS } from "@/lib/constants";
 
-type Tab = "portfolio" | "diary" | "profile";
+type Tab = "portfolio" | "diary" | "profile" | "vitals";
 
 interface NavBarProps {
   tab: Tab;

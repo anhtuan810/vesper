@@ -81,7 +81,7 @@ export default function DiaryPage() {
     [mutations, assets]
   );
 
-  const setTab = (t: "portfolio" | "diary" | "profile") => {
+  const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {
     router.push(t === "portfolio" ? "/" : "/" + t);
   };
 

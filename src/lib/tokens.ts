@@ -18,6 +18,12 @@ export const tokens = {
   negativeSoft: "#F4DDD9",
   negativeText: "#8B3D33",
   navSurface:   "rgba(245, 241, 234, 0.92)",
+  surfaceDeep:  "#DDD6C5",
+  accentDeep:   "#3A5F4A",
+  negativeDep:  "#7A3B2D",
+  amber:        "#C4A06B",
+  amberDeep:    "#7A5E3C",
+  amberSoft:    "rgba(196, 160, 107, 0.13)",
 
   serif: "Source Serif 4",
   sans:  "Albert Sans",

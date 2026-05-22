@@ -158,7 +158,7 @@ export default function ProfilePage() {
   const themeLabel = THEME_OPTIONS.find(o => o.value === currentTheme)?.label ?? "Light";
   const visibleFields = PROFILE_FIELDS.filter(({ key }) => !!(profile?.profile?.[key]));
 
-  const setTab = (t: "portfolio" | "diary" | "profile") => {
+  const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {
     router.push(t === "portfolio" ? "/" : "/" + t);
   };
 

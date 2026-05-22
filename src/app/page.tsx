@@ -71,7 +71,7 @@ export default function Dashboard() {
     return () => window.removeEventListener("volnar:asset-restored", handler);
   }, [refetchAssets, refreshMutations]);
 
-  const setTab = (t: "portfolio" | "diary" | "profile") => {
+  const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {
     if (t !== "portfolio") router.push("/" + t);
   };
 
