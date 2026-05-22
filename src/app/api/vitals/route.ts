@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const supabase = createServerSupabase();
     const nowIso = new Date().toISOString();
 
-    const { user: userRow, assets, snapshots, netWorthEur, fxRates } =
+    const { user: userRow, assets, snapshots, netWorthEur } =
       await buildVitalsInputs(supabase, user.id);
 
     const displayCurrency = isSupportedCurrency(userRow.display_currency)
@@ -99,17 +99,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build minimal asset list for ConcentrationTreemap
-    const eurRate = fxRates["EUR"] ?? 1;
-    const toUsdSync = (amount: number, currency: string): number => {
-      if (currency === "USD") return amount;
-      const rate = fxRates[currency];
-      return rate ? amount / rate : amount;
-    };
+    // Build minimal asset list for ConcentrationTreemap.
+    // assets.value is already EUR-normalized by buildVitalsInputs.
     const minimalAssets = assets.map((a) => ({
       name: a.name,
       type: a.type,
-      eurValue: toUsdSync(a.value, a.currency || "USD") * eurRate,
+      eurValue: a.value,
     }));
 
     const res = NextResponse.json({

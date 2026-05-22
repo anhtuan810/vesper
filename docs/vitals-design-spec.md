@@ -81,7 +81,7 @@ Albert Sans (default body font) for everything else.
 | Page title ("Vitals")          | 34px  | 500    | -0.026em       | Serif |
 | Hero number (cards)            | 30px  | 600    | -0.022em       | Serif, `font-feature-settings: 'tnum'` |
 | Hero number (Perspective NW)   | 40px  | 600    | -0.022em       | Serif, tnum |
-| Pulse synthesis sentence       | 15px  | 400    | -0.005em       | Serif italic, line-height 1.5 |
+| Pulse synthesis sentence       | 13.5px| 400    | -0.005em       | Serif italic, line-height 1.42 |
 | Eyebrow label (uppercase)      | 9.5px | 500    | 0.18em         | text-faint |
 | Right-stat label               | 9px   | 400    | 0.12em         | uppercase, text-faint |
 | Right-stat value               | 14px  | 500    | normal         | tnum |
@@ -105,8 +105,8 @@ Albert Sans (default body font) for everything else.
 | Card border-radius     | 14px                     |
 | Card border            | 0.5px solid var(--border)|
 | Card vertical gap      | 10px                     |
-| Pulse banner padding   | 15px 18px 13px           |
-| Pulse negative margin  | -17px (full-bleed)       |
+| Pulse banner padding   | 11px 15px 10px           |
+| Pulse margin           | 0 0 10px, border-radius 14px     |
 | Stat strip gap (cells) | 10px per side of divider |
 | Perspective card padding | 20px 18px 18px         |
 | Section divider padding | 18px top, 14px bottom   |
@@ -118,16 +118,16 @@ Albert Sans (default body font) for everything else.
 
 ### 5.1 `PulseBanner`
 
-Full-bleed accent-soft band at top of page (after title, before stat strip).
+Accent-soft lead card aligned to the content column (after title, before stat strip).
 
 - **Props:** `dateLabel` (string), `sentence` (HTML with `<em>` for emphasis),
   `metaLabel?` (string)
-- **Container:** `margin: 0 -17px 14px;` `background: var(--accent-soft);`
-  `padding: 15px 18px 13px;`
-- **Eyebrow row:** flex space-between. Left: dateLabel in eyebrow style with
+- **Container:** `margin: 0 0 10px;` `background: var(--accent-soft);`
+  `padding: 11px 15px 10px;` `border-radius: 14px;`
+- **Eyebrow row:** flex space-between, `marginBottom: 5px`. Left: dateLabel in eyebrow style with
   `color: var(--accent-deep); opacity: 0.75;`. Right: optional metaLabel,
   9.5px, `color: var(--accent-deep); opacity: 0.55; letter-spacing: 0.06em`.
-- **Synthesis sentence:** 15px Source Serif 4 italic, line-height 1.5,
+- **Synthesis sentence:** 13.5px Source Serif 4 italic, line-height 1.42,
   `color: var(--text); letter-spacing: -0.005em;`. The `<em>` inside is
   `font-weight: 600` and stays italic.
 
@@ -488,7 +488,7 @@ For inactive state, swap to outlined version:
 ```
 NavBar (existing component, unchanged)
 Page title "Vitals" (Source Serif 4, 34px, weight 500, letter-spacing -0.026em)
-PulseBanner (full-bleed)
+PulseBanner (aligned lead card)
 StatStrip (Top 1 · LTV · Liquid 1w · Real yield)
 Eyebrow "Active vitals · N"
 VitalCard × 7, in this order:

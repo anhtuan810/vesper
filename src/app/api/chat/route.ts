@@ -526,6 +526,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Background: drop stale pulse whenever the portfolio changes so the next
+    // /vitals load regenerates it via generatePulse rather than serving old text.
+    if (portfolioChanged) {
+      after(async () => {
+        try {
+          const supabaseAfter = createServerSupabase();
+          await supabaseAfter.from("highlights").delete().eq("user_id", userId).eq("type", "pulse");
+        } catch (err) {
+          Sentry.captureException(err, { tags: { background: "pulse-cache-invalidation" } });
+        }
+      });
+    }
+
     // Background: refresh insight whenever the portfolio changes.
     // Delete the stale cached insight first so the next client fetch never sees outdated content.
     // If assets remain, generate and cache a fresh insight immediately.

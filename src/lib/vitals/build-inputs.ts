@@ -49,8 +49,16 @@ export async function buildVitalsInputs(
     const rate = fxRates[currency];
     return rate ? amount / rate : amount;
   };
+  const eurRate = fxRates["EUR"] ?? 1;
   const netWorthUsd = computeNetWorth(assets, toUsdSync);
-  const netWorthEur = netWorthUsd * (fxRates["EUR"] ?? 1);
+  const netWorthEur = netWorthUsd * eurRate;
 
-  return { user, assets, snapshots, netWorthEur, fxRates };
+  // Normalize every asset value to EUR so all vital modules operate on a
+  // single currency basis. For an all-EUR account this is an identity transform.
+  const normalizedAssets: Asset[] = assets.map((a) => ({
+    ...a,
+    value: toUsdSync(a.value, a.currency || "USD") * eurRate,
+  }));
+
+  return { user, assets: normalizedAssets, snapshots, netWorthEur, fxRates };
 }
