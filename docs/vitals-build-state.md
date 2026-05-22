@@ -69,6 +69,64 @@ omitted, nothing breaks).
 
 ---
 
+## 3b. Property checkbox (added 2026-05-22)
+
+### Feature summary
+A "Property" checkbox on the Vitals page lets mixed-portfolio users (real-estate
++ investable) filter the view to liquid-only. Read-only surface; no mutations;
+no schema change.
+
+### Scope descriptor
+Each vital module now exports `export const scope: VitalScope` where
+`VitalScope = 'liquid' | 'house' | 'both'`. Classifications:
+
+| Vital | scope |
+|-------|-------|
+| Concentration | both |
+| Real-asset weight | house |
+| Liquidity posture | liquid |
+| Leverage | house |
+| Drawdown vulnerability | liquid |
+| Cash & real yield | liquid |
+| Real growth | liquid |
+
+`VitalScope` is added to `types.ts`; `scope` is added to `VitalResult` and flows
+through `runVital()` → `/api/vitals` → `VitalsResponse` without any schema change
+(`vital_snapshots.value` is jsonb; scope is code-only metadata).
+
+### Checkbox behaviour
+- Rendered only for **mixed portfolios**: assets include at least one `real_estate`
+  AND at least one non-`real_estate`. Pure-liquid and pure-property users never see it.
+- Adaptive default when no stored value:
+  `showProperty = grossPropertyValue / grossAssets >= LENS_DEFAULT_PROPERTY_PCT` (50).
+- sessionStorage key: `volnar:vitals-show-property`.
+- Active filter: `vital.applies && scopeVisible(vital.scope, showProperty)`.
+  - `showProperty = true` → all scopes visible.
+  - `showProperty = false` → `scope = 'house'` vitals move to dormant.
+- Vitals hidden by the checkbox render in the existing LibraryExpander with
+  `reason = 'property-off'`, showing "Hidden while Property is off" instead of
+  their normal surfacesWhen text.
+
+### Deferred-recompute note
+liquidityPosture, drawdown, and realGrowth are scoped `liquid` but their math
+still includes the house. They display whole-portfolio figures when Property is
+off. A later recompute pass will exclude the house; cashRealYield is already
+house-free. **This recompute is NOT in the current PR.**
+
+### Concentration dual-scope
+`ConcentrationValue` now carries both gross fields (over all assets) and
+investable fields (over non-real-estate assets):
+- `topPositionIsRealEstate: boolean`
+- `investableTopPositionPct / Name / Top3Pct` — null when there are no non-property positions.
+- `band()` keys off `investableTopPositionPct ?? topPositionPct` (checkbox-independent).
+- Card and StatStrip TOP 1 follow the checkbox (gross when on, investable when off).
+- When the gross top position is real estate and checkbox is on, the card frames
+  the home as a structural anchor and surfaces investable concentration in the sub-line.
+- Pulse framing updated: when `topPositionIsRealEstate` is true, the Haiku
+  system prompt directs concentration commentary to `investableTopPositionPct`.
+
+---
+
 ## 3. File inventory
 
 ### Schema (migration `20260522_vitals_foundation.sql` — APPLIED)

@@ -236,6 +236,14 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 - Email is shown in the account area at the bottom, next to Sign out
 - Files: `src/lib/profile-extractor.ts`, `src/app/profile/page.tsx`, `src/app/api/users/me/route.ts`, `src/components/perspective/PerspectiveCard.tsx`, `src/lib/hooks/netWorth.ts`
 
+### Vitals
+- Seven portfolio vitals on `/vitals`: Concentration, Real-asset weight, Liquidity posture, Leverage, Drawdown vulnerability, Cash & real yield, Real growth. Each user sees only the vitals that apply to their portfolio; the rest sit dormant in the Library expander.
+- Pulse sentence (LLM, Haiku, 24h cache) synthesises the active vitals in one line.
+- StatStrip shows Top 1 / LTV / Liquid 1w / Real yield in a compact strip.
+- **Property checkbox (2026-05-22).** Shown only for mixed portfolios (real estate + investable assets). Unchecked hides `scope = 'house'` vitals (Real-asset weight, Leverage) to the Library and switches Concentration + StatStrip TOP 1 to investable figures. Default adaptive: `grossProperty / grossAssets ≥ 50%` → checked. Persisted in sessionStorage. No mutations, no schema change.
+- Read-only surface; all modifications through Chat.
+- Files: `src/app/vitals/page.tsx`, `src/lib/vitals/` (index, types, 7 modules), `src/components/vitals/`, `src/app/api/vitals/route.ts`, `src/lib/pulse-generator.ts`, `src/lib/hooks/vitals.ts`
+
 ### Design System
 - **Tokens**: CSS variables in `src/app/globals.css` (light theme on `:root, [data-theme="light"]`; dark theme on `[data-theme="dark"]`), surfaced as Tailwind utilities via `tailwind.config.ts`, mirrored as TypeScript exports in `src/lib/tokens.ts`
 - **Fonts**: Source Serif 4 (serif, hero numbers + section titles), Albert Sans (body), Geist Mono (retained but used sparingly — only for the few elements where tabular precision really matters; otherwise `font-feature-settings: "tnum" 1` on `body` gives Albert Sans tabular numbers)

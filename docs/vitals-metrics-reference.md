@@ -11,24 +11,56 @@ threshold, or adding a vital. Pairs with `vitals-build-state.md` (status) and
   vital modules.
 - *Gross portfolio / gross assets* = sum of asset current values, before
   subtracting any mortgage.
-- Each module exports `applies()`, `compute()`, `band()`. All pure, deterministic,
-  no DB or LLM. Band values: `green` | `amber` | `red`.
+- Each module exports `applies()`, `compute()`, `band()`, and `scope`. All pure,
+  deterministic, no DB or LLM. Band values: `green` | `amber` | `red`.
 - All economic constants come from `getCountryDefaults()` (V1 = NL).
+
+### Scope descriptor
+
+Each vital module exports `export const scope: VitalScope`, where
+`VitalScope = 'liquid' | 'house' | 'both'`. The scope is metadata only — no
+computation changes. It drives the Property checkbox on the Vitals page: when
+the checkbox is off, `scope = 'house'` vitals move to the Library (dormant);
+`'liquid'` and `'both'` remain visible. The scope is also serialised on
+`VitalResult` and passed through `/api/vitals` without any schema change
+(`vital_snapshots.value` is jsonb; scope lives in code, not the DB).
+
+| Vital | scope |
+|-------|-------|
+| Concentration | both |
+| Real-asset weight | house |
+| Liquidity posture | liquid |
+| Leverage | house |
+| Drawdown vulnerability | liquid |
+| Cash & real yield | liquid |
+| Real growth | liquid |
+
+**Deferred-recompute note (docs only, not code):** liquidityPosture, drawdown,
+and realGrowth are scoped `liquid` but their math still includes the house
+position. They display whole-portfolio figures when Property is off. A later
+recompute pass will exclude the house from their math; cashRealYield is already
+house-free and needs no change.
 
 ---
 
 ## 1. The 7 V1 Vitals
 
 ### 1.1 Concentration
-**Measures:** exposure to a single position and to the top three, by gross value.
+**Measures:** exposure to a single position and to the top three, by gross value (whole portfolio) and by investable value (non-real-estate positions).
 **`applies`:** `assets.length >= 2`
-**`compute`** → `{ topPositionPct, topPositionName, top3Pct, weeksAboveThreshold }`
-- `topPositionPct` = largest position's current value ÷ gross portfolio × 100
-- `topPositionName` = that position's name
-- `top3Pct` = sum of top three positions' values ÷ gross portfolio × 100
-- `weeksAboveThreshold` = count of weekly snapshots in the last 26 weeks where top1 > 40%. **0 if no snapshot history.**
-**`band`:** `topPositionPct > 50` → red · `> 35` → amber · else green
-**Display basis:** GROSS value (a 10% price drop hits the full position regardless of any mortgage). Card sub-line must say **"by gross value"** to disambiguate from Real-asset weight.
+**`scope`:** `both`
+**`compute`** → `{ topPositionPct, topPositionName, top3Pct, weeksAboveThreshold, topPositionIsRealEstate, investableTopPositionPct, investableTopPositionName, investableTop3Pct }`
+- Gross fields (over all assets):
+  - `topPositionPct` = largest position's current value ÷ gross portfolio × 100
+  - `topPositionName` = that position's name
+  - `top3Pct` = sum of top three positions' values ÷ gross portfolio × 100
+  - `weeksAboveThreshold` = count of weekly snapshots in the last 26 weeks where top1 > 40%. **0 if no snapshot history.**
+  - `topPositionIsRealEstate` = boolean; true when the gross top position is a real-estate asset
+- Investable fields (over assets where `type !== 'real_estate'`):
+  - `investableTopPositionPct` / `investableTopPositionName` / `investableTop3Pct` — **null when there are no non-property positions** (property-only portfolio)
+**`band`:** keys off `investableTopPositionPct ?? topPositionPct`. A primary residence is not a decision the user can act on; severity tracks the rebalanceable book, checkbox-independent. `> 50` → red · `> 35` → amber · else green
+**Display basis:** Property checkbox on = gross hero ("by gross value"). Property checkbox off = investable hero ("of investable assets"), treemap renormalized to 100% over non-RE positions.
+When `topPositionIsRealEstate` is true and checkbox is on: hero shown as "default" (neutral, never red); sub-line frames the home as a structural anchor and surfaces investable concentration.
 **Edge case:** near-single-asset portfolios (one position 95%+) are valid, not bugs — the treemap handles this with one dominant rectangle + slivers.
 
 ### 1.2 Real-asset weight
@@ -184,7 +216,7 @@ that the curve is honest (the prior placeholder put NL median at the 70th).
 
 | Vital | red | amber | green |
 |-------|-----|-------|-------|
-| Concentration | top1 > 50% | top1 > 35% | else |
+| Concentration | investable top1 > 50% (falls back to gross when no investable) | investable top1 > 35% | else |
 | Real-asset weight | — | > 75% or < 10% | else |
 | Liquidity posture | deployable1w < 15% | — | else |
 | Leverage | LTV > 75% | LTV > 50% | else |
