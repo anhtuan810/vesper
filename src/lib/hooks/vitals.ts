@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import type { VitalResult } from "@/lib/vitals/index";
-import type { Perspective } from "@/lib/vitals/perspective";
 
 export const VITALS_CACHE_TTL_MS = 3_600_000; // 1 hour
 
 export interface VitalsResponse {
   vitals: VitalResult[];
-  perspective: Perspective | null;
   pulse: string | null;
   statStrip: {
     top1Pct: number | null;

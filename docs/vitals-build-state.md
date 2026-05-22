@@ -21,10 +21,13 @@ Companion docs in project knowledge:
 
 A fifth bottom-nav tab (`/vitals`) presenting a personalized, adaptive set of
 portfolio "Vitals" — analytical readings on concentration, real-asset weight,
-liquidity, leverage, drawdown vulnerability, cash real yield, and real growth —
-plus a "Perspective" section placing the user's net worth in NL/EU/world
-percentile context. Apple Health-inspired: each user sees only the Vitals that
-apply to their portfolio; the rest sit dormant in a Library expander.
+liquidity, leverage, drawdown vulnerability, cash real yield, and real growth.
+Apple Health-inspired: each user sees only the Vitals that apply to their
+portfolio; the rest sit dormant in a Library expander.
+
+**Perspective moved to Profile (2026-05-22).** NL/EU/world percentile standing
+now lives on the Profile page, computed client-side via `useNetWorth()`. Vitals
+is portfolio readings only.
 
 Read-only surface. All portfolio modification still happens through Chat
 (consistent with locked product decision #8). Vitals never mutates.
@@ -45,10 +48,17 @@ Page load (/vitals)
   └─ useVitals() hook                  [src/lib/hooks.ts, sessionStorage cache]
        └─ GET /api/vitals              [route.ts]
             ├─ computeAllVitals()      [live compute — see DRIFT RISK below]
-            ├─ computePerspective()    [perspective.ts]
             ├─ generatePulse()         [pulse-generator.ts — Haiku or deterministic]
-            └─ returns { vitals, perspective, pulse, statStrip, assets,
+            └─ returns { vitals, pulse, statStrip, assets,
                           netWorthEur, displayCurrency }
+
+Page load (/profile)
+  └─ useNetWorth() hook                [src/lib/hooks/netWorth.ts]
+       └─ useAssets() + FX rate        [same formula as Portfolio]
+            └─ netWorthEur (live, client-side)
+  └─ GET /api/snapshots?range=All      [for trajectory baseline]
+       └─ findBaselineSnapshot()       [realGrowth.ts — ≥330-day guard]
+  └─ computePerspective()              [perspective.ts — deterministic, no API call]
   └─ page composes primitives + charts + composites
 ```
 
@@ -75,20 +85,27 @@ omitted, nothing breaks).
 - `country-defaults.ts` — NL economic constants via `getCountryDefaults()`
 - `build-inputs.ts` — **shared input assembly** (`buildVitalsInputs`, `VITALS_SNAPSHOT_WINDOW_DAYS = 400`). Single source both the cron and the route call so they cannot drift. See §4 issue #5.
 - `types.ts` — `Band`, `VitalKey`, `VitalUser`, `Snapshot`
-- `concentration.ts`, `realAssetWeight.ts`, `liquidityPosture.ts`, `leverage.ts`, `drawdown.ts`, `cashRealYield.ts`, `realGrowth.ts` — the 7 compute modules. `realGrowth.ts` exports `findBaselineSnapshot` and `MIN_BASELINE_AGE_DAYS` (reused by the route's trajectory guard).
+- `concentration.ts`, `realAssetWeight.ts`, `liquidityPosture.ts`, `leverage.ts`, `drawdown.ts`, `cashRealYield.ts`, `realGrowth.ts` — the 7 compute modules. `realGrowth.ts` exports `findBaselineSnapshot` and `MIN_BASELINE_AGE_DAYS` (reused by Profile's trajectory guard).
 - `index.ts` — `computeAllVitals()` + re-exports
-- `perspective.ts` — `computePerspective()`. WORLD context line derives from `WORLD_TOP_1_PCT_EUR` and flips below/above the threshold conditionally.
+- `perspective.ts` — `computePerspective()`. Consumed by Profile, not the Vitals route. WORLD context line flips below/above `WORLD_TOP_1_PCT_EUR` conditionally.
+- `benchmarks.ts` — percentile tables + reference constants. Consumed by Profile via `perspective.ts`.
 - `persist.ts` — `writeVitalSnapshots()` (cron-side), now calls `buildVitalsInputs`
 
 ### API & generation
-- `src/app/api/vitals/route.ts` — GET handler (auth, parallel fetch, compute, cache, response)
+- `src/app/api/vitals/route.ts` — GET handler (auth, parallel fetch, compute, cache, response). Does NOT call `computePerspective()` — perspective is computed client-side on Profile.
 - `src/lib/pulse-generator.ts` — `generatePulse()` (thin path deterministic, else Haiku)
 - `src/app/api/cron/snapshot/route.ts` — MODIFIED (additive `writeVitalSnapshots` call)
 
 ### UI — `src/components/vitals/`
 Primitives: `PulseBanner.tsx`, `StatStrip.tsx`, `VitalCard.tsx`, `SuggestionStrip.tsx`
-Composites: `PerspectiveCard.tsx`, `LibraryExpander.tsx`
+Composites: `LibraryExpander.tsx`
 Charts (`charts/`): `ConcentrationTreemap.tsx`, `RealAssetBullet.tsx`, `LiquidityStack.tsx`, `LeverageTrend.tsx`, `DrawdownBars.tsx`, `CashWaterfall.tsx`, `RealGrowthDualLine.tsx`
+
+### UI — `src/components/perspective/`
+- `PerspectiveCard.tsx` — moved here from `components/vitals/`. Profile-owned. Caller supplies the eyebrow label; the old section-divider hairline is gone.
+
+### Net worth hook
+- `src/lib/hooks/netWorth.ts` — `useNetWorth()`. Derives `netWorthEur` from `useAssets` + `getUsdRate("EUR")` — same formula as Portfolio's inline `useMemo`. Exported from `src/lib/hooks.ts`.
 
 ### Page, nav, tokens
 - `src/app/vitals/page.tsx` — the page (placeholder → full implementation)
@@ -158,7 +175,7 @@ The six known issues are closed. What's left before pilot is judgment calls:
 ## 7. Decision log (settled, do not relitigate without reason)
 
 - Tab name "Vitals"; route `/vitals`; nav order Portfolio · Vitals · Chat · Diary · Profile (Chat at center position 3 of 5, elevated ring). Vitals sits at position 2 to signal it as a primary surface; Profile moved to the far-right edge per platform convention. Supersedes the earlier Portfolio · Diary · Chat · Profile · Vitals order.
-- Perspective lives on the Vitals tab (a brief earlier exploration of moving it to Profile was reverted).
+- **Perspective moved to Profile (2026-05-22).** An earlier exploration of moving it to Profile was reverted, but the move was re-executed correctly with a dedicated `useNetWorth()` hook and a client-side compute path. Vitals is portfolio readings only; `computePerspective()` is no longer called by the Vitals route.
 - Read-only surface; chat is the only modification path.
 - Deterministic math, LLM only for Pulse sentence.
 - No filters, no per-vital customization/mute, no badges, no leaderboards, no "congratulations" moments.

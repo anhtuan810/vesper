@@ -103,6 +103,10 @@ threshold, or adding a vital. Pairs with `vitals-build-state.md` (status) and
 
 ## 2. Perspective percentiles
 
+**Renders on:** Profile page (moved from Vitals on 2026-05-22). Computed
+client-side via `useNetWorth()` + `computePerspective()`; not called by the
+Vitals API route. Math and thresholds are unchanged.
+
 **Function:** `computePerspective(netWorthEur, country, birthYear, netWorth12moAgoEur?)`
 **Returns:** `{ netWorthEur, rows: [NL, EU, WORLD], trajectory }`
 

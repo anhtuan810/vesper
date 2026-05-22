@@ -33,3 +33,5 @@ export {
   VITALS_CACHE_TTL_MS,
 } from "./hooks/vitals";
 export type { VitalsResponse } from "./hooks/vitals";
+
+export { useNetWorth } from "./hooks/netWorth";

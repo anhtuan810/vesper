@@ -17,7 +17,7 @@ A single web dashboard where a user can:
 - See real-time prices for tradeable assets, converted to a single canonical unit for unified totals (EUR in storage; user's display currency at render — see `currency-feature-spec.md`)
 - Browse a chronological, append-only diary of every portfolio change with reasoning notes captured at the time of the change
 - Drill into any position via a dedicated **read-only** detail page (with a property hub for real estate, including theme-aware map, mortgage projection, and value composition)
-- See an AI-built profile of themselves that grows over time — six context fields plus a one-line investor fingerprint
+- See an AI-built profile of themselves that grows over time — four context fields plus a one-line investor fingerprint
 - Read a single AI-generated "Worth knowing" insight on the Portfolio surface, refreshed daily
 - Switch display currency (EUR / USD / GBP) and theme (Light / Dark) from Profile
 
@@ -60,7 +60,7 @@ src/
     page.tsx                    Portfolio (root route)
     diary/page.tsx              Diary route
     chat/page.tsx               Full-page chat (mobile); desktop falls back to ChatPopup
-    profile/page.tsx            Profile route (also hosts Preferences — currency + theme — and avatar upload)
+    profile/page.tsx            Profile route (name as page title, Perspective, Context, Preferences — currency + theme; no avatar upload)
     asset/[id]/page.tsx         Asset detail dispatcher (Tradeable / RealEstate / Static); all variants read-only
     login/page.tsx              Login screen
     auth/callback/route.ts      OAuth callback
@@ -83,7 +83,7 @@ src/
   components/
     ChatPopup.tsx               Floating chat (desktop); context-aware seed when over /asset/[id]
     BottomNav.tsx               5-tab mobile nav (Portfolio/Vitals/Chat/Diary/Profile)
-    NavBar.tsx                  Top nav: avatar (28px) + first name on left, refresh + status dot on right
+    NavBar.tsx                  Top nav: first name on right (suppressed on Profile tab), refresh + status dot; no avatar
     NetWorthHero.tsx            Big serif net worth + change pill
     NetWorthChart.tsx           Trajectory chart with range pills (1W/1M/3M/1Y/3Y/All), straight-line segments (no smoothing)
     InsightBand.tsx             "Worth knowing" italic-serif AI insight, links to /chat
@@ -106,15 +106,18 @@ src/
       StaticDetail.tsx          Cash / pension / bond / other — read-only
       CryptoVolatilityBlock.tsx 24h volatility (crypto only)
       BondBlock.tsx             Read-only issuer / coupon / maturity / ISIN
+    perspective/
+      PerspectiveCard.tsx       NL/EU/world percentile card — Profile-owned; caller supplies the eyebrow
   lib/
     supabase.ts                 DB client + TypeScript types
     claude.ts                   System prompt builders (main + onboarding); currency-parameterized; supports rename
     apply-changes.ts            Pure transformation: <changes> JSON → DB writes (extracted for testability)
     validations.ts              Server-side validation for /api/chat — all-or-nothing, banker's-tone errors
-    hooks.ts                    useUser, useAssets, useProfile, useSignOut, useLivePrice, useTheme, useDisplayCurrency, useInsight, useFxRate
-    profile-extractor.ts        Background Haiku call — six context fields + fingerprint
+    hooks.ts                    useUser, useAssets, useProfile, useSignOut, useLivePrice, useTheme, useDisplayCurrency, useInsight, useFxRate, useNetWorth
+    hooks/netWorth.ts           useNetWorth() — derives netWorthEur from useAssets + FX; same formula as Portfolio
+    profile-extractor.ts        Background Haiku call — four context fields + fingerprint
     insight-generator.ts        Background Haiku call for AI insight band
-    avatar-upload.ts            Avatar file picker → Supabase Storage → PATCH users.avatar_url
+    avatar-upload.ts            Avatar upload helper — exists but unused (no UI surface calls it)
     projection.ts               Milestone calculator (currency-aware)
     mortgage.ts                 Amortization math + computeCurrentBalance(asset, asOf)
     money.ts                    formatMoney, formatMoneyParts, convertToEur — forced nl-NL locale
@@ -169,11 +172,11 @@ docs/
 2. **Investing tone, not trading.** "Growth" not "P&L". "Added" not "entry". No win/loss ratios. No gamification.
 3. **Professional language.** No emojis. No exclamation marks. No "awesome / great / cool". Speak like a private banker.
 4. **Asset-agnostic.** No country-specific features. No asset-type-specific logic outside detail dispatchers and icon resolution. The intelligence is in the AI layer.
-5. **Memory matters.** The investor profile builds itself over time. Six lasting context fields plus a one-line fingerprint, refined after every conversation. Field labels in sentence case.
+5. **Memory matters.** The investor profile builds itself over time. Four lasting context fields plus a one-line fingerprint, refined after every conversation. Field labels in sentence case.
 6. **Backend is source of truth.** AI parses and explains. Deterministic code calculates and validates.
 7. **Privacy over community.** No social features. No portfolio sharing.
 8. **Display currency is per-user.** Storage is native-per-asset (`assets.value` in the asset's own currency). USD is the bridge for aggregation (`snapshots.total_value`, `mutations.portfolio_total`). EUR and GBP are display-only at render time. Each user picks a display currency (EUR / USD / GBP). Real estate carries its native currency by country for transparency. Number formatting is forced to nl-NL locale across all currencies for brand consistency.
-9. **The mockups are the literal source of truth.** Frozen HTML files at `docs/redesign_mockups/`. When the mockup and a locked decision conflict, the user decides; otherwise, the mockup wins. Deliberate downward deviations from the mockup happen (e.g. PR 21 sized the NavBar avatar and BottomNav icons smaller than the mockup specified, because real-world rendering reads chunkier than the static preview) and are noted explicitly in code comments.
+9. **The mockups are the literal source of truth.** Frozen HTML files at `docs/redesign_mockups/`. When the mockup and a locked decision conflict, the user decides; otherwise, the mockup wins. Deliberate deviations from the mockup happen (e.g. PR 21 sized BottomNav icons smaller than the mockup specified; avatar was removed from NavBar and Profile entirely) and are noted in code comments or this doc.
 10. **Decisions over numbers.** The diary is a log of decisions and reasoning, not just a transaction history. Notes are write-once. Pure renames are metadata and don't log. Diary entries display each asset's current name via JOIN — the *thing* has one identity.
 11. **Mortgage balance auto-amortizes invisibly.** The user enters mortgage values once. After that, balance and equity move silently month by month. Only notable events (extra payment, refinance, value update) are logged.
 

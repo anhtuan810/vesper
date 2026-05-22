@@ -94,7 +94,7 @@ export function NavBar({
 
         {/* Right: name · refresh */}
         <div className="flex items-center gap-2">
-          {firstName && (
+          {firstName && tab !== "profile" && (
             <span
               className="text-sm font-medium"
               style={{ color: "var(--text-faint)" }}

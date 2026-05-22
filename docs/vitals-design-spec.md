@@ -332,30 +332,27 @@ Reference the mockup for exact geometry; key parameters listed below.
 
 ### 5.6 `PerspectiveCard`
 
-Large composite below the 7 Vital cards, separated by a section divider.
+**Moved to Profile (2026-05-22).** Component lives at
+`src/components/perspective/PerspectiveCard.tsx` and is owned by the Profile
+page, not Vitals. It no longer appears on the Vitals tab.
 
-- **Section divider:** Centered eyebrow "Perspective" with horizontal
-  hairlines on both sides. Pattern:
-  ```
-  <flex align-items:center gap:11px>
-    <hairline> <eyebrow text="Perspective"> <hairline>
-  </flex>
-  ```
-  Padding 18px top, 14px bottom.
-- **Card container:** `background: linear-gradient(180deg,
-  var(--accent-soft) 0%, rgba(220,229,210,0.42) 100%); border: 0.5px solid
-  rgba(74,124,94,0.20); border-radius: 14px; padding: 20px 18px 18px;
-  margin-bottom: 18px;`
+- **No section divider.** The old centered "PERSPECTIVE" hairline was removed.
+  The caller (Profile page) supplies its own `10px uppercase` eyebrow label in
+  the standard section-eyebrow pattern used by Context and Preferences.
+- **Card container:** same gradient/border/radius as before.
+  `margin-bottom: 24px` (was 18px).
 
-**Hero block (top of card):**
-- Tiny eyebrow "YOUR NET WORTH, TODAY" — 10px, `var(--accent-deep)`,
-  opacity 0.72, letter-spacing 0.12em, margin-bottom 5px.
-- Net worth value — 40px Source Serif 4 weight 600, letter-spacing -0.022em,
-  `var(--hero)`, line-height 1, tnum.
+**Hero block removed.** The 40px net-worth number and its "YOUR NET WORTH,
+TODAY" eyebrow are gone.
 
-**Italic synthesis sentence:** 14.5px Source Serif 4 italic, line-height
-1.5, `var(--text)`, letter-spacing -0.003em. With `<em>` (weight 600)
-on percentage numbers. Margin-bottom 18px.
+**Italic synthesis sentence — now the visual lead:**
+- 15.5px Source Serif 4 italic, line-height 1.5, `var(--text)`,
+  letter-spacing -0.003em. `<em>` (weight 600) on percentage numbers.
+  Margin-bottom 6px.
+
+**Quiet net-worth secondary line (replaces the 40px hero):**
+- `{nwFull} · your wealth today` — 13px, `var(--text-dim)`,
+  `font-feature-settings: 'tnum'`. Margin-bottom 18px.
 
 **Wealth distribution chart (nested card):**
 - Container: `background: rgba(248,244,236,0.5); border-radius: 10px;
@@ -502,9 +499,23 @@ VitalCard × 7, in this order:
   5. Drawdown vulnerability → <DrawdownBars />
   6. Cash & real yield   → <CashWaterfall />
   7. Real growth         → <RealGrowthDualLine />
-Section divider ("PERSPECTIVE" with hairlines)
-PerspectiveCard
 LibraryExpander (collapsed)
+```
+
+Perspective is **not** on Vitals. See Profile page composition below.
+
+**Profile page composition (top to bottom):**
+```
+NavBar (greeting suppressed on Profile tab)
+Name — 38px serif, left-aligned (serves as page title)
+Fingerprint — 15px italic serif, directly under name (hidden when null)
+Eyebrow "PERSPECTIVE"
+PerspectiveCard (src/components/perspective/PerspectiveCard.tsx)
+Eyebrow "CONTEXT"           (hidden if no fields populated)
+Context fields card         (hidden if no fields populated)
+Eyebrow "PREFERENCES"
+Preferences card (Display currency + Theme)
+Email + Sign out (account area)
 BottomNav (existing, extended to 5 tabs)
 ```
 

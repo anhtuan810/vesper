@@ -5,14 +5,12 @@ import { validateEnv } from "@/lib/env";
 import { isSupportedCurrency } from "@/lib/money";
 import { computeAllVitals } from "@/lib/vitals/index";
 import type { VitalResult } from "@/lib/vitals/index";
-import { computePerspective } from "@/lib/vitals/perspective";
 import type { ConcentrationValue } from "@/lib/vitals/concentration";
 import type { LeverageValue } from "@/lib/vitals/leverage";
 import type { LiquidityPostureValue } from "@/lib/vitals/liquidityPosture";
 import type { CashRealYieldValue } from "@/lib/vitals/cashRealYield";
 import { generatePulse } from "@/lib/pulse-generator";
 import { buildVitalsInputs } from "@/lib/vitals/build-inputs";
-import { findBaselineSnapshot, MIN_BASELINE_AGE_DAYS } from "@/lib/vitals/realGrowth";
 
 validateEnv();
 
@@ -31,18 +29,10 @@ export async function GET(request: NextRequest) {
       ? userRow.display_currency
       : "EUR";
     const country: string | null = (userRow.country as string | null) ?? null;
-    const birthYear: number | null = (userRow.birth_year as number | null) ?? null;
 
     // Compute all vitals
     const vitals: VitalResult[] = computeAllVitals({ country }, assets, snapshots);
     const activeVitals = vitals.filter((v) => v.applies);
-
-    const baseline = findBaselineSnapshot(snapshots);
-    const netWorth12moAgoEur =
-      baseline && baseline.ageDays >= MIN_BASELINE_AGE_DAYS
-        ? baseline.snapshot.total_value
-        : null;
-    const perspective = computePerspective(netWorthEur, country, birthYear, netWorth12moAgoEur);
 
     // Build statStrip from computed vitals
     const findApplied = (key: string): VitalResult | undefined =>
@@ -124,7 +114,6 @@ export async function GET(request: NextRequest) {
 
     const res = NextResponse.json({
       vitals,
-      perspective,
       pulse,
       statStrip,
       netWorthEur,

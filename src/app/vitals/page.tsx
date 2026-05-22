@@ -7,7 +7,6 @@ import { PulseBanner } from "@/components/vitals/PulseBanner";
 import { StatStrip } from "@/components/vitals/StatStrip";
 import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
-import { PerspectiveCard } from "@/components/vitals/PerspectiveCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
 import type { DormantVital } from "@/components/vitals/LibraryExpander";
 import { ConcentrationTreemap } from "@/components/vitals/charts/ConcentrationTreemap";
@@ -19,7 +18,6 @@ import { CashWaterfall } from "@/components/vitals/charts/CashWaterfall";
 import { RealGrowthDualLine } from "@/components/vitals/charts/RealGrowthDualLine";
 import { useVitals } from "@/lib/hooks";
 import type { VitalsResponse } from "@/lib/hooks";
-import type { Perspective } from "@/lib/vitals/perspective";
 import type { VitalResult } from "@/lib/vitals/index";
 import type { ConcentrationValue } from "@/lib/vitals/concentration";
 import type { RealAssetWeightValue } from "@/lib/vitals/realAssetWeight";
@@ -863,15 +861,7 @@ export default function VitalsPage() {
         {/* 5. Vital cards in fixed order */}
         {VITAL_ORDER.map((key) => renderVitalCard(key))}
 
-        {/* 6. Perspective card — only if perspective is non-null */}
-        {data.perspective && (
-          <PerspectiveCard
-            data={data.perspective as Perspective}
-            displayCurrency={data.displayCurrency}
-          />
-        )}
-
-        {/* 7. Library expander — only if there are dormant vitals */}
+        {/* 6. Library expander — only if there are dormant vitals */}
         {dormantItems.length > 0 && (
           <LibraryExpander
             dormantVitals={dormantItems}
