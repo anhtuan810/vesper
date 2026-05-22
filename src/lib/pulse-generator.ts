@@ -12,17 +12,26 @@ const VITAL_KEY_LABELS: Record<string, string> = {
   realGrowth: "growth assets",
 };
 
-const ABSENT_PRIORITY: Array<{ key: string; label: string }> = [
+const ABSENT_PRIORITY_ALL: Array<{ key: string; label: string }> = [
   { key: "realAssetWeight", label: "property" },
   { key: "concentration", label: "equity exposure" },
   { key: "cashRealYield", label: "cash position" },
   { key: "leverage", label: "mortgage exposure" },
 ];
 
+const ABSENT_PRIORITY_LIQUID: Array<{ key: string; label: string }> = [
+  { key: "concentration", label: "equity exposure" },
+  { key: "cashRealYield", label: "cash position" },
+  { key: "liquidityPosture", label: "liquidity data" },
+];
+
 function buildThinPulse(
   activeVitals: Array<{ key: string; value: unknown; band: string }>,
+  lens: "all" | "liquid",
 ): string {
   const keySet = new Set(activeVitals.map((v) => v.key));
+  const absentPriority =
+    lens === "liquid" ? ABSENT_PRIORITY_LIQUID : ABSENT_PRIORITY_ALL;
 
   const held = activeVitals
     .map((v) => VITAL_KEY_LABELS[v.key])
@@ -31,25 +40,36 @@ function buildThinPulse(
     .join(" and ");
 
   const absent =
-    ABSENT_PRIORITY.find(({ key }) => !keySet.has(key))?.label ??
+    absentPriority.find(({ key }) => !keySet.has(key))?.label ??
     "pension exposure";
 
   return `Your sheet is concentrated in ${held || "a few positions"}, with no ${absent} yet.`;
 }
 
+// The [v2] marker in SYSTEM_PROMPT_ALL is intentional: it forces a fresh
+// generation whenever the system prompt changes, because the route treats any
+// cached detail that doesn't carry the PULSE_VER prefix as stale.
+const SYSTEM_PROMPT_ALL = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. CRITICAL framing rule: when concentration.value.topPositionIsRealEstate is true, the home is a STRUCTURAL ANCHOR — never a concentration risk. All concentration commentary must reference investableTopPositionPct (the investable book), not the gross figure or the home position itself. Do not use phrases like "concentration risk" or "concentrated in" in reference to the home or real estate.`;
+
+const SYSTEM_PROMPT_LIQUID = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active investable portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. STRICT exclusion: the user has removed property from this lens. You MUST NOT mention the home, property, real estate, real-asset weight, mortgage, or leverage in any form whatsoever.`;
+
 export async function generatePulse(
   activeVitals: Array<{ key: string; value: unknown; band: string }>,
   displayCurrency: string,
+  lens: "all" | "liquid" = "all",
 ): Promise<string | null> {
   if (activeVitals.length <= 3) {
-    return buildThinPulse(activeVitals);
+    return buildThinPulse(activeVitals, lens);
   }
 
   try {
+    const systemPrompt =
+      lens === "liquid" ? SYSTEM_PROMPT_LIQUID : SYSTEM_PROMPT_ALL;
+
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 80,
-      system: `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. When concentration.value.topPositionIsRealEstate is true, treat the home as a structural anchor (not a risk); direct any concentration commentary to investableTopPositionPct instead of topPositionPct.`,
+      system: systemPrompt,
       messages: [
         {
           role: "user",
@@ -71,6 +91,22 @@ export async function generatePulse(
       .split(/\s+/)
       .filter(Boolean).length;
     if (wordCount < 10 || wordCount > 35) return null;
+
+    // Safety net: if the gross top position is real estate and the generated
+    // sentence uses concentration language without referencing the investable
+    // book, the home-anchor framing failed — fall back to deterministic rather
+    // than serving a stale "concentration risk" sentence.
+    const concVal = activeVitals.find((v) => v.key === "concentration")?.value;
+    const topPositionIsRealEstate =
+      (concVal as Record<string, unknown> | null)?.topPositionIsRealEstate ===
+      true;
+    if (
+      topPositionIsRealEstate &&
+      /concentration|concentrated/i.test(raw) &&
+      !/investable/i.test(raw)
+    ) {
+      return buildThinPulse(activeVitals, lens);
+    }
 
     return raw;
   } catch {

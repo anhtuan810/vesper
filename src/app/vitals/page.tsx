@@ -1094,14 +1094,21 @@ export default function VitalsPage() {
         {/* 1. Page title */}
         {pageTitle}
 
-        {/* 2. Pulse banner — only if pulse is non-null */}
-        {data.pulse && (
-          <PulseBanner
-            dateLabel={`Pulse · ${fmtDate()}`}
-            sentence={data.pulse}
-            metaLabel={`${activeVitals.length} vitals · 0 shifted`}
-          />
-        )}
+        {/* 2. Pulse banner — lens-aware: liquid pulse when Property is off,
+               all-assets pulse otherwise. Falls back to all-assets pulse if
+               pulseLiquid wasn't generated (non-mixed user or Haiku failure). */}
+        {(() => {
+          const pulseSentence = showProperty
+            ? data.pulse
+            : (data.pulseLiquid ?? data.pulse);
+          return pulseSentence ? (
+            <PulseBanner
+              dateLabel={`Pulse · ${fmtDate()}`}
+              sentence={pulseSentence}
+              metaLabel={`${activeVitals.length} vitals · 0 shifted`}
+            />
+          ) : null;
+        })()}
 
         {/* 3. Stat strip */}
         <StatStrip stats={statItems} />

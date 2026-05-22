@@ -61,6 +61,12 @@ house-free and needs no change.
 **`band`:** keys off `investableTopPositionPct ?? topPositionPct`. A primary residence is not a decision the user can act on; severity tracks the rebalanceable book, checkbox-independent. `> 50` → red · `> 35` → amber · else green
 **Display basis:** Property checkbox on = gross hero ("by gross value"). Property checkbox off = investable hero ("of investable assets"), treemap renormalized to 100% over non-RE positions.
 When `topPositionIsRealEstate` is true and checkbox is on: hero shown as "default" (neutral, never red); sub-line frames the home as a structural anchor and surfaces investable concentration.
+**Pulse framing:** the Pulse generator receives the lens as a parameter. For the
+all-assets lens, a deterministic safety net checks that any generated sentence with
+"concentration" language also contains "investable"; if not, the sentence is
+replaced with the deterministic `buildThinPulse` output. For the liquid lens, the
+input vitals exclude realAssetWeight and leverage, and the system prompt prohibits
+any property or mortgage mention.
 **Edge case:** near-single-asset portfolios (one position 95%+) are valid, not bugs — the treemap handles this with one dominant rectangle + slivers.
 
 ### 1.2 Real-asset weight

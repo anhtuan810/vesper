@@ -8,6 +8,7 @@ export const VITALS_CACHE_TTL_MS = 3_600_000; // 1 hour
 export interface VitalsResponse {
   vitals: VitalResult[];
   pulse: string | null;
+  pulseLiquid: string | null;
   statStrip: {
     top1Pct: number | null;
     ltvPct: number | null;

@@ -133,6 +133,37 @@ investable fields (over non-real-estate assets):
 - Pulse framing updated: when `topPositionIsRealEstate` is true, the Haiku
   system prompt directs concentration commentary to `investableTopPositionPct`.
 
+### Lens-aware Pulse (added 2026-05-22)
+`generatePulse` now accepts a `lens: 'all' | 'liquid'` parameter:
+
+- **`'all'` lens** (default, existing cache path): active set is the full applied
+  vitals. System prompt strengthened: when `topPositionIsRealEstate` is true, the
+  home is a STRUCTURAL ANCHOR and any concentration commentary must reference
+  `investableTopPositionPct`. The gross figure or home position must never be
+  framed as a concentration risk. A deterministic safety net catches non-compliance:
+  if the generated sentence contains "concentration" or "concentrated" without the
+  word "investable" while `topPositionIsRealEstate` is true, the sentence is
+  discarded and the deterministic `buildThinPulse` is returned instead.
+- **`'liquid'` lens**: input is the active set filtered to `scope ∈ {liquid, both}`
+  (i.e. excludes realAssetWeight and leverage). System prompt strictly prohibits
+  any mention of the home, property, real estate, real-asset weight, or mortgage.
+  Not persisted — held client-side in the `useVitals` session cache.
+
+**Route behaviour (`/api/vitals`):** mixed users (real estate + investable assets)
+get both `pulse` (all-assets, cached in `highlights`) and `pulseLiquid` (liquid,
+not persisted). Non-mixed users get only `pulse`; `pulseLiquid` is null.
+
+**Client behaviour (`vitals/page.tsx`):** `PulseBanner` shows the all-assets pulse
+when Property is on, the liquid pulse when Property is off. Falls back to the
+all-assets pulse if `pulseLiquid` is null (non-mixed user or Haiku failure).
+Both the PulseBanner `metaLabel` and the "Active vitals · N" eyebrow already read
+`activeVitals.length` which is lens-filtered — no change needed there.
+
+**Cache key bump:** the route now stores `PULSE_VER + generated` (`"v2:" + text`)
+in `highlights.detail`. Any cached row that does not start with `"v2:"` is treated
+as stale regardless of its `expires_at`, forcing a fresh generation with the
+improved framing. Old rows are superseded on next load; no migration required.
+
 ---
 
 ## 3. File inventory
