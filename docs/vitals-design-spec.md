@@ -448,8 +448,8 @@ Reuses the existing chat seed pattern from PR 22.
 - **Container:** `display: flex; align-items: flex-end; height: 62px;
   background: rgba(248,244,236,0.88); border-top: 1px solid var(--border);
   padding-bottom: calc(9px + env(safe-area-inset-bottom));`
-- **Tab order:** Portfolio (1), Diary (2), Chat (3), Profile (4),
-  Vitals (5). Chat naturally lands at center cell.
+- **Tab order:** Portfolio (1), Vitals (2), Chat (3), Diary (4),
+  Profile (5). Chat naturally lands at center cell.
 - **Cell layout:** `flex: 1` (or `flex: 1.05` for Chat). `display: flex;
   flex-direction: column; align-items: center; gap: 3px;`
 

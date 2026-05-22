@@ -45,6 +45,16 @@ const STATIC_TABS = [
     icon: null,
   },
   {
+    label: "Vitals",
+    href: "/vitals",
+    icon: null, // rendered via VitalsIcon
+  },
+  {
+    label: "Chat",
+    href: "/chat",
+    icon: null, // rendered as elevated ring — see render loop below
+  },
+  {
     label: "Diary",
     href: "/diary",
     icon: (
@@ -55,11 +65,6 @@ const STATIC_TABS = [
     ),
   },
   {
-    label: "Chat",
-    href: "/chat",
-    icon: null, // rendered as elevated ring — see render loop below
-  },
-  {
     label: "Profile",
     href: "/profile",
     icon: (
@@ -68,11 +73,6 @@ const STATIC_TABS = [
         <path d="M30.99,224a112.04,112.04,0,0,1,194.02,0" />
       </svg>
     ),
-  },
-  {
-    label: "Vitals",
-    href: "/vitals",
-    icon: null, // rendered via VitalsIcon
   },
 ] as const;
 

@@ -157,7 +157,7 @@ The six known issues are closed. What's left before pilot is judgment calls:
 
 ## 7. Decision log (settled, do not relitigate without reason)
 
-- Tab name "Vitals"; route `/vitals`; nav order Portfolio · Diary · Chat · Profile · Vitals (Chat at center position 3 of 5, elevated ring).
+- Tab name "Vitals"; route `/vitals`; nav order Portfolio · Vitals · Chat · Diary · Profile (Chat at center position 3 of 5, elevated ring). Vitals sits at position 2 to signal it as a primary surface; Profile moved to the far-right edge per platform convention. Supersedes the earlier Portfolio · Diary · Chat · Profile · Vitals order.
 - Perspective lives on the Vitals tab (a brief earlier exploration of moving it to Profile was reverted).
 - Read-only surface; chat is the only modification path.
 - Deterministic math, LLM only for Pulse sentence.

@@ -82,7 +82,7 @@ src/
       backfill/route.ts         One-time data fixes
   components/
     ChatPopup.tsx               Floating chat (desktop); context-aware seed when over /asset/[id]
-    BottomNav.tsx               4-tab mobile nav (Portfolio/Diary/Chat/Profile)
+    BottomNav.tsx               5-tab mobile nav (Portfolio/Vitals/Chat/Diary/Profile)
     NavBar.tsx                  Top nav: avatar (28px) + first name on left, refresh + status dot on right
     NetWorthHero.tsx            Big serif net worth + change pill
     NetWorthChart.tsx           Trajectory chart with range pills (1W/1M/3M/1Y/3Y/All), straight-line segments (no smoothing)
