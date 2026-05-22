@@ -1,4 +1,5 @@
 export type Band = 'green' | 'amber' | 'red';
+export type VitalScope = 'liquid' | 'house' | 'both';
 
 export type VitalKey =
   | 'concentration'

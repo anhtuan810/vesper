@@ -8,6 +8,7 @@ export type DormantVital = {
   label: string;
   currentValue: string;
   surfacesWhen: string;
+  reason?: 'applies' | 'property-off';
   icon?: ReactNode;
 };
 
@@ -236,7 +237,9 @@ export function LibraryExpander({
                     marginTop: 2,
                   }}
                 >
-                  {vital.surfacesWhen}
+                  {vital.reason === "property-off"
+                    ? "Hidden while Property is off"
+                    : vital.surfacesWhen}
                 </div>
               </div>
               {/* Trailing chevron */}

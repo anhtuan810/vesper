@@ -1,7 +1,9 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
 import { EU_HOMEOWNER_RE_WEIGHT_PCT } from '@/lib/vitals/benchmarks';
-import type { Band, Snapshot, VitalUser } from './types';
+import type { Band, Snapshot, VitalScope, VitalUser } from './types';
+
+export const scope: VitalScope = 'house';
 
 export interface RealAssetWeightValue {
   propertyEquityPct: number;

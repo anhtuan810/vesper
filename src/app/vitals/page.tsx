@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/NavBar";
 import { PulseBanner } from "@/components/vitals/PulseBanner";
@@ -19,6 +19,7 @@ import { RealGrowthDualLine } from "@/components/vitals/charts/RealGrowthDualLin
 import { useVitals } from "@/lib/hooks";
 import type { VitalsResponse } from "@/lib/hooks";
 import type { VitalResult } from "@/lib/vitals/index";
+import type { VitalScope } from "@/lib/vitals/types";
 import type { ConcentrationValue } from "@/lib/vitals/concentration";
 import type { RealAssetWeightValue } from "@/lib/vitals/realAssetWeight";
 import type { LiquidityPostureValue } from "@/lib/vitals/liquidityPosture";
@@ -26,6 +27,14 @@ import type { LeverageValue } from "@/lib/vitals/leverage";
 import type { DrawdownValue } from "@/lib/vitals/drawdown";
 import type { CashRealYieldValue } from "@/lib/vitals/cashRealYield";
 import type { RealGrowthValue } from "@/lib/vitals/realGrowth";
+
+// ── Property lens ───────────────────────────────────────────────────────────
+const LENS_DEFAULT_PROPERTY_PCT = 50;
+
+function scopeVisible(scope: VitalScope, showProperty: boolean): boolean {
+  if (showProperty) return true;
+  return scope !== 'house';
+}
 
 // ── Order vitals render in this fixed sequence ──────────────────────────────
 const VITAL_ORDER = [
@@ -130,6 +139,49 @@ function concentrationSuggestion(
       <>
         Your top position is {v.topPositionPct.toFixed(0)}% of the portfolio —
         within the balanced range.
+      </>
+    ),
+  };
+}
+
+function investableConcentrationSuggestion(
+  v: ConcentrationValue,
+  band: string
+): SuggestionConfig {
+  const name = v.investableTopPositionName ?? v.topPositionName;
+  const pct = v.investableTopPositionPct ?? v.topPositionPct;
+  if (band === "red") {
+    return {
+      variant: "alert",
+      label: "Worth knowing",
+      body: (
+        <>
+          <strong>{name}</strong> exceeds 50% of your investable book. A single
+          position at this scale amplifies volatility on both the upside and
+          downside.
+        </>
+      ),
+    };
+  }
+  if (band === "amber") {
+    return {
+      variant: "warn",
+      label: "Worth considering",
+      body: (
+        <>
+          <strong>{name}</strong> is {pct.toFixed(0)}% of your investable book
+          — approaching the 35% balanced threshold.
+        </>
+      ),
+    };
+  }
+  return {
+    variant: "context",
+    label: "Context",
+    body: (
+      <>
+        Your top investable position is {pct.toFixed(0)}% of the investable
+        book — within the balanced range.
       </>
     ),
   };
@@ -388,20 +440,124 @@ type CardConfig = {
 
 function buildConcentrationCard(
   vital: VitalResult,
-  positions: Array<{ name: string; type: string; pct: number }>
+  positions: Array<{ name: string; type: string; pct: number }>,
+  showProperty: boolean
 ): CardConfig {
   const v = vital.value as ConcentrationValue;
+  const chart = <ConcentrationTreemap data={v} positions={positions} />;
+
+  if (showProperty) {
+    // Checked path: hero = gross top position
+    if (v.topPositionIsRealEstate && v.investableTopPositionPct != null) {
+      const invPct = v.investableTopPositionPct;
+      const invBand = invPct > 50 ? "red" : invPct > 35 ? "amber" : "green";
+      const invWord =
+        invBand === "green"
+          ? "balanced"
+          : invBand === "amber"
+          ? "approaching threshold"
+          : "concentrated";
+      return {
+        props: {
+          eyebrow: "Concentration",
+          heroNumber: fmtPct(v.topPositionPct),
+          heroNumberClass: "default",
+          subLine: `your home · investable concentration ${invPct.toFixed(0)}% · ${invWord}`,
+          rightStat: { label: "Top 3", value: fmtPct(v.top3Pct) },
+          benchLine: "balanced threshold ≤ 35% top position",
+          suggestion: {
+            variant: "context",
+            label: "Context",
+            body: (
+              <>
+                Your home anchors the portfolio as a structural position.
+                Investable concentration is{" "}
+                <strong>{invPct.toFixed(0)}%</strong> — {invWord}.
+              </>
+            ),
+          },
+        },
+        chart,
+      };
+    }
+    // NULL GUARD or non-RE top: gross hero, standard subLine
+    if (v.investableTopPositionPct == null) {
+      return {
+        props: {
+          eyebrow: "Concentration",
+          heroNumber: fmtPct(v.topPositionPct),
+          heroNumberClass: "default",
+          subLine: "your home",
+          rightStat: { label: "Top 3", value: fmtPct(v.top3Pct) },
+          benchLine: "balanced threshold ≤ 35% top position",
+          suggestion: {
+            variant: "context",
+            label: "Context",
+            body: (
+              <>
+                Your portfolio is anchored by your home — a structural
+                position, not a rebalanceable allocation.
+              </>
+            ),
+          },
+        },
+        chart,
+      };
+    }
+    return {
+      props: {
+        eyebrow: "Concentration",
+        heroNumber: fmtPct(v.topPositionPct),
+        heroNumberClass: bandToHeroClass(vital.band),
+        subLine: "by gross value",
+        rightStat: { label: "Top 3", value: fmtPct(v.top3Pct) },
+        benchLine: "balanced threshold ≤ 35% top position",
+        suggestion: concentrationSuggestion(v, vital.band),
+      },
+      chart,
+    };
+  }
+
+  // Unchecked path: hero = investable
+  // NULL GUARD: no investable positions (property-only — toggle should not be shown)
+  if (v.investableTopPositionPct == null) {
+    return {
+      props: {
+        eyebrow: "Concentration",
+        heroNumber: fmtPct(v.topPositionPct),
+        heroNumberClass: "default",
+        subLine: "your home",
+        rightStat: { label: "Top 3", value: fmtPct(v.top3Pct) },
+        benchLine: "balanced threshold ≤ 35% top position",
+        suggestion: {
+          variant: "context",
+          label: "Context",
+          body: (
+            <>
+              Your portfolio is anchored by your home — a structural position,
+              not a rebalanceable allocation.
+            </>
+          ),
+        },
+      },
+      chart,
+    };
+  }
+
   return {
     props: {
       eyebrow: "Concentration",
-      heroNumber: fmtPct(v.topPositionPct),
+      heroNumber: fmtPct(v.investableTopPositionPct),
       heroNumberClass: bandToHeroClass(vital.band),
-      subLine: "by gross value",
-      rightStat: { label: "Top 3", value: fmtPct(v.top3Pct) },
+      subLine: "of investable assets",
+      rightStat: {
+        label: "Top 3",
+        value: fmtPct(v.investableTop3Pct ?? v.top3Pct),
+      },
       benchLine: "balanced threshold ≤ 35% top position",
-      suggestion: concentrationSuggestion(v, vital.band),
+      suggestion: investableConcentrationSuggestion(v, vital.band),
     },
-    chart: <ConcentrationTreemap data={v} positions={positions} />,
+    chart,
   };
 }
 
@@ -560,8 +716,42 @@ export default function VitalsPage() {
     router.push(t === "portfolio" ? "/" : "/" + t);
   };
 
-  // Derive treemap positions from the assets list returned by the API
-  const concentrationPositions = useMemo(() => {
+  // ── Property lens state ───────────────────────────────────────────────────
+  const [showProperty, setShowProperty] = useState<boolean>(true);
+
+  const hasMixed = useMemo(() => {
+    if (!data?.assets?.length) return false;
+    return (
+      data.assets.some((a) => a.type === "real_estate") &&
+      data.assets.some((a) => a.type !== "real_estate")
+    );
+  }, [data?.assets]);
+
+  useEffect(() => {
+    if (!data?.assets?.length) return;
+    const stored = sessionStorage.getItem("volnar:vitals-show-property");
+    if (stored !== null) {
+      setShowProperty(stored === "true");
+    } else {
+      const gross = data.assets.reduce((s, a) => s + a.eurValue, 0) || 1;
+      const propertyGross = data.assets
+        .filter((a) => a.type === "real_estate")
+        .reduce((s, a) => s + a.eurValue, 0);
+      setShowProperty(
+        (propertyGross / gross) * 100 >= LENS_DEFAULT_PROPERTY_PCT
+      );
+    }
+  }, [data?.assets]);
+
+  function toggleShowProperty() {
+    const next = !showProperty;
+    setShowProperty(next);
+    sessionStorage.setItem("volnar:vitals-show-property", String(next));
+  }
+
+  // ── Treemap positions ─────────────────────────────────────────────────────
+  // All positions (gross) — used when Property is on
+  const allConcentrationPositions = useMemo(() => {
     if (!data?.assets?.length) return [];
     const gross = data.assets.reduce((s, a) => s + a.eurValue, 0) || 1;
     return [...data.assets]
@@ -569,6 +759,20 @@ export default function VitalsPage() {
         name: a.name,
         type: a.type,
         pct: (a.eurValue / gross) * 100,
+      }))
+      .sort((a, b) => b.pct - a.pct);
+  }, [data?.assets]);
+
+  // Investable-only positions renormalized to 100 — used when Property is off
+  const investableConcentrationPositions = useMemo(() => {
+    if (!data?.assets?.length) return [];
+    const investable = data.assets.filter((a) => a.type !== "real_estate");
+    const investableGross = investable.reduce((s, a) => s + a.eurValue, 0) || 1;
+    return [...investable]
+      .map((a) => ({
+        name: a.name,
+        type: a.type,
+        pct: (a.eurValue / investableGross) * 100,
       }))
       .sort((a, b) => b.pct - a.pct);
   }, [data?.assets]);
@@ -670,8 +874,12 @@ export default function VitalsPage() {
     );
   }
 
-  const activeVitals = data.vitals.filter((v) => v.applies);
-  const dormantVitals = data.vitals.filter((v) => !v.applies);
+  const activeVitals = data.vitals.filter(
+    (v) => v.applies && scopeVisible(v.scope, showProperty)
+  );
+  const dormantVitals = data.vitals.filter(
+    (v) => !v.applies || !scopeVisible(v.scope, showProperty)
+  );
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (activeVitals.length === 0 && data.netWorthEur === 0) {
@@ -731,7 +939,20 @@ export default function VitalsPage() {
   }
 
   // ── Build stat strip ───────────────────────────────────────────────────────
-  const { top1Pct, ltvPct, liquid1wPct, realYieldPct } = data.statStrip;
+  const { ltvPct, liquid1wPct, realYieldPct } = data.statStrip;
+
+  // StatStrip TOP 1 follows the checkbox
+  const concentrationForStrip = data.vitals.find(
+    (v) => v.key === "concentration" && v.applies
+  );
+  const top1Pct: number | null = (() => {
+    if (!concentrationForStrip) return null;
+    const cv = concentrationForStrip.value as ConcentrationValue;
+    if (!showProperty && cv.investableTopPositionPct != null) {
+      return cv.investableTopPositionPct;
+    }
+    return cv.topPositionPct;
+  })();
 
   const statItems = [
     {
@@ -761,13 +982,17 @@ export default function VitalsPage() {
 
   function renderVitalCard(key: string): React.ReactNode {
     const vital = vitalMap[key];
-    if (!vital || !vital.applies) return null;
+    if (!vital || !vital.applies || !scopeVisible(vital.scope, showProperty)) return null;
 
     let cfg: CardConfig;
 
     switch (key) {
       case "concentration":
-        cfg = buildConcentrationCard(vital, concentrationPositions);
+        cfg = buildConcentrationCard(
+          vital,
+          showProperty ? allConcentrationPositions : investableConcentrationPositions,
+          showProperty
+        );
         break;
       case "realAssetWeight":
         cfg = buildRealAssetCard(vital);
@@ -806,6 +1031,9 @@ export default function VitalsPage() {
       label: VITAL_LABELS[v.key],
       currentValue: "—",
       surfacesWhen: VITAL_SURFACES_WHEN[v.key] ?? "Surfaces when conditions are met.",
+      reason: (v.applies && !scopeVisible(v.scope, showProperty)
+        ? "property-off"
+        : "applies") as "applies" | "property-off",
     }));
 
   // ── Full render ────────────────────────────────────────────────────────────
@@ -831,6 +1059,61 @@ export default function VitalsPage() {
       >
         {/* 1. Page title */}
         {pageTitle}
+
+        {/* 1b. Property lens checkbox — mixed portfolios only */}
+        {hasMixed && (
+          <button
+            onClick={toggleShowProperty}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 0",
+              marginBottom: 16,
+              marginTop: -4,
+            }}
+          >
+            <div
+              style={{
+                width: 15,
+                height: 15,
+                border: `1.5px solid ${showProperty ? "var(--accent)" : "var(--text-faint)"}`,
+                borderRadius: 4,
+                background: showProperty ? "var(--accent)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                transition: "background 0.15s, border-color 0.15s",
+              }}
+            >
+              {showProperty && (
+                <svg viewBox="0 0 12 12" fill="none" style={{ width: 9, height: 9 }}>
+                  <polyline
+                    points="2,6 5,9 10,3"
+                    stroke="white"
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
+            <span
+              style={{
+                fontSize: 13,
+                color: "var(--text)",
+                fontWeight: 500,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Property
+            </span>
+          </button>
+        )}
 
         {/* 2. Pulse banner — only if pulse is non-null */}
         {data.pulse && (

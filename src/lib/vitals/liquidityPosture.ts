@@ -1,7 +1,9 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
 import { getCountryDefaults } from '@/lib/vitals/country-defaults';
-import type { Band, Snapshot, VitalUser } from './types';
+import type { Band, Snapshot, VitalScope, VitalUser } from './types';
+
+export const scope: VitalScope = 'liquid';
 
 export interface LiquidityPostureValue {
   deployable1wPct: number;

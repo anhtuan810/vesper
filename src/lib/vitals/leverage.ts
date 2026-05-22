@@ -1,6 +1,8 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
-import type { Band, Snapshot, VitalUser } from './types';
+import type { Band, Snapshot, VitalScope, VitalUser } from './types';
+
+export const scope: VitalScope = 'house';
 
 export interface LeverageValue {
   ltvPct: number;

@@ -1,7 +1,7 @@
 export * from './types';
 
 import type { Asset } from '@/lib/supabase';
-import type { Band, Snapshot, VitalKey, VitalUser } from './types';
+import type { Band, Snapshot, VitalKey, VitalScope, VitalUser } from './types';
 
 import * as concentration from './concentration';
 import * as realAssetWeight from './realAssetWeight';
@@ -24,6 +24,7 @@ export interface VitalResult {
   applies: boolean;
   value: unknown;
   band: Band;
+  scope: VitalScope;
 }
 
 // Generic helper keeps TypeScript happy: T is inferred per module, so
@@ -31,6 +32,7 @@ export interface VitalResult {
 function runVital<T>(
   key: VitalKey,
   mod: {
+    scope: VitalScope;
     applies: (u: VitalUser, a: Asset[], s?: Snapshot[]) => boolean;
     compute: (u: VitalUser, a: Asset[], s?: Snapshot[]) => T;
     band: (v: T) => Band;
@@ -40,9 +42,9 @@ function runVital<T>(
   snapshots?: Snapshot[],
 ): VitalResult {
   const doesApply = mod.applies(user, assets, snapshots);
-  if (!doesApply) return { key, applies: false, value: null, band: 'green' };
+  if (!doesApply) return { key, applies: false, value: null, band: 'green', scope: mod.scope };
   const value = mod.compute(user, assets, snapshots);
-  return { key, applies: true, value, band: mod.band(value) };
+  return { key, applies: true, value, band: mod.band(value), scope: mod.scope };
 }
 
 export function computeAllVitals(

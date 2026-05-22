@@ -1,7 +1,9 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
 import { getCountryDefaults } from '@/lib/vitals/country-defaults';
-import type { Band, Snapshot, VitalUser } from './types';
+import type { Band, Snapshot, VitalScope, VitalUser } from './types';
+
+export const scope: VitalScope = 'liquid';
 
 // Baseline snapshot must be at least this many days old; prevents near-inception noise.
 export const MIN_BASELINE_AGE_DAYS = 330;

@@ -1,11 +1,19 @@
 import type { Asset } from '@/lib/supabase';
-import type { Band, Snapshot, VitalUser } from './types';
+import type { Band, Snapshot, VitalScope, VitalUser } from './types';
+
+export const scope: VitalScope = 'both';
 
 export interface ConcentrationValue {
+  // Gross fields — all assets
   topPositionPct: number;
   topPositionName: string;
   top3Pct: number;
   weeksAboveThreshold: number;
+  topPositionIsRealEstate: boolean;
+  // Investable fields — non-real-estate assets only (null when no investable positions)
+  investableTopPositionPct: number | null;
+  investableTopPositionName: string | null;
+  investableTop3Pct: number | null;
 }
 
 export function applies(_user: VitalUser, assets: Asset[], _snapshots?: Snapshot[]): boolean {
@@ -19,12 +27,17 @@ export function compute(
 ): ConcentrationValue {
   const gross = assets.reduce((s, a) => s + a.value, 0);
   if (gross <= 0) {
-    return { topPositionPct: 0, topPositionName: '', top3Pct: 0, weeksAboveThreshold: 0 };
+    return {
+      topPositionPct: 0, topPositionName: '', top3Pct: 0, weeksAboveThreshold: 0,
+      topPositionIsRealEstate: false,
+      investableTopPositionPct: null, investableTopPositionName: null, investableTop3Pct: null,
+    };
   }
 
   const sorted = [...assets].sort((a, b) => b.value - a.value);
   const topPositionPct = (sorted[0].value / gross) * 100;
   const topPositionName = sorted[0].name;
+  const topPositionIsRealEstate = sorted[0].type === 'real_estate';
   const top3Pct = sorted.slice(0, 3).reduce((s, a) => s + (a.value / gross) * 100, 0);
   const topType = sorted[0].type;
 
@@ -52,12 +65,32 @@ export function compute(
     }
   }
 
-  return { topPositionPct, topPositionName, top3Pct, weeksAboveThreshold };
+  // Investable fields — non-real-estate positions only
+  const investable = sorted.filter(a => a.type !== 'real_estate');
+  let investableTopPositionPct: number | null = null;
+  let investableTopPositionName: string | null = null;
+  let investableTop3Pct: number | null = null;
+
+  if (investable.length > 0) {
+    const investableGross = investable.reduce((s, a) => s + a.value, 0) || 1;
+    investableTopPositionPct = (investable[0].value / investableGross) * 100;
+    investableTopPositionName = investable[0].name;
+    investableTop3Pct = investable.slice(0, 3).reduce(
+      (s, a) => s + (a.value / investableGross) * 100, 0
+    );
+  }
+
+  return {
+    topPositionPct, topPositionName, top3Pct, weeksAboveThreshold,
+    topPositionIsRealEstate,
+    investableTopPositionPct, investableTopPositionName, investableTop3Pct,
+  };
 }
 
 export function band(value: ConcentrationValue): Band {
-  if (value.topPositionPct > 50) return 'red';
-  if (value.topPositionPct > 35) return 'amber';
+  const pct = value.investableTopPositionPct ?? value.topPositionPct;
+  if (pct > 50) return 'red';
+  if (pct > 35) return 'amber';
   return 'green';
 }
 
