@@ -94,6 +94,14 @@ Each vital module now exports `export const scope: VitalScope` where
 through `runVital()` → `/api/vitals` → `VitalsResponse` without any schema change
 (`vital_snapshots.value` is jsonb; scope is code-only metadata).
 
+### Control appearance
+Rendered as a hairline pill on the title row (right-aligned, vertically centred to
+the "Vitals" serif title). Off state: transparent background, `0.5px solid var(--border)`,
+label `var(--text-faint)` 12px. On state: background and border `var(--accent-soft)`,
+label `var(--accent-deep)` — the same soft green tint as the Pulse banner. No fill
+block, no check, no icon; state is communicated by tint and text colour alone.
+`aria-pressed` reflects the boolean; `aria-label="Toggle property in vitals"`.
+
 ### Checkbox behaviour
 - Rendered only for **mixed portfolios**: assets include at least one `real_estate`
   AND at least one non-`real_estate`. Pure-liquid and pure-property users never see it.

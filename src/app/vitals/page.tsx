@@ -781,15 +781,49 @@ export default function VitalsPage() {
     <div style={{ marginBottom: 20, paddingTop: 32 }}>
       <div
         style={{
-          fontFamily: "var(--serif)",
-          fontSize: 34,
-          fontWeight: 500,
-          letterSpacing: "-0.026em",
-          color: "var(--hero)",
-          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        Vitals
+        <div
+          style={{
+            fontFamily: "var(--serif)",
+            fontSize: 34,
+            fontWeight: 500,
+            letterSpacing: "-0.026em",
+            color: "var(--hero)",
+            lineHeight: 1,
+          }}
+        >
+          Vitals
+        </div>
+        {hasMixed && (
+          <button
+            aria-pressed={showProperty}
+            aria-label="Toggle property in vitals"
+            onClick={toggleShowProperty}
+            style={{
+              height: 26,
+              padding: "0 12px",
+              borderRadius: 999,
+              border: `0.5px solid ${showProperty ? "var(--accent-soft)" : "var(--border)"}`,
+              background: showProperty ? "var(--accent-soft)" : "transparent",
+              color: showProperty ? "var(--accent-deep)" : "var(--text-faint)",
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "background 0.15s, border-color 0.15s, color 0.15s",
+              letterSpacing: "0.01em",
+              lineHeight: 1,
+              display: "flex",
+              alignItems: "center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Property
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1059,61 +1093,6 @@ export default function VitalsPage() {
       >
         {/* 1. Page title */}
         {pageTitle}
-
-        {/* 1b. Property lens checkbox — mixed portfolios only */}
-        {hasMixed && (
-          <button
-            onClick={toggleShowProperty}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "4px 0",
-              marginBottom: 16,
-              marginTop: -4,
-            }}
-          >
-            <div
-              style={{
-                width: 15,
-                height: 15,
-                border: `1.5px solid ${showProperty ? "var(--accent)" : "var(--text-faint)"}`,
-                borderRadius: 4,
-                background: showProperty ? "var(--accent)" : "transparent",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                transition: "background 0.15s, border-color 0.15s",
-              }}
-            >
-              {showProperty && (
-                <svg viewBox="0 0 12 12" fill="none" style={{ width: 9, height: 9 }}>
-                  <polyline
-                    points="2,6 5,9 10,3"
-                    stroke="white"
-                    strokeWidth={1.8}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-            </div>
-            <span
-              style={{
-                fontSize: 13,
-                color: "var(--text)",
-                fontWeight: 500,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Property
-            </span>
-          </button>
-        )}
 
         {/* 2. Pulse banner — only if pulse is non-null */}
         {data.pulse && (
