@@ -48,7 +48,7 @@ function subLine(asset: LiveAsset): string {
   return "";
 }
 
-export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; closes?: number[] }) {
+export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asset: LiveAsset; closes?: number[]; valuesSettled?: boolean }) {
   const { closes: fetchedCloses } = usePriceHistory(closesProp != null ? null : asset.symbol, "1W");
   const closes = closesProp ?? fetchedCloses;
   const chg = pctChange(asset.livePrice, asset.livePrev);
@@ -91,19 +91,25 @@ export function PositionRow({ asset, closes: closesProp }: { asset: LiveAsset; c
 
         {/* Value + change — paddingRight aligns value right-edge with group total */}
         <div className="text-right shrink-0" style={{ paddingRight: 28 }}>
-          <div
-            className="text-fg"
-            style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
-          >
-            {formatMoney(displayValue, asset.currency || "USD", displayCurrency)}
-          </div>
-          {isTradeable && chg !== null && (
-            <div
-              className={`mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
-              style={{ fontSize: 11.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
-            >
-              {fmtPct.format(chg)}%
-            </div>
+          {!valuesSettled ? (
+            <div className="bg-surface-elev rounded animate-pulse" style={{ height: 14, width: 64 }} />
+          ) : (
+            <>
+              <div
+                className="text-fg"
+                style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
+              >
+                {formatMoney(displayValue, asset.currency || "USD", displayCurrency)}
+              </div>
+              {isTradeable && chg !== null && (
+                <div
+                  className={`mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
+                  style={{ fontSize: 11.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
+                >
+                  {fmtPct.format(chg)}%
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

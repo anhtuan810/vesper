@@ -18,6 +18,7 @@ interface NetWorthHeroProps {
   range: Range;
   selectedPoint?: SnapshotPoint | null;
   series?: SnapshotPoint[];
+  valuesSettled: boolean;
 }
 
 function fmtSelectedDate(dateStr: string): string {
@@ -34,7 +35,7 @@ function fmtPct(n: number): string {
   }).format(n);
 }
 
-export function NetWorthHero({ netTotal, range, selectedPoint, series }: NetWorthHeroProps) {
+export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
 
   const seriesStart = series?.[0];
@@ -73,7 +74,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series }: NetWort
     ? fmtSelectedDate(selectedPoint.date)
     : RANGE_LABEL[range];
 
-  if (!currencyLoaded) {
+  if (!currencyLoaded || !valuesSettled) {
     return (
       <div>
         <div className="text-dim mb-[14px]" style={{ fontSize: 14 }}>

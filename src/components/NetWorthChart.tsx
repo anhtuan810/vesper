@@ -18,6 +18,7 @@ interface Props {
   series: SnapshotPoint[];
   loading: boolean;
   onSelectPoint?: (point: SnapshotPoint | null) => void;
+  valuesSettled?: boolean;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -154,7 +155,10 @@ export function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotP
 }
 
 export function NetWorthChart(props: Props) {
-  const { range, onRangeChange, series, loading } = props;
+  const { range, onRangeChange, series, loading, valuesSettled } = props;
+  // Strip the live tip (last point = today's netTotal) until values are fully settled,
+  // so the chart doesn't redraw as netTotal steps through intermediate states.
+  const displaySeries = valuesSettled ? series : series.slice(0, -1);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const { currency: displayCurrency } = useDisplayCurrencyState();
   const [chartWidth, setChartWidth] = useState(280);
@@ -179,7 +183,7 @@ export function NetWorthChart(props: Props) {
   // Propagate selection to parent whenever index changes
   useEffect(() => {
     props.onSelectPoint?.(
-      selectedIndex !== null ? (series[selectedIndex] ?? null) : null
+      selectedIndex !== null ? (displaySeries[selectedIndex] ?? null) : null
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
@@ -190,7 +194,7 @@ export function NetWorthChart(props: Props) {
   // Convert all series values to display currency so the axis and curve are in
   // the same unit as the hero number above the chart.
   const displayRate = getUsdRate(displayCurrency);
-  const converted = series.map((p) => ({ ...p, total_value: p.total_value * displayRate }));
+  const converted = displaySeries.map((p) => ({ ...p, total_value: p.total_value * displayRate }));
 
   const values = converted.map((p) => p.total_value);
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;
@@ -210,23 +214,23 @@ export function NetWorthChart(props: Props) {
 
   // Scrub marker — same projection as buildPath / lastY
   const selectedX =
-    selectedIndex !== null && series.length >= 2
-      ? (selectedIndex / (series.length - 1)) * drawW
+    selectedIndex !== null && displaySeries.length >= 2
+      ? (selectedIndex / (displaySeries.length - 1)) * drawW
       : null;
   const selectedY =
     selectedIndex !== null && values.length >= 2
       ? projectY(values[selectedIndex])
       : null;
 
-  const showEndMarker = selectedIndex === null || selectedIndex === series.length - 1;
+  const showEndMarker = selectedIndex === null || selectedIndex === displaySeries.length - 1;
 
-  const showEmpty = !loading && series.length < 2;
-  const showLabels = !showEmpty && !loading && series.length >= 2;
-  const interactive = !loading && series.length >= 2;
+  const showEmpty = !loading && displaySeries.length < 2;
+  const showLabels = !showEmpty && !loading && displaySeries.length >= 2;
+  const interactive = !loading && displaySeries.length >= 2;
 
   function calcIndex(clientX: number, rect: DOMRect): number {
     const relX = (clientX - rect.left) / rect.width;
-    return Math.min(Math.max(Math.round(relX * (series.length - 1)), 0), series.length - 1);
+    return Math.min(Math.max(Math.round(relX * (displaySeries.length - 1)), 0), displaySeries.length - 1);
   }
 
   const chartHandlers = interactive

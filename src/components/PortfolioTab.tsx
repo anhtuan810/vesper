@@ -51,10 +51,11 @@ interface PortfolioTabProps {
   grossTotal: number;
   netTotal: number;
   initialSnapshots?: SnapshotPoint[];
+  valuesSettled: boolean;
 }
 
 export function PortfolioTab({
-  assets, grossTotal, netTotal, initialSnapshots,
+  assets, grossTotal, netTotal, initialSnapshots, valuesSettled,
 }: PortfolioTabProps) {
   const symbols = useMemo(
     () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
@@ -116,27 +117,24 @@ export function PortfolioTab({
       .sort((a, b) => b.total - a.total);
   }, [assets]);
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>(
-    Object.fromEntries(ALL_CATEGORIES.map((c) => [c, true]))
-  );
-
-  useEffect(() => {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     try {
-      const raw = sessionStorage.getItem("volnar.holdings.expanded");
-      if (raw) {
-        const keys: string[] = JSON.parse(raw);
-        setExpanded(Object.fromEntries(ALL_CATEGORIES.map((c) => [c, keys.includes(c)])));
+      const raw = sessionStorage.getItem("volnar.holdings.collapsed");
+      if (raw !== null) {
+        const collapsed: string[] = JSON.parse(raw);
+        return Object.fromEntries(ALL_CATEGORIES.map((c) => [c, !collapsed.includes(c)]));
       }
     } catch {}
-  }, []);
+    return Object.fromEntries(ALL_CATEGORIES.map((c) => [c, true]));
+  });
 
   const isExpanded = (cat: string) => expanded[cat] === true;
   const toggleGroup = (cat: string) => {
     setExpanded((prev) => {
       const next = { ...prev, [cat]: !prev[cat] };
       try {
-        const expandedKeys = Object.entries(next).filter(([, v]) => v).map(([k]) => k);
-        sessionStorage.setItem("volnar.holdings.expanded", JSON.stringify(expandedKeys));
+        const collapsed = Object.entries(next).filter(([, v]) => !v).map(([k]) => k);
+        sessionStorage.setItem("volnar.holdings.collapsed", JSON.stringify(collapsed));
       } catch {}
       return next;
     });
@@ -147,7 +145,7 @@ export function PortfolioTab({
       {/* Hero + chart — constrained so the chart never stretches past a readable aspect ratio */}
       <div style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} />
+          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} valuesSettled={valuesSettled} />
         </div>
 
         {netTotal > 0 && (
@@ -158,6 +156,7 @@ export function PortfolioTab({
               series={series}
               loading={loading}
               onSelectPoint={setSelectedPoint}
+              valuesSettled={valuesSettled}
             />
           </div>
         )}
@@ -198,6 +197,7 @@ export function PortfolioTab({
                   key={asset.id}
                   asset={asset}
                   closes={asset.symbol ? sparklines[asset.symbol] : []}
+                  valuesSettled={valuesSettled}
                 />
               ))}
             </HoldingsGroup>

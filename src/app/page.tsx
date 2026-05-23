@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics";
-import { useUser, useAssets, primeInsightCache } from "@/lib/hooks";
+import { useUser, useAssets, useDisplayCurrencyState, primeInsightCache } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
@@ -19,8 +19,10 @@ export default function Dashboard() {
   const { user, loading: userLoading } = useUser();
   const {
     assets, loading: assetsLoading, error: assetsError, refreshing,
-    refreshPrices, refetchAssets, lastUpdated, priceHealth,
+    refreshPrices, refetchAssets, lastUpdated, priceHealth, pricesLoaded,
   } = useAssets(user?.id);
+  const { loaded: currencyLoaded } = useDisplayCurrencyState();
+  const valuesSettled = pricesLoaded && currencyLoaded;
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
@@ -203,6 +205,7 @@ export default function Dashboard() {
             grossTotal={grossTotal}
             netTotal={netTotal}
             initialSnapshots={initialSnapshots}
+            valuesSettled={valuesSettled}
           />
         )}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { createBrowserSupabase, type Asset, type LiveAsset } from "@/lib/supabase";
+import { createBrowserSupabase, type Asset, type LiveAsset, type RealEstateAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
 import type { PriceResult } from "@/lib/prices-server";
 import {
@@ -14,6 +14,30 @@ import {
   sparklinesCacheKey,
   pricesTsCacheKey,
 } from "@/lib/constants";
+
+function assetsValueEqual(a: Asset[], b: Asset[]): boolean {
+  if (a.length !== b.length) return false;
+  const byId = new Map(b.map((x) => [x.id, x]));
+  return a.every((x) => {
+    const y = byId.get(x.id);
+    if (!y) return false;
+    // Cast to RealEstateAsset to access mortgage fields; undefined on non-RE types, which compares equal.
+    const xr = x as RealEstateAsset;
+    const yr = y as RealEstateAsset;
+    return (
+      x.value === y.value &&
+      x.units === y.units &&
+      x.symbol === y.symbol &&
+      x.currency === y.currency &&
+      x.type === y.type &&
+      xr.mortgage_balance === yr.mortgage_balance &&
+      xr.mortgage_balance_recorded_at === yr.mortgage_balance_recorded_at &&
+      xr.mortgage_rate === yr.mortgage_rate &&
+      xr.monthly_payment === yr.monthly_payment &&
+      xr.mortgage_type === yr.mortgage_type
+    );
+  });
+}
 
 function readCachedAssets(userId: string): Asset[] | null {
   try {
@@ -93,10 +117,11 @@ export function useAssets(userId: string | undefined) {
       .eq("user_id", userId)
       .order("value", { ascending: false });
     if (error) { setError(true); setLoading(false); return; }
-    setAssets(data || []);
+    const next = data || [];
+    setAssets((prev) => assetsValueEqual(prev, next) ? prev : next);
     setLoading(false);
-    writeCachedAssets(userId, data || []);
-    if (!(data || []).some((a) => a.symbol)) {
+    writeCachedAssets(userId, next);
+    if (!next.some((a) => a.symbol)) {
       setPricesLoaded(true);
     }
   }, [userId]);

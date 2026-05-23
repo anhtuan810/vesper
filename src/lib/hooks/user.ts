@@ -12,6 +12,7 @@ import {
   getRateFreshness,
   fetchUsdRate,
 } from "@/lib/money";
+import { PRICES_SAFETY_TIMEOUT_MS } from "@/lib/constants";
 
 export interface ProfileData {
   name?: string;
@@ -66,17 +67,24 @@ export function useDisplayCurrencyState(): { currency: DisplayCurrency; loaded: 
   useEffect(() => {
     if (userLoading) return;
     if (!user?.id) { setLoaded(true); return; }
+    let settled = false;
+    const settle = () => { if (!settled) { settled = true; setLoaded(true); } };
+    const timer = setTimeout(settle, PRICES_SAFETY_TIMEOUT_MS);
     supabase
       .from("users")
       .select("display_currency")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => {
-        if (data?.display_currency && isSupportedCurrency(data.display_currency)) {
-          setCurrency(data.display_currency as DisplayCurrency);
-        }
-        setLoaded(true);
-      });
+      .then(
+        ({ data }) => {
+          if (data?.display_currency && isSupportedCurrency(data.display_currency)) {
+            setCurrency(data.display_currency as DisplayCurrency);
+          }
+          settle();
+        },
+        () => { settle(); }
+      );
+    return () => { clearTimeout(timer); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, userLoading]);
 
