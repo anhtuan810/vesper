@@ -9,7 +9,7 @@ import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
 import type { DormantVital } from "@/components/vitals/LibraryExpander";
-import { ConcentrationTreemap } from "@/components/vitals/charts/ConcentrationTreemap";
+import { ConcentrationBars } from "@/components/vitals/charts/ConcentrationBars";
 import { RealAssetBullet } from "@/components/vitals/charts/RealAssetBullet";
 import { LiquidityStack } from "@/components/vitals/charts/LiquidityStack";
 import { LeverageTrend } from "@/components/vitals/charts/LeverageTrend";
@@ -440,11 +440,11 @@ type CardConfig = {
 
 function buildConcentrationCard(
   vital: VitalResult,
-  positions: Array<{ name: string; type: string; pct: number }>,
+  positions: Array<{ name: string; type: string; pct: number; symbol?: string }>,
   showProperty: boolean
 ): CardConfig {
   const v = vital.value as ConcentrationValue;
-  const chart = <ConcentrationTreemap data={v} positions={positions} />;
+  const chart = <ConcentrationBars positions={positions} />;
 
   if (showProperty) {
     // Checked path: hero = gross top position
@@ -749,7 +749,7 @@ export default function VitalsPage() {
     sessionStorage.setItem("volnar:vitals-show-property", String(next));
   }
 
-  // ── Treemap positions ─────────────────────────────────────────────────────
+  // ── Bar positions ──────────────────────────────────────────────────────────
   // All positions (gross) — used when Property is on
   const allConcentrationPositions = useMemo(() => {
     if (!data?.assets?.length) return [];
@@ -758,6 +758,7 @@ export default function VitalsPage() {
       .map((a) => ({
         name: a.name,
         type: a.type,
+        symbol: a.symbol,
         pct: (a.eurValue / gross) * 100,
       }))
       .sort((a, b) => b.pct - a.pct);
@@ -772,6 +773,7 @@ export default function VitalsPage() {
       .map((a) => ({
         name: a.name,
         type: a.type,
+        symbol: a.symbol,
         pct: (a.eurValue / investableGross) * 100,
       }))
       .sort((a, b) => b.pct - a.pct);

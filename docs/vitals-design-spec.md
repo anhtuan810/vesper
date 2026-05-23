@@ -212,22 +212,31 @@ All charts are pure inline SVG (no Recharts dependency). Each is
 presentational — accepts `data` prop, renders SVG, no API calls.
 Reference the mockup for exact geometry; key parameters listed below.
 
-#### 5.5.1 `ConcentrationTreemap`
+#### 5.5.1 `ConcentrationBars` *(replaces ConcentrationTreemap, retired)*
 
-- **ViewBox:** `320 96`
-- **Layout:** Large left rectangle (top position, full height 96) takes
-  ~46% of width. Right side stacks: Bitcoin/largest tradeable on top
-  (full width), pension below (full width minus header), smaller positions
-  in bottom row.
-- **Asset-class colors** (use throughout app for category consistency):
+HTML/CSS ranked horizontal bars — no SVG, no chart library.
+
+- **Asset-class colors** (fixed palette, use throughout app):
   - real_estate: `#7A9C7F`
   - crypto: `#C47B5A`
-  - pension / cash slow: `#C4A86E`
+  - pension / bonds / gold: `#C4A86E`
   - stocks/ETFs: `#6B82A8`
-  - cash liquid: `#888780`
+  - cash: `#888780`
   - other: `#B4B2A9`
-- **Label color:** `#F4F1E8` (cream-on-color); 0.78 opacity for secondary lines.
-- **Typography in SVG:** name 10–11px, percentage 22–15px Georgia serif.
+- **Selection:** top 5 positions (sorted desc by pct). If >5, a plain text
+  line "+N more · X%" summarises the rest — not a bar.
+- **Scale:** `axisMax = Math.max(50, Math.ceil((top1Pct + 10) / 10) * 10)`.
+  Each bar `width = pct / axisMax * 100%` of its track.
+- **Threshold line:** dashed vertical at `x = 35 / axisMax` of track width,
+  spanning all bar rows. Label "balanced ≤ 35%" above in `--text-faint`.
+- **Label column:** 88px fixed. `symbol ?? name` — tradeables show ticker,
+  non-tradeables show name; word-wrap to two lines, never truncate.
+- **Bar color** = asset class from palette above. Health is NOT encoded in
+  bar color — the home bar is property-green regardless of concentration band.
+- **% label:** rendered via `fmtPct` (one decimal) just after each bar, so
+  it matches the hero number exactly.
+- **Animation:** bars grow from 0 → width on mount, staggered 65 ms each,
+  `cubic-bezier(0.25, 0.1, 0.25, 1)`. Once only.
 
 #### 5.5.2 `RealAssetBullet`
 
@@ -492,7 +501,7 @@ PulseBanner (aligned lead card)
 StatStrip (Top 1 · LTV · Liquid 1w · Real yield)
 Eyebrow "Active vitals · N"
 VitalCard × 7, in this order:
-  1. Concentration       → <ConcentrationTreemap />
+  1. Concentration       → <ConcentrationBars />
   2. Real-asset weight   → <RealAssetBullet />
   3. Liquidity posture   → <LiquidityStack />
   4. Leverage            → <LeverageTrend />

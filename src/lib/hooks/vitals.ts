@@ -17,7 +17,7 @@ export interface VitalsResponse {
   };
   netWorthEur: number;
   displayCurrency: string;
-  assets: Array<{ name: string; type: string; eurValue: number }>;
+  assets: Array<{ name: string; type: string; eurValue: number; symbol?: string }>;
 }
 
 let _vitalsCache: { data: VitalsResponse; fetchedAt: number } | null = null;

@@ -196,7 +196,7 @@ improved framing. Old rows are superseded on next load; no migration required.
 ### UI — `src/components/vitals/`
 Primitives: `PulseBanner.tsx`, `StatStrip.tsx`, `VitalCard.tsx`, `SuggestionStrip.tsx`
 Composites: `LibraryExpander.tsx`
-Charts (`charts/`): `ConcentrationTreemap.tsx`, `RealAssetBullet.tsx`, `LiquidityStack.tsx`, `LeverageTrend.tsx`, `DrawdownBars.tsx`, `CashWaterfall.tsx`, `RealGrowthDualLine.tsx`
+Charts (`charts/`): `ConcentrationBars.tsx` *(replaces ConcentrationTreemap — retired 2026-05-23)*, `RealAssetBullet.tsx`, `LiquidityStack.tsx`, `LeverageTrend.tsx`, `DrawdownBars.tsx`, `CashWaterfall.tsx`, `RealGrowthDualLine.tsx`
 
 ### UI — `src/components/perspective/`
 - `PerspectiveCard.tsx` — moved here from `components/vitals/`. Profile-owned. Caller supplies the eyebrow label; the old section-divider hairline is gone.

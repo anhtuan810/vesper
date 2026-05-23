@@ -134,6 +134,7 @@ export async function GET(request: NextRequest) {
       name: a.name,
       type: a.type,
       eurValue: a.value,
+      symbol: a.symbol,
     }));
 
     const res = NextResponse.json({
