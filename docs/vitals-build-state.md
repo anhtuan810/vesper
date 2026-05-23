@@ -49,7 +49,7 @@ Page load (/vitals)
        └─ GET /api/vitals              [route.ts]
             ├─ computeAllVitals()      [live compute — see DRIFT RISK below]
             ├─ generatePulse()         [pulse-generator.ts — Haiku or deterministic]
-            └─ returns { vitals, pulse, statStrip, assets,
+            └─ returns { vitals, pulse, assets,
                           netWorthEur, displayCurrency }
 
 Page load (/profile)
@@ -127,7 +127,7 @@ investable fields (over non-real-estate assets):
 - `topPositionIsRealEstate: boolean`
 - `investableTopPositionPct / Name / Top3Pct` — null when there are no non-property positions.
 - `band()` keys off `investableTopPositionPct ?? topPositionPct` (checkbox-independent).
-- Card and StatStrip TOP 1 follow the checkbox (gross when on, investable when off).
+- Concentration card TOP 1 follows the checkbox (gross when on, investable when off).
 - When the gross top position is real estate and checkbox is on, the card frames
   the home as a structural anchor and surfaces investable concentration in the sub-line.
 - Pulse framing updated: when `topPositionIsRealEstate` is true, the Haiku
@@ -194,7 +194,7 @@ improved framing. Old rows are superseded on next load; no migration required.
 - `src/app/api/cron/snapshot/route.ts` — MODIFIED (additive `writeVitalSnapshots` call)
 
 ### UI — `src/components/vitals/`
-Primitives: `PulseBanner.tsx`, `StatStrip.tsx`, `VitalCard.tsx`, `SuggestionStrip.tsx`
+Primitives: `PulseBanner.tsx`, `VitalCard.tsx`, `SuggestionStrip.tsx` *(StatStrip removed 2026-05-23)*
 Composites: `LibraryExpander.tsx`
 Charts (`charts/`): `ConcentrationBars.tsx` *(replaces ConcentrationTreemap — retired 2026-05-23)*, `RealAssetBullet.tsx`, `LiquidityStack.tsx`, `LeverageTrend.tsx`, `DrawdownBars.tsx`, `CashWaterfall.tsx`, `RealGrowthDualLine.tsx`
 

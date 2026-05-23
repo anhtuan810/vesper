@@ -133,23 +133,12 @@ Accent-soft lead card aligned to the content column (after title, before stat st
 
 Mockup section: search for `<!-- PULSE -->` in `docs/vitals-mockup.html`.
 
-### 5.2 `StatStrip`
+### 5.2 `StatStrip` *(removed 2026-05-23)*
 
-4-stat row with vertical dividers, sits between Pulse and active vitals.
-
-- **Props:** `stats` (array of `{ label, value, negative? }`), max 4 entries
-- **Container:** `margin: 0 -17px 20px; display: flex; padding: 0 17px 14px;
-  border-bottom: 0.5px solid var(--border);`
-- **Cell:** `flex: 1; padding: 0 10px;` with `border-right: 0.5px solid
-  var(--border)` between cells (last has none). First cell has only right
-  padding, last only left.
-- **Label:** 9px uppercase, letter-spacing 0.11em, line-height 1, margin-
-  bottom 5px, `color: var(--text-faint)`.
-- **Value:** 17px Source Serif 4, weight 600, line-height 1, tnum.
-  When `negative: true`, color `var(--negative)`; otherwise `var(--hero)`
-  (or `var(--text)`).
-
-Mockup section: `<!-- 4-STAT STRIP -->`.
+The four-stat summary row (Top 1 · LTV · Liquid 1w · Real yield) has been
+removed from the Vitals page. The `StatStrip` component, the `statStrip`
+field in the API response, and the client-side builder have all been deleted.
+The Pulse banner now sits directly above the "Active vitals · N" eyebrow.
 
 ### 5.3 `VitalCard`
 
@@ -498,7 +487,6 @@ For inactive state, swap to outlined version:
 NavBar (existing component, unchanged)
 Page title "Vitals" (Source Serif 4, 34px, weight 500, letter-spacing -0.026em)
 PulseBanner (aligned lead card)
-StatStrip (Top 1 · LTV · Liquid 1w · Real yield)
 Eyebrow "Active vitals · N"
 VitalCard × 7, in this order:
   1. Concentration       → <ConcentrationBars />

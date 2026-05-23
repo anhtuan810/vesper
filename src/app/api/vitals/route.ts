@@ -5,10 +5,6 @@ import { validateEnv } from "@/lib/env";
 import { isSupportedCurrency } from "@/lib/money";
 import { computeAllVitals } from "@/lib/vitals/index";
 import type { VitalResult } from "@/lib/vitals/index";
-import type { ConcentrationValue } from "@/lib/vitals/concentration";
-import type { LeverageValue } from "@/lib/vitals/leverage";
-import type { LiquidityPostureValue } from "@/lib/vitals/liquidityPosture";
-import type { CashRealYieldValue } from "@/lib/vitals/cashRealYield";
 import { generatePulse } from "@/lib/pulse-generator";
 import { buildVitalsInputs } from "@/lib/vitals/build-inputs";
 
@@ -33,28 +29,6 @@ export async function GET(request: NextRequest) {
     // Compute all vitals
     const vitals: VitalResult[] = computeAllVitals({ country }, assets, snapshots);
     const activeVitals = vitals.filter((v) => v.applies);
-
-    // Build statStrip from computed vitals
-    const findApplied = (key: string): VitalResult | undefined =>
-      vitals.find((v) => v.key === key && v.applies);
-
-    const concentrationVital = findApplied("concentration");
-    const leverageVital = findApplied("leverage");
-    const liquidityVital = findApplied("liquidityPosture");
-    const cashYieldVital = findApplied("cashRealYield");
-
-    const statStrip = {
-      top1Pct: concentrationVital
-        ? (concentrationVital.value as ConcentrationValue).topPositionPct
-        : null,
-      ltvPct: leverageVital ? (leverageVital.value as LeverageValue).ltvPct : null,
-      liquid1wPct: liquidityVital
-        ? (liquidityVital.value as LiquidityPostureValue).deployable1wPct
-        : null,
-      realYieldPct: cashYieldVital
-        ? (cashYieldVital.value as CashRealYieldValue).realYieldPct
-        : null,
-    };
 
     // Determine whether the user holds a mixed portfolio (real estate + investable).
     // Used to decide whether to generate a second liquid-lens pulse.
@@ -141,7 +115,6 @@ export async function GET(request: NextRequest) {
       vitals,
       pulse,
       pulseLiquid,
-      statStrip,
       netWorthEur,
       displayCurrency,
       assets: minimalAssets,

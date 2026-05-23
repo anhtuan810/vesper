@@ -4,7 +4,6 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/NavBar";
 import { PulseBanner } from "@/components/vitals/PulseBanner";
-import { StatStrip } from "@/components/vitals/StatStrip";
 import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
@@ -974,42 +973,6 @@ export default function VitalsPage() {
     );
   }
 
-  // ── Build stat strip ───────────────────────────────────────────────────────
-  const { ltvPct, liquid1wPct, realYieldPct } = data.statStrip;
-
-  // StatStrip TOP 1 follows the checkbox
-  const concentrationForStrip = data.vitals.find(
-    (v) => v.key === "concentration" && v.applies
-  );
-  const top1Pct: number | null = (() => {
-    if (!concentrationForStrip) return null;
-    const cv = concentrationForStrip.value as ConcentrationValue;
-    if (!showProperty && cv.investableTopPositionPct != null) {
-      return cv.investableTopPositionPct;
-    }
-    return cv.topPositionPct;
-  })();
-
-  const statItems = [
-    {
-      label: "Top 1",
-      value: top1Pct != null ? fmtPct(top1Pct) : "—",
-    },
-    {
-      label: "LTV",
-      value: ltvPct != null ? fmtPct(ltvPct) : "—",
-    },
-    {
-      label: "Liquid 1w",
-      value: liquid1wPct != null ? fmtPct(liquid1wPct) : "—",
-    },
-    {
-      label: "Real yield",
-      value: realYieldPct != null ? fmtPct(realYieldPct, true) : "—",
-      negative: realYieldPct != null && realYieldPct < 0,
-    },
-  ];
-
   // ── Build vital cards ──────────────────────────────────────────────────────
   const vitalMap = Object.fromEntries(
     data.vitals.map((v) => [v.key, v])
@@ -1112,10 +1075,7 @@ export default function VitalsPage() {
           ) : null;
         })()}
 
-        {/* 3. Stat strip */}
-        <StatStrip stats={statItems} />
-
-        {/* 4. Active vitals eyebrow */}
+        {/* 3. Active vitals eyebrow */}
         <div
           style={{
             fontSize: "9.5px",

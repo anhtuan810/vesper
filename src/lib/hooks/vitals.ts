@@ -9,12 +9,6 @@ export interface VitalsResponse {
   vitals: VitalResult[];
   pulse: string | null;
   pulseLiquid: string | null;
-  statStrip: {
-    top1Pct: number | null;
-    ltvPct: number | null;
-    liquid1wPct: number | null;
-    realYieldPct: number | null;
-  };
   netWorthEur: number;
   displayCurrency: string;
   assets: Array<{ name: string; type: string; eurValue: number; symbol?: string }>;
