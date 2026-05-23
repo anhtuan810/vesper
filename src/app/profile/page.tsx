@@ -452,6 +452,9 @@ export default function ProfilePage() {
           >
             Sign out
           </button>
+          <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center" }}>
+            Volnar provides informational portfolio observations, not investment advice.
+          </div>
         </div>
 
       </div>
