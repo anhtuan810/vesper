@@ -66,7 +66,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
     <Link href={`/asset/${asset.id}`} className="block">
       <div
         className="flex items-center border-b border-border-strong last:border-0 gap-3"
-        style={{ paddingTop: 12, paddingBottom: 12 }}
+        style={{ paddingTop: 9, paddingBottom: 9 }}
       >
         <AssetLogo
           type={asset.type}
