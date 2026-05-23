@@ -90,8 +90,6 @@ Albert Sans (default body font) for everything else.
 | Suggestion strip label         | 8.5px | 600    | 0.16em         | uppercase |
 | Suggestion strip body          | 11.5px| 400    | normal         | line-height 1.42 |
 | Closing italic line            | 12.5px| 400    | normal         | Serif italic, text-dim, line-height 1.5 |
-| Stat strip number              | 17px  | 600    | normal         | Serif, tnum |
-| Stat strip label               | 9px   | 400    | 0.11em         | uppercase |
 | Perspective cohort rank        | 19px  | 600    | normal         | Serif, tnum |
 | Perspective context sub-line   | 9px   | 400    | normal         | text-faint |
 | Bottom-nav label               | 10.5px| 500    | normal         | 600 when active |
@@ -107,7 +105,6 @@ Albert Sans (default body font) for everything else.
 | Card vertical gap      | 10px                     |
 | Pulse banner padding   | 11px 15px 10px           |
 | Pulse margin           | 0 0 10px, border-radius 14px     |
-| Stat strip gap (cells) | 10px per side of divider |
 | Perspective card padding | 20px 18px 18px         |
 | Section divider padding | 18px top, 14px bottom   |
 | Library expander padding | 13px 14px              |
@@ -413,8 +410,9 @@ Collapsed-by-default row that expands inline to reveal dormant Vitals.
   0.5px solid var(--border); border-radius: 11px; padding: 13px 14px;
   margin-bottom: 18px; cursor: pointer;`
 - **Header row:** flex space-between.
-  - Left: "Library" 13px weight 600 + "11 vitals · X dormant" 11px
-    `var(--text-faint)` (gap 8px, baseline align).
+  - Left: "Library" 13px weight 600 + "N vitals · X dormant" 11px
+    `var(--text-faint)` (gap 8px, baseline align). N = `totalCount` prop passed
+    by the page (equals `data.vitals.length`, currently 7 for V1).
   - Sub-line below: "Tap to explore what surfaces when conditions change",
     10.5px `var(--text-faint)`, margin-top 3px.
   - Right: chevron-down icon 14×14, stroke 1.8, `var(--text-faint)`,

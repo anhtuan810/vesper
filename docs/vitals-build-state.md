@@ -49,8 +49,9 @@ Page load (/vitals)
        └─ GET /api/vitals              [route.ts]
             ├─ computeAllVitals()      [live compute — see DRIFT RISK below]
             ├─ generatePulse()         [pulse-generator.ts — Haiku or deterministic]
-            └─ returns { vitals, pulse, assets,
+            └─ returns { vitals, pulse, pulseLiquid, assets,
                           netWorthEur, displayCurrency }
+                         (pulseLiquid: null for non-mixed users)
 
 Page load (/profile)
   └─ useNetWorth() hook                [src/lib/hooks/netWorth.ts]
@@ -69,10 +70,10 @@ omitted, nothing breaks).
 
 ---
 
-## 3b. Property checkbox (added 2026-05-22)
+## 3b. Property pill (added 2026-05-22)
 
 ### Feature summary
-A "Property" checkbox on the Vitals page lets mixed-portfolio users (real-estate
+A "Property" pill toggle on the Vitals page lets mixed-portfolio users (real-estate
 + investable) filter the view to liquid-only. Read-only surface; no mutations;
 no schema change.
 
@@ -102,7 +103,7 @@ label `var(--accent-deep)` — the same soft green tint as the Pulse banner. No 
 block, no check, no icon; state is communicated by tint and text colour alone.
 `aria-pressed` reflects the boolean; `aria-label="Toggle property in vitals"`.
 
-### Checkbox behaviour
+### Pill behaviour
 - Rendered only for **mixed portfolios**: assets include at least one `real_estate`
   AND at least one non-`real_estate`. Pure-liquid and pure-property users never see it.
 - Adaptive default when no stored value:

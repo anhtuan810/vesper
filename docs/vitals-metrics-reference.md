@@ -59,7 +59,7 @@ house-free and needs no change.
 - Investable fields (over assets where `type !== 'real_estate'`):
   - `investableTopPositionPct` / `investableTopPositionName` / `investableTop3Pct` — **null when there are no non-property positions** (property-only portfolio)
 **`band`:** keys off `investableTopPositionPct ?? topPositionPct`. A primary residence is not a decision the user can act on; severity tracks the rebalanceable book, checkbox-independent. `> 50` → red · `> 35` → amber · else green
-**Display basis:** Property checkbox on = gross hero ("by gross value"). Property checkbox off = investable hero ("of investable assets"), treemap renormalized to 100% over non-RE positions.
+**Display basis:** Property checkbox on = gross hero ("by gross value"). Property checkbox off = investable hero ("of investable assets"), bars renormalized to 100% over non-RE positions.
 When `topPositionIsRealEstate` is true and checkbox is on: hero shown as "default" (neutral, never red); sub-line frames the home as a structural anchor and surfaces investable concentration.
 **Pulse framing:** the Pulse generator receives the lens as a parameter. For the
 all-assets lens, a deterministic safety net checks that any generated sentence with
@@ -67,7 +67,7 @@ all-assets lens, a deterministic safety net checks that any generated sentence w
 replaced with the deterministic `buildThinPulse` output. For the liquid lens, the
 input vitals exclude realAssetWeight and leverage, and the system prompt prohibits
 any property or mortgage mention.
-**Edge case:** near-single-asset portfolios (one position 95%+) are valid, not bugs — the treemap handles this with one dominant rectangle + slivers.
+**Edge case:** near-single-asset portfolios (one position 95%+) are valid, not bugs — the top bar fills almost the full track width with the remaining positions as short bars beneath it.
 
 ### 1.2 Real-asset weight
 **Measures:** how much of net worth is tied up in property equity.

@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       pulseLiquid = await generatePulse(liquidActiveVitals, displayCurrency, "liquid");
     }
 
-    // Build minimal asset list for ConcentrationTreemap.
+    // Build minimal asset list for ConcentrationBars.
     // assets.value is already EUR-normalized by buildVitalsInputs.
     const minimalAssets = assets.map((a) => ({
       name: a.name,

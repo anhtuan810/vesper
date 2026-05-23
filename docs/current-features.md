@@ -239,7 +239,7 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 ### Vitals
 - Seven portfolio vitals on `/vitals`: Concentration, Real-asset weight, Liquidity posture, Leverage, Drawdown vulnerability, Cash & real yield, Real growth. Each user sees only the vitals that apply to their portfolio; the rest sit dormant in the Library expander.
 - Pulse sentence (LLM, Haiku, 24h cache) synthesises the active vitals in one line.
-- **Property checkbox (2026-05-22).** Shown only for mixed portfolios (real estate + investable assets). Unchecked hides `scope = 'house'` vitals (Real-asset weight, Leverage) to the Library and switches Concentration card TOP 1 to investable figures. Default adaptive: `grossProperty / grossAssets ≥ 50%` → checked. Persisted in sessionStorage. No mutations, no schema change.
+- **Property pill toggle (2026-05-22).** Shown only for mixed portfolios (real estate + investable assets). Off hides `scope = 'house'` vitals (Real-asset weight, Leverage) to the Library and switches Concentration card TOP 1 to investable figures. Default adaptive: `grossProperty / grossAssets ≥ 50%` → on. Persisted in sessionStorage. No mutations, no schema change.
 - Read-only surface; all modifications through Chat.
 - Files: `src/app/vitals/page.tsx`, `src/lib/vitals/` (index, types, 7 modules), `src/components/vitals/`, `src/app/api/vitals/route.ts`, `src/lib/pulse-generator.ts`, `src/lib/hooks/vitals.ts`
 
