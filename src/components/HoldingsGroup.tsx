@@ -97,11 +97,17 @@ export function HoldingsGroup({
         </svg>
       </button>
 
-      {expanded && (
-        <div style={{ paddingBottom: 4 }}>
-          {children}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateRows: expanded ? "1fr" : "0fr",
+          transition: "grid-template-rows 0.2s ease",
+        }}
+      >
+        <div style={{ overflow: "hidden" }}>
+          <div style={{ paddingBottom: 4 }}>{children}</div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

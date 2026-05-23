@@ -54,7 +54,7 @@ export default function Dashboard() {
 
   const refreshMutations = useCallback(async () => {
     if (!user?.id) return;
-    const res = await fetch("/api/dashboard-init");
+    const res = await fetch("/api/mutations");
     if (!res.ok) return;
     const { mutations } = await res.json();
     setMutations(mutations ?? []);

@@ -69,26 +69,17 @@ export function PortfolioTab({
   const [loading, setLoading] = useState(!initialSnapshots);
   const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
 
-  // When dashboard-init finishes (potentially after a backfill), re-seed the 1M
-  // series with real snapshot data. The initial /api/snapshots fetch may have
-  // completed before the backfill ran, leaving an empty series.
   useEffect(() => {
-    if (!initialSnapshots || range !== "1M") return;
-    setSeries(buildSeries(initialSnapshots, netTotal));
-    setLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSnapshots]);
-
-  useEffect(() => {
-    if (range === "1M" && initialSnapshots) {
-      // Re-seed from dashboard-init data; covers both the initial 1M load and
-      // re-selection of "1M" after the user browsed another range.
-      setSeries(buildSeries(initialSnapshots, netTotal));
-      setLoading(false);
+    setSelectedPoint(null);
+    if (range === "1M") {
+      // Use initialSnapshots when available; stay in loading state until they arrive.
+      if (initialSnapshots) {
+        setSeries(buildSeries(initialSnapshots, netTotal));
+        setLoading(false);
+      }
       return;
     }
     setLoading(true);
-    setSelectedPoint(null);
     const controller = new AbortController();
     fetch(`/api/snapshots?range=${range}`, { signal: controller.signal })
       .then((r) => r.json())
@@ -103,7 +94,7 @@ export function PortfolioTab({
       });
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, netTotal]);
+  }, [range, netTotal, initialSnapshots]);
 
   // Group by semantic category, sort groups by total value desc, rows within group by value desc
   const groups = useMemo(() => {

@@ -118,12 +118,13 @@ export function InsightBand() {
             const isOpen = expanded.has(id);
             return (
               <div key={id} style={{ borderTop: DIVIDER }}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 16px", cursor: "pointer" }}
+                <button
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: 10,
+                    padding: "9px 16px", cursor: "pointer",
+                    background: "none", border: "none", width: "100%", textAlign: "left",
+                  }}
                   onClick={() => toggle(id)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(id); }}
                 >
                   <div className="font-serif" style={{ ...titleStyle, flex: 1, minWidth: 0 }}>
                     {item.title}
@@ -146,28 +147,23 @@ export function InsightBand() {
                       <polyline points="96 48 176 128 96 208" />
                     </svg>
                   </div>
-                </div>
+                </button>
 
                 {isOpen && (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    style={{ padding: "0 16px 10px", cursor: "pointer" }}
+                  <button
+                    style={{
+                      display: "block", padding: "0 16px 10px", cursor: "pointer",
+                      background: "none", border: "none", width: "100%", textAlign: "left",
+                    }}
                     onClick={() => {
                       sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${item.title}`);
                       router.push("/chat?seed=insight&key=current");
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${item.title}`);
-                        router.push("/chat?seed=insight&key=current");
-                      }
                     }}
                   >
                     <div style={{ fontSize: 12, lineHeight: 1.45, color: "var(--text)", opacity: 0.6 }}>
                       {item.detail}
                     </div>
-                  </div>
+                  </button>
                 )}
               </div>
             );
