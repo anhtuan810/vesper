@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { UndoDeleteToast } from "@/components/UndoDeleteToast";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
+import { NativeBootstrap } from "@/components/NativeBootstrap";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
@@ -63,6 +64,7 @@ export default async function RootLayout({
             {!isMarketing && <UndoDeleteToast />}
           </UserProvider>
         </ThemeProvider>
+        <NativeBootstrap />
         <Analytics />
       </body>
     </html>

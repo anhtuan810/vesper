@@ -1,0 +1,60 @@
+import { App, type URLOpenListenerEvent } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+import type { EmailOtpType } from "@supabase/supabase-js";
+import type { createBrowserSupabase } from "@/lib/supabase";
+
+type SupabaseClient = ReturnType<typeof createBrowserSupabase>;
+
+// Only allow same-app relative redirects, mirroring the server callback/confirm routes.
+function safeNext(next: string | null): string {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
+
+// Custom-scheme URLs (nl.volnar.app://auth/callback) parse with the host as the
+// first segment, so reconstruct host + pathname to recover the logical route.
+function routeOf(url: URL): string {
+  return `${url.host}${url.pathname}`.replace(/\/+$/, "");
+}
+
+// Installs the deep-link handler that completes native auth flows started in the
+// system browser. signInWith*Native open the browser; the OS hands the result
+// back to the app via the nl.volnar.app:// scheme, which lands here.
+export function installDeepLinkHandler(supabase: SupabaseClient) {
+  return App.addListener("appUrlOpen", async (event: URLOpenListenerEvent) => {
+    let url: URL;
+    try {
+      url = new URL(event.url);
+    } catch {
+      return;
+    }
+
+    const route = routeOf(url);
+    const next = safeNext(url.searchParams.get("next"));
+
+    try {
+      if (route.endsWith("auth/callback")) {
+        const code = url.searchParams.get("code");
+        if (!code) return;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+        await Browser.close();
+        window.location.assign(next);
+        return;
+      }
+
+      if (route.endsWith("auth/confirm")) {
+        const token_hash = url.searchParams.get("token_hash");
+        const type = url.searchParams.get("type") as EmailOtpType | null;
+        if (!token_hash || !type) return;
+        const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+        if (error) throw error;
+        await Browser.close();
+        window.location.assign(next);
+        return;
+      }
+    } catch (err) {
+      console.error("[native auth] deep link failed", err);
+      await Browser.close();
+    }
+  });
+}

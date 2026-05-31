@@ -3,6 +3,8 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { isNative } from "@/lib/platform";
+import { signInWithGoogleNative, signInWithMagicLinkNative } from "@/lib/native/auth-native";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
 function LoginInner() {
@@ -24,6 +26,14 @@ function LoginInner() {
 
   async function signInWithGoogle() {
     setError(null);
+    if (isNative()) {
+      try {
+        await signInWithGoogleNative(supabase, next);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Sign-in failed");
+      }
+      return;
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: callbackUrl },
@@ -35,6 +45,16 @@ function LoginInner() {
     if (!email) return;
     setLoading(true);
     setError(null);
+    if (isNative()) {
+      try {
+        await signInWithMagicLinkNative(supabase, email, next);
+        setEmailSent(true);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Sign-in failed");
+      }
+      setLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: confirmUrl },
