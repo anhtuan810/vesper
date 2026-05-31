@@ -53,13 +53,15 @@ export function NavBar({
 
   return (
     <nav
-      className="sticky top-0 z-20 border-b border-border"
+      className="relative z-20 md:sticky md:top-0 md:border-b md:border-border md:bg-nav-surface md:[backdrop-filter:saturate(180%)_blur(20px)] md:[-webkit-backdrop-filter:saturate(180%)_blur(20px)]"
       style={{
-        background: "var(--nav-surface)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        WebkitBackdropFilter: "saturate(180%) blur(20px)",
-        // Clear the iOS status bar / notch (0 on web). The frosted surface
-        // fills the safe area; content sits below it.
+        // Mobile: NavBar lives in normal flow and scrolls off the top with the
+        // page (no sticky/fixed, no frosted backdrop or border) so it reads as
+        // part of the content and frees permanent vertical space — the fixed
+        // BottomNav still provides global navigation. Desktop (md+) keeps the
+        // sticky frosted bar via the md: classes above.
+        // Always respect the iOS status-bar inset so content never hides under
+        // the notch (the area above shows the page background on mobile).
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
