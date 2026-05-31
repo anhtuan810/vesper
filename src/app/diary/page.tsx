@@ -104,7 +104,7 @@ export default function DiaryPage() {
         refreshing={false}
         refreshPrices={() => {}}
       />
-      <div className="max-w-[960px] mx-auto px-4 sm:px-8 pt-4 pb-24 md:pb-10">
+      <div className="max-w-[960px] mx-auto px-4 md:px-8 pt-4 pb-24 md:pb-10">
         <DiaryTab
           mutations={enrichedMutations}
           hasMore={hasMore}

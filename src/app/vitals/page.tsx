@@ -847,7 +847,7 @@ export default function VitalsPage() {
           style={{
             maxWidth: 520,
             margin: "0 auto",
-            padding: "0 17px 110px",
+            padding: "0 16px 110px",
           }}
         >
           {pageTitle}
@@ -889,7 +889,7 @@ export default function VitalsPage() {
           style={{
             maxWidth: 520,
             margin: "0 auto",
-            padding: "0 17px 110px",
+            padding: "0 16px 110px",
           }}
         >
           {pageTitle}
@@ -934,7 +934,7 @@ export default function VitalsPage() {
           style={{
             maxWidth: 520,
             margin: "0 auto",
-            padding: "0 17px 110px",
+            padding: "0 16px 110px",
           }}
         >
           {pageTitle}
@@ -1053,7 +1053,7 @@ export default function VitalsPage() {
         style={{
           maxWidth: 520,
           margin: "0 auto",
-          padding: "0 17px 110px",
+          padding: "0 16px 110px",
         }}
       >
         {/* 1. Page title */}

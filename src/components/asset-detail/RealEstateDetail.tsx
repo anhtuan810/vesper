@@ -78,7 +78,7 @@ export function RealEstateDetail({ asset }: Props) {
 
   return (
     <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
-      <div className="px-4 sm:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
+      <div className="px-4 md:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
 
         {/* Top bar: back only */}
         <div style={{ display: "flex", alignItems: "center", padding: "14px 0 14px" }}>

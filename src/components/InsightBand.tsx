@@ -42,7 +42,7 @@ const DIVIDER = "1px solid color-mix(in srgb, var(--accent-text) 12%, transparen
 function Band({ label, last, children }: { label?: string; last?: boolean; children: ReactNode }) {
   return (
     <div
-      className={`-mx-4 sm:-mx-8 ${last ? "mb-5" : "mb-2"}`}
+      className={`-mx-4 md:-mx-8 ${last ? "mb-5" : "mb-2"}`}
       style={{ background: "var(--accent-soft)" }}
     >
       {label && (
@@ -77,7 +77,7 @@ export function InsightBand() {
 
   if (loading) {
     return (
-      <div className="-mx-4 sm:-mx-8 mb-5" style={{ padding: "14px 16px", background: "var(--accent-soft)" }}>
+      <div className="-mx-4 md:-mx-8 mb-5" style={{ padding: "14px 16px", background: "var(--accent-soft)" }}>
         <div style={{ height: 13, width: "68%", borderRadius: 3, background: "var(--accent-text)", opacity: 0.11 }} />
       </div>
     );

@@ -167,9 +167,9 @@ export function PortfolioTab({
 
       {/* Holdings list — 4 semantic categories.
           Bleed + inner padding mirror the InsightBand ("Market box") exactly
-          (-mx-4 sm:-mx-8 + 16px) so holding rows share the same left/right
+          (-mx-4 md:-mx-8 + 16px) so holding rows share the same left/right
           column as the market cards at every breakpoint. */}
-      <div className="-mx-4 sm:-mx-8 px-4">
+      <div className="-mx-4 md:-mx-8 px-4">
         <div className="flex items-baseline justify-between mb-3">
           <div
             className="font-serif"
