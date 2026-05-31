@@ -88,7 +88,7 @@ export default function DiaryPage() {
   if (userLoading) {
     return (
       <div className="min-h-screen bg-bg">
-        <div className="h-14 bg-surface border-b border-border" />
+        <div className="h-9 md:h-14 bg-surface border-b border-border" />
       </div>
     );
   }
