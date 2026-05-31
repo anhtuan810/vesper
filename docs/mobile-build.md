@@ -16,6 +16,13 @@ not part of this wrapper.
   - `webDir`: `public` (placeholder only; remote `server.url` is what actually loads)
   - `server.url`: `https://app.volnar.nl`, `cleartext: false`
   - `ios.contentInset`: `always`
+  - `ios.backgroundColor`: `#FAF6EB` — native WebView background fallback so no
+    white flashes behind the web content at the top edge.
+
+> **Note:** `ios.backgroundColor` (and the matching `<meta name="theme-color">`)
+> are **light-mode only** for now. Dark-mode parity will arrive when
+> `@capacitor/status-bar` is wired up in a later phase, at which point the
+> native background and status-bar style will follow the active theme.
 
 The web app (Next.js) is untouched — no changes to middleware, `/api` routes,
 server logic, page components, `next.config.ts`, or the database.

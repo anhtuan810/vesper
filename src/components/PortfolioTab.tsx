@@ -165,8 +165,11 @@ export function PortfolioTab({
       {/* AI insight band — replaces milestone bar */}
       {assets.length > 0 && <InsightBand />}
 
-      {/* Holdings list — 4 semantic categories */}
-      <div>
+      {/* Holdings list — 4 semantic categories.
+          On mobile, bleed out of the page's horizontal padding (layout px-5 +
+          page px-4 = 36px) so rows sit ~12px (left) / 16px (right) from the
+          screen edge; restored to the page inset at sm+ so desktop is unchanged. */}
+      <div className="-mx-9 pl-3 pr-4 sm:mx-0 sm:px-0">
         <div className="flex items-baseline justify-between mb-3">
           <div
             className="font-serif"
