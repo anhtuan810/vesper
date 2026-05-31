@@ -138,11 +138,13 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
     // Route through the same-origin /api/logo proxy: it serves the upstream
     // image when it exists and a transparent pixel (HTTP 200) when it doesn't,
     // so a missing logo falls back to the monogram below without a console 404.
+    // Bump `v` to bust stale client/WebView caches of the blank fallback pixel
+    // (logos were previously broken by a case-sensitivity bug in the proxy).
     if (type === "crypto") {
       const base = symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toLowerCase();
-      imgUrl = `/api/logo?type=crypto&symbol=${encodeURIComponent(base)}`;
+      imgUrl = `/api/logo?type=crypto&symbol=${encodeURIComponent(base)}&v=2`;
     } else if (type === "stocks" || type === "etf") {
-      imgUrl = `/api/logo?type=stock&symbol=${encodeURIComponent(displayTicker(symbol))}`;
+      imgUrl = `/api/logo?type=stock&symbol=${encodeURIComponent(displayTicker(symbol))}&v=2`;
     }
   }
 

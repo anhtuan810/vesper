@@ -47,8 +47,11 @@ function transparentPixel() {
 
 function upstreamUrl(type: string, symbol: string): string {
   if (type === "crypto") {
-    return `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${symbol}.svg`;
+    // cryptocurrency-icons names its files in lowercase (e.g. btc.svg).
+    return `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${symbol.toLowerCase()}.svg`;
   }
+  // FMP's logo endpoint is case-sensitive and only serves uppercase tickers
+  // (e.g. AAPL.png); a lowercased ticker 404s. Keep the symbol's original case.
   return `https://images.financialmodelingprep.com/symbol/${fmpTicker(symbol)}.png`;
 }
 
@@ -84,7 +87,7 @@ export async function GET(request: NextRequest) {
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const upstream = await fetch(upstreamUrl(type, symbol.toLowerCase()), {
+    const upstream = await fetch(upstreamUrl(type, symbol), {
       signal: controller.signal,
     });
 
