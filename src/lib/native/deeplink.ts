@@ -31,12 +31,20 @@ export function installDeepLinkHandler(supabase: SupabaseClient) {
     const route = routeOf(url);
     const next = safeNext(url.searchParams.get("next"));
 
+    // Diagnostics: log route + presence flags only, never the code/token_hash
+    // (those are sensitive). Visible in the Xcode console while validating the
+    // native flow.
+    console.log(
+      `[native auth] appUrlOpen route="${route}" hasCode=${url.searchParams.has("code")} hasTokenHash=${url.searchParams.has("token_hash")}`
+    );
+
     try {
       if (route.endsWith("auth/callback")) {
         const code = url.searchParams.get("code");
         if (!code) return;
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) throw error;
+        console.log("[native auth] callback ok, navigating to", next);
         await Browser.close();
         window.location.assign(next);
         return;
@@ -48,6 +56,7 @@ export function installDeepLinkHandler(supabase: SupabaseClient) {
         if (!token_hash || !type) return;
         const { error } = await supabase.auth.verifyOtp({ token_hash, type });
         if (error) throw error;
+        console.log("[native auth] confirm ok, navigating to", next);
         await Browser.close();
         window.location.assign(next);
         return;
