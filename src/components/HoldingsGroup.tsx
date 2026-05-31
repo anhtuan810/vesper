@@ -75,26 +75,6 @@ export function HoldingsGroup({
         }}>
           {formatMoney(total, "USD", displayCurrency)}
         </span>
-
-        {/* Chevron */}
-        <svg
-          width={14}
-          height={14}
-          viewBox="0 0 256 256"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={20}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            flexShrink: 0,
-            color: "var(--text-faint)",
-            transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-          }}
-        >
-          <polyline points="96 48 176 128 96 208" />
-        </svg>
       </button>
 
       <div

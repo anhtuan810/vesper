@@ -89,8 +89,8 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
 
         {hasSparkline && <MiniSparkline prices={closes} />}
 
-        {/* Value + change — paddingRight aligns value right-edge with group total */}
-        <div className="text-right shrink-0" style={{ paddingRight: 28 }}>
+        {/* Value + change — flush to the row's right edge, matching the group total */}
+        <div className="text-right shrink-0">
           {!valuesSettled ? (
             <div className="bg-surface-elev rounded animate-pulse" style={{ height: 14, width: 64 }} />
           ) : (
