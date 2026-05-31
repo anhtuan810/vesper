@@ -1,0 +1,73 @@
+# Mobile build (iOS) — Capacitor wrapper
+
+Phase 1 of the iOS launch. The native app is a **remote-URL wrapper**: it ships
+an iOS shell (Capacitor) whose WebView loads the live production site at
+`https://app.volnar.nl`. There is **no bundled static web build** — web changes
+deployed to production flow into the app automatically with no native rebuild.
+
+Native OAuth, Face ID lock, and account deletion are **later phases** and are
+not part of this wrapper.
+
+## Configuration
+
+- `capacitor.config.ts`
+  - `appId`: `nl.volnar.app`
+  - `appName`: `Volnar`
+  - `webDir`: `public` (placeholder only; remote `server.url` is what actually loads)
+  - `server.url`: `https://app.volnar.nl`, `cleartext: false`
+  - `ios.contentInset`: `always`
+
+The web app (Next.js) is untouched — no changes to middleware, `/api` routes,
+server logic, page components, `next.config.ts`, or the database.
+
+## Common tasks
+
+| Task | Command |
+| --- | --- |
+| Open the iOS project in Xcode | `npm run mobile:open` |
+| Build & run on a simulator/device | `npm run mobile:run` |
+| Sync config / plugins into iOS | `npm run mobile:sync` |
+| Regenerate app icons & splash | `npm run mobile:assets` |
+
+### Open in Xcode and run
+
+```bash
+npm run mobile:open
+```
+
+Then in Xcode select a simulator or device and press the **play** button. The
+app launches and loads `https://app.volnar.nl`.
+
+### Sync after plugin / config changes
+
+Run after adding a Capacitor plugin or editing `capacitor.config.ts`:
+
+```bash
+npm run mobile:sync
+```
+
+(Capacitor 8 iOS uses Swift Package Manager — there is no `pod install` step.)
+
+### Regenerate icons & splash
+
+Source assets live in `assets/` (`icon.png` 1024×1024, `splash.png` 2732×2732).
+After editing them, regenerate the iOS asset catalog on a Mac:
+
+```bash
+npm run mobile:assets
+```
+
+## ⚠️ Icons are generated from the brand mark — review before submission
+
+The current `assets/icon.png` and `assets/splash.png` were generated
+programmatically from the existing Volnar "V" mark (`public/volnar-mark.svg`)
+on a warm-black (`#0E0E0C`) background, with the mark in cream (`#FAF6EB`) and
+the inner triangle in brand green (`#4A7C5E`). They are functional and
+on-brand, but were **not produced by a designer**. Replace them with
+final, design-approved artwork before App Store submission, then rerun
+`npm run mobile:assets`.
+
+## Toolchain
+
+- Capacitor 8 (CLI + core + ios)
+- Xcode 26
