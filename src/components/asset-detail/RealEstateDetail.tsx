@@ -77,7 +77,7 @@ export function RealEstateDetail({ asset }: Props) {
   ].filter(Boolean) as { label: string; value: string; meta: string | null }[];
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
       <div className="px-4 sm:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
 
         {/* Top bar: back only */}
