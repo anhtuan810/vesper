@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Source_Serif_4, Albert_Sans, Geist_Mono } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
@@ -32,6 +32,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Volnar",
   description: "Your personal portfolio assistant",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Extend the layout into the safe-area insets so env(safe-area-inset-*)
+  // resolves to real values (needed by the bottom nav on notched iOS devices).
+  viewportFit: "cover",
+  // Native WebView background fallback (light mode). Dark-mode parity comes
+  // with @capacitor/status-bar in a later phase.
+  themeColor: "#FAF6EB",
 };
 
 type ThemeMode = "light" | "dark";

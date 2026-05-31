@@ -53,8 +53,15 @@ export function NavBar({
 
   return (
     <nav
-      className="sticky top-0 z-20 border-b border-border backdrop-blur-xl"
-      style={{ background: "var(--nav-surface)", WebkitBackdropFilter: "blur(20px)" }}
+      className="sticky top-0 z-20 border-b border-border"
+      style={{
+        background: "var(--nav-surface)",
+        backdropFilter: "saturate(180%) blur(20px)",
+        WebkitBackdropFilter: "saturate(180%) blur(20px)",
+        // Clear the iOS status bar / notch (0 on web). The frosted surface
+        // fills the safe area; content sits below it.
+        paddingTop: "env(safe-area-inset-top, 0px)",
+      }}
     >
       <div className="max-w-[720px] mx-auto flex items-center justify-between px-5 h-14">
         {/* Left: brand · desktop tabs */}

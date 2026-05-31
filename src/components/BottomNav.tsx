@@ -89,9 +89,11 @@ export function BottomNav() {
       className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border"
       style={{
         background: "var(--nav-surface)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        backdropFilter: "saturate(180%) blur(20px)",
+        WebkitBackdropFilter: "saturate(180%) blur(20px)",
+        // Clear the iOS home indicator (0 on web). Applied on the fixed nav
+        // itself so the inset reaches the bottom edge.
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
       <div className="flex items-center h-16">

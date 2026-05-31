@@ -10,6 +10,10 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: "always",
+    // Native WebView background fallback (light mode). Prevents a white flash
+    // behind the web content before/around paint. Dark-mode parity comes with
+    // @capacitor/status-bar in a later phase.
+    backgroundColor: "#FAF6EB",
   },
 };
 
