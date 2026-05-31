@@ -205,7 +205,7 @@ export default function ChatPage() {
             if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
           }}
           style={{
-            padding: "32px 22px 160px",
+            padding: "32px 0 160px",
             scrollbarWidth: "none",
             display: "flex",
             flexDirection: "column",
@@ -406,7 +406,7 @@ export default function ChatPage() {
             bottom: "calc(56px + env(safe-area-inset-bottom))",
             left: 0,
             right: 0,
-            padding: "0 22px 12px",
+            padding: "0 0 12px",
           }}
         >
           {/* Image previews */}
