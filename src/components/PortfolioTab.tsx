@@ -142,8 +142,10 @@ export function PortfolioTab({
 
   return (
     <>
-      {/* Hero + chart — constrained so the chart never stretches past a readable aspect ratio */}
-      <div style={{ maxWidth: 660 }}>
+      {/* Hero + chart — constrained so the chart never stretches past a readable aspect ratio.
+          -mx-4 (mobile) bleeds left/right to cancel the page wrapper's px-4 so the hero number,
+          chart and range pills sit flush with the full-bleed market/insight band edges. */}
+      <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
         <div className="mb-5">
           <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} valuesSettled={valuesSettled} />
         </div>
@@ -170,7 +172,9 @@ export function PortfolioTab({
           (-mx-4 md:-mx-8 + 16px) so holding rows share the same left/right
           column as the market cards at every breakpoint. */}
       <div className="-mx-4 md:-mx-8 px-4">
-        <div className="flex items-baseline justify-between mb-3">
+        {/* Section header bleeds back out to the band edge (mobile) so the
+            "Holdings" title lines up with the hero number, not the inset rows. */}
+        <div className="flex items-baseline justify-between mb-3 -mx-4 md:mx-0">
           <div
             className="font-serif"
             style={{
