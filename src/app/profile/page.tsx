@@ -160,7 +160,7 @@ export default function ProfilePage() {
         refreshPrices={() => {}}
         empty
       />
-      <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 16px 110px" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
 
         {/* Name as page title + fingerprint as supporting line */}
         <div style={{ paddingTop: 32, marginBottom: 26 }}>

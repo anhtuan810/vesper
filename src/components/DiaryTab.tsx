@@ -318,7 +318,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       {anniversaryEntry && (
         <button
           onClick={() => jumpToEntry(anniversaryEntry.mutation)}
-          className="-mx-4 md:-mx-8 mb-[18px]"
+          className="mx-0 md:-mx-8 mb-[18px]"
           style={{
             display: "block",
             textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer",
