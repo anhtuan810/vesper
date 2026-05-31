@@ -63,7 +63,7 @@ export function NavBar({
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
-      <div className="max-w-[720px] mx-auto flex items-center justify-between px-5 h-14">
+      <div className="max-w-[720px] mx-auto flex items-center justify-between px-5 h-9 md:h-14">
         {/* Left: brand · desktop tabs */}
         <div className="flex items-center gap-4">
           <Logo size={20} />

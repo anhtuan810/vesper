@@ -96,7 +96,7 @@ export function BottomNav() {
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <div className="flex items-center h-16">
+      <div className="flex items-center h-14">
         {STATIC_TABS.map(({ label, href, icon }) => {
           const resolvedHref = label === "Chat" ? chatHref : href;
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);

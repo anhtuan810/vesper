@@ -95,7 +95,7 @@ export default function Dashboard() {
   if (userLoading || assetsLoading) {
     return (
       <div className="min-h-screen bg-bg">
-        <div className="h-14 bg-surface border-b border-border" />
+        <div className="h-9 md:h-14 bg-surface border-b border-border" />
         <div className="max-w-2xl mx-auto px-4 pt-6 space-y-3">
           <div className="bg-surface rounded-2xl border border-border p-8 animate-pulse">
             <div className="flex gap-8">

@@ -403,7 +403,7 @@ export default function ChatPage() {
           className="chat-composer-gradient"
           style={{
             position: "absolute",
-            bottom: "calc(64px + env(safe-area-inset-bottom))",
+            bottom: "calc(56px + env(safe-area-inset-bottom))",
             left: 0,
             right: 0,
             padding: "0 22px 12px",
