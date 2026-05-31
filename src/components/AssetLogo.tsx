@@ -135,11 +135,14 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
 
   let imgUrl: string | null = null;
   if (!imgFailed && symbol) {
+    // Route through the same-origin /api/logo proxy: it serves the upstream
+    // image when it exists and a transparent pixel (HTTP 200) when it doesn't,
+    // so a missing logo falls back to the monogram below without a console 404.
     if (type === "crypto") {
       const base = symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toLowerCase();
-      imgUrl = `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${encodeURIComponent(base)}.svg`;
+      imgUrl = `/api/logo?type=crypto&symbol=${encodeURIComponent(base)}`;
     } else if (type === "stocks" || type === "etf") {
-      imgUrl = `https://images.financialmodelingprep.com/symbol/${encodeURIComponent(displayTicker(symbol))}.png`;
+      imgUrl = `/api/logo?type=stock&symbol=${encodeURIComponent(displayTicker(symbol))}`;
     }
   }
 

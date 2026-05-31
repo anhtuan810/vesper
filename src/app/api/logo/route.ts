@@ -27,6 +27,24 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
+// 1x1 transparent PNG, returned (HTTP 200) when no upstream logo exists so the
+// client falls back to a monogram without the browser logging a failed load.
+const TRANSPARENT_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+function transparentPixel() {
+  return new NextResponse(TRANSPARENT_PNG, {
+    headers: {
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=86400",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'",
+    },
+  });
+}
+
 function upstreamUrl(type: string, symbol: string): string {
   if (type === "crypto") {
     return `https://cdn.jsdelivr.net/npm/cryptocurrency-icons/svg/color/${symbol}.svg`;
@@ -71,7 +89,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!upstream.ok) {
-      return new NextResponse("not found", { status: 404 });
+      return transparentPixel();
     }
 
     const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
@@ -91,7 +109,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch {
-    return new NextResponse("not found", { status: 404 });
+    return transparentPixel();
   } finally {
     clearTimeout(timeoutId);
   }

@@ -36,15 +36,20 @@ export function LiquidityStack({ data }: Props) {
 
   const totalPct = tiers.reduce((s, t) => s + t.pct, 0) || 100;
 
-  // Compute widths proportionally; distribute rounding to last rect
+  // Compute widths proportionally; distribute rounding to last rect.
+  // Zero-percent tiers take no space (and no gap), and the last rect is clamped
+  // to >= 0 so the min-width floors on tiny tiers can never overflow TOTAL_W and
+  // produce a negative width.
   let curX = 0;
   const rects = tiers.map((t, i) => {
     const isLast = i === tiers.length - 1;
     const w = isLast
-      ? TOTAL_W - curX
-      : Math.max(2, Math.round((t.pct / totalPct) * RECT_AREA));
+      ? Math.max(0, TOTAL_W - curX)
+      : t.pct > 0
+        ? Math.max(2, Math.round((t.pct / totalPct) * RECT_AREA))
+        : 0;
     const rect = { x: curX, w, color: t.color };
-    curX += w + (isLast ? 0 : GAP);
+    curX += w > 0 && !isLast ? w + GAP : w;
     return rect;
   });
 
