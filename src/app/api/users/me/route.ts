@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
@@ -134,5 +135,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// Permanent, irreversible account deletion. The user id is resolved from the
+// session only — never from the request body. Removes every row owned by the
+// user across all tables, then the users row, then the auth user itself.
+export async function DELETE(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const userId = user.id;
+  const supabase = createServerSupabase();
+
+  try {
+    // Order matters: dependent data first, the users row last, auth user after.
+    const tables = ["messages", "highlights", "goals", "snapshots", "mutations", "assets"];
+    for (const table of tables) {
+      const { error } = await supabase.from(table).delete().eq("user_id", userId);
+      if (error) throw new Error(`Failed deleting ${table}: ${error.message}`);
+    }
+
+    const { error: userError } = await supabase.from("users").delete().eq("id", userId);
+    if (userError) throw new Error(`Failed deleting users row: ${userError.message}`);
+
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    if (authError) throw new Error(`Failed deleting auth user: ${authError.message}`);
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    Sentry.captureException(err, { tags: { route: "DELETE /api/users/me" } });
+    return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
   }
 }
