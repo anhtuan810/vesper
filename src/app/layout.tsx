@@ -39,6 +39,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Shrink the layout viewport when the soft keyboard opens so fixed/flex-bottom
+  // elements (the chat composer) ride above it instead of being covered.
+  interactiveWidget: "resizes-content",
   // Extend the layout into the safe-area insets so env(safe-area-inset-*)
   // resolves to real values (needed by the bottom nav on notched iOS devices).
   viewportFit: "cover",

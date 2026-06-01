@@ -37,17 +37,11 @@ export default function ChatPage() {
   const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
   const [pendingSeed, setPendingSeed] = useState<{ source: SeedSource; key: string } | null>(null);
 
-  // Track the visual viewport height so the container follows the iOS keyboard.
-  // 100dvh does not recompute when the keyboard opens, which lets content slide
-  // under the status bar; the visual viewport height shrinks precisely instead.
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
-  // Keyboard is open when the visible viewport is noticeably shorter than the
-  // layout viewport. Used to drop the BottomNav clearance, which is occluded by
-  // the keyboard, so the composer sits just above it with no gap.
-  const keyboardOpen =
-    viewportHeight !== null &&
-    typeof window !== "undefined" &&
-    window.innerHeight - viewportHeight > 100;
+  // Keyboard open/close is tracked from textarea focus. With the viewport meta
+  // interactive-widget=resizes-content the layout viewport shrinks on its own,
+  // so we only need this to drop the BottomNav clearance from the composer and
+  // to hide the nav while typing.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   // Auto-grow the composer: expand with the text and cap at ~5 lines, after
   // which it scrolls internally. Keeps the field single-line until needed.
@@ -94,19 +88,9 @@ export default function ChatPage() {
     return () => {
       document.body.style.overflow = previousOverflow;
       window.scrollTo(0, 0);
+      // Clear the keyboard flag so the BottomNav reappears on other routes.
+      document.documentElement.dataset.kb = "";
     };
-  }, []);
-
-  // Read the visual viewport height before paint (no flash) and keep it in sync
-  // with the keyboard via the "resize" event. Falls back to 100dvh in render
-  // when visualViewport is unavailable.
-  useLayoutEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-    const vv = window.visualViewport;
-    const update = () => setViewportHeight(vv.height);
-    update();
-    vv.addEventListener("resize", update);
-    return () => vv.removeEventListener("resize", update);
   }, []);
 
   // Reads window.location.search directly to avoid the Suspense requirement of useSearchParams.
@@ -238,8 +222,18 @@ export default function ChatPage() {
       `}</style>
 
       <div
-        className="relative flex flex-col overflow-hidden bg-bg"
-        style={{ height: viewportHeight ? `${viewportHeight}px` : "100dvh" }}
+        className="flex flex-col overflow-hidden bg-bg"
+        style={{
+          position: "fixed",
+          inset: 0,
+          height: "100dvh",
+          // Keep the shared layout's centered column + horizontal inset, which
+          // fixed positioning would otherwise escape.
+          maxWidth: 720,
+          margin: "0 auto",
+          paddingLeft: 20,
+          paddingRight: 20,
+        }}
       >
         {/* Messages */}
         <div
@@ -249,7 +243,8 @@ export default function ChatPage() {
             if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
           }}
           style={{
-            padding: "calc(32px + env(safe-area-inset-top)) 0 calc(160px + env(safe-area-inset-bottom))",
+            minHeight: 0,
+            padding: "calc(32px + env(safe-area-inset-top)) 0 16px",
             scrollbarWidth: "none",
             display: "flex",
             flexDirection: "column",
@@ -442,15 +437,14 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Floating composer — positioned above the bottom nav */}
+        {/* Composer — last flex child; rides above the keyboard via resizes-content */}
         <div
           className="chat-composer-gradient"
           style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: keyboardOpen ? "0 0 12px" : "0 0 calc(56px + env(safe-area-inset-bottom) + 12px)",
+            flexShrink: 0,
+            padding: keyboardOpen
+              ? "0 0 env(safe-area-inset-bottom)"
+              : "0 0 calc(64px + env(safe-area-inset-bottom))",
           }}
         >
           {/* Image previews */}
@@ -521,6 +515,7 @@ export default function ChatPage() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              tabIndex={-1}
               style={{ display: "none" }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -562,6 +557,8 @@ export default function ChatPage() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onFocus={() => { setKeyboardOpen(true); document.documentElement.dataset.kb = "open"; }}
+              onBlur={() => { setKeyboardOpen(false); document.documentElement.dataset.kb = ""; }}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
               onPaste={handlePaste}
               maxLength={500}

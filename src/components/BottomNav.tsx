@@ -85,8 +85,13 @@ export function BottomNav() {
   const chatHref = assetIdMatch ? `/chat?seed=asset&key=${assetIdMatch[1]}` : "/chat";
 
   return (
+    <>
+    {/* While the chat keyboard is open the nav rides above it (resizes-content)
+        and would overlap the composer, so hide it. The chat page sets/clears
+        data-kb on :root. */}
+    <style>{`:root[data-kb="open"] .kb-hide-nav { display: none; }`}</style>
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border"
+      className="kb-hide-nav md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border"
       style={{
         background: "var(--nav-surface)",
         backdropFilter: "saturate(180%) blur(20px)",
@@ -167,5 +172,6 @@ export function BottomNav() {
         })}
       </div>
     </nav>
+    </>
   );
 }
