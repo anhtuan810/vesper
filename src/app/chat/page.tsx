@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useLayoutEffect, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { FormatText } from "@/components/FormatText";
@@ -20,7 +20,7 @@ export default function ChatPage() {
     loadMore, hasMore, isLoadingMore,
   } = useChatSession({ userId: user?.id });
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -48,6 +48,18 @@ export default function ChatPage() {
     viewportHeight !== null &&
     typeof window !== "undefined" &&
     window.innerHeight - viewportHeight > 100;
+
+  // Auto-grow the composer: expand with the text and cap at ~5 lines, after
+  // which it scrolls internally. Keeps the field single-line until needed.
+  const autoGrowComposer = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const capped = Math.min(el.scrollHeight, 120);
+    el.style.height = capped + "px";
+    el.style.overflowY = el.scrollHeight > 120 ? "auto" : "hidden";
+  }, []);
+  useEffect(() => { autoGrowComposer(); }, [input, autoGrowComposer]);
 
   // Restore scroll position after prepending older messages (loadMore).
   // useLayoutEffect runs before paint so there's no visible jump.
@@ -527,8 +539,7 @@ export default function ChatPage() {
               style={{
                 position: "absolute",
                 left: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
+                bottom: 8,
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
@@ -553,13 +564,14 @@ export default function ChatPage() {
               </svg>
             </button>
 
-            <input
+            <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
               onPaste={handlePaste}
               maxLength={500}
+              rows={1}
               placeholder={(() => {
                 if (remaining === 0) return "Daily limit reached — back tomorrow";
                 if (imageData.length) return "Add a note or send…";
@@ -574,9 +586,15 @@ export default function ChatPage() {
               style={{
                 background: "transparent",
                 border: "none",
+                resize: "none",
                 fontFamily: "var(--sans)",
                 fontSize: 15,
+                lineHeight: 1.4,
                 color: "var(--text)",
+                padding: 0,
+                margin: 0,
+                maxHeight: 120,
+                overflowY: "hidden",
               }}
             />
 
@@ -588,8 +606,7 @@ export default function ChatPage() {
               style={{
                 position: "absolute",
                 right: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
+                bottom: 6,
                 width: 34,
                 height: 34,
                 borderRadius: "50%",
