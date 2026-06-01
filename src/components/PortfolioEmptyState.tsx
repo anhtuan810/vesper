@@ -174,7 +174,7 @@ export function PortfolioEmptyState() {
     <div
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      style={{ paddingTop: 22, paddingLeft: 22, paddingRight: 22 }}
+      style={{ paddingTop: 22 }}
     >
       <style>{`
         .es-pill { transition: background 0.12s, transform 0.1s; }

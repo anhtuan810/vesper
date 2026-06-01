@@ -156,7 +156,9 @@ export async function POST(req: NextRequest) {
       try {
         response = await anthropic.messages.create({
           model: "claude-sonnet-4-6",
-          max_tokens: 2000,
+          // A multi-row screenshot import can produce a large <changes> JSON
+          // (a 14-row batch can exceed 2000 tokens and truncate mid-array).
+          max_tokens: images.length > 0 ? 3000 : 2000,
           system: systemBlocks,
           messages: [
             ...history,
@@ -423,7 +425,7 @@ export async function POST(req: NextRequest) {
           // Enables the freshness check in apply-changes for confirmed proposals.
           const proposalTimestamp = (recentMessages || []).find((m) => m.role === "assistant")?.created_at ?? null;
 
-          const { changed, duplicateWarnings, fxWarnings, mutationMetas } = await applyPortfolioChanges({
+          const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures } = await applyPortfolioChanges({
             supabase,
             userId,
             changes,
@@ -453,6 +455,13 @@ export async function POST(req: NextRequest) {
           }
           if (fxWarnings.length > 0) {
             const suffix = fxWarnings.join(" ");
+            displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
+          }
+          if (failures.length > 0) {
+            const names = failures.map((f) => f.name).join(", ");
+            const suffix = failures.length === 1
+              ? `Couldn't record ${names} — please try that one again.`
+              : `Couldn't record ${failures.length} positions (${names}) — please try those again.`;
             displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
           }
           if (resolvedCanonicalAddresses.length > 0 && portfolioChanged) {

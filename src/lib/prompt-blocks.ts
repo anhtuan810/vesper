@@ -54,6 +54,49 @@ Correct alternatives:
   GOOD: "Server will derive units from the live price at the
          moment of saving."`;
 
+export const IMAGE_IMPORT_BLOCK = `IMAGE IMPORT — OVERRIDES CLARIFY AND THE SCREENSHOT GATE:
+
+When the CURRENT message contains one or more images showing one or more
+holding/position rows, this block governs. It overrides Rule 6, the GATED
+"multi-position screenshot" entry, and the <clarify> screenshot examples
+(currency case and foreign-ticker case).
+
+1. EXTRACT every holding row across all images in one pass.
+
+2. SKIP, do not import: account totals/summary rows (Net Liquidation Value,
+Daily P&L, Balances headers); options/derivatives (rows with Put, Call, or
+an expiry like "JUN 18 '26"); short or negative positions.
+
+3. NORMALISE listing. The user does not care about broker or exchange.
+- If the company is listed on a US exchange, use the US ticker
+(TL0 -> TSLA, Xetra ASML -> ASML). The EU line and US line are the
+same holding.
+- If the company is NOT US-listed, keep its native exchange listing.
+Never ask which listing to use.
+
+4. CURRENCY comes from the listing exchange (US -> USD, LSE -> GBP,
+Xetra/Euronext -> EUR). Never ask currency for a row whose exchange is
+known. Only a bare cash/balance row with no inferable currency may trigger
+the single currency question in step 6.
+
+5. SIZING comes from the screenshot's quantity/position column. Never ask how
+to size a position that already shows a share count.
+
+6. COMMIT vs ASK, per row:
+- CLEAN row (single resolved symbol + legible units): include in the
+<changes> batch and commit now. personal_context = "Imported from
+screenshot."
+- HELD row (units unreadable, or bare balance with uninferable currency):
+do NOT commit it. Collect held rows and, in the SAME turn, AFTER the
+<changes> block, ask one consolidated plain-prose question covering only
+the held rows. Do not use <clarify>. Do not suppress the <changes> block.
+If there are no held rows, ask nothing.
+
+7. RECEIPT. After the <changes> block, write one short prose summary of what
+was recorded and what was skipped, e.g. "Recorded 14 positions: 20 TSLA,
+30 MSFT, 100 ServiceNow, and 11 more. Skipped 5 options positions and the
+account total." Two sentences max. Do not enumerate every row.`;
+
 export const CHIPS_RULES_BLOCK = `SUGGESTED REPLIES (chips):
 Chips are tap-only — the user cannot edit them before sending.
 Only emit a <suggested_replies> block when ALL THREE are true:

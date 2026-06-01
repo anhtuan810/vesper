@@ -91,7 +91,7 @@ export async function applyPortfolioChanges({
   currentAssets: CurrentAsset[];
   contextNote: string | null;
   proposalTimestamp?: string | null;
-}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[] }> {
+}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string }[] }> {
   // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
   const usdRates = await getUsdRates();
   const toUsdSync = (amount: number, currency: string): number => {
@@ -103,6 +103,9 @@ export async function applyPortfolioChanges({
   const duplicateWarnings: string[] = [];
   const fxWarnings: string[] = [];
   const mutationMetas: MutationMeta[] = [];
+  // Per-row failures collected so one bad row in a multi-row batch (e.g. a
+  // screenshot import) reports and skips rather than aborting every other row.
+  const failures: { name: string; reason: string }[] = [];
   let changed = false;
 
   // Alias-resolve symbols synchronously before any I/O (e.g. TL0.DE → TSLA)
@@ -161,6 +164,7 @@ export async function applyPortfolioChanges({
 
     if (!name?.trim()) continue;
 
+    try {
     if (action === "add") {
       const resolvedAssetName =
         TRADEABLE_TYPES.has(change.type ?? "") && resolvedNames[i]
@@ -520,7 +524,15 @@ export async function applyPortfolioChanges({
         }
       }
     }
+    } catch (err) {
+      // Single-row batches rethrow so callers can surface the specific
+      // message (e.g. the value-mode "market moved" / "couldn't fetch price"
+      // ValueModeError on a confirm turn). Multi-row batches collect the
+      // failure and continue, so one bad row never blocks the others.
+      if (changes.length === 1) throw err;
+      failures.push({ name, reason: err instanceof Error ? err.message : String(err) });
+    }
   }
 
-  return { changed, duplicateWarnings, fxWarnings, mutationMetas };
+  return { changed, duplicateWarnings, fxWarnings, mutationMetas, failures };
 }

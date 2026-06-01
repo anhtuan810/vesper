@@ -37,6 +37,17 @@ export default function ChatPage() {
   const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
   const [pendingSeed, setPendingSeed] = useState<{ source: SeedSource; key: string } | null>(null);
 
+  // Track the visual viewport height so the container follows the iOS keyboard.
+  // 100dvh does not recompute when the keyboard opens, which lets content slide
+  // under the status bar; the visual viewport height shrinks precisely instead.
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  // Keyboard is open when the visible viewport is noticeably shorter than the
+  // layout viewport. Used to close the gap the BottomNav clearance leaves.
+  const keyboardOpen =
+    viewportHeight !== null &&
+    typeof window !== "undefined" &&
+    window.innerHeight - viewportHeight > 100;
+
   // Restore scroll position after prepending older messages (loadMore).
   // useLayoutEffect runs before paint so there's no visible jump.
   useLayoutEffect(() => {
@@ -63,6 +74,30 @@ export default function ChatPage() {
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
+  // Lock document scroll for the lifetime of the route. This stops the iOS
+  // keyboard from scrolling the body (sliding content under the status bar)
+  // and prevents any scroll offset from carrying over to the next tab.
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.scrollTo(0, 0);
+    };
+  }, []);
+
+  // Read the visual viewport height before paint (no flash) and keep it in sync
+  // with the keyboard via the "resize" event. Falls back to 100dvh in render
+  // when visualViewport is unavailable.
+  useLayoutEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const update = () => setViewportHeight(vv.height);
+    update();
+    vv.addEventListener("resize", update);
+    return () => vv.removeEventListener("resize", update);
   }, []);
 
   // Reads window.location.search directly to avoid the Suspense requirement of useSearchParams.
@@ -195,7 +230,7 @@ export default function ChatPage() {
 
       <div
         className="relative flex flex-col overflow-hidden bg-bg"
-        style={{ height: "100dvh" }}
+        style={{ height: viewportHeight ? `${viewportHeight}px` : "100dvh" }}
       >
         {/* Messages */}
         <div
@@ -205,7 +240,7 @@ export default function ChatPage() {
             if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
           }}
           style={{
-            padding: "32px 0 160px",
+            padding: "calc(32px + env(safe-area-inset-top)) 0 160px",
             scrollbarWidth: "none",
             display: "flex",
             flexDirection: "column",
@@ -403,7 +438,7 @@ export default function ChatPage() {
           className="chat-composer-gradient"
           style={{
             position: "absolute",
-            bottom: "calc(56px + env(safe-area-inset-bottom))",
+            bottom: `calc(${keyboardOpen ? 12 : 56}px + env(safe-area-inset-bottom))`,
             left: 0,
             right: 0,
             padding: "0 0 12px",

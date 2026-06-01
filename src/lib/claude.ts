@@ -2,7 +2,7 @@ import type { Asset, UserProfile, Mutation } from "./supabase";
 import type { DisplayCurrency } from "./money";
 import { computeCurrentBalance } from "./mortgage";
 import { ONBOARDING_OPENER } from "./copy";
-import { PRICE_KNOWLEDGE_BLOCK, CHIPS_RULES_BLOCK, clarifyBlock } from "./prompt-blocks";
+import { PRICE_KNOWLEDGE_BLOCK, IMAGE_IMPORT_BLOCK, CHIPS_RULES_BLOCK, clarifyBlock } from "./prompt-blocks";
 
 // Injects the display-currency rendering directive into a prompt block.
 function displayDirective(displayCurrency: DisplayCurrency): string {
@@ -40,7 +40,7 @@ RULES:
    If neither units nor a monetary value is provided, ask for units before proceeding. Never add with value=0 as a placeholder.
 4. If the user says they don't know the price or can't remember, add with value 0 — the system will auto-fill from historical data.
 5. If the user asks a what-if or hypothetical question, answer WITHOUT making changes. Do NOT include a <changes> block for hypotheticals.
-6. When an image is provided IN THE CURRENT MESSAGE, extract all visible positions and add them immediately. Do not treat positions you described in a previous turn as unfinished — they are already saved in the portfolio context above.
+6. When an image is provided IN THE CURRENT MESSAGE, extract all visible positions and add them immediately via <changes> — the IMAGE IMPORT block below governs and overrides the screenshot entries in the CONFIRMATION GATE. Do not treat positions you described in a previous turn as unfinished — they are already saved in the portfolio context above.
 7. For transaction dates: if vague (last week, in March), ask once for the day. Never ask twice.
 8. Refer to stocks by company name or bare ticker. Never include exchange suffixes (.AS, .L, .PA, .T, etc.) in your responses.
 9. Never re-add an asset already present in the portfolio context. Once a <changes> block is emitted and saved, those assets appear above — do not emit them again in any subsequent turn.
@@ -58,8 +58,12 @@ Use <propose_change> instead of <changes> in any of these cases:
   - Any change where you inferred a buy_date the user did not
     state (silent defaulting to today is NOT allowed)
   - Any change where you inferred a name from a screenshot that
-    the user did not explicitly confirm
-  - Multi-position adds from a screenshot (batch)
+    the user did not explicitly confirm (does NOT apply to
+    image-import rows — the IMAGE IMPORT block commits clean rows
+    directly)
+  - Multi-position adds from a screenshot (batch) — SUPERSEDED for
+    images in the current message by the IMAGE IMPORT block, which
+    routes clean rows straight to <changes>
 
   NOT GATED — commit immediately with <changes>:
   - Mode 3 (full purchase with explicit units AND buy_price
@@ -263,6 +267,8 @@ through <propose_change> so the user sees and can correct the
 defaulted value.
 
 ${clarifyBlock()}
+
+${IMAGE_IMPORT_BLOCK}
 
 CORRECTION DETECTION:
 
@@ -634,7 +640,7 @@ RULES:
 - Assets first, goals last. Never start with goals.
 - "Just keeping track" is a valid answer. Don't push.
 - Refer to stocks by company name or bare ticker. Never include exchange suffixes (.AS, .L, .PA, .T, etc.) in your responses.
-- When an image is provided IN THE CURRENT MESSAGE, extract and add positions immediately. Assets you described in a previous turn are already saved — do not re-add them.
+- When an image is provided IN THE CURRENT MESSAGE, extract and add positions immediately via <changes> — the IMAGE IMPORT block below governs and overrides the screenshot entries in the CONFIRMATION GATE. Assets you described in a previous turn are already saved — do not re-add them.
 - Never re-add an asset already present in the portfolio context. Once added, it stays added.
 - If the user's message contains no add/edit/remove intent (e.g. "I'm done", "that's all", "thanks"), respond conversationally only — do not emit <changes>.
 
@@ -649,8 +655,11 @@ Use <propose_change> instead of <changes> in any of these cases:
   - Remove action: any deletion
   - Any change where you inferred a buy_date the user did not state
   - Any change where you inferred a name from a screenshot the user
-    did not explicitly confirm
-  - Multi-position adds from a screenshot (batch)
+    did not explicitly confirm (does NOT apply to image-import rows —
+    the IMAGE IMPORT block commits clean rows directly)
+  - Multi-position adds from a screenshot (batch) — SUPERSEDED for
+    images in the current message by the IMAGE IMPORT block, which
+    routes clean rows straight to <changes>
 
   NOT GATED — commit immediately with <changes>:
   - Mode 3 (full purchase with explicit units AND buy_price AND
@@ -694,6 +703,8 @@ through <propose_change> so the user sees and can correct the
 defaulted value.
 
 ${clarifyBlock(true)}
+
+${IMAGE_IMPORT_BLOCK}
 
 CORRECTION DETECTION:
 
