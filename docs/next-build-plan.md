@@ -148,24 +148,23 @@ Build when there's enough portfolio history per user (3+ months of snapshots) an
 
 ## Known performance issues
 
-Two real performance concerns surfaced in user testing but not yet
-investigated or fixed. Both have planned architectural approaches.
-Both deserve a fresh chat with proper attention rather than
-end-of-session triage.
+Two performance concerns surfaced in user testing. Both have since been
+addressed; remaining items are marginal. Re-measure in production before
+any further work.
 
 ### Portfolio page slow load (production)
 
 Symptom: cold load of `/` is slow in production. Noticeable wait
 before the page is interactive.
 
-**Status: partially addressed.**
+**Status: largely addressed.**
 - ✅ `/api/dashboard-init` batched endpoint — already shipped, parallel-fetches all data in one auth round-trip
 - ✅ Assets stale-while-revalidate (sessionStorage) — already shipped
 - ✅ `snapshots(user_id, date DESC)` DB index — added in `20260520_perf_indices.sql`
 - ✅ Thin-portfolio insight path — skips Haiku for ≤3 assets, eliminating the cold-insight latency for new users
-- ⬜ Server Component for the static shell — `src/app/page.tsx` is still a Client Component (`"use client"`). Moving layout + hero + holdings skeleton to a Server Component would get meaningful HTML before JS hydrates.
-- ⬜ Lazy per-category sparklines and day-change pills — currently load synchronously with `dashboard-init` data. Should wait until a group is expanded.
-- ⬜ Lazy per-range chart data — only 1M should load with the page; other ranges fetch on tap.
+- ⬜ Server Component for the static shell — `src/app/page.tsx` is still a Client Component (`"use client"`). Moving layout + hero + holdings skeleton to a Server Component would get meaningful HTML before JS hydrates. Now low-priority given progressive render and sessionStorage SWR already shipped.
+- ⬜ Lazy per-category sparklines and day-change pills — currently load synchronously with `dashboard-init` data. Should wait until a group is expanded. Now low-priority given progressive render and sessionStorage SWR already shipped.
+- ✅ Lazy per-range chart data — implemented; only the 1M range loads with the page via `dashboard-init`, other ranges fetch on tap.
 
 Remaining root causes worth investigating:
 - Yahoo Finance latency is variable; 5-min cache means first hit after expiry is full-cost.

@@ -137,18 +137,17 @@ Backend
 
 **The original change:** On signup via Google OAuth, `users.avatar_url` is populated with the Google profile photo. Tap the avatar on Profile → photo picker → upload → store in Supabase Storage → overwrite `users.avatar_url`. Falls back to initials when no avatar is set.
 
-**Amendment (2026-05-22):** The avatar UI was removed from the Profile page. There is no tap-to-upload, no image render, and no initials fallback on Profile. NavBar never rendered an avatar either — `firstName` only. `avatar_url` is now vestigial: the schema column exists, `/api/users/me` still accepts it in the PATCH allowlist (for forward compatibility), and the Google-OAuth-on-signup write still fires — but no UI surface currently reads or renders it.
+**Amendment (2026-05-22):** The avatar UI was removed from the Profile page. There is no tap-to-upload, no image render, and no initials fallback on Profile. NavBar never rendered an avatar either — `firstName` only. `avatar_url` is now vestigial: the schema column exists, the Google-OAuth-on-signup write still fires, and `GET /api/users/me` still returns it — but no UI surface currently reads or renders it.
 
 **What remains:**
 - `users.avatar_url` column — kept in schema, untouched.
-- `src/app/api/users/me/route.ts` — `avatar_url` stays in the allowlist.
 - The Google-OAuth-on-signup write path — unchanged.
-- `src/lib/avatar-upload.ts` — file still exists but is not imported by any active page.
 
 **What is gone:**
 - Tap target on Profile.
 - `src/app/profile/page.tsx` avatar block (button, image, initials badge, camera badge, file input, upload handler, `avatarUploading` state, `avatarError` state).
 - `getInitials` helper (was Profile-local, now unused there).
+- `avatar_url` removed from the PATCH allowlist; `src/lib/avatar-upload.ts` deleted (account-deletion cleanup batch).
 
 ---
 

@@ -50,7 +50,7 @@ A single web dashboard where a user can:
 
 ## Repository
 
-https://github.com/anhtuan810/vesper
+https://github.com/anhtuan810/vesper (repo still named `vesper`; product is Volnar — rename pending)
 
 ## High-Level App Structure
 

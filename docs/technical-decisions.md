@@ -28,9 +28,10 @@
   - `/api/snapshots`, `/api/cron/snapshot`
   - `/api/insight` — AI insight band (new in the migration)
   - `/api/dashboard-init` — batched GET returning `{ insight, snapshots (1M), mutations }` in one auth round-trip; used by the Portfolio page on mount
-  - `/api/users/me` — GET user preferences (`name, avatar_url, display_currency, theme, fingerprint, profile`); PATCH to update preferences (theme, display_currency, avatar_url, profile)
+  - `/api/users/me` — GET user preferences (`name, avatar_url, display_currency, theme, fingerprint, profile`); PATCH to update preferences (theme, display_currency, profile)
+  - `DELETE /api/users/me` — permanent account deletion; cascades all user tables then the auth user
   - `/api/logo` — server-side logo proxy
-  - `/api/backfill` — one-time data fixes
+  - `/api/backfill` — per-user, session-authenticated (`getAuthUser`) price backfill plus a `rename-tickers` job; rate-limited to once per 30 days per user. Client-invoked, not cron.
 - **Routes removed in the migration**: `PATCH /api/assets/[id]` and `DELETE /api/assets/[id]` (Decision 8, PR 4); `PATCH /api/mutations/[id]` (Decision 1, PR 5). All asset and diary modifications now flow through `/api/chat`.
 - **Anthropic Claude API** called server-side only (API key never exposed to client)
 - **Sentry** for error tracking (server, client, edge). Free tier covers MVP scale. App runs gracefully when DSN is unset.
@@ -107,6 +108,12 @@ Now actively used as the cache for the AI insight band. `type='insight'`, `detai
 ### date_context
 Schema only. Reserved for future server-side anniversary logic. The current "Worth knowing" callout in `/diary` derives matches from `mutations.occurred_at` directly.
 
+### rate_limits
+Atomic per-user rate limiting (migration `20260508_rate_limits.sql`).
+- `user_id` (FK → users, ON DELETE CASCADE), `bucket` (text), `date` (date), `count` (int). PK `(user_id, bucket, date)`.
+- `increment_rate_limit(p_user_id, p_bucket, p_date)` RPC upserts and returns the new count.
+- Buckets: `chat` (50/day, `/api/chat`), `diary` (100/day, `/api/diary-summary`). Replaced the prior non-atomic count-then-check.
+
 ## Cron Jobs
 
 Configured in `vercel.json`:
@@ -117,7 +124,7 @@ Configured in `vercel.json`:
 
 `GET /api/users/me` — returns `{ name, avatar_url, display_currency, theme, fingerprint, profile }` for the authenticated user. `Cache-Control: private, max-age=300, stale-while-revalidate=1800`. Added alongside the HTTP caching work as the foundation for loading user preferences in `UserProvider`.
 
-`PATCH /api/users/me` — the only public write path for `users` columns. Strict field allowlist: `{ display_currency, theme, avatar_url, profile }`. Any other field in the body is rejected with 400. `profile` patches are merged (not replaced) — pass `null` or `""` for a field to remove it. Added in PR 1; absorbed avatar updates (PR 7) and theme updates (PR 1). The defunct `/settings` route was removed per Decision 5 — preferences live on Profile.
+`PATCH /api/users/me` — the only public write path for `users` columns. Strict field allowlist: `{ display_currency, theme, profile }`. Any other field in the body is rejected with 400. `profile` patches are merged (not replaced) — pass `null` or `""` for a field to remove it. Added in PR 1; absorbed avatar updates (PR 7) and theme updates (PR 1). The defunct `/settings` route was removed per Decision 5 — preferences live on Profile.
 
 ## AI / Claude Integration Approach
 

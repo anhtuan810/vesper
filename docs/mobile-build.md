@@ -5,8 +5,10 @@ an iOS shell (Capacitor) whose WebView loads the live production site at
 `https://app.volnar.nl`. There is **no bundled static web build** — web changes
 deployed to production flow into the app automatically with no native rebuild.
 
-Native OAuth, Face ID lock, and account deletion are **later phases** and are
-not part of this wrapper.
+Native OAuth and Face ID lock are **later phases** and are not part of this
+wrapper. Web account deletion has shipped (see current-features.md) and is
+reachable through the wrapper since it loads the live site; native-specific
+deletion is a later phase.
 
 ## Configuration
 
