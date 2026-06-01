@@ -53,36 +53,6 @@ export async function PATCH(request: NextRequest) {
       updateData.theme = body.theme;
     }
 
-    if ("avatar_url" in body) {
-      if (body.avatar_url !== null) {
-        if (typeof body.avatar_url !== "string") {
-          return NextResponse.json(
-            { error: "avatar_url must be a string or null" },
-            { status: 400 }
-          );
-        }
-        try {
-          const url = new URL(body.avatar_url);
-          const expectedHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname;
-          if (
-            url.hostname !== expectedHost ||
-            !url.pathname.includes("/user-avatars/")
-          ) {
-            return NextResponse.json(
-              { error: "avatar_url must point to the user-avatars bucket on this project" },
-              { status: 400 }
-            );
-          }
-        } catch {
-          return NextResponse.json(
-            { error: "avatar_url must be a valid URL" },
-            { status: 400 }
-          );
-        }
-      }
-      updateData.avatar_url = body.avatar_url;
-    }
-
     if ("profile" in body) {
       if (typeof body.profile !== "object" || body.profile === null || Array.isArray(body.profile)) {
         return NextResponse.json({ error: "profile must be an object" }, { status: 400 });
