@@ -506,13 +506,13 @@ export default function ChatPage() {
           {/* Input pill */}
           <div
             style={{
-              position: "relative",
               background: "var(--surface)",
               border: "0.5px solid var(--border-strong)",
               borderRadius: 22,
-              padding: "12px 50px 12px 44px",
+              padding: "7px 7px 7px 10px",
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-end",
+              gap: 6,
             }}
           >
             {/* Image attach button */}
@@ -533,11 +533,9 @@ export default function ChatPage() {
               aria-label="Attach image"
               className="flex items-center justify-center text-faint hover:text-dim transition-colors"
               style={{
-                position: "absolute",
-                left: 10,
-                bottom: 8,
-                width: 28,
-                height: 28,
+                flexShrink: 0,
+                width: 32,
+                height: 32,
                 borderRadius: "50%",
                 background: "transparent",
                 border: "none",
@@ -587,8 +585,9 @@ export default function ChatPage() {
                 fontSize: 15,
                 lineHeight: 1.4,
                 color: "var(--text)",
-                padding: 0,
+                padding: "6px 2px",
                 margin: 0,
+                minWidth: 0,
                 maxHeight: 120,
                 overflowY: "hidden",
               }}
@@ -600,9 +599,7 @@ export default function ChatPage() {
               disabled={!canSend}
               className="flex items-center justify-center"
               style={{
-                position: "absolute",
-                right: 6,
-                bottom: 6,
+                flexShrink: 0,
                 width: 34,
                 height: 34,
                 borderRadius: "50%",
