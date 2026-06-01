@@ -85,10 +85,6 @@ export default function ChatPage() {
     }
   }, [messages, thinking]);
 
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, []);
-
   // Lock document scroll for the lifetime of the route. This stops the iOS
   // keyboard from scrolling the body (sliding content under the status bar)
   // and prevents any scroll offset from carrying over to the next tab.
