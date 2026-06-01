@@ -42,7 +42,8 @@ export default function ChatPage() {
   // under the status bar; the visual viewport height shrinks precisely instead.
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   // Keyboard is open when the visible viewport is noticeably shorter than the
-  // layout viewport. Used to close the gap the BottomNav clearance leaves.
+  // layout viewport. Used to drop the BottomNav clearance, which is occluded by
+  // the keyboard, so the composer sits just above it with no gap.
   const keyboardOpen =
     viewportHeight !== null &&
     typeof window !== "undefined" &&
@@ -240,7 +241,7 @@ export default function ChatPage() {
             if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
           }}
           style={{
-            padding: "calc(32px + env(safe-area-inset-top)) 0 160px",
+            padding: "calc(32px + env(safe-area-inset-top)) 0 calc(160px + env(safe-area-inset-bottom))",
             scrollbarWidth: "none",
             display: "flex",
             flexDirection: "column",
@@ -438,10 +439,10 @@ export default function ChatPage() {
           className="chat-composer-gradient"
           style={{
             position: "absolute",
-            bottom: `calc(${keyboardOpen ? 12 : 56}px + env(safe-area-inset-bottom))`,
+            bottom: 0,
             left: 0,
             right: 0,
-            padding: "0 0 12px",
+            padding: keyboardOpen ? "0 0 12px" : "0 0 calc(56px + env(safe-area-inset-bottom) + 12px)",
           }}
         >
           {/* Image previews */}

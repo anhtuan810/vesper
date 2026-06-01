@@ -37,6 +37,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   // Extend the layout into the safe-area insets so env(safe-area-inset-*)
   // resolves to real values (needed by the bottom nav on notched iOS devices).
   viewportFit: "cover",

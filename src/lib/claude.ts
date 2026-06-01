@@ -2,7 +2,7 @@ import type { Asset, UserProfile, Mutation } from "./supabase";
 import type { DisplayCurrency } from "./money";
 import { computeCurrentBalance } from "./mortgage";
 import { ONBOARDING_OPENER } from "./copy";
-import { PRICE_KNOWLEDGE_BLOCK, IMAGE_IMPORT_BLOCK, CHIPS_RULES_BLOCK, clarifyBlock } from "./prompt-blocks";
+import { PRICE_KNOWLEDGE_BLOCK, IMAGE_IMPORT_BLOCK, OPTIONS_BLOCK, CHIPS_RULES_BLOCK, clarifyBlock } from "./prompt-blocks";
 
 // Injects the display-currency rendering directive into a prompt block.
 function displayDirective(displayCurrency: DisplayCurrency): string {
@@ -496,6 +496,8 @@ Examples:
 <changes>[{"action":"add","name":"Hosingenhof 19","type":"real_estate","value":340000,"currency":"EUR","personal_context":"Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage."}]</changes>
 <changes>[{"action":"edit","name":"ASML","units":71,"buy_price":990,"personal_context":"Bought 5 ASML at ${sym}990 to bring total holding to 71 shares."}]</changes>
 
+${OPTIONS_BLOCK}
+
 ${CHIPS_RULES_BLOCK}
 
 SCOPE:
@@ -905,6 +907,8 @@ Batch/screenshot adds (multiple positions in one turn):
   Add all positions, then ask exactly ONE portfolio-level follow-up — never per position:
   "Were any of these recent, that you'd want to log with date and price? Older ones I'll start tracking from today."
 Never attach chips to the batch-add follow-up either. Prose only.
+
+${OPTIONS_BLOCK}
 
 If user mentions a goal: <goal>{"title":"...","target_value":...,"currency":"${displayCurrency}","target_date":"..."}</goal>
 Always include the "currency" field in goal JSON using the user's display currency (${displayCurrency}).

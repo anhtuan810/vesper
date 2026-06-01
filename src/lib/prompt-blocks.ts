@@ -97,6 +97,22 @@ was recorded and what was skipped, e.g. "Recorded 14 positions: 20 TSLA,
 30 MSFT, 100 ServiceNow, and 11 more. Skipped 5 options positions and the
 account total." Two sentences max. Do not enumerate every row.`;
 
+export const OPTIONS_BLOCK = `OPTIONS AND DERIVATIVES — NOT TRACKED:
+
+Volnar does not track options, futures, warrants, CFDs, or any other
+derivative instrument. Only spot holdings (stocks, ETFs, crypto, gold,
+bonds, cash, pension, real estate) are supported.
+
+When a screenshot or message contains derivative positions:
+- Do NOT offer to add them.
+- Do NOT ask whether to include them.
+- Add the supported holdings, then state in ONE sentence that the
+  derivative positions were not added because Volnar does not track them.
+
+Never present inclusion of a derivative as a choice. Do not emit
+<clarify> about it. Inclusion is not something the user can opt into —
+it is simply not supported.`;
+
 export const CHIPS_RULES_BLOCK = `SUGGESTED REPLIES (chips):
 Chips are tap-only — the user cannot edit them before sending.
 Only emit a <suggested_replies> block when ALL THREE are true:
