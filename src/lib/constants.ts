@@ -17,7 +17,7 @@ export const INSIGHT_CACHE_TTL_MS = 60 * 60 * 1000;      // 1 hour
 export const CHAT_TTL_MS          = 24 * 60 * 60 * 1000; // 24 hours
 
 // ── Rate limits & pagination ───────────────────────────────────────────────────
-export const CHAT_DAILY_LIMIT       = 200; // TODO: lower back to 50 before release
+export const CHAT_DAILY_LIMIT       = 50;
 export const DIARY_DAILY_LIMIT      = 100;
 export const MESSAGES_DEFAULT_LIMIT = 20;
 export const MESSAGES_MAX_LIMIT     = 50;
