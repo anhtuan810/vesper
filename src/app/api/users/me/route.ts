@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
@@ -52,36 +53,6 @@ export async function PATCH(request: NextRequest) {
       updateData.theme = body.theme;
     }
 
-    if ("avatar_url" in body) {
-      if (body.avatar_url !== null) {
-        if (typeof body.avatar_url !== "string") {
-          return NextResponse.json(
-            { error: "avatar_url must be a string or null" },
-            { status: 400 }
-          );
-        }
-        try {
-          const url = new URL(body.avatar_url);
-          const expectedHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname;
-          if (
-            url.hostname !== expectedHost ||
-            !url.pathname.includes("/user-avatars/")
-          ) {
-            return NextResponse.json(
-              { error: "avatar_url must point to the user-avatars bucket on this project" },
-              { status: 400 }
-            );
-          }
-        } catch {
-          return NextResponse.json(
-            { error: "avatar_url must be a valid URL" },
-            { status: 400 }
-          );
-        }
-      }
-      updateData.avatar_url = body.avatar_url;
-    }
-
     if ("profile" in body) {
       if (typeof body.profile !== "object" || body.profile === null || Array.isArray(body.profile)) {
         return NextResponse.json({ error: "profile must be an object" }, { status: 400 });
@@ -134,5 +105,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// Permanent, irreversible account deletion. The user id is resolved from the
+// session only — never from the request body. Removes every row owned by the
+// user across all tables, then the users row, then the auth user itself.
+export async function DELETE(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const userId = user.id;
+  const supabase = createServerSupabase();
+
+  try {
+    // Order matters: dependent data first, the users row last, auth user after.
+    const tables = ["messages", "highlights", "goals", "snapshots", "mutations", "assets"];
+    for (const table of tables) {
+      const { error } = await supabase.from(table).delete().eq("user_id", userId);
+      if (error) throw new Error(`Failed deleting ${table}: ${error.message}`);
+    }
+
+    const { error: userError } = await supabase.from("users").delete().eq("id", userId);
+    if (userError) throw new Error(`Failed deleting users row: ${userError.message}`);
+
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    if (authError) throw new Error(`Failed deleting auth user: ${authError.message}`);
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    Sentry.captureException(err, { tags: { route: "DELETE /api/users/me" } });
+    return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
   }
 }

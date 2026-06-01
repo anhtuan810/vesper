@@ -60,6 +60,10 @@ export default function ProfilePage() {
   const [toastVisible, setToastVisible] = useState(false);
   const [expandedPref, setExpandedPref] = useState<"currency" | "theme" | null>(null);
   const [netWorth12moAgoEur, setNetWorth12moAgoEur] = useState<number | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const fetchMutationCount = useCallback(async () => {
     if (!user?.id) return;
@@ -133,6 +137,32 @@ export default function ProfilePage() {
       setCurrencyLoading(null);
     }
   }, [displayCurrency, currencyLoading, router]);
+
+  const closeDeleteDialog = useCallback(() => {
+    if (deleting) return;
+    setDeleteOpen(false);
+    setDeleteConfirmText("");
+    setDeleteError(null);
+  }, [deleting]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (deleteConfirmText !== "DELETE" || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/users/me", { method: "DELETE" });
+      if (!res.ok) {
+        setDeleteError("We could not complete the deletion. Please try again in a moment.");
+        setDeleting(false);
+        return;
+      }
+      await supabase.auth.signOut();
+      router.replace("/login");
+    } catch {
+      setDeleteError("We could not complete the deletion. Please try again in a moment.");
+      setDeleting(false);
+    }
+  }, [deleteConfirmText, deleting, router]);
 
   if (userLoading) {
     return (
@@ -455,9 +485,136 @@ export default function ProfilePage() {
           <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center" }}>
             Volnar provides informational portfolio observations, not investment advice.
           </div>
+          <button
+            onClick={() => setDeleteOpen(true)}
+            style={{
+              marginTop: 10,
+              fontSize: 12,
+              fontWeight: 400,
+              color: "var(--text-faint)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "var(--font-sans)",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Delete account
+          </button>
         </div>
 
       </div>
+
+      {deleteOpen && (
+        <div
+          onClick={closeDeleteDialog}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            zIndex: 100,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              background: "var(--surface)",
+              border: "0.5px solid var(--border)",
+              borderRadius: 16,
+              padding: "22px 20px 20px",
+              fontFamily: "var(--font-sans)",
+            }}
+          >
+            <div style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: 20,
+              fontWeight: 500,
+              color: "var(--text)",
+              marginBottom: 10,
+              fontVariationSettings: "'opsz' 24",
+            }}>
+              Delete account
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: 16 }}>
+              This is permanent and cannot be undone. It removes all of your portfolio
+              data, diary entries, and chat history. To continue, type DELETE below.
+            </div>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={deleting}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text)",
+                fontSize: 14,
+                fontFamily: "var(--font-sans)",
+                marginBottom: 14,
+              }}
+            />
+            {deleteError && (
+              <div style={{ fontSize: 12, color: "var(--negative)", marginBottom: 12, lineHeight: 1.5 }}>
+                {deleteError}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={closeDeleteDialog}
+                disabled={deleting}
+                style={{
+                  flex: 1,
+                  padding: "11px 0",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--text)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: deleting ? "default" : "pointer",
+                  fontFamily: "var(--font-sans)",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== "DELETE" || deleting}
+                style={{
+                  flex: 1,
+                  padding: "11px 0",
+                  borderRadius: 10,
+                  border: "1px solid var(--negative)",
+                  background: deleteConfirmText === "DELETE" && !deleting ? "var(--negative-soft)" : "var(--bg)",
+                  color: deleteConfirmText === "DELETE" && !deleting ? "var(--negative-text)" : "var(--text-faint)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: deleteConfirmText === "DELETE" && !deleting ? "pointer" : "default",
+                  fontFamily: "var(--font-sans)",
+                }}
+              >
+                {deleting ? "Deleting…" : "Delete account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toastVisible && (
         <div
