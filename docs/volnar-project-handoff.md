@@ -168,7 +168,7 @@ docs/
 
 ## Important Product Principles
 
-1. **Chat is the only modification surface.** Adds, edits, renames, removes — all happen through chat, because chat captures the reasoning at the same moment as the change. Asset detail pages are read-only views. Profile context fields are read-only views. There is no public PATCH/DELETE endpoint on `/api/assets/[id]` and no PATCH on `/api/mutations/[id]`. The diary stays append-only and complete; the detail pages stay calm and useful as reference.
+1. **Chat is the only modification surface.** Adds, edits, renames, removes — all happen through chat, because chat captures the reasoning at the same moment as the change. Asset detail pages are read-only views. Profile context fields are read-only views. There is no public PATCH/DELETE endpoint on `/api/assets/[id]` and no PATCH on `/api/mutations/[id]`. The diary stays append-only and complete; the detail pages stay calm and useful as reference. One sanctioned exception: `POST /api/assets` exists solely for undo-restore — `UndoDeleteToast` uses it to re-create an asset the user just deleted in-session. It still logs a mutation ("Restored after delete"), so the diary stays complete.
 2. **Investing tone, not trading.** "Growth" not "P&L". "Added" not "entry". No win/loss ratios. No gamification.
 3. **Professional language.** No emojis. No exclamation marks. No "awesome / great / cool". Speak like a private banker.
 4. **Asset-agnostic.** No country-specific features. No asset-type-specific logic outside detail dispatchers and icon resolution. The intelligence is in the AI layer.
