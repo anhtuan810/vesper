@@ -149,15 +149,78 @@ export function detectCurrencyMismatch(
 
 // ── Deterministic template fallbacks ─────────────────────────────────────────
 
-function templateSentence(ctx: AnyCtx): string {
+// Every number shown in the insight band is formatted here, in the exact form
+// it will render (nl-NL, with unit/symbol). The same strings are (a) the only
+// numbers handed to Haiku, (b) the allow-list its output is validated against,
+// and (c) the deterministic fallback copy — so a displayed figure can never
+// drift from the deterministically computed one.
+
+const nlNum = (n: number) => new Intl.NumberFormat("nl-NL").format(n);
+const eur = (n: number) => `€${nlNum(n)}`;
+const pctStr = (n: number) => `${n}%`;
+
+type FormattedCtx = {
+  payload: Record<string, unknown>; // model input — figures only as pre-formatted strings
+  figures: string[];                // allow-list of display figures
+  sentence: string;                 // deterministic fallback copy
+};
+
+function formatCtx(ctx: AnyCtx): FormattedCtx {
   switch (ctx.type) {
-    case "concentration":
-      return `${ctx.name} represents ${ctx.percentage}% of your net worth, leaving ${ctx.remainingPct}% across the rest to absorb volatility.`;
-    case "cash_drag":
-      return `€${ctx.cashEur.toLocaleString()} (${ctx.percentage}%) has been sitting in cash for ${ctx.daysHeld} days — a drag on portfolio returns at current rates.`;
-    case "currency_mismatch":
-      return `${ctx.percentage}% of your portfolio is in ${ctx.dominantCurrency}; a 1% move against ${ctx.displayCurrency} shifts net worth by roughly €${ctx.shiftAmountEur.toLocaleString()}.`;
+    case "concentration": {
+      const top = pctStr(ctx.percentage);
+      const rest = pctStr(ctx.remainingPct);
+      return {
+        payload: { detector: "concentration", name: ctx.name, topShare: top, remainingShare: rest },
+        figures: [top, rest],
+        sentence: `${ctx.name} represents ${top} of your net worth, leaving ${rest} across the rest to absorb volatility.`,
+      };
+    }
+    case "cash_drag": {
+      const amount = eur(ctx.cashEur);
+      const share = pctStr(ctx.percentage);
+      const days = String(ctx.daysHeld);
+      return {
+        payload: { detector: "cash_drag", cashAmount: amount, cashShare: share, daysHeld: days },
+        figures: [amount, share, days],
+        sentence: `${amount} (${share}) has been sitting in cash for ${days} days — a drag on portfolio returns at current rates.`,
+      };
+    }
+    case "currency_mismatch": {
+      const share = pctStr(ctx.percentage);
+      const shift = eur(ctx.shiftAmountEur);
+      return {
+        payload: {
+          detector: "currency_mismatch",
+          dominantCurrency: ctx.dominantCurrency,
+          displayCurrency: ctx.displayCurrency,
+          foreignShare: share,
+          onePercentMove: "1%",
+          shiftAmount: shift,
+        },
+        figures: [share, "1%", shift],
+        sentence: `${share} of your portfolio is in ${ctx.dominantCurrency}; a 1% move against ${ctx.displayCurrency} shifts net worth by roughly ${shift}.`,
+      };
+    }
   }
+}
+
+function templateSentence(ctx: AnyCtx): string {
+  return formatCtx(ctx).sentence;
+}
+
+// ── Numeric-integrity guard ──────────────────────────────────────────────────
+// Every numeric token in Haiku's output must be one of the pre-formatted
+// figures. A currency symbol or trailing % is kept; trailing separators and
+// whitespace are dropped before comparison.
+
+const NUM_TOKEN = /[€$£]?\s?\d[\d.,]*%?/g;
+const normFigure = (t: string) => t.replace(/[.,\s]+$/, "").replace(/\s+/g, "");
+
+function numbersAllowed(sentence: string, figures: string[]): boolean {
+  const allowed = new Set(figures.map(normFigure));
+  const tokens = sentence.match(NUM_TOKEN) ?? [];
+  return tokens.every((t) => allowed.has(normFigure(t)));
 }
 
 // ── Haiku wrapper ─────────────────────────────────────────────────────────────
@@ -165,16 +228,20 @@ function templateSentence(ctx: AnyCtx): string {
 async function wrapWithHaiku(
   contexts: AnyCtx[],
 ): Promise<{ sentences: string[]; inputTokens: number; outputTokens: number }> {
-  const fallbacks = contexts.map(templateSentence);
+  const formatted = contexts.map(formatCtx);
+  const fallbacks = formatted.map((f) => f.sentence);
   try {
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 512,
       system:
         "You write one-sentence portfolio observations for a private banking app. " +
-        "Each sentence: under 110 chars, no hedging, no exclamation marks, completes a clear thought. " +
-        "Output a JSON array of strings, one per detector, in input order. No prose, no code fences.",
-      messages: [{ role: "user", content: JSON.stringify(contexts) }],
+        "Each input object describes one observation; its figure fields are already formatted for display. " +
+        "Copy every figure VERBATIM, exactly as given — never recompute, round, reformat, abbreviate, or invent a number. " +
+        "Vary only the surrounding wording. Each sentence: under 110 chars, banker-quiet, no hedging, " +
+        "no exclamation marks, no emojis, completes a clear thought. " +
+        "Output a JSON array of strings, one per object, in input order. No prose, no code fences.",
+      messages: [{ role: "user", content: JSON.stringify(formatted.map((f) => f.payload)) }],
     });
     const inputTokens = response.usage.input_tokens;
     const outputTokens = response.usage.output_tokens;
@@ -191,7 +258,13 @@ async function wrapWithHaiku(
       parsed.length === contexts.length &&
       parsed.every((s) => typeof s === "string" && s.length > 0)
     ) {
-      return { sentences: parsed as string[], inputTokens, outputTokens };
+      // Numeric-integrity guard: any sentence whose numbers aren't all in the
+      // deterministic allow-list is replaced by its deterministic fallback, so
+      // a shown figure can never diverge from the computed one.
+      const sentences = parsed.map((s, i) =>
+        numbersAllowed(s as string, formatted[i].figures) ? (s as string) : fallbacks[i],
+      );
+      return { sentences, inputTokens, outputTokens };
     }
     return { sentences: fallbacks, inputTokens, outputTokens };
   } catch (err) {
