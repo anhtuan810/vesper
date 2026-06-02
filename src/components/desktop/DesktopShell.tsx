@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/NavBar";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
+import { VitalsContent } from "@/components/vitals/VitalsContent";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 
@@ -18,6 +19,8 @@ function clampWidth(w: number): number {
 
 // Centered reading width for the main column, matching the mobile layout.
 const MAIN_MAX_WIDTH = 720;
+// Fixed width of the left Vitals panel.
+const VITALS_WIDTH = 380;
 
 interface DesktopShellProps {
   tab: "portfolio" | "diary" | "profile";
@@ -144,9 +147,21 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
           flex: 1,
           minHeight: 0,
           display: "grid",
-          gridTemplateColumns: `minmax(0, 1fr) 9px ${chatWidth}px`,
+          gridTemplateColumns: `${VITALS_WIDTH}px minmax(0, 1fr) 9px ${chatWidth}px`,
         }}
       >
+        {/* Left panel — Vitals (its own heading is rendered by VitalsContent) */}
+        <aside
+          style={{
+            minHeight: 0,
+            overflowY: "auto",
+            padding: "0 16px 24px",
+            borderRight: "0.5px solid var(--border)",
+          }}
+        >
+          <VitalsContent layout="grid" libraryPosition="top" />
+        </aside>
+
         {/* Main column — centered reading-width content for the current tab */}
         <main
           style={{
