@@ -966,7 +966,7 @@ export function VitalsContent({
     }
 
     return (
-      <VitalCard key={key} {...cfg.props}>
+      <VitalCard key={key} {...cfg.props} fillHeight={layout === "grid"}>
         {cfg.chart}
       </VitalCard>
     );
@@ -985,12 +985,25 @@ export function VitalsContent({
         : "applies") as "applies" | "property-off",
     }));
 
-  // Cards in their fixed order. `layout` is threaded for the Prompt 2 desktop
-  // grid; today both values render the same vertical stack.
+  // Cards in their fixed order. "stack" (mobile) renders the vertical column
+  // exactly as before; "grid" (desktop) wraps them in a responsive auto-fit
+  // grid so several square-ish cards sit per row and collapse to one column
+  // when the chat panel is dragged wide.
+  const cardNodes = VITAL_ORDER.map((key) => renderVitalCard(key));
   const cards =
-    layout === "grid"
-      ? VITAL_ORDER.map((key) => renderVitalCard(key))
-      : VITAL_ORDER.map((key) => renderVitalCard(key));
+    layout === "grid" ? (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: 11,
+        }}
+      >
+        {cardNodes}
+      </div>
+    ) : (
+      cardNodes
+    );
 
   const library =
     dormantItems.length > 0 ? (

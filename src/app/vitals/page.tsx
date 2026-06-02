@@ -1,11 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/NavBar";
 import { VitalsContent } from "@/components/vitals/VitalsContent";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
 export default function VitalsPage() {
   const router = useRouter();
+  const isDesktop = useIsDesktop();
+
+  // Desktop folds Vitals into the Portfolio surface; this route only exists on mobile.
+  useEffect(() => {
+    if (isDesktop) router.replace("/");
+  }, [isDesktop, router]);
+
+  if (isDesktop !== false) {
+    return <div className="min-h-screen bg-bg" />;
+  }
 
   const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {
     router.push(t === "portfolio" ? "/" : "/" + t);

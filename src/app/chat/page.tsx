@@ -6,9 +6,11 @@ import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { getChatSeed, type ChatSeed, type SeedSource } from "@/lib/chat-seeds";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
 export default function ChatPage() {
   const router = useRouter();
+  const isDesktop = useIsDesktop();
   const { user } = useUser();
   const displayCurrency = useDisplayCurrency();
   const { assets, loading: assetsLoading } = useAssets(user?.id);
@@ -184,6 +186,15 @@ export default function ChatPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAssetId, pendingSeed, assetsLoading]);
+
+  // Desktop hosts chat in the persistent panel, not as a standalone route.
+  useEffect(() => {
+    if (isDesktop) router.replace("/");
+  }, [isDesktop, router]);
+
+  if (isDesktop !== false) {
+    return <div className="min-h-screen bg-bg" />;
+  }
 
   return (
     <>

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useUser, useAssets } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { DiaryTab } from "@/components/DiaryTab";
+import { DesktopShell } from "@/components/desktop/DesktopShell";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Mutation } from "@/lib/supabase";
 import { DIARY_PAGE_SIZE } from "@/lib/constants";
@@ -13,6 +15,7 @@ const supabase = createBrowserSupabase();
 
 export default function DiaryPage() {
   const router = useRouter();
+  const isDesktop = useIsDesktop();
   const { user, loading: userLoading } = useUser();
   const { assets } = useAssets(user?.id);
   const [mutations, setMutations] = useState<Mutation[]>([]);
@@ -85,11 +88,27 @@ export default function DiaryPage() {
     router.push(t === "portfolio" ? "/" : "/" + t);
   };
 
+  if (isDesktop === undefined) {
+    return <div className="min-h-screen bg-bg" />;
+  }
+
   if (userLoading) {
     return (
       <div className="min-h-screen bg-bg">
         <div className="h-9 md:h-14 bg-surface border-b border-border" />
       </div>
+    );
+  }
+
+  if (isDesktop) {
+    return (
+      <DesktopShell tab="diary">
+        <DiaryTab
+          mutations={enrichedMutations}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+        />
+      </DesktopShell>
     );
   }
 

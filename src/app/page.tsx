@@ -7,6 +7,9 @@ import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { PortfolioEmptyState } from "@/components/PortfolioEmptyState";
+import { VitalsContent } from "@/components/vitals/VitalsContent";
+import { DesktopShell } from "@/components/desktop/DesktopShell";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { toUsdClient } from "@/lib/money";
@@ -16,6 +19,7 @@ import type { SnapshotPoint } from "@/components/NetWorthChart";
 
 export default function Dashboard() {
   const router = useRouter();
+  const isDesktop = useIsDesktop();
   const { user, loading: userLoading } = useUser();
   const {
     assets, loading: assetsLoading, error: assetsError, refreshing,
@@ -92,6 +96,12 @@ export default function Dashboard() {
     return { netTotal, grossTotal, liveCount, totalSymbols };
   }, [assets]);
 
+  // Client-only desktop detection: render a neutral background until known to
+  // avoid a hydration mismatch and a layout flash.
+  if (isDesktop === undefined) {
+    return <div className="min-h-screen bg-bg" />;
+  }
+
   if (userLoading || assetsLoading) {
     return (
       <div className="min-h-screen bg-bg">
@@ -143,6 +153,29 @@ export default function Dashboard() {
   }
 
   const isEmpty = assets.length === 0;
+
+  // Desktop web: NavBar + (portfolio content + vitals grid) in the main column,
+  // with the persistent chat panel. No BottomNav, no ChatPopup.
+  if (isDesktop) {
+    return (
+      <DesktopShell tab="portfolio">
+        {isEmpty ? (
+          <PortfolioEmptyState />
+        ) : (
+          <>
+            <PortfolioTab
+              assets={assets as LiveAsset[]}
+              grossTotal={grossTotal}
+              netTotal={netTotal}
+              initialSnapshots={initialSnapshots}
+              valuesSettled={valuesSettled}
+            />
+            <VitalsContent layout="grid" libraryPosition="top" />
+          </>
+        )}
+      </DesktopShell>
+    );
+  }
 
   return (
     <div
