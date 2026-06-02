@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { ProfileContent } from "@/components/profile/ProfileContent";
+import { DesktopShell } from "@/components/desktop/DesktopShell";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { createBrowserSupabase } from "@/lib/supabase";
 
 const supabase = createBrowserSupabase();
 
 export default function ProfilePage() {
   const router = useRouter();
+  const isDesktop = useIsDesktop();
   const { user, loading: userLoading } = useUser();
   const [mutationCount, setMutationCount] = useState(0);
 
@@ -25,9 +28,17 @@ export default function ProfilePage() {
 
   useEffect(() => { fetchMutationCount(); }, [fetchMutationCount]);
 
-  if (userLoading) {
+  if (isDesktop === undefined || userLoading) {
     return (
       <div className="min-h-screen bg-bg" />
+    );
+  }
+
+  if (isDesktop) {
+    return (
+      <DesktopShell tab="profile">
+        <ProfileContent />
+      </DesktopShell>
     );
   }
 
