@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
-import { FormatText } from "@/components/FormatText";
+import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { getChatSeed, type ChatSeed, type SeedSource } from "@/lib/chat-seeds";
 
@@ -14,15 +14,13 @@ export default function ChatPage() {
   const { assets, loading: assetsLoading } = useAssets(user?.id);
   const hasPortfolio = assets.length > 0;
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
+  const session = useChatSession({ userId: user?.id });
   const {
-    messages, input, setInput, loading, thinking, remaining,
-    imagePreviews, imageData, canSend, send, sendText, clearImage, removeImage, handlePaste, handleFile,
+    messages, setInput, thinking, imageData, send, handleFile,
     loadMore, hasMore, isLoadingMore,
-  } = useChatSession({ userId: user?.id });
+  } = session;
 
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileInputKey, setFileInputKey] = useState(0);
+  const threadRef = useRef<ChatThreadHandle>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -36,24 +34,6 @@ export default function ChatPage() {
   const [source, setSource] = useState<string | null>(null);
   const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
   const [pendingSeed, setPendingSeed] = useState<{ source: SeedSource; key: string } | null>(null);
-
-  // Keyboard open/close is tracked from textarea focus. With the viewport meta
-  // interactive-widget=resizes-content the layout viewport shrinks on its own,
-  // so we only need this to drop the BottomNav clearance from the composer and
-  // to hide the nav while typing.
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  // Auto-grow the composer: expand with the text and cap at ~5 lines, after
-  // which it scrolls internally. Keeps the field single-line until needed.
-  const autoGrowComposer = useCallback(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const capped = Math.min(el.scrollHeight, 120);
-    el.style.height = capped + "px";
-    el.style.overflowY = el.scrollHeight > 120 ? "auto" : "hidden";
-  }, []);
-  useEffect(() => { autoGrowComposer(); }, [input, autoGrowComposer]);
 
   // Restore scroll position after prepending older messages (loadMore).
   // useLayoutEffect runs before paint so there's no visible jump.
@@ -108,7 +88,7 @@ export default function ChatPage() {
     if (prefill) {
       sessionStorage.removeItem("volnar.empty.input");
       setInput(prefill);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => threadRef.current?.focus(), 100);
     }
 
     // Image/file picked in the portfolio empty-state
@@ -235,394 +215,21 @@ export default function ChatPage() {
           paddingRight: 20,
         }}
       >
-        {/* Messages */}
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden"
+        <ChatThread
+          variant="page"
+          session={session}
+          seedMessage={seedMessage}
+          chatSuggestions={chatSuggestions}
+          hasPortfolio={hasPortfolio}
+          source={source}
+          scrollContainerRef={scrollContainerRef}
+          sentinelRef={sentinelRef}
+          bottomRef={bottomRef}
           onScroll={(e) => {
-            if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
+            if (e.currentTarget.scrollTop > 0) hasScrolled.current = true;
           }}
-          style={{
-            minHeight: 0,
-            padding: "calc(32px + env(safe-area-inset-top)) 0 16px",
-            scrollbarWidth: "none",
-            display: "flex",
-            flexDirection: "column",
-            gap: 22,
-          }}
-        >
-          <div ref={sentinelRef} />
-          {isLoadingMore && (
-            <div
-              className="text-center text-faint"
-              style={{ fontSize: 11, paddingBottom: 4 }}
-            >
-              Loading older messages…
-            </div>
-          )}
-
-          {messages.length === 0 && !seedMessage && (
-            <div>
-              <div
-                className="text-dim mb-5 leading-relaxed"
-                style={{ fontSize: 15 }}
-              >
-                {hasPortfolio
-                  ? "Ask about your portfolio, or paste a screenshot of your broker app."
-                  : "Welcome. Tell me what you own — stocks, property, savings, anything. List them out, or paste a screenshot of your broker app."}
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                {chatSuggestions.map((s) => (
-                  <button
-                    key={s}
-                    style={{
-                      fontSize: 13,
-                      color: "var(--accent-text)",
-                      background: "var(--accent-soft)",
-                      padding: "8px 14px",
-                      borderRadius: 999,
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => sendText(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(() => {
-            const lastAssistantIdx = messages.reduce((last, m, i) => m.from === "assistant" ? i : last, -1);
-            return messages.map((msg, i) => {
-              const firstAssistant = source === "portfolio" && msg.from === "assistant" && !messages.slice(0, i).some((m) => m.from === "assistant");
-              return (
-              <div
-                key={i}
-                className={`chat-msg flex flex-col ${msg.from === "user" ? "items-end" : "items-start"}`}
-              >
-                {firstAssistant && (
-                  <div style={{
-                    fontSize: 10,
-                    fontWeight: 500,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                    color: "var(--accent-text)",
-                    opacity: 0.7,
-                    marginBottom: 6,
-                  }}>
-                    From Portfolio
-                  </div>
-                )}
-                <div
-                  style={{
-                    maxWidth: msg.from === "user" ? "78%" : "92%",
-                    padding: msg.from === "user" ? "10px 14px" : "0",
-                    borderRadius: msg.from === "user" ? "18px 18px 4px 18px" : 0,
-                    background: msg.from === "user" ? "var(--surface)" : "transparent",
-                    border: msg.from === "user" ? "0.5px solid var(--border)" : "none",
-                    boxShadow: msg.from === "user" ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
-                    color: "var(--text)",
-                    fontSize: 15,
-                    lineHeight: msg.from === "user" ? 1.4 : 1.55,
-                    overflowWrap: "break-word",
-                    minWidth: 0,
-                  }}
-                >
-                  {msg.from === "assistant" ? (
-                    <FormatText text={msg.text} />
-                  ) : (
-                    <>
-                      {msg.imagePreviews && msg.imagePreviews.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.text && msg.text !== "Screenshot uploaded" && msg.text !== "Screenshots uploaded" ? 8 : 0 }}>
-                          {msg.imagePreviews.map((src, idx) => (
-                            <img
-                              key={idx}
-                              src={src}
-                              alt=""
-                              style={{
-                                display: "block",
-                                maxWidth: "100%",
-                                maxHeight: 200,
-                                borderRadius: 10,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      {(!msg.imagePreviews?.length || (msg.text && msg.text !== "Screenshot uploaded" && msg.text !== "Screenshots uploaded")) && msg.text}
-                    </>
-                  )}
-                </div>
-                {i === lastAssistantIdx && !loading && msg.suggestedReplies && msg.suggestedReplies.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {msg.suggestedReplies.map((chip) => (
-                      <button
-                        key={chip}
-                        onClick={() => sendText(chip)}
-                        style={{
-                          height: 32,
-                          padding: "0 14px",
-                          borderRadius: 999,
-                          fontSize: 14,
-                          background: "var(--surface-elev)",
-                          color: "var(--text)",
-                          border: chip === "Confirm and save"
-                            ? "1px solid var(--accent)"
-                            : "1px solid var(--border)",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              );
-            });
-          })()}
-
-          {/* Synthetic seed message — local only, not persisted */}
-          {seedMessage && !loading && (
-            <div className="chat-msg flex flex-col items-start">
-              <div
-                style={{
-                  maxWidth: "92%",
-                  padding: "0",
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--text)",
-                  fontSize: 15,
-                  lineHeight: 1.55,
-                  overflowWrap: "break-word",
-                  minWidth: 0,
-                }}
-              >
-                <FormatText text={seedMessage.message} />
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {seedMessage.chips.map((chip) => (
-                  <button
-                    key={chip}
-                    onClick={() => sendText(chip)}
-                    style={{
-                      height: 32,
-                      padding: "0 14px",
-                      borderRadius: 999,
-                      fontSize: 14,
-                      background: "var(--surface-elev)",
-                      color: "var(--text)",
-                      border: "1px solid var(--border)",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {thinking && (
-            <div className="flex items-center gap-0.5 py-1">
-              <span className="chat-dot" />
-              <span className="chat-dot" />
-              <span className="chat-dot" />
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Composer — last flex child; rides above the keyboard via resizes-content */}
-        <div
-          className="chat-composer-gradient"
-          style={{
-            flexShrink: 0,
-            padding: keyboardOpen
-              ? "0 0 env(safe-area-inset-bottom)"
-              : "0 0 calc(64px + env(safe-area-inset-bottom))",
-          }}
-        >
-          {/* Image previews */}
-          {imagePreviews.length > 0 && (
-            <div className="pb-2 flex items-center gap-2 flex-wrap">
-              {imagePreviews.map((src, i) => (
-                <div key={i} style={{ position: "relative", display: "inline-block" }}>
-                  <img
-                    src={src}
-                    alt={`Preview ${i + 1}`}
-                    className="rounded-lg object-cover"
-                    style={{ width: 48, height: 48, border: "1px solid var(--border)", display: "block" }}
-                  />
-                  <button
-                    onClick={() => removeImage(i)}
-                    style={{
-                      position: "absolute", top: -6, right: -6,
-                      width: 18, height: 18, borderRadius: "50%",
-                      background: "var(--text-faint)", color: "var(--bg)",
-                      border: "none", cursor: "pointer",
-                      fontSize: 10, lineHeight: "18px", textAlign: "center", padding: 0,
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Counter badges */}
-          {remaining !== null && remaining <= 10 && (
-            <div
-              className="font-mono text-accent text-right"
-              style={{ fontSize: 10, paddingBottom: 4 }}
-            >
-              {remaining === 0 ? "Limit reached" : `${remaining} left today`}
-            </div>
-          )}
-          {input.length >= 400 && (
-            <div
-              className="font-mono"
-              style={{
-                fontSize: 10,
-                paddingBottom: 4,
-                color: input.length >= 500 ? "var(--negative)" : "var(--accent)",
-              }}
-            >
-              {input.length}/500
-            </div>
-          )}
-
-          {/* Input pill */}
-          <div
-            style={{
-              background: "var(--surface)",
-              border: "0.5px solid var(--border-strong)",
-              borderRadius: 22,
-              padding: "7px 7px 7px 10px",
-              display: "flex",
-              alignItems: "flex-end",
-              gap: 6,
-            }}
-          >
-            {/* Image attach button */}
-            <input
-              key={fileInputKey}
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              tabIndex={-1}
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFile(file);
-                setFileInputKey((k) => k + 1);
-              }}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Attach image"
-              className="flex items-center justify-center text-faint hover:text-dim transition-colors"
-              style={{
-                flexShrink: 0,
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="9" cy="9" r="2" />
-                <path d="M21 15l-5-5L5 21" />
-              </svg>
-            </button>
-
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onFocus={() => { setKeyboardOpen(true); document.documentElement.dataset.kb = "open"; }}
-              onBlur={() => { setKeyboardOpen(false); document.documentElement.dataset.kb = ""; }}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              onPaste={handlePaste}
-              maxLength={500}
-              rows={1}
-              placeholder={(() => {
-                if (remaining === 0) return "Daily limit reached — back tomorrow";
-                if (imageData.length) return "Add a note or send…";
-                const lastMsg = messages[messages.length - 1];
-                const chipsVisible = seedMessage !== null || (
-                  lastMsg?.from === "assistant" &&
-                  (lastMsg.suggestedReplies?.length ?? 0) > 0
-                );
-                return chipsVisible ? "Or type something else…" : "Ask anything about your portfolio…";
-              })()}
-              className="flex-1 outline-none"
-              style={{
-                background: "transparent",
-                border: "none",
-                resize: "none",
-                fontFamily: "var(--sans)",
-                fontSize: 15,
-                lineHeight: 1.4,
-                color: "var(--text)",
-                padding: "6px 2px",
-                margin: 0,
-                minWidth: 0,
-                maxHeight: 120,
-                overflowY: "hidden",
-              }}
-            />
-
-            {/* Send button */}
-            <button
-              onClick={send}
-              disabled={!canSend}
-              className="flex items-center justify-center"
-              style={{
-                flexShrink: 0,
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: canSend ? "var(--accent)" : "var(--surface-elev)",
-                color: canSend ? "var(--bg)" : "var(--text-faint)",
-                border: "none",
-                cursor: canSend ? "pointer" : "default",
-                opacity: canSend ? 1 : 0.5,
-                transition: "background 0.15s, opacity 0.15s",
-              }}
-            >
-              <svg
-                viewBox="0 0 256 256"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="22"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ width: 15, height: 15 }}
-              >
-                <line x1="128" y1="40" x2="128" y2="216" />
-                <polyline points="56 112 128 40 200 112" />
-              </svg>
-            </button>
-          </div>
-        </div>
+          ref={threadRef}
+        />
       </div>
     </>
   );
