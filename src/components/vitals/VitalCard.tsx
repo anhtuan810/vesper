@@ -12,6 +12,9 @@ export interface VitalCardProps {
   rightStat?: { label: string; value: string };
   benchLine?: string;
   suggestion?: Pick<SuggestionStripProps, "variant" | "label" | "body">;
+  /** Desktop grid only: fill the row height and pin the suggestion strip to the
+   *  bottom so strips align across cards with differing chart heights. */
+  fillHeight?: boolean;
   children: ReactNode;
 }
 
@@ -29,6 +32,7 @@ export function VitalCard({
   rightStat,
   benchLine,
   suggestion,
+  fillHeight = false,
   children,
 }: VitalCardProps) {
   return (
@@ -39,6 +43,7 @@ export function VitalCard({
         borderRadius: 14,
         padding: "14px 15px 12px",
         marginBottom: 10,
+        ...(fillHeight ? { display: "flex", flexDirection: "column", height: "100%" } : {}),
       }}
     >
       {/* Header */}
@@ -162,13 +167,23 @@ export function VitalCard({
         </div>
       )}
 
-      {/* Suggestion strip */}
+      {/* Suggestion strip — pinned to the card bottom in the desktop grid */}
       {suggestion && (
-        <SuggestionStrip
-          variant={suggestion.variant}
-          label={suggestion.label}
-          body={suggestion.body}
-        />
+        fillHeight ? (
+          <div style={{ marginTop: "auto" }}>
+            <SuggestionStrip
+              variant={suggestion.variant}
+              label={suggestion.label}
+              body={suggestion.body}
+            />
+          </div>
+        ) : (
+          <SuggestionStrip
+            variant={suggestion.variant}
+            label={suggestion.label}
+            body={suggestion.body}
+          />
+        )
       )}
     </div>
   );
