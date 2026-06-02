@@ -30,6 +30,8 @@ interface ChatThreadProps {
   hasPortfolio: boolean;
   /** When "portfolio", the first assistant bubble gets a "From Portfolio" eyebrow (page only). */
   source?: string | null;
+  /** Override the composer input-pill background (popup variant). Defaults to var(--bg). */
+  composerBg?: string;
 
   // Caller-owned refs so the caller's scroll/observer effects keep working.
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -47,6 +49,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       chatSuggestions,
       hasPortfolio,
       source,
+      composerBg,
       scrollContainerRef,
       sentinelRef,
       bottomRef,
@@ -567,7 +570,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           <div
             style={{
               position: "relative",
-              background: "var(--bg)",
+              background: composerBg ?? "var(--bg)",
               border: "0.5px solid var(--border-strong)",
               borderRadius: 20,
               padding: "10px 46px 10px 40px",

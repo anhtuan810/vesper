@@ -17,6 +17,9 @@ interface NavBarProps {
   refreshPrices: () => void;
   lastUpdated?: Date | null;
   empty?: boolean;
+  /** Desktop shell: pad the bar by the side-panel widths so its centered
+   *  content aligns over the center column. */
+  desktopInset?: { left: number; right: number };
 }
 
 function formatRelativeTime(date: Date): string {
@@ -32,7 +35,7 @@ function formatRelativeTime(date: Date): string {
 
 
 export function NavBar({
-  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty,
+  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty, desktopInset,
 }: NavBarProps) {
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -63,6 +66,9 @@ export function NavBar({
         // Always respect the iOS status-bar inset so content never hides under
         // the notch (the area above shows the page background on mobile).
         paddingTop: "env(safe-area-inset-top, 0px)",
+        ...(desktopInset
+          ? { paddingLeft: desktopInset.left, paddingRight: desktopInset.right }
+          : {}),
       }}
     >
       <div className="max-w-[720px] mx-auto flex items-center justify-between px-0 md:px-5 h-9 md:h-14">

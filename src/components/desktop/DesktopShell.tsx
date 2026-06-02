@@ -9,18 +9,40 @@ import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 
 const CHAT_WIDTH_KEY = "volnar.chat.width";
-const CHAT_WIDTH_MIN = 300;
-const CHAT_WIDTH_MAX = 560;
-const CHAT_WIDTH_DEFAULT = 380;
+const CHAT_MIN = 300;
+const CHAT_MAX = 560;
+const CHAT_DEFAULT = 380;
 
-function clampWidth(w: number): number {
-  return Math.min(CHAT_WIDTH_MAX, Math.max(CHAT_WIDTH_MIN, w));
-}
+const VITALS_WIDTH_KEY = "volnar.vitals.width";
+const VITALS_MIN = 300;
+const VITALS_MAX = 520;
+const VITALS_DEFAULT = 380;
 
+const HANDLE = 9;
 // Centered reading width for the main column, matching the mobile layout.
 const MAIN_MAX_WIDTH = 720;
-// Fixed width of the left Vitals panel.
-const VITALS_WIDTH = 380;
+
+const clampChat = (w: number) => Math.min(CHAT_MAX, Math.max(CHAT_MIN, w));
+const clampVitals = (w: number) => Math.min(VITALS_MAX, Math.max(VITALS_MIN, w));
+
+// Shared header bar for the side panels (matches the in-bar eyebrow style).
+const panelHeaderStyle: React.CSSProperties = {
+  flexShrink: 0,
+  height: 44,
+  padding: "0 20px",
+  display: "flex",
+  alignItems: "center",
+  borderBottom: "0.5px solid var(--border)",
+};
+const panelLabelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  color: "var(--text-faint)",
+};
+
+type DragTarget = "vitals" | "chat";
 
 interface DesktopShellProps {
   tab: "portfolio" | "diary" | "profile";
@@ -28,9 +50,9 @@ interface DesktopShellProps {
 }
 
 /**
- * Desktop web layout: the existing top NavBar, a scrollable main column that
- * renders the current tab's content component, a draggable divider, and a
- * persistent chat panel rendering ChatThread. Rendered only when
+ * Desktop web layout: the existing top NavBar over a three-pane body —
+ * a resizable left Vitals panel, the centered main content column, and a
+ * resizable right chat panel rendering ChatThread. Rendered only when
  * useIsDesktop() is true — mobile and the native app never reach this.
  *
  * Fixed-positioned to escape the shared layout's centered max-w-[720px] column.
@@ -47,38 +69,51 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
     router.push(t === "portfolio" ? "/" : "/" + t);
   };
 
-  // ── Resizable chat panel ────────────────────────────────────────────────
-  const [chatWidth, setChatWidth] = useState(CHAT_WIDTH_DEFAULT);
-  const [dragging, setDragging] = useState(false);
+  // ── Resizable side panels ───────────────────────────────────────────────
+  const [vitalsWidth, setVitalsWidth] = useState(VITALS_DEFAULT);
+  const [chatWidth, setChatWidth] = useState(CHAT_DEFAULT);
+  const [drag, setDrag] = useState<DragTarget | null>(null);
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
-  const widthRef = useRef(chatWidth);
-  useEffect(() => { widthRef.current = chatWidth; }, [chatWidth]);
 
-  // Read + clamp the persisted width on mount.
+  const vitalsRef = useRef(vitalsWidth);
+  const chatRef = useRef(chatWidth);
+  useEffect(() => { vitalsRef.current = vitalsWidth; }, [vitalsWidth]);
+  useEffect(() => { chatRef.current = chatWidth; }, [chatWidth]);
+
+  // Read + clamp persisted widths on mount.
   useEffect(() => {
-    const raw = localStorage.getItem(CHAT_WIDTH_KEY);
-    const n = raw ? Number(raw) : NaN;
-    if (Number.isFinite(n)) setChatWidth(clampWidth(n));
+    const v = Number(localStorage.getItem(VITALS_WIDTH_KEY));
+    if (Number.isFinite(v) && v > 0) setVitalsWidth(clampVitals(v));
+    const c = Number(localStorage.getItem(CHAT_WIDTH_KEY));
+    if (Number.isFinite(c) && c > 0) setChatWidth(clampChat(c));
   }, []);
 
-  const onHandleDown = useCallback((e: React.PointerEvent) => {
+  const startDrag = useCallback((target: DragTarget, e: React.PointerEvent) => {
     e.preventDefault();
-    setDragging(true);
-    dragRef.current = { startX: e.clientX, startW: widthRef.current };
+    setDrag(target);
+    dragRef.current = {
+      startX: e.clientX,
+      startW: target === "vitals" ? vitalsRef.current : chatRef.current,
+    };
   }, []);
 
   useEffect(() => {
-    if (!dragging) return;
+    if (!drag) return;
     const move = (e: PointerEvent) => {
       if (!dragRef.current) return;
-      // Panel is on the right: dragging the handle left widens it.
-      const delta = dragRef.current.startX - e.clientX;
-      setChatWidth(clampWidth(dragRef.current.startW + delta));
+      if (drag === "vitals") {
+        // Left panel: dragging the handle right widens it.
+        setVitalsWidth(clampVitals(dragRef.current.startW + (e.clientX - dragRef.current.startX)));
+      } else {
+        // Right panel: dragging the handle left widens it.
+        setChatWidth(clampChat(dragRef.current.startW + (dragRef.current.startX - e.clientX)));
+      }
     };
     const up = () => {
-      setDragging(false);
+      if (drag === "vitals") localStorage.setItem(VITALS_WIDTH_KEY, String(vitalsRef.current));
+      else localStorage.setItem(CHAT_WIDTH_KEY, String(chatRef.current));
+      setDrag(null);
       dragRef.current = null;
-      localStorage.setItem(CHAT_WIDTH_KEY, String(widthRef.current));
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -86,7 +121,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
-  }, [dragging]);
+  }, [drag]);
 
   // ── Chat session + thread plumbing ──────────────────────────────────────
   const session = useChatSession({ userId: user?.id });
@@ -112,6 +147,30 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, loadMore]);
+
+  const renderHandle = (target: DragTarget, label: string) => (
+    <div
+      onPointerDown={(e) => startDrag(target, e)}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      style={{
+        cursor: "col-resize",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--bg)",
+        userSelect: "none",
+        touchAction: "none",
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--text-faint)" }} />
+        <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--text-faint)" }} />
+        <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--text-faint)" }} />
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -140,6 +199,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
         refreshing={false}
         refreshPrices={() => {}}
         empty
+        desktopInset={{ left: vitalsWidth + HANDLE, right: chatWidth + HANDLE }}
       />
 
       <div
@@ -147,94 +207,48 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
           flex: 1,
           minHeight: 0,
           display: "grid",
-          gridTemplateColumns: `${VITALS_WIDTH}px minmax(0, 1fr) 9px ${chatWidth}px`,
+          gridTemplateColumns: `${vitalsWidth}px ${HANDLE}px minmax(0, 1fr) ${HANDLE}px ${chatWidth}px`,
         }}
       >
-        {/* Left panel — Vitals (its own heading is rendered by VitalsContent) */}
-        <aside
-          style={{
-            minHeight: 0,
-            overflowY: "auto",
-            padding: "0 16px 24px",
-            borderRight: "0.5px solid var(--border)",
-          }}
-        >
-          <VitalsContent layout="grid" libraryPosition="top" />
-        </aside>
-
-        {/* Main column — centered reading-width content for the current tab */}
-        <main
-          style={{
-            minWidth: 0,
-            overflowY: "auto",
-          }}
-        >
-          <div style={{ maxWidth: MAIN_MAX_WIDTH, margin: "0 auto", padding: "20px 20px 40px" }}>
-            {children}
-          </div>
-        </main>
-
-        {/* Resize handle */}
-        <div
-          onPointerDown={onHandleDown}
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize chat panel"
-          style={{
-            cursor: "col-resize",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "var(--bg)",
-            borderLeft: "0.5px solid var(--border)",
-            borderRight: "0.5px solid var(--border)",
-            userSelect: "none",
-            touchAction: "none",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 3,
-            }}
-          >
-            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--text-faint)" }} />
-            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--text-faint)" }} />
-            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--text-faint)" }} />
-          </div>
-        </div>
-
-        {/* Chat panel */}
+        {/* Left panel — Vitals */}
         <aside
           style={{
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            background: "var(--bg)",
+            background: "var(--surface-elev)",
           }}
         >
-          <div
-            style={{
-              flexShrink: 0,
-              padding: "0 20px",
-              height: 44,
-              display: "flex",
-              alignItems: "center",
-              borderBottom: "0.5px solid var(--border)",
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 500,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: "var(--text-faint)",
-              }}
-            >
-              Assistant
-            </span>
+          <div style={panelHeaderStyle}>
+            <span style={panelLabelStyle}>Vitals</span>
+          </div>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px" }}>
+            <VitalsContent layout="grid" libraryPosition="top" showHeader={false} />
+          </div>
+        </aside>
+
+        {renderHandle("vitals", "Resize vitals panel")}
+
+        {/* Main column — centered reading-width content for the current tab */}
+        <main style={{ minWidth: 0, overflowY: "auto" }}>
+          <div style={{ maxWidth: MAIN_MAX_WIDTH, margin: "0 auto", padding: "20px 20px 40px" }}>
+            {children}
+          </div>
+        </main>
+
+        {renderHandle("chat", "Resize chat panel")}
+
+        {/* Right panel — Assistant chat */}
+        <aside
+          style={{
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--surface-deep)",
+          }}
+        >
+          <div style={panelHeaderStyle}>
+            <span style={panelLabelStyle}>Assistant</span>
           </div>
 
           <ChatThread
@@ -243,6 +257,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
             seedMessage={null}
             chatSuggestions={chatSuggestions}
             hasPortfolio={hasPortfolio}
+            composerBg="var(--surface)"
             scrollContainerRef={scrollContainerRef}
             sentinelRef={sentinelRef}
             bottomRef={bottomRef}
@@ -255,7 +270,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
       </div>
 
       {/* Transparent overlay during drag so text/iframes don't select */}
-      {dragging && (
+      {drag && (
         <div
           style={{
             position: "fixed",

@@ -710,11 +710,14 @@ interface VitalsContentProps {
   layout?: "stack" | "grid";
   /** Where the Library expander sits relative to the cards. */
   libraryPosition?: "top" | "bottom";
+  /** Render the big "Vitals" title. Off when a host panel supplies its own header. */
+  showHeader?: boolean;
 }
 
 export function VitalsContent({
   layout = "stack",
   libraryPosition = "bottom",
+  showHeader = true,
 }: VitalsContentProps = {}) {
   const router = useRouter();
   const { data, isLoading, error } = useVitals();
@@ -782,7 +785,7 @@ export function VitalsContent({
       .sort((a, b) => b.pct - a.pct);
   }, [data?.assets]);
 
-  const pageTitle = (
+  const pageTitle = showHeader ? (
     <div style={{ marginBottom: 20, paddingTop: 32 }}>
       <div
         style={{
@@ -831,7 +834,7 @@ export function VitalsContent({
         )}
       </div>
     </div>
-  );
+  ) : null;
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {

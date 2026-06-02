@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { TradeableDetail } from "@/components/asset-detail/TradeableDetail";
 import { RealEstateDetail } from "@/components/asset-detail/RealEstateDetail";
 import { StaticDetail } from "@/components/asset-detail/StaticDetail";
+import { DesktopFrame } from "@/components/desktop/DesktopFrame";
 import type { TradeableAsset, RealEstateAsset, StaticAsset, BondsAsset } from "@/lib/supabase";
 
 export default async function AssetPage({
@@ -41,17 +42,18 @@ export default async function AssetPage({
 
   const { type } = asset;
 
+  let detail: React.ReactNode = null;
   if (type === "stocks" || type === "etf" || type === "crypto" || type === "gold") {
-    return <TradeableDetail asset={asset as TradeableAsset} />;
+    detail = <TradeableDetail asset={asset as TradeableAsset} />;
+  } else if (type === "real_estate") {
+    detail = <RealEstateDetail asset={asset as RealEstateAsset} />;
+  } else if (type === "bonds" || type === "cash" || type === "pension" || type === "other") {
+    detail = <StaticDetail asset={asset as StaticAsset | BondsAsset} />;
   }
 
-  if (type === "real_estate") {
-    return <RealEstateDetail asset={asset as RealEstateAsset} />;
-  }
+  if (!detail) notFound();
 
-  if (type === "bonds" || type === "cash" || type === "pension" || type === "other") {
-    return <StaticDetail asset={asset as StaticAsset | BondsAsset} />;
-  }
-
-  notFound();
+  // Desktop web adopts the three-pane shell (Vitals + content + chat);
+  // mobile and native render the detail unchanged.
+  return <DesktopFrame tab="portfolio">{detail}</DesktopFrame>;
 }
