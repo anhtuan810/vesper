@@ -56,6 +56,9 @@ const CATEGORY_MAP: Record<string, string> = {
 };
 const categoryFor = (type: string): string => CATEGORY_MAP[type] ?? "reserves";
 
+/** Public alias of the internal category mapper, for the projection engine. */
+export const categoryForType = categoryFor;
+
 // Net-worth contribution in native currency. Mirror of src/lib/snapshot.ts and
 // src/components/PortfolioTab.tsx: real estate counts equity (value minus the
 // amortized current mortgage balance); every other type counts full value.
