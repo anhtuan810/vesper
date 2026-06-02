@@ -37,7 +37,7 @@ export default function ProfilePage() {
   if (isDesktop) {
     return (
       <DesktopShell tab="profile">
-        <ProfileContent />
+        <ProfileContent fillWidth />
       </DesktopShell>
     );
   }

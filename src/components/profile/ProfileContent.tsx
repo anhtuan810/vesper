@@ -45,7 +45,7 @@ function ChevronRight() {
   );
 }
 
-export function ProfileContent() {
+export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = {}) {
   const router = useRouter();
   const { user } = useUser();
   const profile = useProfile(user?.id);
@@ -157,7 +157,9 @@ export function ProfileContent() {
 
   return (
     <>
-      <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
+      <div style={fillWidth
+        ? { maxWidth: "none", margin: 0, padding: 0 }
+        : { maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
 
         {/* Name as page title + fingerprint as supporting line */}
         <div style={{ paddingTop: 32, marginBottom: 26 }}>
