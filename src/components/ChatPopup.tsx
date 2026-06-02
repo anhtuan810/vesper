@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { FormatText } from "@/components/FormatText";
+import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { getChatSeed, type ChatSeed } from "@/lib/chat-seeds";
@@ -25,19 +25,14 @@ export default function ChatPopup({
   const { assets } = useAssets(userId);
   const hasPortfolio = assets.length > 0;
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
-  const {
-    messages, input, setInput, loading, thinking, remaining,
-    imagePreviews, imageData, canSend, send, sendText, clearImage, removeImage, handlePaste, handleFile,
-    loadMore, hasMore, isLoadingMore,
-  } = useChatSession({ userId, onPortfolioUpdate, onNewMessage });
+  const session = useChatSession({ userId, onPortfolioUpdate, onNewMessage });
+  const { messages, thinking, loadMore, hasMore, isLoadingMore } = session;
 
   const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
   const [size, setSize] = useState({ width: 400, height: 560 });
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileInputKey, setFileInputKey] = useState(0);
+  const threadRef = useRef<ChatThreadHandle>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -50,7 +45,7 @@ export default function ChatPopup({
   useEffect(() => {
     if (isOpen) {
       onOpen();
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => threadRef.current?.focus(), 100);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -210,364 +205,20 @@ export default function ChatPopup({
         </button>
       </div>
 
-      {/* Messages */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden"
+      <ChatThread
+        variant="popup"
+        session={session}
+        seedMessage={seedMessage}
+        chatSuggestions={chatSuggestions}
+        hasPortfolio={hasPortfolio}
+        scrollContainerRef={scrollContainerRef}
+        sentinelRef={sentinelRef}
+        bottomRef={bottomRef}
         onScroll={(e) => {
-          if ((e.currentTarget as HTMLDivElement).scrollTop > 0) hasScrolled.current = true;
+          if (e.currentTarget.scrollTop > 0) hasScrolled.current = true;
         }}
-        style={{
-          padding: "20px 20px 8px",
-          scrollbarWidth: "none",
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-        }}
-      >
-        <div ref={sentinelRef} />
-        {isLoadingMore && (
-          <div
-            className="text-center text-faint"
-            style={{ fontSize: 11, paddingBottom: 4 }}
-          >
-            Loading older messages…
-          </div>
-        )}
-        {messages.length === 0 && !seedMessage && (
-          <div>
-            <div
-              className="text-dim mb-4 leading-relaxed"
-              style={{ fontSize: 14 }}
-            >
-              Ask about your portfolio, or paste a screenshot of your broker app.
-            </div>
-            <div className="flex flex-col items-start gap-2">
-              {chatSuggestions.map((s) => (
-                <button
-                  key={s}
-                  style={{
-                    fontSize: 13,
-                    color: "var(--accent-text)",
-                    background: "var(--accent-soft)",
-                    padding: "8px 14px",
-                    borderRadius: 999,
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => sendText(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(() => {
-          const lastAssistantIdx = messages.reduce((last, m, i) => m.from === "assistant" ? i : last, -1);
-          return messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`chat-msg flex flex-col ${msg.from === "user" ? "items-end" : "items-start"}`}
-            >
-              <div
-                style={{
-                  maxWidth: msg.from === "user" ? "80%" : "92%",
-                  padding: msg.from === "user" ? "10px 14px" : "0",
-                  borderRadius: msg.from === "user" ? "18px 18px 4px 18px" : 0,
-                  background: msg.from === "user" ? "var(--surface-elev)" : "transparent",
-                  border: msg.from === "user" ? "0.5px solid var(--border)" : "none",
-                  boxShadow: msg.from === "user" ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
-                  color: "var(--text)",
-                  fontSize: 14,
-                  lineHeight: 1.55,
-                  overflowWrap: "break-word",
-                  minWidth: 0,
-                }}
-              >
-                {msg.from === "assistant" ? (
-                  <FormatText text={msg.text} />
-                ) : (
-                  <>
-                    {msg.imagePreviews && msg.imagePreviews.length > 0 && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.text && msg.text !== "Screenshot uploaded" && msg.text !== "Screenshots uploaded" ? 8 : 0 }}>
-                        {msg.imagePreviews.map((src, idx) => (
-                          <img
-                            key={idx}
-                            src={src}
-                            alt=""
-                            style={{
-                              display: "block",
-                              maxWidth: "100%",
-                              maxHeight: 200,
-                              borderRadius: 10,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {(!msg.imagePreviews?.length || (msg.text && msg.text !== "Screenshot uploaded" && msg.text !== "Screenshots uploaded")) && msg.text}
-                  </>
-                )}
-              </div>
-              {i === lastAssistantIdx && !loading && msg.suggestedReplies && msg.suggestedReplies.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {msg.suggestedReplies.map((chip) => (
-                    <button
-                      key={chip}
-                      onClick={() => sendText(chip)}
-                      style={{
-                        height: 32,
-                        padding: "0 14px",
-                        borderRadius: 999,
-                        fontSize: 13,
-                        background: "var(--surface-elev)",
-                        color: "var(--text)",
-                        border: chip === "Confirm and save"
-                          ? "1px solid var(--accent)"
-                          : "1px solid var(--border)",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ));
-        })()}
-
-        {/* Synthetic seed message — local only, not persisted */}
-        {seedMessage && !loading && (
-          <div className="chat-msg flex flex-col items-start">
-            <div
-              style={{
-                maxWidth: "92%",
-                padding: "0",
-                background: "transparent",
-                border: "none",
-                color: "var(--text)",
-                fontSize: 14,
-                lineHeight: 1.55,
-                overflowWrap: "break-word",
-                minWidth: 0,
-              }}
-            >
-              <FormatText text={seedMessage.message} />
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {seedMessage.chips.map((chip) => (
-                <button
-                  key={chip}
-                  onClick={() => sendText(chip)}
-                  style={{
-                    height: 32,
-                    padding: "0 14px",
-                    borderRadius: 999,
-                    fontSize: 13,
-                    background: "var(--surface-elev)",
-                    color: "var(--text)",
-                    border: "1px solid var(--border)",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {thinking && (
-          <div className="flex items-center gap-0.5 py-1">
-            <span className="chat-dot" />
-            <span className="chat-dot" />
-            <span className="chat-dot" />
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Image previews */}
-      {imagePreviews.length > 0 && (
-        <div className="px-4 pb-2 flex items-center gap-2 flex-wrap shrink-0">
-          {imagePreviews.map((src, i) => (
-            <div key={i} style={{ position: "relative", display: "inline-block" }}>
-              <img
-                src={src}
-                alt={`Preview ${i + 1}`}
-                className="rounded-lg object-cover"
-                style={{ width: 40, height: 40, border: "1px solid var(--border)", display: "block" }}
-              />
-              <button
-                onClick={() => removeImage(i)}
-                style={{
-                  position: "absolute", top: -5, right: -5,
-                  width: 16, height: 16, borderRadius: "50%",
-                  background: "var(--text-faint)", color: "var(--bg)",
-                  border: "none", cursor: "pointer",
-                  fontSize: 9, lineHeight: "16px", textAlign: "center", padding: 0,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Input bar */}
-      <div
-        className="px-4 py-3 shrink-0"
-        style={{ position: "relative", borderTop: "0.5px solid var(--border)" }}
-      >
-        {remaining !== null && remaining <= 10 && (
-          <div
-            className="font-mono text-accent text-right"
-            style={{ fontSize: 10, paddingBottom: 4 }}
-          >
-            {remaining === 0 ? "Limit reached" : `${remaining} left today`}
-          </div>
-        )}
-        {input.length >= 400 && (
-          <div
-            className="font-mono"
-            style={{
-              fontSize: 10, paddingBottom: 4,
-              color: input.length >= 500 ? "var(--negative)" : "var(--accent)",
-            }}
-          >
-            {input.length}/500
-          </div>
-        )}
-
-        {/* Input pill */}
-        <div
-          style={{
-            position: "relative",
-            background: "var(--bg)",
-            border: "0.5px solid var(--border-strong)",
-            borderRadius: 20,
-            padding: "10px 46px 10px 40px",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          {/* Image attach */}
-          <input
-            key={fileInputKey}
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-              setFileInputKey((k) => k + 1);
-            }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Attach image"
-            className="flex items-center justify-center text-faint hover:text-dim transition-colors"
-            style={{
-              position: "absolute",
-              left: 10,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 24,
-              height: 24,
-              borderRadius: "50%",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="9" cy="9" r="2" />
-              <path d="M21 15l-5-5L5 21" />
-            </svg>
-          </button>
-
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); send(); }
-            }}
-            onPaste={handlePaste}
-            maxLength={500}
-            placeholder={(() => {
-              if (remaining === 0) return "Daily limit reached — back tomorrow";
-              if (imageData.length) return "Add a note or send…";
-              const lastMsg = messages[messages.length - 1];
-              const chipsVisible = seedMessage !== null || (
-                lastMsg?.from === "assistant" &&
-                (lastMsg.suggestedReplies?.length ?? 0) > 0
-              );
-              return chipsVisible ? "Or type something else…" : "Ask anything about your portfolio…";
-            })()}
-            className="flex-1 outline-none"
-            style={{
-              background: "transparent",
-              border: "none",
-              fontFamily: "var(--sans)",
-              fontSize: 14,
-              color: "var(--text)",
-            }}
-          />
-
-          {/* Send button */}
-          <button
-            onClick={send}
-            disabled={!canSend}
-            className="flex items-center justify-center"
-            style={{
-              position: "absolute",
-              right: 5,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: canSend ? "var(--accent)" : "var(--surface-elev)",
-              color: canSend ? "var(--bg)" : "var(--text-faint)",
-              border: "none",
-              cursor: canSend ? "pointer" : "default",
-              opacity: canSend ? 1 : 0.5,
-              transition: "background 0.15s, opacity 0.15s",
-            }}
-          >
-            <svg
-              viewBox="0 0 256 256"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="22"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ width: 14, height: 14 }}
-            >
-              <line x1="128" y1="40" x2="128" y2="216" />
-              <polyline points="56 112 128 40 200 112" />
-            </svg>
-          </button>
-        </div>
-      </div>
+        ref={threadRef}
+      />
     </div>
   );
 }
