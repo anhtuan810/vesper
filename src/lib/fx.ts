@@ -89,6 +89,45 @@ export async function getUsdRates(): Promise<FxRates> {
   return fresh;
 }
 
+// ── Historical FX (frankfurter time-series) ──────────────────────────────────
+// Per-date USD rates for [from, to]. Fetch-on-demand, cached in-memory by range
+// (same pattern as getUsdRates' memCache). No DB cache, no schema change.
+
+const FRANKFURTER_TIMESERIES_BASE = "https://api.frankfurter.app";
+const FX_SYMBOLS = "EUR,GBP,CHF,JPY,CAD,AUD,HKD";
+
+/** date (YYYY-MM-DD) → { quote: rate } where rate = 1 USD = N quote. */
+export interface FxSeries {
+  [date: string]: FxRates;
+}
+
+const histMemCache = new Map<string, { series: FxSeries; ts: number }>();
+
+export async function getHistoricalUsdRates(from: string, to: string): Promise<FxSeries> {
+  const key = `${from}..${to}`;
+  const cached = histMemCache.get(key);
+  if (cached && Date.now() - cached.ts < FX_MEM_CACHE_TTL_MS) return cached.series;
+
+  try {
+    const url = `${FRANKFURTER_TIMESERIES_BASE}/${from}..${to}?base=USD&symbols=${FX_SYMBOLS}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS * 3) });
+    if (!res.ok) throw new Error(`frankfurter timeseries HTTP ${res.status}`);
+    const body = await res.json();
+    const rates = body?.rates;
+    if (!rates || typeof rates !== "object" || Array.isArray(rates)) {
+      throw new Error("Unexpected Frankfurter timeseries response shape");
+    }
+    const series = rates as FxSeries;
+    histMemCache.set(key, { series, ts: Date.now() });
+    return series;
+  } catch (err) {
+    if (cached) return cached.series;
+    Sentry.captureMessage("Historical FX unavailable", "warning");
+    console.warn("Historical FX fetch failed:", err);
+    return {};
+  }
+}
+
 // Converts a native-currency amount to USD.
 // Returns null only when the FX table is empty AND the API is down.
 export async function toUsd(amount: number, nativeCurrency: string): Promise<number | null> {
