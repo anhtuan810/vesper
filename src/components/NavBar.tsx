@@ -17,6 +17,8 @@ interface NavBarProps {
   refreshPrices: () => void;
   lastUpdated?: Date | null;
   empty?: boolean;
+  /** Desktop shell only: hide the in-bar tab row (the left sidebar provides nav). */
+  hideTabs?: boolean;
 }
 
 function formatRelativeTime(date: Date): string {
@@ -32,7 +34,7 @@ function formatRelativeTime(date: Date): string {
 
 
 export function NavBar({
-  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty,
+  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty, hideTabs,
 }: NavBarProps) {
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -70,7 +72,7 @@ export function NavBar({
         <div className="flex items-center gap-4">
           <Logo size={20} />
 
-          <div className="hidden md:flex items-center gap-0.5">
+          {!hideTabs && <div className="hidden md:flex items-center gap-0.5">
             {(["portfolio", "diary", "profile"] as Tab[]).map((t) => (
               <button
                 key={t}
@@ -98,7 +100,7 @@ export function NavBar({
                 )}
               </button>
             ))}
-          </div>
+          </div>}
         </div>
 
         {/* Right: name · refresh */}

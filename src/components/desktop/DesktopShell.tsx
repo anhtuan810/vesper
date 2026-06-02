@@ -16,8 +16,21 @@ function clampWidth(w: number): number {
   return Math.min(CHAT_WIDTH_MAX, Math.max(CHAT_WIDTH_MIN, w));
 }
 
+// Centered reading width for the main column, matching the mobile layout.
+const MAIN_MAX_WIDTH = 720;
+const SIDEBAR_WIDTH = 200;
+
+type DesktopTab = "portfolio" | "vitals" | "diary" | "profile";
+
+const NAV_ITEMS: ReadonlyArray<{ key: DesktopTab; label: string }> = [
+  { key: "portfolio", label: "Portfolio" },
+  { key: "vitals", label: "Vitals" },
+  { key: "diary", label: "Diary" },
+  { key: "profile", label: "Profile" },
+];
+
 interface DesktopShellProps {
-  tab: "portfolio" | "diary" | "profile";
+  tab: DesktopTab;
   children: ReactNode;
 }
 
@@ -134,6 +147,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
         refreshing={false}
         refreshPrices={() => {}}
         empty
+        hideTabs
       />
 
       <div
@@ -141,18 +155,56 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
           flex: 1,
           minHeight: 0,
           display: "grid",
-          gridTemplateColumns: `minmax(0, 1fr) 9px ${chatWidth}px`,
+          gridTemplateColumns: `${SIDEBAR_WIDTH}px minmax(0, 1fr) 9px ${chatWidth}px`,
         }}
       >
-        {/* Main column — renders the current tab's content component */}
+        {/* Left sidebar nav — primary desktop navigation (includes Vitals) */}
+        <nav
+          style={{
+            minWidth: 0,
+            overflowY: "auto",
+            borderRight: "0.5px solid var(--border)",
+            padding: "16px 10px",
+          }}
+        >
+          {NAV_ITEMS.map(({ key, label }) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "8px 12px",
+                  marginBottom: 2,
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: "none",
+                  cursor: "pointer",
+                  background: active ? "var(--surface-elev)" : "transparent",
+                  color: active ? "var(--text)" : "var(--text-faint)",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Main column — centered reading-width content for the current tab */}
         <main
           style={{
             minWidth: 0,
             overflowY: "auto",
-            padding: "20px",
           }}
         >
-          {children}
+          <div style={{ maxWidth: MAIN_MAX_WIDTH, margin: "0 auto", padding: "20px 20px 40px" }}>
+            {children}
+          </div>
         </main>
 
         {/* Resize handle */}
