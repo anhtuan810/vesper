@@ -13,7 +13,7 @@
 ### Account Deletion
 - Permanent, irreversible deletion from the Profile account area. A low-emphasis 'Delete account' affordance opens a confirmation requiring the user to type `DELETE`; the confirm button stays disabled until it matches.
 - On confirm: `DELETE /api/users/me` runs, then the client signs out and redirects to `/login`.
-- `DELETE /api/users/me` resolves the user id from the session only (never the request body), returns 401 unauthenticated, deletes every row for the user across `messages, highlights, goals, snapshots, mutations, assets`, then the `users` row, then the auth user via `auth.admin.deleteUser`. Failures captured to Sentry.
+- `DELETE /api/users/me` resolves the user id from the session only (never the request body), returns 401 unauthenticated, then runs an explicit per-table delete loop over the user-scoped tables `messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots` (each keyed by `user_id`), then deletes the `users` row, then the auth user via `auth.admin.deleteUser`. `rate_limits` is left to its `ON DELETE CASCADE` on `users(id)`; `fx_rates` is global and intentionally untouched. Failures throw and are captured to Sentry.
 - Satisfies GDPR right-to-erasure and the Apple App Store in-app-deletion requirement.
 - Files: `src/app/api/users/me/route.ts`, `src/app/profile/page.tsx`
 
