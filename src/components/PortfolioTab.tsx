@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import Link from "next/link";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import {
   NetWorthChart,
@@ -160,6 +161,16 @@ export function PortfolioTab({
               onSelectPoint={setSelectedPoint}
               valuesSettled={valuesSettled}
             />
+            {/* Quiet, editorial entry to the scenario sandbox — anchored under
+                the chart's range pills. Not a banner, not a nav tab. */}
+            <div className="flex justify-end" style={{ marginTop: 2, marginRight: 40 }}>
+              <Link
+                href="/scenarios"
+                style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.01em" }}
+              >
+                Explore a scenario →
+              </Link>
+            </div>
           </div>
         )}
       </div>
