@@ -124,10 +124,10 @@ const CHART_PAD_BOTTOM = 8;  // same — prevents clipping when current value is
 
 function buildPath(
   values: number[], W: number, H: number, yMin: number, yMax: number, drawW: number
-): { line: string; area: string; projectY: (v: number) => number } {
+): { line: string; projectY: (v: number) => number } {
   const projectY = makeProjectY(H, yMin, yMax);
 
-  if (values.length < 2) return { line: "", area: "", projectY };
+  if (values.length < 2) return { line: "", projectY };
 
   const toX = (i: number) => (i / (values.length - 1)) * drawW;
   const pts = values.map((c, i) => ({ x: toX(i), y: projectY(c) }));
@@ -136,9 +136,7 @@ function buildPath(
     line += ` L ${pts[i].x.toFixed(2)} ${pts[i].y.toFixed(2)}`;
   }
 
-  const area = line + ` L ${pts[pts.length - 1].x.toFixed(2)} ${H} L 0 ${H} Z`;
-
-  return { line, area, projectY };
+  return { line, projectY };
 }
 
 function makeProjectY(H: number, yMin: number, yMax: number): (v: number) => number {
@@ -199,7 +197,6 @@ export function NetWorthChart(props: Props) {
   const values = converted.map((p) => p.total_value);
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
-  const gradId = "netWorthChartFill";
 
   // Y domain: always floor at 0; cap at niceCeil(dataMax * 1.08) so the line sits in the upper third.
   const rawMax = values.length >= 2 ? Math.max(...values) : 1;
@@ -208,7 +205,7 @@ export function NetWorthChart(props: Props) {
   const yLabels = computeNiceLabels(niceMax);
 
   const drawW = W - CHART_PAD_RIGHT;
-  const { line, area, projectY } = buildPath(values, W, H, niceMin, niceMax, drawW);
+  const { line, projectY } = buildPath(values, W, H, niceMin, niceMax, drawW);
 
   const lastY = values.length >= 2 ? projectY(values[values.length - 1]) : H / 2;
 
@@ -284,13 +281,6 @@ export function NetWorthChart(props: Props) {
               height={H}
               style={{ display: "block" }}
             >
-              <defs>
-                <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
-                  <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <path d={area} fill={`url(#${gradId})`} />
               <path
                 d={line}
                 fill="none"

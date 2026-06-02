@@ -1,26 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/NavBar";
 import { VitalsContent } from "@/components/vitals/VitalsContent";
-import { DesktopShell } from "@/components/desktop/DesktopShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
 export default function VitalsPage() {
   const router = useRouter();
   const isDesktop = useIsDesktop();
 
-  if (isDesktop === undefined) {
-    return <div className="min-h-screen bg-bg" />;
-  }
+  // Desktop folds Vitals into the Portfolio surface; this route only exists on mobile.
+  useEffect(() => {
+    if (isDesktop) router.replace("/");
+  }, [isDesktop, router]);
 
-  // Desktop: Vitals is its own sidebar surface (grid + library on top).
-  if (isDesktop) {
-    return (
-      <DesktopShell tab="vitals">
-        <VitalsContent layout="grid" libraryPosition="top" />
-      </DesktopShell>
-    );
+  if (isDesktop !== false) {
+    return <div className="min-h-screen bg-bg" />;
   }
 
   const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {
