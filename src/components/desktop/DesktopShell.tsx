@@ -36,10 +36,10 @@ const panelHeaderStyle: React.CSSProperties = {
 };
 const panelLabelStyle: React.CSSProperties = {
   fontSize: 10,
-  fontWeight: 500,
+  fontWeight: 600,
   letterSpacing: "0.18em",
   textTransform: "uppercase",
-  color: "var(--text-faint)",
+  color: "var(--text-dim)",
 };
 
 type DragTarget = "vitals" | "chat";
@@ -216,7 +216,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            background: "var(--surface-elev)",
+            background: "var(--bg-deep)",
           }}
         >
           <div style={panelHeaderStyle}>
@@ -244,7 +244,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            background: "var(--surface-deep)",
+            background: "var(--bg-deep)",
           }}
         >
           <div style={panelHeaderStyle}>
