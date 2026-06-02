@@ -123,7 +123,7 @@ export async function DELETE(request: NextRequest) {
     // Every user-scoped table is listed explicitly (all keyed by user_id).
     // rate_limits is omitted — it has ON DELETE CASCADE to users(id); fx_rates
     // is global and intentionally untouched.
-    const tables = ["messages", "highlights", "goals", "snapshots", "mutations", "assets", "diary_summaries", "vital_snapshots"];
+    const tables = ["messages", "highlights", "goals", "snapshots", "mutations", "assets", "diary_summaries", "vital_snapshots", "scenarios"];
     for (const table of tables) {
       const { error } = await supabase.from(table).delete().eq("user_id", userId);
       if (error) throw new Error(`Failed deleting ${table}: ${error.message}`);
