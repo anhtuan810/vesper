@@ -27,7 +27,9 @@ export function HoldingsGroup({
           display: "flex",
           alignItems: "center",
           gap: 14,
-          padding: "14px 0 12px",
+          // Generous top spacing sets each class apart from the previous class's
+          // rows; the tighter bottom keeps the header tied to its own rows.
+          padding: "24px 0 12px",
           background: "none",
           border: "none",
           cursor: "pointer",
@@ -35,8 +37,9 @@ export function HoldingsGroup({
         }}
       >
         <span style={{
-          fontSize: 18,
-          fontWeight: 500,
+          fontSize: 19,
+          fontWeight: 600,
+          letterSpacing: "-0.01em",
           color: "var(--text)",
           flexShrink: 0,
           minWidth: 140,
@@ -45,10 +48,11 @@ export function HoldingsGroup({
           {label}
         </span>
 
-        {/* Proportional bar */}
+        {/* Proportional allocation bar — class accent, thicker with rounded ends
+            so it reads as a section gauge, not a row sparkline. */}
         <div style={{
           flex: 1,
-          height: 4,
+          height: 6,
           background: "var(--surface-elev)",
           borderRadius: 999,
           overflow: "hidden",
