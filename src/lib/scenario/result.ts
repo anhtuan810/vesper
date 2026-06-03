@@ -20,8 +20,28 @@ export interface ComparisonData {
   leverage: { ltvPct: number } | null;
 }
 
+// A contextual vital surfaced on a portfolio-change card, formatted before->after.
+export interface ScenarioVitalDelta {
+  key: string;
+  label: string;
+  before: string; // formatted percentage, nl-NL
+  after: string;
+  beforeBand: "green" | "amber" | "red";
+  afterBand: "green" | "amber" | "red";
+  /** True when a higher value is worse (colour the delta accordingly). */
+  higherIsWorse: boolean;
+}
+
 export type ScenarioResult =
   | { kind: "future"; cone: ConeData }
+  // The single whole-portfolio before->after answer for any portfolio-changing what-if.
+  | {
+      kind: "portfolio_change";
+      current: ComparisonData;
+      scenario: ComparisonData;
+      displayCurrency: DisplayCurrency;
+      contextualVitals: ScenarioVitalDelta[];
+    }
   | { kind: "present"; current: ComparisonData; scenario: ComparisonData; displayCurrency: DisplayCurrency }
   | { kind: "shock"; current: ComparisonData; scenario: ComparisonData; displayCurrency: DisplayCurrency }
   | {

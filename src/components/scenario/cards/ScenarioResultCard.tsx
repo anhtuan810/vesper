@@ -32,6 +32,21 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
     );
   }
 
+  if (result.kind === "portfolio_change") {
+    return (
+      <div style={{ marginTop: 12 }}>
+        <ScenarioComparisonCard
+          current={result.current}
+          scenario={result.scenario}
+          displayCurrency={result.displayCurrency}
+          title="Your portfolio, before → after"
+          allocationBar
+          contextualVitals={result.contextualVitals}
+        />
+      </div>
+    );
+  }
+
   if (result.kind === "present") {
     const hasLeverage = !!(result.current.leverage && result.scenario.leverage);
     return (

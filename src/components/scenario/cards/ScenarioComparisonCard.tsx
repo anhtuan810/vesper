@@ -2,10 +2,12 @@
 
 import { formatMoney } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
+import type { ScenarioVitalDelta } from "@/lib/scenario/result";
 
-// Prop-driven "current vs scenario" readout card. Reused by the Adjust sandbox,
-// the Stress test, and (Phase D) inline scenario results in chat. Every figure
-// arrives via props as USD; formatting to the display currency happens here.
+// Prop-driven "current vs scenario" readout card — the single whole-portfolio
+// before->after answer for portfolio-changing what-ifs (also reused by the parked
+// Adjust/Stress surfaces). Every figure arrives via props as USD; formatting to the
+// display currency happens here.
 
 export interface ComparisonReadout {
   netWorthUsd: number;
@@ -20,7 +22,14 @@ const CATEGORY_LABEL: Record<string, string> = {
   reserves: "Reserves",
   crypto: "Crypto",
 };
+const CATEGORY_COLOR: Record<string, string> = {
+  property: "var(--category-property)",
+  markets: "var(--category-public-markets)",
+  reserves: "var(--category-reserves)",
+  crypto: "var(--category-crypto)",
+};
 const CATEGORY_ORDER = ["markets", "property", "crypto", "reserves"];
+const BAND_COLOR: Record<string, string> = { green: "var(--positive-text)", amber: "var(--accent-text)", red: "var(--negative-text)" };
 
 interface ScenarioComparisonCardProps {
   current: ComparisonReadout;
@@ -40,8 +49,23 @@ interface ScenarioComparisonCardProps {
   allocationLabel?: string;
   /** Top margin (px) on the allocation eyebrow. */
   allocationMarginTop?: number;
+  /** Render a before/after stacked allocation bar that visibly shifts. */
+  allocationBar?: boolean;
+  /** Up-to-two contextual vitals (drawdown / leverage / liquidity), before->after. */
+  contextualVitals?: ScenarioVitalDelta[];
   /** Optional footer slot (e.g. a Discuss affordance, an estimate note). */
   footer?: React.ReactNode;
+}
+
+function AllocationBar({ alloc }: { alloc: Map<string, { pct: number }> }) {
+  const segs = CATEGORY_ORDER.map((cat) => ({ cat, pct: Math.max(0, alloc.get(cat)?.pct ?? 0) })).filter((s) => s.pct > 0.5);
+  return (
+    <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--surface-elev)" }}>
+      {segs.map((s) => (
+        <div key={s.cat} title={`${CATEGORY_LABEL[s.cat] ?? s.cat} ${s.pct.toFixed(0)}%`} style={{ width: `${s.pct}%`, background: CATEGORY_COLOR[s.cat] ?? "var(--accent)" }} />
+      ))}
+    </div>
+  );
 }
 
 export function ScenarioComparisonCard({
@@ -55,6 +79,8 @@ export function ScenarioComparisonCard({
   showLtvCallout = false,
   allocationLabel = "Allocation by category",
   allocationMarginTop = 14,
+  allocationBar = false,
+  contextualVitals,
   footer,
 }: ScenarioComparisonCardProps) {
   const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
@@ -126,6 +152,21 @@ export function ScenarioComparisonCard({
 
       {/* Allocation by category */}
       <div style={{ ...eyebrowStyle, fontSize: 9, margin: `${allocationMarginTop}px 0 6px` }}>{allocationLabel}</div>
+
+      {/* Before/after stacked bars that visibly shift */}
+      {allocationBar && (
+        <div style={{ margin: "2px 0 10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+            <span style={{ width: 34, fontSize: 11, color: "var(--text-faint)" }}>Now</span>
+            <div style={{ flex: 1 }}><AllocationBar alloc={curAlloc} /></div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 34, fontSize: 11, color: "var(--text-faint)" }}>After</span>
+            <div style={{ flex: 1 }}><AllocationBar alloc={scnAlloc} /></div>
+          </div>
+        </div>
+      )}
+
       {allocCats.map((cat) => (
         <div key={cat} style={statRowStyle}>
           <span style={{ fontSize: 13, color: "var(--text)" }}>{CATEGORY_LABEL[cat] ?? cat}</span>
@@ -135,6 +176,22 @@ export function ScenarioComparisonCard({
           </span>
         </div>
       ))}
+
+      {/* Contextual vitals that moved materially — before -> after */}
+      {contextualVitals && contextualVitals.length > 0 && (
+        <>
+          <div style={{ ...eyebrowStyle, fontSize: 9, margin: "14px 0 6px" }}>What this moves</div>
+          {contextualVitals.map((v) => (
+            <div key={v.key} style={statRowStyle}>
+              <span style={{ fontSize: 13, color: "var(--text)" }}>{v.label}</span>
+              <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                {v.before} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
+                <span style={{ fontWeight: 600, color: BAND_COLOR[v.afterBand] ?? "var(--text)" }}>{v.after}</span>
+              </span>
+            </div>
+          ))}
+        </>
+      )}
 
       {footer}
     </div>
