@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { computeCurrentBalance, projectMortgage, formatTimeRemaining, formatPayoffDate } from "@/lib/mortgage";
+import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween, type MortgageProjection } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset } from "@/lib/supabase";
@@ -53,19 +53,52 @@ export function MortgageBlock({ asset }: Props) {
     mortgage_type: type,
     mortgage_start_date: startStr,
     mortgage_end_date: endStr,
-    mortgage_balance_recorded_at: recordedAtStr,
+    buy_date: buyDateStr,
   } = asset;
 
   const balance = computeCurrentBalance(asset);
   const hasMortgage = balance > 0;
-  // Fall back to balance_recorded_at when start_date is absent — still gives a valid projection.
-  const projectionAnchor = startStr ?? recordedAtStr ?? null;
-  const hasProjection = hasMortgage && rate != null && payment != null && type != null && projectionAnchor != null;
 
-  const projection = useMemo(() => {
-    if (!hasProjection) return null;
-    return projectMortgage(balance, rate!, payment!, type!, new Date(projectionAnchor!), new Date(), endStr ? new Date(endStr) : undefined);
-  }, [hasProjection, balance, rate, payment, type, projectionAnchor, endStr]);
+  // The amortisation timeline requires a REAL start date: the stated mortgage
+  // start, or the acquisition (buy) date. We deliberately do NOT fall back to
+  // mortgage_balance_recorded_at (record-creation time), which would anchor the
+  // payoff to when the row happened to be created.
+  const realStartStr = startStr ?? buyDateStr ?? null;
+
+  const { projection, renderState, effectivePayment } = useMemo<{
+    projection: MortgageProjection | null;
+    renderState: "ok" | "start_date_missing" | "payment_not_set" | "payment_below_interest";
+    effectivePayment: number | null;
+  }>(() => {
+    if (!hasMortgage || rate == null || type == null) {
+      return { projection: null, renderState: "ok", effectivePayment: payment ?? null };
+    }
+    if (!realStartStr) {
+      return { projection: null, renderState: "start_date_missing", effectivePayment: payment ?? null };
+    }
+    const startDate = new Date(realStartStr);
+    const endDate = endStr ? new Date(endStr) : undefined;
+
+    // Use the stated payment; if absent, derive the contractual annuity payment
+    // ONLY when a full term (end date) is known. Never fabricate a payment otherwise.
+    let pmt: number | null = payment ?? null;
+    if (pmt == null && type !== "interest_only") {
+      if (endDate && balance > 0) {
+        const rem = monthsBetween(new Date(), endDate);
+        if (rem > 0) pmt = annuityPayment(balance, rate, rem);
+      }
+      if (pmt == null) {
+        return { projection: null, renderState: "payment_not_set", effectivePayment: null };
+      }
+    }
+
+    const proj = projectMortgage(balance, rate, pmt ?? 0, type, startDate, new Date(), endDate);
+    return {
+      projection: proj,
+      renderState: proj.status === "payment_below_interest" ? "payment_below_interest" : "ok",
+      effectivePayment: pmt,
+    };
+  }, [hasMortgage, rate, type, payment, realStartStr, endStr, balance]);
 
   const { curve, todayIdx } = useMemo(() => {
     if (!projection) return { curve: [] as { date: Date; balance: number }[], todayIdx: 0 };
@@ -81,11 +114,14 @@ export function MortgageBlock({ asset }: Props) {
 
   if (!hasMortgage) return null;
 
+  // The payoff curve is only meaningful for a real, amortising schedule.
+  const showCurve = renderState === "ok" && !!projection && curve.length >= 2;
+
   const W = 320;
   const H = 80;
   const gradId = `payoff_${asset.id}`;
   const strokeColor = "var(--accent)";
-  const startDate = startStr ? new Date(startStr) : null;
+  const startDate = realStartStr ? new Date(realStartStr) : null;
   const { line, area, todayX, todayY } = buildPayoffPath(curve, todayIdx, W, H);
   const startYear = startDate ? startDate.getFullYear().toString() : "";
   const endYear = projection?.payoffDate ? projection.payoffDate.getFullYear().toString() : "";
@@ -95,20 +131,35 @@ export function MortgageBlock({ asset }: Props) {
     : type === "interest_only" ? "Interest only"
     : type ?? "—";
 
-  const mortgageFreeDate = projection?.payoffDate
-    ? new Date(projection.payoffDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
-    : endStr ?? "—";
-
-  const yearsToGo = projection?.remainingMonths
-    ? Math.round(projection.remainingMonths / 12)
-    : null;
+  // The "Mortgage-free" row reflects the projection state: a real payoff date, or
+  // a neutral reason when the timeline can't be computed (no fabricated payoff).
+  let mortgageFreeValue: string;
+  let mortgageFreeMeta: string | null;
+  if (renderState === "start_date_missing") {
+    mortgageFreeValue = "Not set";
+    mortgageFreeMeta = "start date not set";
+  } else if (renderState === "payment_not_set") {
+    mortgageFreeValue = "—";
+    mortgageFreeMeta = "payment not set";
+  } else if (renderState === "payment_below_interest") {
+    mortgageFreeValue = "—";
+    mortgageFreeMeta = "payment doesn't cover interest";
+  } else {
+    mortgageFreeValue = projection?.payoffDate
+      ? new Date(projection.payoffDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+      : "—";
+    const ytg = projection && projection.remainingMonths > 0
+      ? Math.round(projection.remainingMonths / 12)
+      : null;
+    mortgageFreeMeta = ytg != null ? `${ytg} years to go` : null;
+  }
 
   const rows = [
     { label: "Balance", value: formatMoney(balance, asset.currency || "USD", displayCurrency), meta: null },
-    { label: "Rate", value: rate != null ? `${rate.toFixed(1)}%` : "—", meta: null },
-    { label: "Payment", value: payment != null ? formatMoney(payment, asset.currency || "USD", displayCurrency) : "—", meta: "per month" },
+    { label: "Rate", value: rate != null ? `${rate.toFixed(2)}%` : "—", meta: null },
+    { label: "Payment", value: effectivePayment != null ? formatMoney(effectivePayment, asset.currency || "USD", displayCurrency) : "Not set", meta: effectivePayment != null ? "per month" : null },
     { label: "Type", value: typeLabel, meta: null },
-    { label: "Mortgage-free", value: mortgageFreeDate, meta: yearsToGo != null ? `${yearsToGo} years to go` : null },
+    { label: "Mortgage-free", value: mortgageFreeValue, meta: mortgageFreeMeta },
   ];
 
   return (
@@ -140,7 +191,7 @@ export function MortgageBlock({ asset }: Props) {
       </div>
 
       {/* Payoff chart — attached visually to the stat list */}
-      {projection && curve.length >= 2 && (
+      {showCurve && (
         <div style={{
           background: "var(--surface)",
           border: "0.5px solid var(--border)",
