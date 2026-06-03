@@ -7,7 +7,6 @@ import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
 import { PortfolioEmptyState } from "@/components/PortfolioEmptyState";
-import { DesktopShell } from "@/components/desktop/DesktopShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { computeCurrentBalance } from "@/lib/mortgage";
@@ -153,23 +152,19 @@ export default function Dashboard() {
 
   const isEmpty = assets.length === 0;
 
-  // Desktop web: left Vitals panel + centered Portfolio content + chat panel
-  // (the shell provides Vitals and chat). No BottomNav/ChatPopup.
+  // Desktop web: the (main) layout provides the persistent three-column shell
+  // (Vitals rail + chat rail); this route only supplies the center content.
   if (isDesktop) {
-    return (
-      <DesktopShell tab="portfolio">
-        {isEmpty ? (
-          <PortfolioEmptyState />
-        ) : (
-          <PortfolioTab
-            assets={assets as LiveAsset[]}
-            grossTotal={grossTotal}
-            netTotal={netTotal}
-            initialSnapshots={initialSnapshots}
-            valuesSettled={valuesSettled}
-          />
-        )}
-      </DesktopShell>
+    return isEmpty ? (
+      <PortfolioEmptyState />
+    ) : (
+      <PortfolioTab
+        assets={assets as LiveAsset[]}
+        grossTotal={grossTotal}
+        netTotal={netTotal}
+        initialSnapshots={initialSnapshots}
+        valuesSettled={valuesSettled}
+      />
     );
   }
 

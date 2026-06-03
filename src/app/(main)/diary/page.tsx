@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useUser, useAssets } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { DiaryTab } from "@/components/DiaryTab";
-import { DesktopShell } from "@/components/desktop/DesktopShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Mutation } from "@/lib/supabase";
@@ -100,15 +99,14 @@ export default function DiaryPage() {
     );
   }
 
+  // Desktop: the (main) layout provides the shell; supply center content only.
   if (isDesktop) {
     return (
-      <DesktopShell tab="diary">
-        <DiaryTab
-          mutations={enrichedMutations}
-          hasMore={hasMore}
-          onLoadMore={loadMore}
-        />
-      </DesktopShell>
+      <DiaryTab
+        mutations={enrichedMutations}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+      />
     );
   }
 
