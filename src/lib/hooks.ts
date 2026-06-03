@@ -31,7 +31,13 @@ export {
 export {
   useVitals,
   VITALS_CACHE_TTL_MS,
+  invalidateVitalsCache,
 } from "./hooks/vitals";
 export type { VitalsResponse } from "./hooks/vitals";
 
 export { useNetWorth } from "./hooks/netWorth";
+
+export {
+  usePortfolioRevision,
+  bumpPortfolioRevision,
+} from "./portfolio-revision";

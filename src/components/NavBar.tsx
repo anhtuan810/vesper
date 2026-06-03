@@ -17,6 +17,9 @@ interface NavBarProps {
   refreshPrices: () => void;
   lastUpdated?: Date | null;
   empty?: boolean;
+  /** Hide the price-refresh control on surfaces that have no live prices
+   *  (e.g. Diary), where it would be a no-op. */
+  hideRefresh?: boolean;
   /** Desktop shell: pad the bar by the side-panel widths so its centered
    *  content aligns over the center column. */
   desktopInset?: { left: number; right: number };
@@ -35,7 +38,7 @@ function formatRelativeTime(date: Date): string {
 
 
 export function NavBar({
-  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty, desktopInset,
+  tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty, hideRefresh, desktopInset,
 }: NavBarProps) {
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -102,7 +105,7 @@ export function NavBar({
           {formatRelativeTime(lastUpdated)}
         </span>
       )}
-      {!empty && <button
+      {!empty && !hideRefresh && <button
         onClick={refreshPrices}
         disabled={refreshing}
         aria-label="Refresh prices"

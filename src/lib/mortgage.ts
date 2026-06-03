@@ -55,7 +55,12 @@ export function computeCurrentBalance(
   return B0;
 }
 
+export type MortgageStatus = "ok" | "payment_below_interest";
+
 export interface MortgageProjection {
+  // "payment_below_interest" means the payment never covers the monthly interest,
+  // so the loan cannot amortise — payoffDate is null and the curve is empty.
+  status: MortgageStatus;
   remainingMonths: number;
   payoffDate: Date | null;
   totalInterestPaid: number;
@@ -70,8 +75,33 @@ function addMonths(date: Date, n: number): Date {
   return d;
 }
 
-function monthsBetween(a: Date, b: Date): number {
+export function monthsBetween(a: Date, b: Date): number {
   return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+}
+
+/**
+ * The contractual annuity payment that amortises `balance` to zero over
+ * `totalMonths` at `annualRate` (percent). Deterministic — used only when a
+ * stated payment is absent but a full term is known. Returns 0 on bad input.
+ */
+export function annuityPayment(balance: number, annualRate: number, totalMonths: number): number {
+  if (totalMonths <= 0 || balance <= 0) return 0;
+  const r = annualRate / 1200;
+  if (r === 0) return balance / totalMonths;
+  return (balance * r) / (1 - Math.pow(1 + r, -totalMonths));
+}
+
+// A non-amortising mortgage (payment never covers interest): no payoff, no curve.
+function paymentBelowInterest(): MortgageProjection {
+  return {
+    status: "payment_below_interest",
+    remainingMonths: 0,
+    payoffDate: null,
+    totalInterestPaid: 0,
+    totalInterestRemaining: 0,
+    principalPaid: 0,
+    balanceCurve: [],
+  };
 }
 
 export function projectMortgage(
@@ -87,14 +117,28 @@ export function projectMortgage(
   const elapsedMonths = Math.max(0, monthsBetween(startDate, today));
 
   if (type === "interest_only") {
-    const totalMonths = endDate ? monthsBetween(startDate, endDate) : 360;
+    // Interest-only never amortises from payments — the payoff IS the end date.
+    // Without an end date there is no payoff and no schedule to draw (no fabricated term).
+    if (!endDate) {
+      return {
+        status: "ok",
+        remainingMonths: 0,
+        payoffDate: null,
+        totalInterestPaid: balance * r * elapsedMonths,
+        totalInterestRemaining: 0,
+        principalPaid: 0,
+        balanceCurve: [],
+      };
+    }
+    const totalMonths = Math.max(0, monthsBetween(startDate, endDate));
     const curve: { date: Date; balance: number }[] = [];
     for (let i = 0; i <= totalMonths; i++) {
       curve.push({ date: addMonths(startDate, i), balance });
     }
     return {
+      status: "ok",
       remainingMonths: Math.max(0, totalMonths - elapsedMonths),
-      payoffDate: null,
+      payoffDate: endDate,
       totalInterestPaid: balance * r * elapsedMonths,
       totalInterestRemaining: 0,
       principalPaid: 0,
@@ -102,9 +146,14 @@ export function projectMortgage(
     };
   }
 
+  // Amortising types (annuity, linear): a payment that does not cover the monthly
+  // interest can never reduce the balance — flag it rather than inventing a term.
+  if (r > 0 && monthlyPayment <= balance * r) return paymentBelowInterest();
+  if (r === 0 && monthlyPayment <= 0) return paymentBelowInterest();
+
   if (type === "linear") {
     const totalMonths = endDate
-      ? monthsBetween(startDate, endDate)
+      ? Math.max(1, monthsBetween(startDate, endDate))
       : Math.ceil(elapsedMonths + balance / (monthlyPayment - balance * r));
 
     const remaining = Math.max(1, totalMonths - elapsedMonths);
@@ -126,6 +175,7 @@ export function projectMortgage(
     curve.push({ date: addMonths(startDate, totalMonths), balance: 0 });
 
     return {
+      status: "ok",
       remainingMonths: remaining,
       payoffDate: endDate ?? addMonths(startDate, totalMonths),
       totalInterestPaid: interestPaid,
@@ -135,15 +185,15 @@ export function projectMortgage(
     };
   }
 
-  // Annuity
+  // Annuity — payment > interest guaranteed above, so the log argument is in (0,1).
   let totalMonths: number;
   if (endDate) {
-    totalMonths = monthsBetween(startDate, endDate);
-  } else if (r > 0 && monthlyPayment > balance * r) {
+    totalMonths = Math.max(1, monthsBetween(startDate, endDate));
+  } else if (r > 0) {
     const remaining = Math.ceil(-Math.log(1 - (r * balance) / monthlyPayment) / Math.log(1 + r));
     totalMonths = elapsedMonths + remaining;
   } else {
-    totalMonths = elapsedMonths + 360;
+    totalMonths = elapsedMonths + Math.ceil(balance / monthlyPayment);
   }
 
   const n = totalMonths;
@@ -169,6 +219,7 @@ export function projectMortgage(
   const remainingMonths = Math.max(0, n - elapsedMonths);
 
   return {
+    status: "ok",
     remainingMonths,
     payoffDate: endDate ?? addMonths(startDate, n),
     totalInterestPaid: interestPaid,

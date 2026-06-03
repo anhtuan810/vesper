@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { usePortfolioRevision } from "@/lib/portfolio-revision";
 import { useThemeContext } from "@/components/ThemeProvider";
 import { useUserContext } from "@/components/UserProvider";
 import {
@@ -28,8 +29,9 @@ export function useUser() {
 export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const supabase = createBrowserSupabase();
+  const revision = usePortfolioRevision();
 
-  useEffect(() => {
+  const fetchProfile = useCallback(() => {
     if (!userId) return;
     supabase
       .from("users")
@@ -37,7 +39,24 @@ export function useProfile(userId: string | undefined) {
       .eq("id", userId)
       .single()
       .then(({ data }) => setProfile(data));
+    // supabase client is a stable browser singleton — intentionally omitted from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Re-read on mount and whenever a mutation bumps the revision — the Context
+  // prose is regenerated server-side during the chat turn, so a refetch surfaces
+  // it (lazily, on the next Profile load) without touching generation logic.
+  useEffect(() => { fetchProfile(); }, [fetchProfile, revision]);
+
+  // Re-read when the tab regains focus.
+  useEffect(() => {
+    if (!userId) return;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") fetchProfile();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [userId, fetchProfile]);
 
   return profile;
 }

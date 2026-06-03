@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, useAssets } from "@/lib/hooks";
+import { useUser, useAssets, usePortfolioRevision } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { DiaryTab } from "@/components/DiaryTab";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
@@ -57,6 +57,21 @@ export default function DiaryPage() {
   }, [user?.id, totalCount]);
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
+
+  // Refetch the diary when a mutation bumps the revision, and when the tab
+  // regains focus — so a chat save elsewhere shows up without a manual refresh.
+  const revision = usePortfolioRevision();
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (revision > 0) fetchMutations(); }, [revision, fetchMutations]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") fetchMutations();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [user?.id, fetchMutations]);
 
   // Backfill zero-value assets once per session when diary is first opened
   useEffect(() => {
@@ -120,6 +135,7 @@ export default function DiaryPage() {
         totalSymbols={0}
         refreshing={false}
         refreshPrices={() => {}}
+        hideRefresh
       />
       <div className="max-w-[960px] mx-auto px-0 md:px-8 pt-4 pb-24 md:pb-10">
         <DiaryTab

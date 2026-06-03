@@ -59,21 +59,22 @@ export function RealEstateDetail({ asset }: Props) {
     : null;
   const valueGain = purchaseValue != null ? asset.value - purchaseValue : null;
 
-  // Property detail rows
-  const purchaseDate = purchaseMutation?.occurred_at
-    ? new Date(purchaseMutation.occurred_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+  // "Owned since" uses a REAL acquisition date from structured fields (the stated
+  // acquisition/buy date, or the mortgage start date) — never the record-creation
+  // timestamp framed as a purchase date.
+  const acquisitionStr = asset.buy_date ?? asset.mortgage_start_date ?? null;
+  const acquisitionDate = acquisitionStr ? new Date(acquisitionStr) : null;
+  const ownedSinceLabel = acquisitionDate
+    ? acquisitionDate.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
     : null;
-  const purchaseDateObj = purchaseMutation?.occurred_at
-    ? new Date(purchaseMutation.occurred_at)
-    : null;
-  const yearsOwned = purchaseDateObj != null
-    ? ((Date.now() - purchaseDateObj.getTime()) / (365.25 * 24 * 3600 * 1000)).toFixed(1).replace(/\.0$/, "")
+  const yearsOwned = acquisitionDate
+    ? ((Date.now() - acquisitionDate.getTime()) / (365.25 * 24 * 3600 * 1000)).toFixed(1).replace(/\.0$/, "")
     : null;
 
   const propertyRows = [
     { label: "Value", value: formatMoney(asset.value, asset.currency || "USD", displayCurrency), meta: null },
     asset.size_sqm ? { label: "Size", value: `${asset.size_sqm} m²`, meta: null } : null,
-    purchaseDate ? { label: "Owned since", value: purchaseDate, meta: yearsOwned != null ? `${yearsOwned} years` : null } : null,
+    { label: "Owned since", value: ownedSinceLabel ?? "Not set", meta: ownedSinceLabel && yearsOwned != null ? `${yearsOwned} years` : null },
   ].filter(Boolean) as { label: string; value: string; meta: string | null }[];
 
   return (

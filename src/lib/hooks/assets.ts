@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase, type Asset, type LiveAsset, type RealEstateAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
 import { applyLivePrice } from "@/lib/live-pricing";
+import { usePortfolioRevision } from "@/lib/portfolio-revision";
 import type { PriceResult } from "@/lib/prices-server";
 import {
   SPARKLINES_TTL_MS,
@@ -97,6 +98,7 @@ export function useAssets(userId: string | undefined) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [priceHealth, setPriceHealth] = useState<"healthy" | "degraded" | null>(null);
   const supabase = createBrowserSupabase();
+  const revision = usePortfolioRevision();
 
   useEffect(() => {
     if (!userId) return;
@@ -206,6 +208,22 @@ export function useAssets(userId: string | undefined) {
     }, PRICES_POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [fetchPrices, assets.length]);
+
+  // Re-read asset rows whenever a mutation bumps the portfolio revision, so every
+  // surface using useAssets (Portfolio, Profile net worth, Diary) reflects the
+  // change without a manual refresh. Skips the initial render (revision 0).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (revision > 0) fetchAssets(); }, [revision, fetchAssets]);
+
+  // Re-read asset rows when the tab regains focus.
+  useEffect(() => {
+    if (!userId) return;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") fetchAssets();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [userId, fetchAssets]);
 
   const liveAssets = useMemo<LiveAsset[]>(
     () => assets.map((a) => (a.symbol ? applyLivePrice(a, prices[a.symbol]) : a) as LiveAsset),

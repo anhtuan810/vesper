@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics";
-import { useUser, useAssets, useDisplayCurrencyState, primeInsightCache } from "@/lib/hooks";
+import { useUser, useAssets, useDisplayCurrencyState, primeInsightCache, usePortfolioRevision } from "@/lib/hooks";
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
@@ -66,6 +66,16 @@ export default function Dashboard() {
 
   useEffect(() => { fetchDashboardInit(); }, [fetchDashboardInit]);
 
+  // Refresh the net-worth chart's snapshots without re-priming the insight cache
+  // (the "Worth knowing" band is an intentional 24h cache, not per-mutation).
+  const refreshSnapshots = useCallback(async () => {
+    if (!user?.id) return;
+    const res = await fetch("/api/snapshots?range=1M", { cache: "no-store" });
+    if (!res.ok) return;
+    const { data } = await res.json();
+    setInitialSnapshots(data ?? []);
+  }, [user?.id]);
+
   useEffect(() => {
     const handler = () => {
       refetchAssets();
@@ -74,6 +84,25 @@ export default function Dashboard() {
     window.addEventListener("volnar:asset-restored", handler);
     return () => window.removeEventListener("volnar:asset-restored", handler);
   }, [refetchAssets, refreshMutations]);
+
+  // A mutation (chat save / undo) bumps the revision: refresh the diary badge and
+  // the chart. Holdings + net worth come from useAssets, which refetches itself.
+  const revision = usePortfolioRevision();
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (revision > 0) { refreshMutations(); refreshSnapshots(); } }, [revision, refreshMutations, refreshSnapshots]);
+
+  // Refresh the badge + chart when the tab regains focus.
+  useEffect(() => {
+    if (!user?.id) return;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") {
+        refreshMutations();
+        refreshSnapshots();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [user?.id, refreshMutations, refreshSnapshots]);
 
   const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {
     if (t !== "portfolio") router.push("/" + t);

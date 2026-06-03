@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { track } from "@vercel/analytics";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
-import { invalidateAssetsCache, invalidateInsightCache } from "@/lib/hooks";
+import { invalidateAssetsCache, invalidateInsightCache, invalidateVitalsCache } from "@/lib/hooks";
+import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
 import { CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX } from "@/lib/constants";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import type { ScenarioResult } from "@/lib/scenario/result";
@@ -305,6 +306,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
         invalidateInsightCache();
+        invalidateVitalsCache();
+        // Bump the shared revision so every mounted surface (Portfolio, Vitals,
+        // Diary, Profile) refetches without a manual refresh.
+        bumpPortfolioRevision();
         onPortfolioUpdateRef.current?.();
       }
       onNewMessageRef.current?.();
@@ -393,6 +398,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
         invalidateInsightCache();
+        invalidateVitalsCache();
+        // Bump the shared revision so every mounted surface (Portfolio, Vitals,
+        // Diary, Profile) refetches without a manual refresh.
+        bumpPortfolioRevision();
         onPortfolioUpdateRef.current?.();
       }
       onNewMessageRef.current?.();
