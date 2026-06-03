@@ -4,7 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
-import { toUsd, getUsdRates } from "@/lib/fx";
+import { toUsd, getUsdRates, getHistoricalUsdRates } from "@/lib/fx";
+import { fetchHistoricalSeries } from "@/lib/prices";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
@@ -27,7 +28,10 @@ import { assembleCounterfactual } from "@/lib/scenario/counterfactual-assemble";
 import { assemblePresent } from "@/lib/scenario/present-assemble";
 import { assembleProject } from "@/lib/scenario/project-assemble";
 import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
+import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
+import { hypotheticalBuyGrowth } from "@/lib/scenario/hypothetical";
 import type { Modification } from "@/lib/scenario/engine";
+import type { PricePoint } from "@/lib/scenario/counterfactual";
 import { extractNumbers } from "@/lib/narrate/guardrail";
 import type { ScenarioResult } from "@/lib/scenario/result";
 
@@ -426,6 +430,155 @@ async function handleFutureScenario(
   return reply(narration);
 }
 
+// ISO date as-is; a relative token ("5y" / "18m" / "12w" / "90d") → that long ago;
+// a bare year → Jan 1 of it; anything else (incl. null) → 5 years ago.
+function resolveHypotheticalBuyDate(hint: unknown, today: Date): string {
+  if (typeof hint === "string") {
+    const s = hint.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const rel = s.match(/^(\d+)\s*([ymwd])$/i);
+    if (rel) {
+      const n = Number(rel[1]);
+      const unit = rel[2].toLowerCase();
+      const d = new Date(today);
+      if (unit === "y") d.setFullYear(d.getFullYear() - n);
+      else if (unit === "m") d.setMonth(d.getMonth() - n);
+      else if (unit === "w") d.setDate(d.getDate() - n * 7);
+      else d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    }
+    if (/^\d{4}$/.test(s)) return `${s}-01-01`;
+  }
+  const d = new Date(today);
+  d.setFullYear(d.getFullYear() - 5);
+  return d.toISOString().slice(0, 10);
+}
+
+// Chat-initiated PAST hypothetical purchase ("what if I'd bought X N years ago"),
+// for any market-resolvable symbol, held or not. Standalone investment growth —
+// never overlaid on the user's net worth. Read-only; writes only the message pair.
+async function handleHypotheticalBuy(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+  userMessage: string,
+  parsed: Record<string, unknown>,
+  displayCurrency: DisplayCurrency,
+  used: number,
+  mode: ScenarioMode,
+): Promise<NextResponse> {
+  const reply = (content: string, extra?: Record<string, unknown>) =>
+    scenarioReply(supabase, userId, userMessage, content, used, extra);
+
+  const symbolHint = typeof parsed.symbolHint === "string" ? parsed.symbolHint.trim() : "";
+  if (!symbolHint) return reply("Which asset did you have in mind — a name or ticker?");
+
+  let resolved;
+  try {
+    resolved = await resolveMarketSymbol(symbolHint);
+  } catch (err) {
+    Sentry.captureException(err, { tags: { scenario: "hypothetical_buy_resolve" } });
+    return reply(`I couldn't look up "${symbolHint}" just now — try again in a moment?`);
+  }
+  if (resolved.kind === "ambiguous") {
+    return reply(`Which did you mean: ${resolved.candidates.map((c) => c.label).join(", ")}?`);
+  }
+  if (resolved.kind === "none") {
+    return reply(`I couldn't find a market symbol for "${symbolHint}". Which ticker or asset did you mean?`);
+  }
+  const { symbol, label } = resolved;
+
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const requestedBuyDate = resolveHypotheticalBuyDate(parsed.buyDateHint, today);
+
+  // Amount → USD: a stated sum in its currency, else the default €10,000 in the
+  // display currency. Stated loudly so the user can restate to change it.
+  const usdRates = await getUsdRates();
+  const dispRate = usdRates[displayCurrency] ?? 1;
+  if (displayCurrency !== "USD" && usdRates[displayCurrency]) setUsdRate(displayCurrency, usdRates[displayCurrency]);
+  const toUsdFromCur = (amt: number, cur: string) => (cur === "USD" ? amt : amt / (usdRates[cur] ?? 1));
+  let amountUsd: number;
+  if (typeof parsed.amount === "number" && Number.isFinite(parsed.amount) && parsed.amount > 0) {
+    const cur = typeof parsed.currency === "string" && isSupportedCurrency(parsed.currency) ? parsed.currency : displayCurrency;
+    amountUsd = toUsdFromCur(parsed.amount, cur);
+  } else {
+    amountUsd = toUsdFromCur(10_000, displayCurrency);
+  }
+  const amountLabel = formatMoney(amountUsd, "USD", displayCurrency);
+
+  // Free-typed: confirm before fetching/computing. Echo a normalised intent so
+  // [Show me] reproduces the same purchase exactly.
+  if (mode === "confirm") {
+    return reply(`Show what ${amountLabel} in ${label} on ${fmtScenarioDate(requestedBuyDate)} would be worth today?`, {
+      suggested_replies: SHOW_ME_CHIPS,
+      scenarioPending: {
+        kind: "hypothetical_buy",
+        symbolHint,
+        buyDateHint: requestedBuyDate,
+        amount: parsed.amount ?? null,
+        currency: parsed.currency ?? null,
+      },
+    });
+  }
+
+  try {
+    const [priceRaw, fxSeries] = await Promise.all([
+      fetchHistoricalSeries(symbol, requestedBuyDate, todayStr),
+      getHistoricalUsdRates(requestedBuyDate, todayStr),
+    ]);
+    if (!priceRaw || priceRaw.length < 2) {
+      Sentry.captureMessage(`hypothetical_buy: no price history for ${symbol}`, "warning");
+      return reply(`I couldn't pull a price history for ${label}. Want to try a different asset or date?`);
+    }
+    const priceSeries: PricePoint[] = priceRaw.map((p) => ({ date: p.date, price: p.price, currency: p.currency }));
+    const earliestData = priceSeries[0].date;
+    const clamped = requestedBuyDate < earliestData;
+    const effectiveBuy = clamped ? earliestData : requestedBuyDate;
+
+    const r = hypotheticalBuyGrowth(amountUsd, effectiveBuy, priceSeries, fxSeries);
+    if (r.series.length < 2) {
+      return reply(`I couldn't pull enough price history for ${label}. Want to try a different asset or date?`);
+    }
+
+    const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+    const valueLabel = m(r.valueTodayUsd);
+    const gainLabel = m(Math.abs(r.gainUsd));
+    const multStr = `${r.multiple.toFixed(1)}x`;
+    const buyLabel = fmtScenarioDate(r.buyDateUsed);
+    const gained = r.gainUsd >= 0;
+
+    const figures = [
+      amountLabel, valueLabel, gainLabel, multStr,
+      `${r.multiple.toFixed(1)}`, `${Math.round(r.multiple)}`,
+      ...extractNumbers(buyLabel),
+    ];
+    const clampNote = clamped ? ` (the earliest price history available is ${buyLabel}, so I used that date)` : "";
+    const description =
+      `Standalone hypothetical purchase — NOT part of the user's real portfolio and NOT a change to their net worth: ` +
+      `${amountLabel} invested in ${label} on ${buyLabel}${clampNote} would be worth ${valueLabel} today — ` +
+      `about ${multStr} the amount, ${gained ? "a gain" : "a loss"} of ${gainLabel}. ` +
+      `State the assumed amount and date plainly; the user can restate the amount to change it.`;
+    const fallback =
+      `${amountLabel} in ${label} on ${buyLabel} would be worth about ${valueLabel} today — roughly ${multStr}` +
+      `${clamped ? ` (${buyLabel} is the earliest price history available)` : ""}.`;
+
+    const scenarioResult: ScenarioResult = {
+      kind: "hypothetical_buy",
+      assetLabel: label,
+      buyDate: r.buyDateUsed,
+      amountLabel,
+      series: r.series.map((p) => ({ t: Date.parse(p.date), v: p.valueUsd * dispRate })),
+      symbol: SCENARIO_SYMBOL[displayCurrency] ?? "€",
+    };
+
+    const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
+    return reply(narration, { scenarioResult });
+  } catch (err) {
+    Sentry.captureException(err, { tags: { scenario: "hypothetical_buy" } });
+    return reply(`I couldn't pull a price history for ${label} right now. Want to try again in a moment?`);
+  }
+}
+
 // Route a parsed scenario intent to the matching handler. Returns null when the
 // intent isn't a recognised scenario (so the caller falls through to normal flow).
 async function dispatchScenario(
@@ -440,6 +593,9 @@ async function dispatchScenario(
 ): Promise<NextResponse | null> {
   if (parsed.kind === "counterfactual" && typeof parsed.asset === "string") {
     return handleScenarioIntent(supabase, userId, userMsg, parsed.asset, assets as AssetRef[], displayCurrency, used, mode);
+  }
+  if (parsed.kind === "hypothetical_buy") {
+    return handleHypotheticalBuy(supabase, userId, userMsg, parsed, displayCurrency, used, mode);
   }
   if (parsed.kind === "present" && Array.isArray(parsed.modifications)) {
     return handlePresentScenario(supabase, userId, userMsg, parsed.modifications, assets as PresentAsset[], displayCurrency, used, mode);

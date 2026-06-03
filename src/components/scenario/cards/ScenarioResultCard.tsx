@@ -2,8 +2,15 @@
 
 import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
 import { CounterfactualChart } from "@/components/scenario/cards/CounterfactualChart";
+import { GrowthChart } from "@/components/scenario/cards/GrowthChart";
 import { ScenarioComparisonCard } from "@/components/scenario/cards/ScenarioComparisonCard";
 import type { ScenarioResult } from "@/lib/scenario/result";
+
+function fmtBuyDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (!y) return iso;
+  return new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
 
 // Inline renderer for a scenario result in the chat thread. Maps the result kind
 // to the matching prop-driven card. Rendered after the guarded narration.
@@ -54,6 +61,20 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
           allocationLabel="Allocation after shock"
           allocationMarginTop={8}
         />
+      </div>
+    );
+  }
+
+  if (result.kind === "hypothetical_buy") {
+    return (
+      <div style={cardShell}>
+        <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 8 }}>
+          {result.amountLabel} in {result.assetLabel} · {fmtBuyDate(result.buyDate)}
+        </div>
+        <GrowthChart series={result.series} symbol={result.symbol} />
+        <div className="font-serif" style={estimateNote}>
+          Estimate, not advice.
+        </div>
       </div>
     );
   }

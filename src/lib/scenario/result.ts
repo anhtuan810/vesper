@@ -30,4 +30,15 @@ export type ScenarioResult =
       actual: Array<{ t: number; v: number }>;
       counterfactual: Array<{ t: number; v: number }>;
       symbol: string;
+    }
+  | {
+      kind: "hypothetical_buy";
+      assetLabel: string;
+      /** Effective buy date (ISO), clamped to earliest data when needed. */
+      buyDate: string;
+      /** The assumed amount, formatted in the display currency. */
+      amountLabel: string;
+      /** Standalone investment value from buy date to today, in display numbers. */
+      series: Array<{ t: number; v: number }>;
+      symbol: string;
     };
