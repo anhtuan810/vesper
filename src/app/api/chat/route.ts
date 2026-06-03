@@ -4,8 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
-import { toUsd, getUsdRates, getHistoricalUsdRates } from "@/lib/fx";
-import { fetchHistoricalSeries } from "@/lib/prices";
+import { toUsd, getUsdRates } from "@/lib/fx";
+import { fetchHistoricalPrice } from "@/lib/prices";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
@@ -24,19 +24,16 @@ import { resolveProposal } from "@/lib/proposal-resolver";
 import type { CurrentAssetLight } from "@/lib/proposal-resolver";
 import { narrateScenario } from "@/lib/scenario/narrate";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
-import { assembleCounterfactual } from "@/lib/scenario/counterfactual-assemble";
-import { assemblePresent } from "@/lib/scenario/present-assemble";
 import { assembleProject } from "@/lib/scenario/project-assemble";
-import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
+import { resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
-import { hypotheticalBuyGrowth, buyPriceUsd } from "@/lib/scenario/hypothetical";
-import { validateScenarioIntent, resolveBuyDate } from "@/lib/scenario/validate-intent";
+import { validateScenarioIntent } from "@/lib/scenario/validate-intent";
+import { computePortfolioChange } from "@/lib/scenario/portfolio-readout";
 import { isAgentChatEnabled } from "@/lib/chat/agent-config";
 import { runAgentChat } from "@/lib/chat/agent-loop";
 import type { Modification } from "@/lib/scenario/engine";
-import type { PricePoint } from "@/lib/scenario/counterfactual";
-import { extractNumbers } from "@/lib/narrate/guardrail";
-import type { ScenarioResult } from "@/lib/scenario/result";
+import type { Asset } from "@/lib/supabase";
+import type { ScenarioResult, ScenarioVitalDelta } from "@/lib/scenario/result";
 
 validateEnv();
 
@@ -93,104 +90,6 @@ async function handleScenarioNarration(userId: string, raw: unknown): Promise<Ne
   return NextResponse.json({ message: narration, assets: null, suggested_replies: null, remaining: CHAT_DAILY_LIMIT - used });
 }
 
-function fmtScenarioDate(d: string | null): string {
-  if (!d) return "";
-  const [y, mo, day] = d.slice(0, 10).split("-").map(Number);
-  if (!y) return d;
-  return new Date(y, (mo ?? 1) - 1, day ?? 1).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-// Chat-initiated past-counterfactual. Resolves the referenced held tradeable,
-// runs the shared counterfactual assembly, and narrates the result under the
-// guardrail. Read-only — writes only the user + assistant message pair. A
-// non-tradeable / ambiguous / not-held reference yields a graceful clarification
-// rather than a fabricated result.
-async function handleScenarioIntent(
-  supabase: ReturnType<typeof createServerSupabase>,
-  userId: string,
-  userMessage: string,
-  assetQuery: string,
-  assets: AssetRef[],
-  displayCurrency: DisplayCurrency,
-  used: number,
-  mode: ScenarioMode,
-): Promise<NextResponse> {
-  const reply = (content: string, extra?: Record<string, unknown>) =>
-    scenarioReply(supabase, userId, userMessage, content, used, extra);
-
-  const res = resolveScenarioAsset(assets, assetQuery);
-  if (res.kind === "ambiguous") {
-    return reply(`Happy to look back — which position did you mean: ${res.matches.map((a) => a.name).join(", ")}?`);
-  }
-  if (res.kind === "non_tradeable") {
-    return reply(`Look-back works for held tradeable positions — stocks, ETFs, or crypto. "${res.asset.name}" isn't one of those.`);
-  }
-  if (res.kind === "none") {
-    return reply(`I don't see a held position matching "${assetQuery}". Look-back works for a specific tradeable you hold — which one did you mean?`);
-  }
-
-  const target = res.asset;
-
-  // Free-typed: confirm the resolved intent before computing.
-  if (mode === "confirm") {
-    return reply(`Look back at what ${target.name} has done for you?`, {
-      suggested_replies: SHOW_ME_CHIPS,
-      scenarioPending: { kind: "counterfactual", asset: assetQuery },
-    });
-  }
-
-  const result = await assembleCounterfactual(supabase, userId, target.id, "All");
-  if (!result.ok) return reply(`I couldn't reconstruct ${target.name} — ${result.message}`);
-
-  // Display formatting against the real server FX rates.
-  const usdRates = await getUsdRates();
-  const rate = usdRates[displayCurrency];
-  if (displayCurrency !== "USD" && rate) setUsdRate(displayCurrency, rate);
-  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
-  const dispRate = usdRates[displayCurrency] ?? 1;
-  const toDisp = (usd: number) => usd * dispRate;
-
-  const d = result.data;
-  const amt = m(Math.abs(d.contribution));
-  const verb = d.contribution >= 0 ? "added" : "cost";
-  const diaryNotes = d.diaryContext
-    .filter((x) => x.personal_context)
-    .map((x) => ({ date: fmtScenarioDate(x.occurred_at), note: x.personal_context as string, market: x.market_context ?? undefined }));
-
-  const figures = [amt];
-  for (const dn of diaryNotes) {
-    figures.push(...extractNumbers(dn.date), ...extractNumbers(dn.note));
-    if (dn.market) figures.push(...extractNumbers(dn.market));
-  }
-
-  const description = `Look back at ${d.asset.name}: it has ${verb} ${amt} versus the capital deployed (gain or loss; the capital is kept as cash, not redeployed).`;
-  const fallback = `${d.asset.name} has ${verb} ${amt} ${d.contribution >= 0 ? "to your net worth since you bought it." : "since you bought it."}`;
-
-  const scenarioResult: ScenarioResult = {
-    kind: "counterfactual",
-    assetName: d.asset.name,
-    actual: d.actualSeries.map((p) => ({ t: Date.parse(p.date), v: toDisp(p.valueUsd) })),
-    counterfactual: d.counterfactualSeries.map((p) => ({ t: Date.parse(p.date), v: toDisp(p.valueUsd) })),
-    symbol: SCENARIO_SYMBOL[displayCurrency] ?? "€",
-  };
-
-  const { narration } = await narrateScenario({ userMessage, description, figures, fallback, diaryContext: diaryNotes });
-  return reply(narration, { scenarioResult });
-}
-
-type PresentAsset = {
-  id: string;
-  name: string;
-  type: string;
-  value: number;
-  currency: string | null;
-  symbol: string | null;
-  mortgage_balance: number | null;
-};
-
-const fmtScenarioPct = (n: number | null): string =>
-  n == null ? "—" : new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n) + "%";
-
 // Persist the user + assistant pair and return the chat response shape. `extra`
 // can carry a scenarioResult card, a scenarioPending intent, or suggested_replies.
 async function scenarioReply(
@@ -214,113 +113,6 @@ async function scenarioReply(
     remaining: CHAT_DAILY_LIMIT - used,
     ...extra,
   });
-}
-
-// Chat-initiated PRESENT scenario: translate the value-based ops (resolving held
-// assets, converting display → native amounts server-side) into engine
-// Modifications, run the shared present assembly, narrate Current vs Scenario.
-// Read-only — writes only the message pair.
-async function handlePresentScenario(
-  supabase: ReturnType<typeof createServerSupabase>,
-  userId: string,
-  userMessage: string,
-  rawMods: unknown[],
-  assets: PresentAsset[],
-  displayCurrency: DisplayCurrency,
-  used: number,
-  mode: ScenarioMode,
-): Promise<NextResponse> {
-  const reply = (content: string, extra?: Record<string, unknown>) =>
-    scenarioReply(supabase, userId, userMessage, content, used, extra);
-
-  // Free-typed: confirm before computing (no resolution/compute yet).
-  if (mode === "confirm") {
-    const single = rawMods.length === 1 && typeof (rawMods[0] as Record<string, unknown>)?.asset === "string"
-      ? (rawMods[0] as Record<string, unknown>).asset as string
-      : null;
-    const interpretation = single
-      ? `Show how a change to ${single} would reshape your portfolio?`
-      : "Show how that would reshape your portfolio?";
-    return reply(interpretation, {
-      suggested_replies: SHOW_ME_CHIPS,
-      scenarioPending: { kind: "present", modifications: rawMods },
-    });
-  }
-
-  const refs: AssetRef[] = assets.map((a) => ({ id: a.id, name: a.name, type: a.type, symbol: a.symbol }));
-
-  const usdRates = await getUsdRates();
-  const dispRate = usdRates[displayCurrency];
-  if (displayCurrency !== "USD" && dispRate) setUsdRate(displayCurrency, dispRate);
-  const toNative = (displayAmt: number, cur: string): number => {
-    const usd = displayCurrency === "USD" ? displayAmt : displayAmt / (usdRates[displayCurrency] ?? 1);
-    return cur === "USD" ? usd : usd * (usdRates[cur] ?? 1);
-  };
-
-  const mods: Modification[] = [];
-  for (const raw of rawMods) {
-    if (!raw || typeof raw !== "object") continue;
-    const o = raw as Record<string, unknown>;
-    const op = o.op;
-
-    if (op === "add") {
-      const name = typeof o.name === "string" ? o.name : null;
-      const amount = Number(o.amount);
-      if (!name || !Number.isFinite(amount) || amount <= 0) continue;
-      const type = typeof o.assetType === "string" ? o.assetType : typeof o.type === "string" ? o.type : "etf";
-      mods.push({ kind: "addByValue", name, type, currency: displayCurrency, nativeValue: amount });
-      continue;
-    }
-    if (op === "payMortgage") {
-      const amount = Number(o.amount);
-      if (!Number.isFinite(amount) || amount <= 0) continue;
-      const property = assets.find((a) => a.type === "real_estate" && Number(a.mortgage_balance ?? 0) > 0);
-      if (!property) return reply("There's no mortgage on file to pay down.");
-      mods.push({ kind: "payDownMortgage", assetId: property.id, amount: toNative(amount, property.currency || "USD") });
-      const cash = assets
-        .filter((a) => a.type === "cash" || a.type === "pension")
-        .sort((x, y) => Number(y.value) - Number(x.value))[0];
-      if (cash) mods.push({ kind: "setValue", assetId: cash.id, nativeValue: Math.max(0, Number(cash.value) - toNative(amount, cash.currency || "USD")) });
-      continue;
-    }
-
-    const assetQ = typeof o.asset === "string" ? o.asset : null;
-    if (!assetQ) continue;
-    const res = resolveHeldAsset(refs, assetQ);
-    if (res.kind === "ambiguous") return reply(`Which position did you mean: ${res.matches.map((a) => a.name).join(", ")}?`);
-    if (res.kind === "none") return reply(`I don't see a held position matching "${assetQ}". Which one did you mean?`);
-    const full = assets.find((a) => a.id === res.asset.id);
-    if (!full) continue;
-
-    if (op === "remove") {
-      mods.push({ kind: "remove", assetId: full.id });
-    } else if (op === "set") {
-      const v = Number(o.value);
-      if (Number.isFinite(v) && v >= 0) mods.push({ kind: "setValue", assetId: full.id, nativeValue: toNative(v, full.currency || "USD") });
-    } else if (op === "sell" || op === "reduce") {
-      const amt = Number(o.amount);
-      if (Number.isFinite(amt) && amt > 0) mods.push({ kind: "setValue", assetId: full.id, nativeValue: Math.max(0, Number(full.value) - toNative(amt, full.currency || "USD")) });
-    }
-  }
-
-  if (mods.length === 0) {
-    return reply("I couldn't read that scenario — could you restate which positions to change and by how much?");
-  }
-
-  const { comparison } = await assemblePresent(supabase, userId, mods);
-  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
-  const c = comparison.current, s = comparison.scenario, d = comparison.deltas;
-  const nw = m(s.netWorthUsd);
-  const delta = m(Math.abs(d.netWorthUsd));
-  const sign = d.netWorthUsd >= 0 ? "+" : "−";
-  const conCur = fmtScenarioPct(c.topSingleNameConcentrationPct);
-  const conScn = fmtScenarioPct(s.topSingleNameConcentrationPct);
-  const figures = [nw, delta, conCur, conScn];
-  const description = `Present hypothetical. Net worth ${nw} (${sign}${delta} versus current). Single-name concentration ${conCur} → ${conScn}.`;
-  const fallback = `In that scenario your net worth is ${nw}, ${sign}${delta} versus today, with single-name concentration moving from ${conCur} to ${conScn}.`;
-  const scenarioResult: ScenarioResult = { kind: "present", current: c, scenario: s, displayCurrency };
-  const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
-  return reply(narration, { scenarioResult });
 }
 
 // Chat-initiated FUTURE scenario: run the shared project assembly (rate derived
@@ -433,16 +225,138 @@ async function handleFutureScenario(
   return reply(narration);
 }
 
-const fmtUnits = (n: number) => (Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(8))));
+const fmtScenarioPct = (n: number | null): string =>
+  n == null ? "—" : new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n) + "%";
 
-// Chat-initiated PAST hypothetical purchase ("what if I'd bought X N years ago"),
-// for any market-resolvable symbol, held or not. Standalone investment growth —
-// never overlaid on the user's net worth. Read-only; writes only the message pair.
-async function handleHypotheticalBuy(
+// Asset types per shock category (mirrors the allocation/drawdown groupings).
+const SHOCK_TYPES: Record<string, string[]> = {
+  markets: ["stocks", "etf", "gold"], market: ["stocks", "etf", "gold"], equities: ["stocks", "etf", "gold"], stocks: ["stocks", "etf", "gold"],
+  crypto: ["crypto"],
+  property: ["real_estate"], housing: ["real_estate"], real_estate: ["real_estate"],
+  reserves: ["cash", "pension", "bonds"], cash: ["cash"],
+  all: ["stocks", "etf", "gold", "crypto", "real_estate"], everything: ["stocks", "etf", "gold", "crypto", "real_estate"],
+};
+const categoryFromSymbol = (symbol: string): string => (symbol.endsWith("-USD") ? "crypto" : "stocks");
+
+// Translate the classifier's portfolio_change modifications into engine
+// Modifications against the real (full) asset rows. A buy resolves to "add at
+// today's price" (units × today's close) — never a growth curve. Fetches a live
+// price only when a unit quantity has no price to anchor to.
+async function buildPortfolioMods(
+  modifications: unknown[],
+  assets: Array<Record<string, unknown>>,
+  displayCurrency: DisplayCurrency,
+  usdRates: Record<string, number>,
+): Promise<{ mods: Modification[] } | { error: string }> {
+  const refs: AssetRef[] = assets.map((a) => ({ id: String(a.id), name: String(a.name), type: String(a.type), symbol: (a.symbol as string | null) ?? null }));
+  const byId = new Map(assets.map((a) => [String(a.id), a]));
+  const toNative = (displayAmt: number, cur: string): number => {
+    const usd = displayCurrency === "USD" ? displayAmt : displayAmt / (usdRates[displayCurrency] ?? 1);
+    return cur === "USD" ? usd : usd * (usdRates[cur] ?? 1);
+  };
+  const curToNative = (amt: number, fromCur: string, toCur: string): number => {
+    const usd = fromCur === "USD" ? amt : amt / (usdRates[fromCur] ?? 1);
+    return toCur === "USD" ? usd : usd * (usdRates[toCur] ?? 1);
+  };
+
+  const mods: Modification[] = [];
+  for (const raw of modifications) {
+    if (!raw || typeof raw !== "object") continue;
+    const o = raw as Record<string, unknown>;
+    const action = o.action;
+    const units = typeof o.units === "number" && o.units > 0 ? o.units : null;
+    const amount = typeof o.amount === "number" && o.amount > 0 ? o.amount : null;
+    const amtCur = isSupportedCurrency(o.currency) ? (o.currency as string) : displayCurrency;
+
+    if (action === "shock") {
+      const cat = String(o.asset ?? "").toLowerCase();
+      const pct = typeof o.pct === "number" ? o.pct : 0;
+      const types = new Set(SHOCK_TYPES[cat] ?? []);
+      const factor = Math.max(0, 1 - pct / 100);
+      for (const a of assets) {
+        if (types.has(String(a.type))) mods.push({ kind: "setValue", assetId: String(a.id), nativeValue: Number(a.value) * factor });
+      }
+      continue;
+    }
+
+    if (action === "pay_mortgage") {
+      if (amount == null) continue;
+      const property = assets.find((a) => a.type === "real_estate" && Number(a.mortgage_balance ?? 0) > 0);
+      if (!property) return { error: "There's no mortgage on file to pay down." };
+      mods.push({ kind: "payDownMortgage", assetId: String(property.id), amount: toNative(amount, String(property.currency || "USD")) });
+      const cash = assets.filter((a) => a.type === "cash" || a.type === "pension").sort((x, y) => Number(y.value) - Number(x.value))[0];
+      if (cash) mods.push({ kind: "setValue", assetId: String(cash.id), nativeValue: Math.max(0, Number(cash.value) - toNative(amount, String(cash.currency || "USD"))) });
+      continue;
+    }
+
+    const assetQ = typeof o.asset === "string" ? o.asset : null;
+    if (!assetQ) continue;
+    const held = resolveHeldAsset(refs, assetQ);
+
+    if (action === "buy") {
+      if (held.kind === "resolved") {
+        // Top up an existing holding.
+        const full = byId.get(held.asset.id)!;
+        const cur = String(full.currency || "USD");
+        let deltaNative: number;
+        if (amount != null) deltaNative = curToNative(amount, amtCur, cur);
+        else {
+          const heldUnits = Number(full.units ?? 0);
+          if (units != null && heldUnits > 0) deltaNative = units * (Number(full.value) / heldUnits);
+          else if (units != null && full.symbol) { const px = await priceNative(String(full.symbol)); deltaNative = px ? curToNative(units * px.price, px.currency, cur) : 0; }
+          else deltaNative = toNative(10_000, cur);
+        }
+        if (deltaNative > 0) mods.push({ kind: "setValue", assetId: held.asset.id, nativeValue: Number(full.value) + deltaNative });
+      } else {
+        // A new position, valued at today's price.
+        const mk = await resolveMarketSymbol(assetQ);
+        if (mk.kind !== "resolved") return { error: `I couldn't find "${assetQ}". Which asset did you mean?` };
+        const type = categoryFromSymbol(mk.symbol);
+        if (amount != null) {
+          mods.push({ kind: "addByValue", name: mk.label, type, currency: amtCur, nativeValue: amount });
+        } else if (units != null) {
+          const px = await priceNative(mk.symbol);
+          if (!px) return { error: `I couldn't pull a current price for ${mk.label}.` };
+          mods.push({ kind: "addByValue", name: mk.label, type, currency: px.currency, nativeValue: units * px.price });
+        } else {
+          mods.push({ kind: "addByValue", name: mk.label, type, currency: displayCurrency, nativeValue: 10_000 });
+        }
+      }
+      continue;
+    }
+
+    // sell / set / remove — held only (gate enforced).
+    if (held.kind !== "resolved") continue;
+    const full = byId.get(held.asset.id)!;
+    const cur = String(full.currency || "USD");
+    if (action === "remove") mods.push({ kind: "remove", assetId: held.asset.id });
+    else if (action === "set") { const v = typeof o.value === "number" ? o.value : null; if (v != null && v >= 0) mods.push({ kind: "setValue", assetId: held.asset.id, nativeValue: toNative(v, cur) }); }
+    else if (action === "sell" || action === "reduce") {
+      let deltaNative: number | null = null;
+      if (amount != null) deltaNative = curToNative(amount, amtCur, cur);
+      else if (units != null) { const heldUnits = Number(full.units ?? 0); deltaNative = heldUnits > 0 ? units * (Number(full.value) / heldUnits) : null; }
+      if (deltaNative != null) mods.push({ kind: "setValue", assetId: held.asset.id, nativeValue: Math.max(0, Number(full.value) - deltaNative) });
+    }
+  }
+  return { mods };
+}
+
+// Today's close in native currency for a symbol (range=5d), best-effort.
+async function priceNative(symbol: string): Promise<{ price: number; currency: string } | null> {
+  const p = await fetchHistoricalPrice(symbol, null);
+  return p ? { price: p.price, currency: p.currency } : null;
+}
+
+// Chat-initiated PORTFOLIO CHANGE — any buy/sell/shock/hypothetical-buy resolves to a
+// modified portfolio and returns ONE answer: the whole portfolio before -> after
+// (net worth, distribution, concentration, and the few vitals the move changes).
+// Read-only — writes only the message pair.
+async function handlePortfolioChange(
   supabase: ReturnType<typeof createServerSupabase>,
   userId: string,
   userMessage: string,
   parsed: Record<string, unknown>,
+  assets: Array<Record<string, unknown>>,
   displayCurrency: DisplayCurrency,
   used: number,
   mode: ScenarioMode,
@@ -450,127 +364,58 @@ async function handleHypotheticalBuy(
   const reply = (content: string, extra?: Record<string, unknown>) =>
     scenarioReply(supabase, userId, userMessage, content, used, extra);
 
-  // Symbol is resolved by the gate (clarifies ambiguous/none before we get here);
-  // fall back to a direct resolve only if invoked without the gate.
-  const symbolHint = typeof parsed.symbolHint === "string" ? parsed.symbolHint.trim() : "";
-  const pre = parsed._resolved as { symbol?: string; label?: string } | undefined;
-  let symbol: string;
-  let label: string;
-  if (pre?.symbol) {
-    symbol = pre.symbol;
-    label = pre.label ?? pre.symbol;
-  } else {
-    const r = await resolveMarketSymbol(symbolHint);
-    if (r.kind !== "resolved") return reply(`Which asset did you mean — a name or ticker?`);
-    symbol = r.symbol;
-    label = r.label;
-  }
-
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const requestedBuyDate = resolveBuyDate(parsed.buyDateHint, today);
-
-  const usdRates = await getUsdRates();
-  const dispRate = usdRates[displayCurrency] ?? 1;
-  if (displayCurrency !== "USD" && usdRates[displayCurrency]) setUsdRate(displayCurrency, usdRates[displayCurrency]);
-  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
-  const toUsdFromCur = (amt: number, cur: string) => (cur === "USD" ? amt : amt / (usdRates[cur] ?? 1));
-
-  // Units win when present (a bare number next to an asset name); otherwise a cash
-  // amount, defaulted upstream by the gate to €10,000 in the display currency.
-  const units = typeof parsed.units === "number" && parsed.units > 0 ? parsed.units : null;
-  const amountInput = typeof parsed.amount === "number" && parsed.amount > 0 ? parsed.amount : null;
-  const amountCurrency = isSupportedCurrency(parsed.currency) ? (parsed.currency as string) : displayCurrency;
-
-  // Free-typed: confirm before fetching/computing. Echo the normalized intent so
-  // [Show me] reproduces the same purchase exactly.
+  // Free-typed: confirm before computing.
   if (mode === "confirm") {
-    const subject = units != null ? `${fmtUnits(units)} ${label}` : `${m(toUsdFromCur(amountInput ?? 10_000, amountCurrency))} in ${label}`;
-    return reply(`Show what ${subject} on ${fmtScenarioDate(requestedBuyDate)} would be worth today?`, {
+    return reply("Show your portfolio before and after that change?", {
       suggested_replies: SHOW_ME_CHIPS,
-      scenarioPending: {
-        kind: "hypothetical_buy",
-        symbolHint: symbolHint || label,
-        buyDateHint: requestedBuyDate,
-        units: units ?? null,
-        amount: amountInput ?? null,
-        currency: parsed.currency ?? null,
-      },
+      scenarioPending: parsed,
     });
   }
 
-  try {
-    const [priceRaw, fxSeries] = await Promise.all([
-      fetchHistoricalSeries(symbol, requestedBuyDate, todayStr),
-      getHistoricalUsdRates(requestedBuyDate, todayStr),
-    ]);
-    if (!priceRaw || priceRaw.length < 2) {
-      Sentry.captureMessage(`hypothetical_buy: no price history for ${symbol}`, "warning");
-      return reply(`I couldn't pull a price history for ${label}. Want to try a different asset or date?`);
-    }
-    const priceSeries: PricePoint[] = priceRaw.map((p) => ({ date: p.date, price: p.price, currency: p.currency }));
-    const earliestData = priceSeries[0].date;
-    const clamped = requestedBuyDate < earliestData;
-    const effectiveBuy = clamped ? earliestData : requestedBuyDate;
+  const modifications = Array.isArray(parsed.modifications) ? parsed.modifications : [];
+  const usdRates = await getUsdRates();
+  if (displayCurrency !== "USD" && usdRates[displayCurrency]) setUsdRate(displayCurrency, usdRates[displayCurrency]);
 
-    // For units, the cost is units × the buy-date close (USD); for cash, use the
-    // amount directly. Either way the engine grows the same lump sum to today.
-    let amountUsd: number;
-    if (units != null) {
-      const bp = buyPriceUsd(priceSeries, fxSeries, effectiveBuy);
-      if (!bp) return reply(`I couldn't pull a price for ${label} around then. Want to try a different date?`);
-      amountUsd = units * bp.priceUsd;
-    } else {
-      amountUsd = toUsdFromCur(amountInput ?? 10_000, amountCurrency);
-    }
+  const built = await buildPortfolioMods(modifications, assets, displayCurrency, usdRates);
+  if ("error" in built) return reply(built.error);
+  if (built.mods.length === 0) return reply("I couldn't read that change — which positions should move, and by how much?");
 
-    const r = hypotheticalBuyGrowth(amountUsd, effectiveBuy, priceSeries, fxSeries);
-    if (r.series.length < 2) {
-      return reply(`I couldn't pull enough price history for ${label}. Want to try a different asset or date?`);
-    }
+  const { data: urow } = await supabase.from("users").select("country").eq("id", userId).maybeSingle();
+  const readout = computePortfolioChange(assets as unknown as Asset[], built.mods, usdRates, { country: urow?.country ?? null });
 
-    const moneyLabel = m(amountUsd);
-    const valueLabel = m(r.valueTodayUsd);
-    const gainLabel = m(Math.abs(r.gainUsd));
-    const multStr = `${r.multiple.toFixed(1)}x`;
-    const buyLabel = fmtScenarioDate(r.buyDateUsed);
-    const gained = r.gainUsd >= 0;
+  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+  const c = readout.current, s = readout.scenario;
+  const nwAfter = m(s.netWorthUsd), nwBefore = m(c.netWorthUsd);
+  const nwDelta = s.netWorthUsd - c.netWorthUsd;
+  const deltaStr = m(Math.abs(nwDelta));
+  const sign = nwDelta >= 0 ? "+" : "−";
+  const conBefore = fmtScenarioPct(c.topSingleNameConcentrationPct), conAfter = fmtScenarioPct(s.topSingleNameConcentrationPct);
 
-    const unitsStr = units != null ? fmtUnits(units) : null;
-    const subject = unitsStr != null ? `${unitsStr} ${label} bought on ${buyLabel}` : `${moneyLabel} invested in ${label} on ${buyLabel}`;
-    const cardLabel = unitsStr != null ? `${unitsStr} ${label}` : `${moneyLabel} in ${label}`;
+  const vitals: ScenarioVitalDelta[] = readout.contextualVitals.map((v) => ({
+    key: v.key, label: v.label, before: fmtScenarioPct(v.before), after: fmtScenarioPct(v.after),
+    beforeBand: v.beforeBand, afterBand: v.afterBand, higherIsWorse: v.higherIsWorse,
+  }));
 
-    const figures = [
-      moneyLabel, valueLabel, gainLabel, multStr,
-      `${r.multiple.toFixed(1)}`, `${Math.round(r.multiple)}`,
-      ...extractNumbers(buyLabel),
-      ...(unitsStr != null ? extractNumbers(unitsStr) : []),
-    ];
-    const clampNote = clamped ? ` (the earliest price history available is ${buyLabel}, so I used that date)` : "";
-    const description =
-      `Standalone hypothetical purchase — NOT part of the user's real portfolio and NOT a change to their net worth: ` +
-      `${subject}${clampNote} would be worth ${valueLabel} today — ` +
-      `about ${multStr} the amount, ${gained ? "a gain" : "a loss"} of ${gainLabel}. ` +
-      `State the assumed amount/units and date plainly; the user can restate to change it.`;
-    const fallback =
-      `${unitsStr != null ? `${unitsStr} ${label}` : `${moneyLabel} in ${label}`} on ${buyLabel} would be worth about ${valueLabel} today — roughly ${multStr}` +
-      `${clamped ? ` (${buyLabel} is the earliest price history available)` : ""}.`;
+  const figures = [nwAfter, nwBefore, deltaStr, conBefore, conAfter, ...vitals.flatMap((v) => [v.before, v.after])];
+  const vitalSentence = vitals.length
+    ? " It also moves " + vitals.map((v) => `${v.label.toLowerCase()} from ${v.before} to ${v.after}`).join(" and ") + "."
+    : "";
+  const description =
+    `Whole-portfolio before -> after. Net worth moves to ${nwAfter} (${sign}${deltaStr} versus ${nwBefore} now). ` +
+    `Single-name concentration goes from ${conBefore} to ${conAfter}.${vitalSentence} ` +
+    `Stay portfolio-level — the focus is the whole portfolio, not any single position.`;
+  const fallback =
+    `This moves your net worth to ${nwAfter} (${sign}${deltaStr}), with single-name concentration ${conBefore} → ${conAfter}.${vitalSentence}`;
 
-    const scenarioResult: ScenarioResult = {
-      kind: "hypothetical_buy",
-      assetLabel: label,
-      buyDate: r.buyDateUsed,
-      amountLabel: cardLabel,
-      series: r.series.map((p) => ({ t: Date.parse(p.date), v: p.valueUsd * dispRate })),
-      symbol: SCENARIO_SYMBOL[displayCurrency] ?? "€",
-    };
-
-    const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
-    return reply(narration, { scenarioResult });
-  } catch (err) {
-    Sentry.captureException(err, { tags: { scenario: "hypothetical_buy" } });
-    return reply(`I couldn't pull a price history for ${label} right now. Want to try again in a moment?`);
-  }
+  const scenarioResult: ScenarioResult = {
+    kind: "portfolio_change",
+    current: c,
+    scenario: s,
+    displayCurrency,
+    contextualVitals: vitals,
+  };
+  const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
+  return reply(narration, { scenarioResult });
 }
 
 // Route a parsed scenario intent to the matching handler. Returns null when the
@@ -588,7 +433,7 @@ async function dispatchScenario(
   // Recognised scenario kinds run through the deterministic gate first: it
   // normalizes parameters and asks (via the existing chip mechanism) on anything
   // implausible or missing, so we never compute a confident wrong answer.
-  const KNOWN = new Set(["counterfactual", "present", "future", "hypothetical_buy"]);
+  const KNOWN = new Set(["portfolio_change", "future"]);
   if (!KNOWN.has(rawIntent.kind as string)) return null;
 
   const assetRefs: AssetRef[] = (assets as Array<Record<string, unknown>>).map((a) => ({
@@ -605,14 +450,8 @@ async function dispatchScenario(
   }
   const parsed = gate.ok;
 
-  if (parsed.kind === "counterfactual" && typeof parsed.asset === "string") {
-    return handleScenarioIntent(supabase, userId, userMsg, parsed.asset, assets as AssetRef[], displayCurrency, used, mode);
-  }
-  if (parsed.kind === "hypothetical_buy") {
-    return handleHypotheticalBuy(supabase, userId, userMsg, parsed, displayCurrency, used, mode);
-  }
-  if (parsed.kind === "present" && Array.isArray(parsed.modifications)) {
-    return handlePresentScenario(supabase, userId, userMsg, parsed.modifications, assets as PresentAsset[], displayCurrency, used, mode);
+  if (parsed.kind === "portfolio_change") {
+    return handlePortfolioChange(supabase, userId, userMsg, parsed, assets as Array<Record<string, unknown>>, displayCurrency, used, mode);
   }
   if (parsed.kind === "future" && (parsed.mode === "trajectory" || parsed.mode === "solve")) {
     return handleFutureScenario(supabase, userId, userMsg, parsed, displayCurrency, used, mode);
