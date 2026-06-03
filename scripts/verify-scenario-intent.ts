@@ -122,6 +122,33 @@ async function main() {
     check("past target year → clarify", isClarify(r));
   }
 
+  // ── portfolio_change (the unified kind) ───────────────────────────────────
+  console.log("portfolio_change:");
+  {
+    const r = await gate({ kind: "portfolio_change", modifications: [{ action: "buy", asset: "BTC", units: 2 }] });
+    check('"buy 2 BTC" (units) → ok', isOk(r), isClarify(r) ? r.clarify.question : "ok");
+  }
+  {
+    const r = await gate({ kind: "portfolio_change", modifications: [{ action: "buy", asset: "BTC", amount: 1, currency: "EUR" }] });
+    check("buy with €1 → clarify (likely units)", isClarify(r), isClarify(r) ? r.clarify.question : "ok");
+  }
+  {
+    const r = await gate({ kind: "portfolio_change", modifications: [{ action: "shock", asset: "markets", pct: 30 }] });
+    check('"market drops 30%" → ok', isOk(r));
+  }
+  {
+    const r = await gate({ kind: "portfolio_change", modifications: [{ action: "shock", asset: "markets", pct: 500 }] });
+    check("absurd shock pct → clarify", isClarify(r));
+  }
+  {
+    const r = await gate({ kind: "portfolio_change", modifications: [{ action: "sell", asset: "Tesla", units: 1 }] });
+    check("sell a not-held position → clarify", isClarify(r), isClarify(r) ? r.clarify.question : "ok");
+  }
+  {
+    const r = await gate({ kind: "portfolio_change", modifications: [{ action: "pay_mortgage", amount: 50000 }] });
+    check("pay down the mortgage → ok", isOk(r));
+  }
+
   console.log(failures === 0 ? "\nAll scenario-intent gate checks passed." : `\n${failures} check(s) failed.`);
   process.exit(failures === 0 ? 0 : 1);
 }

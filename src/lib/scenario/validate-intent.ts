@@ -199,6 +199,88 @@ function gateCounterfactual(intent: Record<string, unknown>, assets: AssetRef[])
   return { ok: intent };
 }
 
+// ── portfolio_change (the unified before->after kind) ──────────────────────────
+const SHOCK_CATEGORIES = new Set([
+  "markets", "market", "equities", "stocks", "crypto", "property", "housing", "real_estate", "reserves", "cash", "all", "everything",
+]);
+
+async function gatePortfolioChange(intent: Record<string, unknown>, assets: AssetRef[], ctx: ScenarioGateContext): Promise<ScenarioGateResult> {
+  const mods = Array.isArray(intent.modifications) ? intent.modifications : [];
+  if (mods.length === 0) return clarify("What change would you like to explore?");
+
+  let valid = 0;
+  for (const raw of mods) {
+    if (!raw || typeof raw !== "object") continue;
+    const o = raw as Record<string, unknown>;
+    const action = o.action;
+
+    if (action === "shock") {
+      const cat = (str(o.asset) ?? "").toLowerCase();
+      if (!SHOCK_CATEGORIES.has(cat)) return clarify("Which part of the market — equities, crypto, property, or everything?");
+      const p = num(o.pct);
+      if (p == null || p <= 0 || p > 100) return clarify("By how much would the market move (a percentage)?");
+      valid++;
+      continue;
+    }
+
+    if (action === "pay_mortgage") {
+      const amount = num(o.amount);
+      if (amount == null || amount <= 0 || amount > VALUE_CEILING) return clarify("How much would you pay off the mortgage?");
+      valid++;
+      continue;
+    }
+
+    if (action === "buy") {
+      const assetQ = str(o.asset);
+      if (!assetQ) return clarify("Which asset would you buy?");
+      const units = num(o.units);
+      const amount = num(o.amount);
+      if (units != null) {
+        if (units <= 0 || units > 1e12) return clarify(`How many units of ${assetQ}?`);
+      } else if (amount != null) {
+        const cur = isSupportedCurrency(o.currency) ? (o.currency as string) : ctx.displayCurrency;
+        const amountUsd = cur === "USD" ? amount : amount / (ctx.usdRates[cur] ?? 1);
+        if (amountUsd <= 0) return clarify(`How much would you put into ${assetQ}?`);
+        if (amountUsd < AMOUNT_FLOOR_USD) {
+          const sym = CCY_SYMBOL[cur] ?? "";
+          return clarify(`Did you mean ${amount} ${assetQ} (units), or ${sym}${amount}?`, [`${amount} ${assetQ}`, "A cash amount"]);
+        }
+        if (amountUsd > AMOUNT_CEILING_USD) return clarify(`That amount looks too large — how much would you put into ${assetQ}?`);
+      }
+      // Resolve the asset: an existing holding to add to, or a market symbol.
+      const held = resolveHeldAsset(assets, assetQ);
+      if (held.kind === "ambiguous") return clarify(`Which position did you mean: ${held.matches.map((a) => a.name).join(", ")}?`, held.matches.map((a) => a.name));
+      if (held.kind !== "resolved") {
+        const mk = await resolveMarketSymbol(assetQ);
+        if (mk.kind === "ambiguous") return clarify(`Which did you mean: ${mk.candidates.map((c) => c.label).join(", ")}?`, mk.candidates.map((c) => c.label));
+        if (mk.kind === "none") return clarify(`I couldn't find "${assetQ}". Which asset did you mean?`);
+      }
+      valid++;
+      continue;
+    }
+
+    // sell / set / remove — must target a held position.
+    const assetQ = str(o.asset);
+    if (!assetQ) return clarify("Which position did you mean?");
+    const held = resolveHeldAsset(assets, assetQ);
+    if (held.kind === "ambiguous") return clarify(`Which position did you mean: ${held.matches.map((a) => a.name).join(", ")}?`, held.matches.map((a) => a.name));
+    if (held.kind !== "resolved") return clarify(`I don't see a held position matching "${assetQ}". Which one did you mean?`);
+    if (action === "set") {
+      const v = num(o.value);
+      if (v == null || v < 0 || v > VALUE_CEILING) return clarify(`What value should ${held.asset.name} be set to?`);
+    } else if (action === "sell" || action === "reduce") {
+      const u = num(o.units), a = num(o.amount);
+      if ((u == null || u <= 0) && (a == null || a <= 0)) return clarify(`How much of ${held.asset.name} would you like to sell?`);
+    } else if (action !== "remove") {
+      continue;
+    }
+    valid++;
+  }
+
+  if (valid === 0) return clarify("I couldn't read that — which positions should change, and by how much?");
+  return { ok: intent };
+}
+
 /**
  * The gate. Normalizes and sanity-checks an extracted scenario intent. Returns the
  * normalized intent to compute, or a clarification to ask. Unknown kinds pass through.
@@ -209,6 +291,8 @@ export async function validateScenarioIntent(
   ctx: ScenarioGateContext,
 ): Promise<ScenarioGateResult> {
   switch (intent.kind) {
+    case "portfolio_change":
+      return gatePortfolioChange(intent, currentAssets, ctx);
     case "hypothetical_buy":
       return gateHypotheticalBuy(intent, ctx);
     case "present":
