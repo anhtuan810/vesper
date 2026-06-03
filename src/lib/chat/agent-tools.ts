@@ -20,6 +20,7 @@ import { validateScenarioIntent, resolveBuyDate } from "@/lib/scenario/validate-
 import { resolveProposal, type ProposalChange, type CurrentAssetLight } from "@/lib/proposal-resolver";
 import { applyPortfolioChanges, type MutationMeta } from "@/lib/apply-changes";
 import { validatePortfolioChanges } from "@/lib/validations";
+import { geocodeAddress } from "@/lib/geocode";
 import type { PricePoint } from "@/lib/scenario/counterfactual";
 import type { ScenarioResult } from "@/lib/scenario/result";
 
@@ -437,34 +438,89 @@ async function hypotheticalBuyTool(input: Record<string, unknown>, ctx: ToolCont
   };
 }
 
+// Real-estate geocode gate — reuses the tag path's geocodeAddress + hasHouseNumber
+// rule verbatim. For any add/edit change carrying an address on a real-estate
+// position, resolve to a canonical address + lat/long; reject (ask) when there is
+// no result or no house number. Returns a copy of changes with geo attached. A
+// real-estate change with no address is left untouched (matches the tag path,
+// which only geocodes when an address is present).
+async function resolveRealEstateGeo(
+  changes: unknown[],
+  currentAssets: Array<Record<string, unknown>>,
+): Promise<{ ok: true; changes: Record<string, unknown>[]; resolved: string[] } | { ok: false; message: string }> {
+  const out: Record<string, unknown>[] = [];
+  const resolved: string[] = [];
+  for (const raw of changes) {
+    const ch: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+    const address = typeof ch.address === "string" ? ch.address.trim() : "";
+    if (address) {
+      const name = String(ch.name ?? "").toLowerCase();
+      const existingForEdit = ch.action === "edit"
+        ? currentAssets.find((a) => String(a.name).toLowerCase() === name || (a.symbol && String(a.symbol).toLowerCase() === name))
+        : null;
+      const isRealEstate = ch.type === "real_estate" || (ch.action === "edit" && existingForEdit?.type === "real_estate");
+      if (isRealEstate) {
+        const countryHint = (ch.country as string | null) ?? (existingForEdit?.country as string | null) ?? null;
+        const geo = await geocodeAddress(address, countryHint);
+        if (!geo || !geo.hasHouseNumber) {
+          return { ok: false, message: `I couldn't find "${address}" — could you double-check the spelling or share a postcode?` };
+        }
+        ch.address = geo.canonicalAddress;
+        ch.latitude = geo.latitude;
+        ch.longitude = geo.longitude;
+        resolved.push(geo.canonicalAddress);
+      }
+    }
+    out.push(ch);
+  }
+  return { ok: true, changes: out, resolved };
+}
+
 // ── propose_mutation (no write) ─────────────────────────────────────────────────
 async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
   const changes = Array.isArray(input.changes) ? input.changes : [];
   if (changes.length === 0) return { forModel: { error: "No changes to propose." } };
+
+  // Geocode real-estate addresses up front so the proposal surfaces the canonical
+  // address for confirmation; ask naturally on an unresolvable address (no write).
+  const geo = await resolveRealEstateGeo(changes, ctx.currentAssets);
+  if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
+
   const light: CurrentAssetLight[] = ctx.currentAssets.map((a) => ({
     name: String(a.name), symbol: (a.symbol as string | null) ?? null, type: String(a.type),
     value: Number(a.value), currency: String(a.currency || "USD"), units: (a.units as number | null) ?? null,
   }));
   const lines: string[] = [];
-  for (const ch of changes) {
+  for (const ch of geo.changes) {
     lines.push(await resolveProposal(ch as ProposalChange, light));
   }
-  const resolvedText = `Resolved:\n${lines.join("\n")}`;
+  const addrLines = geo.resolved.map((a) => `Resolved address: ${a}`);
+  const resolvedText = `Resolved:\n${[...lines, ...addrLines].join("\n")}`;
   const chips = ["Confirm and save", "No, let me correct it"];
-  return { forModel: { proposed: lines, awaitingConfirmation: true }, proposal: { resolvedText, chips } };
+  return {
+    forModel: { proposed: lines, ...(geo.resolved.length ? { resolvedAddresses: geo.resolved } : {}), awaitingConfirmation: true },
+    proposal: { resolvedText, chips },
+  };
 }
 
 // ── commit_mutation (the proven write path) ─────────────────────────────────────
 async function commitMutationTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
-  const changes = Array.isArray(input.changes) ? input.changes : [];
-  if (changes.length === 0) return { forModel: { error: "No changes to commit." } };
+  const rawChanges = Array.isArray(input.changes) ? input.changes : [];
+  if (rawChanges.length === 0) return { forModel: { error: "No changes to commit." } };
 
-  const validationError = validatePortfolioChanges(changes, ctx.currentAssets as never);
+  // Re-run the geocode gate deterministically: a real-estate add/edit with an
+  // address must resolve to a canonical address + coords before any write. If it
+  // doesn't resolve, ask — never write a property without resolved geo.
+  const geo = await resolveRealEstateGeo(rawChanges, ctx.currentAssets);
+  if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
+  const changes = geo.changes;
+
+  const validationError = validatePortfolioChanges(changes as never, ctx.currentAssets as never);
   if (validationError) return { forModel: { error: validationError } };
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
-  const needsBackfill = changes.length > 1 || changes.some((c) => (c as Record<string, unknown>).buy_date && String((c as Record<string, unknown>).buy_date) < thirtyDaysAgo);
-  const hasAdds = changes.some((c) => (c as Record<string, unknown>).action === "add");
+  const needsBackfill = changes.length > 1 || changes.some((c) => c.buy_date && String(c.buy_date) < thirtyDaysAgo);
+  const hasAdds = changes.some((c) => c.action === "add");
 
   const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures } = await applyPortfolioChanges({
     supabase: ctx.supabase,

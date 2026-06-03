@@ -29,6 +29,9 @@ production.
 | 3 | "I sold 2 ASML" | `propose_mutation` → resolved proposal + confirm chips, **no write**. |
 | 3b | (then) "Confirm and save" | `commit_mutation` → `applyPortfolioChanges` writes, a **mutation row is logged** (every-change-logs-a-mutation invariant), assets refresh. |
 | 4 | A mid-thread correction, e.g. after a projection: "no, make it €1,000 a month" | Understood **in context** — re-runs `future_projection` with the corrected contribution, not a fresh cold start. |
+| 5a | "I bought a flat at {full address with house number}" | `propose_mutation` **geocodes within the loop** → surfaces "Resolved address: {canonical}" + confirm chips, **no write**. |
+| 5b | (then) "Confirm and save" | `commit_mutation` re-geocodes deterministically and writes the property **with canonical address + lat/long**; a mutation row is logged. |
+| 5c | "I bought a flat at {misspelled / no house number}" | Asks to **double-check the spelling or share a postcode**, **no write** (a property never commits without resolved geo). Property adds do NOT fall back to the tag path. |
 
 ## Other checks
 
@@ -41,12 +44,14 @@ production.
 - An ambiguous or unresolvable reference → the model **asks** (a tool returned
   `needsClarification`) and does not compute.
 
-## Known gaps to verify by hand
+## Real estate (geocoding gate, now inside the loop)
 
-- `commit_mutation` reuses `validatePortfolioChanges` + `applyPortfolioChanges`
-  but does **not** run the real-estate address-geocoding gate that the tag path
-  applies. For now, prefer the tag path (flag OFF) for property adds, or confirm
-  geocoding behaviour before relying on the loop for real estate.
+- Property adds carrying an address are geocoded **within the loop** by both
+  `propose_mutation` (surface the canonical address) and `commit_mutation`
+  (re-geocode before any write), reusing the tag path's `geocodeAddress` and its
+  no-house-number rejection. A property never commits without resolved
+  canonical address + lat/long, and property adds do not fall back to the tag
+  path. Verify cases 5a–5c above against a real address (needs network).
 
 ## Rollback
 
