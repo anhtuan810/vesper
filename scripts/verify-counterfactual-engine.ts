@@ -1,6 +1,10 @@
 // Runnable verification for the deterministic past-counterfactual engine.
 // Run:  npx tsx scripts/verify-counterfactual-engine.ts
 // Exits non-zero on any mismatch. Pure functions only — no network.
+//
+// "Never bought" keeps the deployed capital as cash, so the contribution figure
+// is the position's gain/loss versus what was invested (can be negative), not its
+// market value.
 
 import {
   reconstructPositionSeries,
@@ -8,6 +12,7 @@ import {
   contribution,
   type CurvePoint,
   type PricePoint,
+  type CashFlow,
   type FxByDate,
 } from "../src/lib/scenario/counterfactual";
 
@@ -18,66 +23,91 @@ function check(label: string, cond: boolean, detail = "") {
 }
 const approx = (a: number, b: number, eps = 1e-6) => Math.abs(a - b) <= eps * Math.max(1, Math.abs(b));
 
-// ── Fixture 1: cf = actual − position; contribution = actual_today − cf_today ──
-console.log("Fixture 1 — counterfactual = actual − position; contribution:");
+// A flat actual curve over four month-ends (its level is irrelevant to the P&L).
+const actual: CurvePoint[] = [
+  { date: "2026-01-01", valueUsd: 10_000 },
+  { date: "2026-02-01", valueUsd: 10_000 },
+  { date: "2026-03-01", valueUsd: 10_000 },
+  { date: "2026-04-01", valueUsd: 10_000 },
+];
+const dates = actual.map((p) => p.date);
+const contribOf = (cf: CurvePoint[]) => contribution(actual[actual.length - 1].valueUsd, cf[cf.length - 1].valueUsd).valueUsd;
+
+// ── Fixture 1: buys-only, in profit → contribution = market − invested ────────
+console.log("Fixture 1 — buys-only in profit (gain):");
 {
-  const actual: CurvePoint[] = [
-    { date: "2026-01-01", valueUsd: 1000 },
-    { date: "2026-02-01", valueUsd: 1200 },
-    { date: "2026-03-01", valueUsd: 1500 },
+  const prices: PricePoint[] = [
+    { date: "2026-01-01", price: 100, currency: "USD" },
+    { date: "2026-04-01", price: 120, currency: "USD" },
   ];
+  const units = [{ date: "2026-01-01", units: 2 }]; // bought 2 @ 100 = 200 cost
+  const flows: CashFlow[] = [{ date: "2026-01-01", amount: 200, currency: "USD" }];
+  const pos = reconstructPositionSeries(dates, units, prices, {});
+  const cf = counterfactualRemove(actual, pos.series, flows, {});
+  // market today = 2 × 120 = 240; invested = 200 → gain 40.
+  check("position today = 240", approx(pos.series[3].valueUsd, 240));
+  check("contribution = market − invested = +40", approx(contribOf(cf.series), 40), `${contribOf(cf.series)}`);
+  check("contribution is positive (added)", contribOf(cf.series) > 0);
+}
+
+// ── Fixture 2: underwater → contribution NEGATIVE ─────────────────────────────
+console.log("Fixture 2 — underwater (cost):");
+{
+  const prices: PricePoint[] = [
+    { date: "2026-01-01", price: 150, currency: "USD" },
+    { date: "2026-04-01", price: 100, currency: "USD" },
+  ];
+  const units = [{ date: "2026-01-01", units: 2 }]; // bought 2 @ 150 = 300 cost
+  const flows: CashFlow[] = [{ date: "2026-01-01", amount: 300, currency: "USD" }];
+  const pos = reconstructPositionSeries(dates, units, prices, {});
+  const cf = counterfactualRemove(actual, pos.series, flows, {});
+  // market today = 2 × 100 = 200; invested = 300 → loss −100.
+  check("contribution = 200 − 300 = −100", approx(contribOf(cf.series), -100), `${contribOf(cf.series)}`);
+  check("contribution is NEGATIVE (cost)", contribOf(cf.series) < 0);
+}
+
+// ── Fixture 3: partial sell → contribution = market + proceeds − buys ─────────
+console.log("Fixture 3 — partial sell (lifetime P&L):");
+{
   const prices: PricePoint[] = [
     { date: "2026-01-01", price: 100, currency: "USD" },
     { date: "2026-02-01", price: 110, currency: "USD" },
-    { date: "2026-03-01", price: 120, currency: "USD" },
+    { date: "2026-04-01", price: 120, currency: "USD" },
   ];
-  const pos = reconstructPositionSeries(actual.map((p) => p.date), 2, prices, {});
-  const cf = counterfactualRemove(actual, pos.series);
-  const everyMatch = actual.every((a, i) => approx(cf.series[i].valueUsd, a.valueUsd - pos.series[i].valueUsd));
-  check("cf[i] = actual[i] − position[i]", everyMatch);
-  check("position today = 2 × 120 = 240", approx(pos.series[2].valueUsd, 240));
-  const c = contribution(actual[2].valueUsd, cf.series[2].valueUsd);
-  check("contribution = actual_today − cf_today = 240", approx(c.valueUsd, 240), `got ${c.valueUsd}`);
+  const units = [{ date: "2026-01-01", units: 4 }, { date: "2026-02-01", units: 2 }]; // buy 4, sell 2
+  const flows: CashFlow[] = [
+    { date: "2026-01-01", amount: 400, currency: "USD" }, // bought 4 @ 100
+    { date: "2026-02-01", amount: -220, currency: "USD" }, // sold 2 @ 110
+  ];
+  const pos = reconstructPositionSeries(dates, units, prices, {});
+  const cf = counterfactualRemove(actual, pos.series, flows, {});
+  // remaining 2 @ 120 = 240; + proceeds 220 − buys 400 = 60.
+  check("position today = 2 × 120 = 240", approx(pos.series[3].valueUsd, 240));
+  check("contribution = 240 + 220 − 400 = +60", approx(contribOf(cf.series), 60), `${contribOf(cf.series)}`);
 }
 
-// ── Fixture 2: FX applied per date (non-USD position, varying FX) ──────────────
-console.log("Fixture 2 — FX applied per date:");
+// ── Fixture 4: pre-buy-date → cf equals actual (flows and value both zero) ────
+console.log("Fixture 4 — pre-buy-date unchanged:");
 {
-  const dates = ["2026-01-01", "2026-02-01"];
+  const prices: PricePoint[] = actual.map((a) => ({ date: a.date, price: 100, currency: "USD" }));
+  const units = [{ date: "2026-02-15", units: 5 }];
+  const flows: CashFlow[] = [{ date: "2026-02-15", amount: 500, currency: "USD" }];
+  const pos = reconstructPositionSeries(dates, units, prices, {});
+  const cf = counterfactualRemove(actual, pos.series, flows, {});
+  check("cf == actual before buy (Jan, Feb 1)", approx(cf.series[0].valueUsd, 10_000) && approx(cf.series[1].valueUsd, 10_000));
+  check("position 0 before buy", approx(pos.series[0].valueUsd, 0) && approx(pos.series[1].valueUsd, 0));
+}
+
+// ── Bonus: FX applied per date in the position valuation ───────────────────────
+console.log("Bonus — FX applied per date (position valuation):");
+{
   const prices: PricePoint[] = [
     { date: "2026-01-01", price: 100, currency: "EUR" },
-    { date: "2026-02-01", price: 100, currency: "EUR" }, // same price both dates
+    { date: "2026-02-01", price: 100, currency: "EUR" },
   ];
-  const fx: FxByDate = {
-    "2026-01-01": { EUR: 0.9 }, // 1 USD = 0.9 EUR
-    "2026-02-01": { EUR: 0.8 }, // 1 USD = 0.8 EUR
-  };
-  const pos = reconstructPositionSeries(dates, 1, prices, fx);
-  // 100 EUR / 0.9 = 111.11; 100 EUR / 0.8 = 125 — different despite identical price.
-  check("date 1 uses 0.9 → ≈111.11", approx(pos.series[0].valueUsd, 100 / 0.9), `${pos.series[0].valueUsd.toFixed(2)}`);
-  check("date 2 uses 0.8 → 125", approx(pos.series[1].valueUsd, 100 / 0.8), `${pos.series[1].valueUsd.toFixed(2)}`);
-  check("per-date FX (not a single rate)", !approx(pos.series[0].valueUsd, pos.series[1].valueUsd));
-}
-
-// ── Fixture 3: bought mid-window → cf == actual before buy, diverges after ─────
-console.log("Fixture 3 — position bought mid-window:");
-{
-  const actual: CurvePoint[] = [
-    { date: "2026-01-01", valueUsd: 1000 },
-    { date: "2026-02-01", valueUsd: 1000 },
-    { date: "2026-03-01", valueUsd: 1000 },
-    { date: "2026-04-01", valueUsd: 1000 },
-  ];
-  const prices: PricePoint[] = actual.map((a) => ({ date: a.date, price: 100, currency: "USD" }));
-  // Bought 5 units on 2026-02-15 (units 0 before).
-  const units = [{ date: "2026-02-15", units: 5 }];
-  const pos = reconstructPositionSeries(actual.map((p) => p.date), units, prices, {});
-  const cf = counterfactualRemove(actual, pos.series);
-  check("cf == actual before buy (Jan, Feb)", approx(cf.series[0].valueUsd, 1000) && approx(cf.series[1].valueUsd, 1000));
-  check("position 0 before buy", approx(pos.series[0].valueUsd, 0) && approx(pos.series[1].valueUsd, 0));
-  check("cf diverges after buy (Mar, Apr)", cf.series[2].valueUsd < 1000 && cf.series[3].valueUsd < 1000,
-    `Mar cf=${cf.series[2].valueUsd}, position=${pos.series[2].valueUsd}`);
-  check("position = 5 × 100 = 500 after buy", approx(pos.series[2].valueUsd, 500));
+  const fx: FxByDate = { "2026-01-01": { EUR: 0.9 }, "2026-02-01": { EUR: 0.8 } };
+  const pos = reconstructPositionSeries(["2026-01-01", "2026-02-01"], 1, prices, fx);
+  check("100 EUR → 111.11 at 0.9, 125 at 0.8 (per-date FX)", approx(pos.series[0].valueUsd, 100 / 0.9) && approx(pos.series[1].valueUsd, 100 / 0.8));
 }
 
 console.log(failures === 0 ? "\nAll fixtures passed." : `\n${failures} check(s) failed.`);

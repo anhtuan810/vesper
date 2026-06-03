@@ -88,7 +88,6 @@ export function reconstructPositionSeries(
   });
 
   const assumptions = [
-    "Removed, not redeployed: the position's value is subtracted at each date; proceeds are not reinvested.",
     "Daily closing prices: most recent close on or before each date.",
     "Historical FX applied per date.",
     typeof units === "number"
@@ -101,31 +100,71 @@ export function reconstructPositionSeries(
 }
 
 /**
- * Counterfactual net-worth curve: actual minus the position's value at each date.
- * Matched by date; dates before the position existed are unchanged (position 0).
+ * A buy or sell of the position, recovered from the mutation log. `amount` is the
+ * signed native cash flow: a buy is the positive cost deployed, a sell is the
+ * negative proceeds returned. Converted to USD at the deployment-date FX.
+ */
+export interface CashFlow {
+  date: string;
+  amount: number; // native currency; buy > 0 (cost), sell < 0 (proceeds)
+  currency: string;
+}
+
+// Net capital still deployed as of `date`, in USD valued at each flow's
+// deployment-date FX and held flat (no return on the cash): cumulative buy cost
+// minus cumulative sell proceeds, over flows up to `date`.
+function netCashKeptAtDate(flows: CashFlow[], date: string, fxSeries: FxByDate): number {
+  let sum = 0;
+  for (const f of flows) {
+    if (f.date > date) break; // flows are pre-sorted ascending
+    const cur = f.currency === "GBp" ? "GBP" : f.currency;
+    if (cur === "USD") { sum += f.amount; continue; }
+    const rate = fxRateAtOrBefore(fxSeries, f.date, cur);
+    sum += rate && rate !== 0 ? f.amount / rate : f.amount;
+  }
+  return sum;
+}
+
+/**
+ * Counterfactual net-worth curve for "never bought": the position's value is
+ * removed, but the capital the user deployed is kept as cash (held flat), so the
+ * comparison isolates gain/loss rather than market value.
+ *   cf(date) = actual(date) − positionValue(date) + netCashKept(date)
+ * Before the position existed both terms are zero, so cf equals actual.
  */
 export function counterfactualRemove(
   actualCurve: CurvePoint[],
   positionSeries: CurvePoint[],
+  cashFlows: CashFlow[] = [],
+  fxSeries: FxByDate = {},
 ): { series: CurvePoint[]; assumptions: string[] } {
   const posByDate = new Map(positionSeries.map((p) => [p.date, p.valueUsd]));
-  const series = actualCurve.map((a) => ({ date: a.date, valueUsd: a.valueUsd - (posByDate.get(a.date) ?? 0) }));
+  const flows = [...cashFlows].sort((a, b) => a.date.localeCompare(b.date));
+  const series = actualCurve.map((a) => ({
+    date: a.date,
+    valueUsd: a.valueUsd - (posByDate.get(a.date) ?? 0) + netCashKeptAtDate(flows, a.date, fxSeries),
+  }));
   return {
     series,
     assumptions: [
-      "Counterfactual net worth = actual net worth minus the position's value at each date.",
-      "Before the position existed its units are 0, so the counterfactual equals actual.",
+      "Counterfactual net worth = actual − the position's value + the capital you deployed, kept as cash.",
+      "Capital kept as cash, valued in USD at the deployment-date FX and held flat (no return on the cash).",
+      "Before the position existed, both its value and the kept cash are zero, so the counterfactual equals actual.",
     ],
   };
 }
 
-/** Contribution today = actual net worth today − counterfactual net worth today. */
+/**
+ * Contribution today = actual − counterfactual today. With capital kept as cash,
+ * this equals the position's lifetime gain/loss (current value + sell proceeds −
+ * buy cost) versus what was invested, and can be negative.
+ */
 export function contribution(
   actualToday: number,
   counterfactualToday: number,
 ): { valueUsd: number; assumptions: string[] } {
   return {
     valueUsd: actualToday - counterfactualToday,
-    assumptions: ["Contribution = actual net worth today − counterfactual net worth today."],
+    assumptions: ["Contribution = the position's gain or loss versus the capital you deployed (negative if underwater)."],
   };
 }

@@ -9,6 +9,7 @@ import {
   contribution,
   type CurvePoint,
   type UnitsPoint,
+  type CashFlow,
 } from "@/lib/scenario/counterfactual";
 
 // Past-counterfactual is defined for held tradeables only.
@@ -106,8 +107,20 @@ export async function POST(req: NextRequest) {
     ? target.units
     : 0;
 
-  // ── Historical price + FX series over the curve's window ──────────────────
-  const earliest = actualCurve[0]?.date ?? todayStr;
+  // Buy/sell cash flows: per mutation, the native value added (buy, +) or removed
+  // (sell, −), approximating cost/proceeds as the value change at the event.
+  const cashFlows: CashFlow[] = [];
+  for (const mu of muts) {
+    const amount = Number(mu.after_value ?? 0) - Number(mu.before_value ?? 0);
+    if (amount !== 0) {
+      cashFlows.push({ date: mu.occurred_at as string, amount, currency: (mu.currency as string) || "USD" });
+    }
+  }
+
+  // ── Historical price + FX series over the curve + flow window ─────────────
+  const earliestCurve = actualCurve[0]?.date ?? todayStr;
+  const earliestFlow = muts[0]?.occurred_at as string | undefined;
+  const earliest = earliestFlow && earliestFlow < earliestCurve ? earliestFlow : earliestCurve;
   const fromBuffered = isoDaysAgo(Math.ceil((Date.now() - Date.parse(earliest)) / 86_400_000) + 7);
 
   const [priceSeriesRaw, fxSeries] = await Promise.all([
@@ -119,7 +132,7 @@ export async function POST(req: NextRequest) {
   // ── Compute ───────────────────────────────────────────────────────────────
   const dates = actualCurve.map((p) => p.date);
   const position = reconstructPositionSeries(dates, units, priceSeries, fxSeries);
-  const counterfactual = counterfactualRemove(actualCurve, position.series);
+  const counterfactual = counterfactualRemove(actualCurve, position.series, cashFlows, fxSeries);
 
   const actualToday = actualCurve[actualCurve.length - 1]?.valueUsd ?? 0;
   const cfToday = counterfactual.series[counterfactual.series.length - 1]?.valueUsd ?? 0;
