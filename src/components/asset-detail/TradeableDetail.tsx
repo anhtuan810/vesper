@@ -318,7 +318,7 @@ export function TradeableDetail({ asset }: Props) {
             overflow: "hidden",
           }}>
             {/* Current value */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border)", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Current value</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18" }}>
@@ -327,7 +327,7 @@ export function TradeableDetail({ asset }: Props) {
               </div>
             </div>
             {/* Total return */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border)", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Total return</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 500, color: totalReturnAbs != null && totalReturnAbs < 0 ? "var(--negative-text)" : "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18" }}>
@@ -346,7 +346,7 @@ export function TradeableDetail({ asset }: Props) {
               </div>
             </div>
             {/* Avg buy */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 16px", gap: 14, minHeight: 58 }}>
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Avg buy</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18" }}>
