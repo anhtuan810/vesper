@@ -62,6 +62,25 @@ function closeToUsd(p: PricePoint, date: string, fx: FxByDate): { usd: number; f
 }
 
 /**
+ * USD close price used for a buy on `buyDate`: the close on/before the date, else
+ * the earliest available close. Returns the price and the date actually used (which
+ * the caller can compare against the request to detect a clamp). Powers the
+ * units-based path (amountUsd = units × buyPriceUsd).
+ */
+export function buyPriceUsd(
+  priceSeries: PricePoint[],
+  fxSeries: FxByDate,
+  buyDate: string,
+): { priceUsd: number; dateUsed: string } | null {
+  const sorted = [...priceSeries].sort((a, b) => a.date.localeCompare(b.date));
+  const point = priceAtOrBefore(sorted, buyDate) ?? priceAtOrAfter(sorted, buyDate);
+  if (!point) return null;
+  const { usd } = closeToUsd(point, point.date, fxSeries);
+  if (usd <= 0) return null;
+  return { priceUsd: usd, dateUsed: point.date };
+}
+
+/**
  * Growth of a hypothetical purchase of `amountUsd` of an asset on `buyDate`.
  * unitsBought = amountUsd / (close at buy, in USD); for each close on/after the buy
  * date, value(t) = unitsBought × close(t) in USD. The series starts at the buy date

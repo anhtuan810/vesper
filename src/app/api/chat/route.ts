@@ -29,7 +29,8 @@ import { assemblePresent } from "@/lib/scenario/present-assemble";
 import { assembleProject } from "@/lib/scenario/project-assemble";
 import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
-import { hypotheticalBuyGrowth } from "@/lib/scenario/hypothetical";
+import { hypotheticalBuyGrowth, buyPriceUsd } from "@/lib/scenario/hypothetical";
+import { validateScenarioIntent, resolveBuyDate } from "@/lib/scenario/validate-intent";
 import type { Modification } from "@/lib/scenario/engine";
 import type { PricePoint } from "@/lib/scenario/counterfactual";
 import { extractNumbers } from "@/lib/narrate/guardrail";
@@ -430,29 +431,7 @@ async function handleFutureScenario(
   return reply(narration);
 }
 
-// ISO date as-is; a relative token ("5y" / "18m" / "12w" / "90d") → that long ago;
-// a bare year → Jan 1 of it; anything else (incl. null) → 5 years ago.
-function resolveHypotheticalBuyDate(hint: unknown, today: Date): string {
-  if (typeof hint === "string") {
-    const s = hint.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    const rel = s.match(/^(\d+)\s*([ymwd])$/i);
-    if (rel) {
-      const n = Number(rel[1]);
-      const unit = rel[2].toLowerCase();
-      const d = new Date(today);
-      if (unit === "y") d.setFullYear(d.getFullYear() - n);
-      else if (unit === "m") d.setMonth(d.getMonth() - n);
-      else if (unit === "w") d.setDate(d.getDate() - n * 7);
-      else d.setDate(d.getDate() - n);
-      return d.toISOString().slice(0, 10);
-    }
-    if (/^\d{4}$/.test(s)) return `${s}-01-01`;
-  }
-  const d = new Date(today);
-  d.setFullYear(d.getFullYear() - 5);
-  return d.toISOString().slice(0, 10);
-}
+const fmtUnits = (n: number) => (Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(8))));
 
 // Chat-initiated PAST hypothetical purchase ("what if I'd bought X N years ago"),
 // for any market-resolvable symbol, held or not. Standalone investment growth —
@@ -469,53 +448,50 @@ async function handleHypotheticalBuy(
   const reply = (content: string, extra?: Record<string, unknown>) =>
     scenarioReply(supabase, userId, userMessage, content, used, extra);
 
+  // Symbol is resolved by the gate (clarifies ambiguous/none before we get here);
+  // fall back to a direct resolve only if invoked without the gate.
   const symbolHint = typeof parsed.symbolHint === "string" ? parsed.symbolHint.trim() : "";
-  if (!symbolHint) return reply("Which asset did you have in mind — a name or ticker?");
-
-  let resolved;
-  try {
-    resolved = await resolveMarketSymbol(symbolHint);
-  } catch (err) {
-    Sentry.captureException(err, { tags: { scenario: "hypothetical_buy_resolve" } });
-    return reply(`I couldn't look up "${symbolHint}" just now — try again in a moment?`);
+  const pre = parsed._resolved as { symbol?: string; label?: string } | undefined;
+  let symbol: string;
+  let label: string;
+  if (pre?.symbol) {
+    symbol = pre.symbol;
+    label = pre.label ?? pre.symbol;
+  } else {
+    const r = await resolveMarketSymbol(symbolHint);
+    if (r.kind !== "resolved") return reply(`Which asset did you mean — a name or ticker?`);
+    symbol = r.symbol;
+    label = r.label;
   }
-  if (resolved.kind === "ambiguous") {
-    return reply(`Which did you mean: ${resolved.candidates.map((c) => c.label).join(", ")}?`);
-  }
-  if (resolved.kind === "none") {
-    return reply(`I couldn't find a market symbol for "${symbolHint}". Which ticker or asset did you mean?`);
-  }
-  const { symbol, label } = resolved;
 
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
-  const requestedBuyDate = resolveHypotheticalBuyDate(parsed.buyDateHint, today);
+  const requestedBuyDate = resolveBuyDate(parsed.buyDateHint, today);
 
-  // Amount → USD: a stated sum in its currency, else the default €10,000 in the
-  // display currency. Stated loudly so the user can restate to change it.
   const usdRates = await getUsdRates();
   const dispRate = usdRates[displayCurrency] ?? 1;
   if (displayCurrency !== "USD" && usdRates[displayCurrency]) setUsdRate(displayCurrency, usdRates[displayCurrency]);
+  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
   const toUsdFromCur = (amt: number, cur: string) => (cur === "USD" ? amt : amt / (usdRates[cur] ?? 1));
-  let amountUsd: number;
-  if (typeof parsed.amount === "number" && Number.isFinite(parsed.amount) && parsed.amount > 0) {
-    const cur = typeof parsed.currency === "string" && isSupportedCurrency(parsed.currency) ? parsed.currency : displayCurrency;
-    amountUsd = toUsdFromCur(parsed.amount, cur);
-  } else {
-    amountUsd = toUsdFromCur(10_000, displayCurrency);
-  }
-  const amountLabel = formatMoney(amountUsd, "USD", displayCurrency);
 
-  // Free-typed: confirm before fetching/computing. Echo a normalised intent so
+  // Units win when present (a bare number next to an asset name); otherwise a cash
+  // amount, defaulted upstream by the gate to €10,000 in the display currency.
+  const units = typeof parsed.units === "number" && parsed.units > 0 ? parsed.units : null;
+  const amountInput = typeof parsed.amount === "number" && parsed.amount > 0 ? parsed.amount : null;
+  const amountCurrency = isSupportedCurrency(parsed.currency) ? (parsed.currency as string) : displayCurrency;
+
+  // Free-typed: confirm before fetching/computing. Echo the normalized intent so
   // [Show me] reproduces the same purchase exactly.
   if (mode === "confirm") {
-    return reply(`Show what ${amountLabel} in ${label} on ${fmtScenarioDate(requestedBuyDate)} would be worth today?`, {
+    const subject = units != null ? `${fmtUnits(units)} ${label}` : `${m(toUsdFromCur(amountInput ?? 10_000, amountCurrency))} in ${label}`;
+    return reply(`Show what ${subject} on ${fmtScenarioDate(requestedBuyDate)} would be worth today?`, {
       suggested_replies: SHOW_ME_CHIPS,
       scenarioPending: {
         kind: "hypothetical_buy",
-        symbolHint,
+        symbolHint: symbolHint || label,
         buyDateHint: requestedBuyDate,
-        amount: parsed.amount ?? null,
+        units: units ?? null,
+        amount: amountInput ?? null,
         currency: parsed.currency ?? null,
       },
     });
@@ -535,38 +511,54 @@ async function handleHypotheticalBuy(
     const clamped = requestedBuyDate < earliestData;
     const effectiveBuy = clamped ? earliestData : requestedBuyDate;
 
+    // For units, the cost is units × the buy-date close (USD); for cash, use the
+    // amount directly. Either way the engine grows the same lump sum to today.
+    let amountUsd: number;
+    if (units != null) {
+      const bp = buyPriceUsd(priceSeries, fxSeries, effectiveBuy);
+      if (!bp) return reply(`I couldn't pull a price for ${label} around then. Want to try a different date?`);
+      amountUsd = units * bp.priceUsd;
+    } else {
+      amountUsd = toUsdFromCur(amountInput ?? 10_000, amountCurrency);
+    }
+
     const r = hypotheticalBuyGrowth(amountUsd, effectiveBuy, priceSeries, fxSeries);
     if (r.series.length < 2) {
       return reply(`I couldn't pull enough price history for ${label}. Want to try a different asset or date?`);
     }
 
-    const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+    const moneyLabel = m(amountUsd);
     const valueLabel = m(r.valueTodayUsd);
     const gainLabel = m(Math.abs(r.gainUsd));
     const multStr = `${r.multiple.toFixed(1)}x`;
     const buyLabel = fmtScenarioDate(r.buyDateUsed);
     const gained = r.gainUsd >= 0;
 
+    const unitsStr = units != null ? fmtUnits(units) : null;
+    const subject = unitsStr != null ? `${unitsStr} ${label} bought on ${buyLabel}` : `${moneyLabel} invested in ${label} on ${buyLabel}`;
+    const cardLabel = unitsStr != null ? `${unitsStr} ${label}` : `${moneyLabel} in ${label}`;
+
     const figures = [
-      amountLabel, valueLabel, gainLabel, multStr,
+      moneyLabel, valueLabel, gainLabel, multStr,
       `${r.multiple.toFixed(1)}`, `${Math.round(r.multiple)}`,
       ...extractNumbers(buyLabel),
+      ...(unitsStr != null ? extractNumbers(unitsStr) : []),
     ];
     const clampNote = clamped ? ` (the earliest price history available is ${buyLabel}, so I used that date)` : "";
     const description =
       `Standalone hypothetical purchase — NOT part of the user's real portfolio and NOT a change to their net worth: ` +
-      `${amountLabel} invested in ${label} on ${buyLabel}${clampNote} would be worth ${valueLabel} today — ` +
+      `${subject}${clampNote} would be worth ${valueLabel} today — ` +
       `about ${multStr} the amount, ${gained ? "a gain" : "a loss"} of ${gainLabel}. ` +
-      `State the assumed amount and date plainly; the user can restate the amount to change it.`;
+      `State the assumed amount/units and date plainly; the user can restate to change it.`;
     const fallback =
-      `${amountLabel} in ${label} on ${buyLabel} would be worth about ${valueLabel} today — roughly ${multStr}` +
+      `${unitsStr != null ? `${unitsStr} ${label}` : `${moneyLabel} in ${label}`} on ${buyLabel} would be worth about ${valueLabel} today — roughly ${multStr}` +
       `${clamped ? ` (${buyLabel} is the earliest price history available)` : ""}.`;
 
     const scenarioResult: ScenarioResult = {
       kind: "hypothetical_buy",
       assetLabel: label,
       buyDate: r.buyDateUsed,
-      amountLabel,
+      amountLabel: cardLabel,
       series: r.series.map((p) => ({ t: Date.parse(p.date), v: p.valueUsd * dispRate })),
       symbol: SCENARIO_SYMBOL[displayCurrency] ?? "€",
     };
@@ -585,12 +577,32 @@ async function dispatchScenario(
   supabase: ReturnType<typeof createServerSupabase>,
   userId: string,
   userMsg: string,
-  parsed: Record<string, unknown>,
+  rawIntent: Record<string, unknown>,
   assets: unknown[],
   displayCurrency: DisplayCurrency,
   used: number,
   mode: ScenarioMode,
 ): Promise<NextResponse | null> {
+  // Recognised scenario kinds run through the deterministic gate first: it
+  // normalizes parameters and asks (via the existing chip mechanism) on anything
+  // implausible or missing, so we never compute a confident wrong answer.
+  const KNOWN = new Set(["counterfactual", "present", "future", "hypothetical_buy"]);
+  if (!KNOWN.has(rawIntent.kind as string)) return null;
+
+  const assetRefs: AssetRef[] = (assets as Array<Record<string, unknown>>).map((a) => ({
+    id: String(a.id),
+    name: String(a.name),
+    type: String(a.type),
+    symbol: (a.symbol as string | null) ?? null,
+  }));
+  const usdRates = await getUsdRates();
+  const gate = await validateScenarioIntent(rawIntent, assetRefs, { displayCurrency, usdRates });
+  if ("clarify" in gate) {
+    const { question, options } = gate.clarify;
+    return scenarioReply(supabase, userId, userMsg, question, used, options.length >= 2 ? { suggested_replies: options } : undefined);
+  }
+  const parsed = gate.ok;
+
   if (parsed.kind === "counterfactual" && typeof parsed.asset === "string") {
     return handleScenarioIntent(supabase, userId, userMsg, parsed.asset, assets as AssetRef[], displayCurrency, used, mode);
   }

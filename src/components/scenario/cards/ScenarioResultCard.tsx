@@ -69,7 +69,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
     return (
       <div style={cardShell}>
         <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 8 }}>
-          {result.amountLabel} in {result.assetLabel} · {fmtBuyDate(result.buyDate)}
+          {result.amountLabel} · {fmtBuyDate(result.buyDate)}
         </div>
         <GrowthChart series={result.series} symbol={result.symbol} />
         <div className="font-serif" style={estimateNote}>
