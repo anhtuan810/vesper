@@ -147,7 +147,9 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     // ── Per-variant presentational config ────────────────────────────────────
     const msgFontSize = isPage ? 15 : 14;
     const userMaxWidth = isPage ? "78%" : "80%";
-    const userBg = isPage ? "var(--surface)" : "var(--surface-elev)";
+    // User bubble = the elevated surface token on BOTH variants, so the desktop
+    // (popup) bubbles are the identical colour as mobile (page) — not a separate tan.
+    const userBg = "var(--surface)";
     const userLineHeight = isPage ? 1.4 : 1.55;
     const chipFontSize = isPage ? 14 : 13;
     const seedFontSize = isPage ? 15 : 14;

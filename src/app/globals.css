@@ -18,6 +18,11 @@
   --bg:            #F5F1EA;
   --surface:       #FFFFFF;
   --surface-elev:  #EBE4D6;
+  /* Lighter center/elevated column surface — the desktop focal area sits on this,
+     a hair warmer than pure white and lifted off the cream page. */
+  --surface-center: #FCFAF7;
+  /* Steel used by data bars. */
+  --data-bar:      #5E7CA6;
   --border:        rgba(26, 31, 46, 0.08);
   --border-strong: rgba(26, 31, 46, 0.16);
   --text:          #1A1F2E;
@@ -68,6 +73,8 @@
   --bg:            #14110D;
   --surface:       #1E1B17;
   --surface-elev:  #2A2620;
+  --surface-center: #221E19;
+  --data-bar:      #7AAFD4;
   --border:        rgba(250, 246, 235, 0.08);
   --border-strong: rgba(250, 246, 235, 0.14);
   --text:          #FAF6EB;
@@ -118,6 +125,8 @@
   --color-bg:            var(--bg);
   --color-surface:       var(--surface);
   --color-surface-elev:  var(--surface-elev);
+  --color-surface-center: var(--surface-center);
+  --color-data-bar:      var(--data-bar);
   --color-fg:            var(--text);
   --color-dim:           var(--text-dim);
   --color-faint:         var(--text-faint);
