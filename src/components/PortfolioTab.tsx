@@ -10,6 +10,7 @@ import {
   buildSeries,
 } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
+import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines } from "@/lib/hooks";
@@ -161,6 +162,11 @@ export function PortfolioTab({
               onSelectPoint={setSelectedPoint}
               valuesSettled={valuesSettled}
             />
+            {/* Ambient projection teaser — a quiet trajectory line under the
+                chart. Editorial, not a banner; tapping opens scenario explore. */}
+            <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
+              <ProjectionTeaser href="/scenarios" />
+            </div>
             {/* Quiet, editorial entry to the scenario sandbox — anchored under
                 the chart's range pills. Not a banner, not a nav tab. */}
             <div className="flex justify-end" style={{ marginTop: 2, marginRight: 40 }}>
