@@ -175,7 +175,14 @@ export function NavBar({
               <div className="flex items-center gap-0.5 pointer-events-auto">{tabButtons}</div>
             </div>
           </div>
-          <div className="ml-auto">{rightControls}</div>
+          {/* User name anchored over the chat / Assistant rail (right-hand track),
+              aligned with the rail's 20px content padding. */}
+          <div
+            className="flex items-center justify-end absolute top-0 bottom-0 pointer-events-none"
+            style={{ right: 0, width: desktopInset.right, paddingRight: 20 }}
+          >
+            <div className="pointer-events-auto">{rightControls}</div>
+          </div>
         </div>
       </nav>
     );
