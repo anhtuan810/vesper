@@ -2,6 +2,7 @@
 
 import { useState, Fragment } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
@@ -428,26 +429,44 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                   const valueNode = buildValueNode(m, displayCurrency);
                   const name = displayName(m);
                   const isRemovedAsset = !m.asset_id;
-                  return (
+                  const rowStyle = {
+                    borderBottom: "0.5px solid var(--border)",
+                    ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
+                  };
+                  const rowContent = (
+                    <DiaryRowContent
+                      logo={<div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} /></div>}
+                      name={name}
+                      nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
+                      valueNode={valueNode}
+                      date={date}
+                      personalContext={m.personal_context ?? null}
+                      marketContext={m.market_context ?? null}
+                    />
+                  );
+                  // Removed assets (asset_id ON DELETE SET NULL) have no detail
+                  // screen to open — render the row non-interactive. Otherwise the
+                  // whole row links to the asset detail, the same route the holdings
+                  // rows use (tradeable → tradeable detail, real_estate → property).
+                  return isRemovedAsset ? (
                     <div
                       key={m.id}
                       id={`diary-entry-${m.id}`}
                       className="last:border-0"
-                      style={{
-                        borderBottom: "0.5px solid var(--border)",
-                        ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
-                      }}
+                      style={rowStyle}
                     >
-                      <DiaryRowContent
-                        logo={<div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} /></div>}
-                        name={name}
-                        nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
-                        valueNode={valueNode}
-                        date={date}
-                        personalContext={m.personal_context ?? null}
-                        marketContext={m.market_context ?? null}
-                      />
+                      {rowContent}
                     </div>
+                  ) : (
+                    <Link
+                      key={m.id}
+                      id={`diary-entry-${m.id}`}
+                      href={`/asset/${m.asset_id}`}
+                      className="block last:border-0"
+                      style={rowStyle}
+                    >
+                      {rowContent}
+                    </Link>
                   );
                 }
 
