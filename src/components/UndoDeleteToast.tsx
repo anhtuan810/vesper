@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useUserContext } from "@/components/UserProvider";
-import { invalidateAssetsCache } from "@/lib/hooks";
+import { invalidateAssetsCache, invalidateInsightCache, invalidateVitalsCache } from "@/lib/hooks";
+import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
 
 interface Snapshot {
   asset: Record<string, unknown> & { name?: string };
@@ -57,6 +58,9 @@ export function UndoDeleteToast() {
       }
       try { sessionStorage.removeItem(SNAPSHOT_KEY); } catch {}
       if (user?.id) invalidateAssetsCache(user.id);
+      invalidateInsightCache();
+      invalidateVitalsCache();
+      bumpPortfolioRevision();
       setSnapshot(null);
       window.dispatchEvent(new Event("volnar:asset-restored"));
     } catch (e) {
