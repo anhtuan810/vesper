@@ -6,9 +6,12 @@ import { useUser, useAssets, useDisplayCurrencyState } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { ScenarioBuilder } from "@/components/scenario/ScenarioBuilder";
 import { ScenarioProjection } from "@/components/scenario/ScenarioProjection";
+import { ScenarioLookback } from "@/components/scenario/ScenarioLookback";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
-type Mode = "adjust" | "project";
+type Mode = "adjust" | "project" | "lookback";
+
+const MODE_LABEL: Record<Mode, string> = { adjust: "Adjust", project: "Project", lookback: "Look back" };
 
 export default function ScenariosPage() {
   const router = useRouter();
@@ -43,7 +46,7 @@ export default function ScenariosPage() {
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 0 40px" }}>
         {/* Quiet segmented switcher: Adjust (present builder) | Project (forward) */}
         <div style={{ display: "flex", gap: 4, paddingTop: 28, marginBottom: 4 }}>
-          {(["adjust", "project"] as Mode[]).map((mKey) => {
+          {(["adjust", "project", "lookback"] as Mode[]).map((mKey) => {
             const active = mode === mKey;
             return (
               <button
@@ -62,22 +65,22 @@ export default function ScenariosPage() {
                   transition: "background 0.15s, color 0.15s",
                 }}
               >
-                {mKey === "adjust" ? "Adjust" : "Project"}
+                {MODE_LABEL[mKey]}
               </button>
             );
           })}
         </div>
 
-        {mode === "adjust" ? (
+        {mode === "adjust" && (
           <ScenarioBuilder
             realAssets={assets}
             displayCurrency={currency}
             userId={user?.id}
             isDesktop={!!isDesktop}
           />
-        ) : (
-          <ScenarioProjection displayCurrency={currency} isDesktop={!!isDesktop} />
         )}
+        {mode === "project" && <ScenarioProjection displayCurrency={currency} isDesktop={!!isDesktop} />}
+        {mode === "lookback" && <ScenarioLookback realAssets={assets} displayCurrency={currency} />}
       </div>
     </div>
   );
