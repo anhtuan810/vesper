@@ -77,6 +77,48 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     // Page-only: keyboard open tracking drives composer padding + BottomNav hide.
     const [keyboardOpen, setKeyboardOpen] = useState(false);
 
+    // Page-only: keep the composer flush above the soft keyboard. The layout
+    // viewport doesn't reflow on iOS WKWebView (no interactiveWidget / keyboard
+    // plugin), so measure the keyboard with the visualViewport API and publish it
+    // as --kb-inset; the /chat container shrinks its height by that amount. On
+    // browsers that DO reflow (interactiveWidget: resizes-content), innerHeight
+    // shrinks too, so the measured inset is ~0 and nothing double-counts.
+    const vvHandlerRef = useRef<(() => void) | null>(null);
+    const computeKbInset = useCallback(() => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty("--kb-inset", `${Math.round(inset)}px`);
+    }, []);
+    const detachVv = useCallback(() => {
+      const vv = window.visualViewport;
+      if (vv && vvHandlerRef.current) {
+        vv.removeEventListener("resize", vvHandlerRef.current);
+        vv.removeEventListener("scroll", vvHandlerRef.current);
+      }
+      vvHandlerRef.current = null;
+      document.documentElement.style.setProperty("--kb-inset", "0px");
+    }, []);
+    const onComposerFocus = useCallback(() => {
+      setKeyboardOpen(true);
+      document.documentElement.dataset.kb = "open";
+      const vv = window.visualViewport;
+      if (vv && !vvHandlerRef.current) {
+        const handler = () => computeKbInset();
+        vvHandlerRef.current = handler;
+        vv.addEventListener("resize", handler);
+        vv.addEventListener("scroll", handler);
+        requestAnimationFrame(computeKbInset);
+      }
+    }, [computeKbInset]);
+    const onComposerBlur = useCallback(() => {
+      setKeyboardOpen(false);
+      document.documentElement.dataset.kb = "";
+      detachVv();
+    }, [detachVv]);
+    // Tidy up if the route unmounts while the keyboard is open.
+    useEffect(() => () => { detachVv(); }, [detachVv]);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -499,8 +541,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onFocus={() => { setKeyboardOpen(true); document.documentElement.dataset.kb = "open"; }}
-                onBlur={() => { setKeyboardOpen(false); document.documentElement.dataset.kb = ""; }}
+                onFocus={onComposerFocus}
+                onBlur={onComposerBlur}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                 onPaste={handlePaste}
                 maxLength={500}

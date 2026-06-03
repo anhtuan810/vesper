@@ -246,7 +246,10 @@ export default function ChatPage() {
         style={{
           position: "fixed",
           inset: 0,
-          height: "100dvh",
+          // Shrink by the live keyboard inset so the composer rides above the
+          // keyboard (ChatThread publishes --kb-inset via visualViewport). Idle,
+          // --kb-inset is 0px, so this is exactly 100dvh — unchanged.
+          height: "calc(100dvh - var(--kb-inset, 0px))",
           // Keep the shared layout's centered column + horizontal inset, which
           // fixed positioning would otherwise escape.
           maxWidth: 720,
