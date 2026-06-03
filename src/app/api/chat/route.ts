@@ -24,7 +24,10 @@ import type { CurrentAssetLight } from "@/lib/proposal-resolver";
 import { narrateScenario } from "@/lib/scenario/narrate";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import { assembleCounterfactual } from "@/lib/scenario/counterfactual-assemble";
-import { resolveScenarioAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
+import { assemblePresent } from "@/lib/scenario/present-assemble";
+import { assembleProject } from "@/lib/scenario/project-assemble";
+import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
+import type { Modification } from "@/lib/scenario/engine";
 import { extractNumbers } from "@/lib/narrate/guardrail";
 
 validateEnv();
@@ -146,6 +149,192 @@ async function handleScenarioIntent(
   const fallback = `${d.asset.name} has ${verb} ${amt} ${d.contribution >= 0 ? "to your net worth since you bought it." : "since you bought it."}`;
 
   const { narration } = await narrateScenario({ userMessage, description, figures, fallback, diaryContext: diaryNotes });
+  return reply(narration);
+}
+
+type PresentAsset = {
+  id: string;
+  name: string;
+  type: string;
+  value: number;
+  currency: string | null;
+  symbol: string | null;
+  mortgage_balance: number | null;
+};
+
+const fmtScenarioPct = (n: number | null): string =>
+  n == null ? "—" : new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n) + "%";
+
+// Persist the user + assistant pair and return the chat response shape.
+async function scenarioReply(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+  userMessage: string,
+  content: string,
+  used: number,
+): Promise<NextResponse> {
+  await supabase.from("messages").insert(
+    timestampedPair(
+      { user_id: userId, role: "user", content: userMessage },
+      { user_id: userId, role: "assistant", content },
+    ),
+  );
+  return NextResponse.json({ message: content, assets: null, suggested_replies: null, remaining: CHAT_DAILY_LIMIT - used });
+}
+
+// Chat-initiated PRESENT scenario: translate the value-based ops (resolving held
+// assets, converting display → native amounts server-side) into engine
+// Modifications, run the shared present assembly, narrate Current vs Scenario.
+// Read-only — writes only the message pair.
+async function handlePresentScenario(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+  userMessage: string,
+  rawMods: unknown[],
+  assets: PresentAsset[],
+  displayCurrency: DisplayCurrency,
+  used: number,
+): Promise<NextResponse> {
+  const reply = (content: string) => scenarioReply(supabase, userId, userMessage, content, used);
+  const refs: AssetRef[] = assets.map((a) => ({ id: a.id, name: a.name, type: a.type, symbol: a.symbol }));
+
+  const usdRates = await getUsdRates();
+  const dispRate = usdRates[displayCurrency];
+  if (displayCurrency !== "USD" && dispRate) setUsdRate(displayCurrency, dispRate);
+  const toNative = (displayAmt: number, cur: string): number => {
+    const usd = displayCurrency === "USD" ? displayAmt : displayAmt / (usdRates[displayCurrency] ?? 1);
+    return cur === "USD" ? usd : usd * (usdRates[cur] ?? 1);
+  };
+
+  const mods: Modification[] = [];
+  for (const raw of rawMods) {
+    if (!raw || typeof raw !== "object") continue;
+    const o = raw as Record<string, unknown>;
+    const op = o.op;
+
+    if (op === "add") {
+      const name = typeof o.name === "string" ? o.name : null;
+      const amount = Number(o.amount);
+      if (!name || !Number.isFinite(amount) || amount <= 0) continue;
+      const type = typeof o.assetType === "string" ? o.assetType : typeof o.type === "string" ? o.type : "etf";
+      mods.push({ kind: "addByValue", name, type, currency: displayCurrency, nativeValue: amount });
+      continue;
+    }
+    if (op === "payMortgage") {
+      const amount = Number(o.amount);
+      if (!Number.isFinite(amount) || amount <= 0) continue;
+      const property = assets.find((a) => a.type === "real_estate" && Number(a.mortgage_balance ?? 0) > 0);
+      if (!property) return reply("There's no mortgage on file to pay down.");
+      mods.push({ kind: "payDownMortgage", assetId: property.id, amount: toNative(amount, property.currency || "USD") });
+      const cash = assets
+        .filter((a) => a.type === "cash" || a.type === "pension")
+        .sort((x, y) => Number(y.value) - Number(x.value))[0];
+      if (cash) mods.push({ kind: "setValue", assetId: cash.id, nativeValue: Math.max(0, Number(cash.value) - toNative(amount, cash.currency || "USD")) });
+      continue;
+    }
+
+    const assetQ = typeof o.asset === "string" ? o.asset : null;
+    if (!assetQ) continue;
+    const res = resolveHeldAsset(refs, assetQ);
+    if (res.kind === "ambiguous") return reply(`Which position did you mean: ${res.matches.map((a) => a.name).join(", ")}?`);
+    if (res.kind === "none") return reply(`I don't see a held position matching "${assetQ}". Which one did you mean?`);
+    const full = assets.find((a) => a.id === res.asset.id);
+    if (!full) continue;
+
+    if (op === "remove") {
+      mods.push({ kind: "remove", assetId: full.id });
+    } else if (op === "set") {
+      const v = Number(o.value);
+      if (Number.isFinite(v) && v >= 0) mods.push({ kind: "setValue", assetId: full.id, nativeValue: toNative(v, full.currency || "USD") });
+    } else if (op === "sell" || op === "reduce") {
+      const amt = Number(o.amount);
+      if (Number.isFinite(amt) && amt > 0) mods.push({ kind: "setValue", assetId: full.id, nativeValue: Math.max(0, Number(full.value) - toNative(amt, full.currency || "USD")) });
+    }
+  }
+
+  if (mods.length === 0) {
+    return reply("I couldn't read that scenario — could you restate which positions to change and by how much?");
+  }
+
+  const { comparison } = await assemblePresent(supabase, userId, mods);
+  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+  const c = comparison.current, s = comparison.scenario, d = comparison.deltas;
+  const nw = m(s.netWorthUsd);
+  const delta = m(Math.abs(d.netWorthUsd));
+  const sign = d.netWorthUsd >= 0 ? "+" : "−";
+  const conCur = fmtScenarioPct(c.topSingleNameConcentrationPct);
+  const conScn = fmtScenarioPct(s.topSingleNameConcentrationPct);
+  const figures = [nw, delta, conCur, conScn];
+  const description = `Present hypothetical. Net worth ${nw} (${sign}${delta} versus current). Single-name concentration ${conCur} → ${conScn}.`;
+  const fallback = `In that scenario your net worth is ${nw}, ${sign}${delta} versus today, with single-name concentration moving from ${conCur} to ${conScn}.`;
+  const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
+  return reply(narration);
+}
+
+// Chat-initiated FUTURE scenario: run the shared project assembly (rate derived
+// from snapshots) and narrate the headline figures, plus a pointer to Project
+// mode for the chart. Read-only — writes only the message pair.
+async function handleFutureScenario(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+  userMessage: string,
+  parsed: Record<string, unknown>,
+  displayCurrency: DisplayCurrency,
+  used: number,
+): Promise<NextResponse> {
+  const reply = (content: string) => scenarioReply(supabase, userId, userMessage, content, used);
+
+  const usdRates = await getUsdRates();
+  const dispRate = usdRates[displayCurrency];
+  if (displayCurrency !== "USD" && dispRate) setUsdRate(displayCurrency, dispRate);
+  const toUsdAmt = (displayAmt: number): number =>
+    displayCurrency === "USD" ? displayAmt : displayAmt / (usdRates[displayCurrency] ?? 1);
+
+  const body: Record<string, unknown> = { mode: parsed.mode };
+  if (parsed.mode === "trajectory") {
+    if (parsed.contribution && typeof parsed.contribution === "object") {
+      const cobj = parsed.contribution as Record<string, unknown>;
+      const amountDisplay = Number(cobj.amount);
+      if (Number.isFinite(amountDisplay) && amountDisplay > 0) {
+        body.contribution = { amount: toUsdAmt(amountDisplay), frequency: cobj.frequency === "yearly" ? "annual" : "monthly" };
+      }
+    }
+    if (typeof parsed.horizonYears === "number") body.horizonYears = parsed.horizonYears;
+  } else {
+    if (typeof parsed.target === "number") body.targetUsd = toUsdAmt(parsed.target);
+    if (typeof parsed.targetYear === "number") body.date = `${parsed.targetYear}-12-31`;
+    if (typeof parsed.frequency === "string") body.frequency = parsed.frequency === "yearly" ? "annual" : "monthly";
+  }
+
+  const result = await assembleProject(supabase, userId, body);
+  if ("error" in result) {
+    return reply("I couldn't run that projection — could you give a time horizon (and a target if you're solving for a contribution)?");
+  }
+
+  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+  if (result.mode === "trajectory") {
+    const low = m(result.trajectory.low), mid = m(result.trajectory.mid), high = m(result.trajectory.high);
+    const rateStr = `${(result.rate * 100).toFixed(1)}%`;
+    const horizonStr = `${Math.round(result.horizonYears)}`;
+    const figures = [low, mid, high, rateStr, horizonStr];
+    const description = `Forward projection over ${horizonStr} years at a derived ${rateStr} nominal rate. Net worth midpoint ${mid}, range ${low} to ${high}. Close by inviting the user to open Project mode to see the cone.`;
+    const fallback = `Over ${horizonStr} years at ${rateStr}, your net worth projects to ${mid} at the midpoint, ranging from ${low} to ${high}. Open Project mode to see the full cone.`;
+    const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
+    return reply(narration);
+  }
+
+  if (result.mode !== "solve") {
+    return reply("I couldn't run that projection — could you give a target and a year?");
+  }
+
+  const amt = m(result.solve.amountPerPeriod);
+  const target = m(result.targetUsd);
+  const per = result.solve.frequency === "annual" ? "per year" : "per month";
+  const year = result.date.slice(0, 4);
+  const figures = [amt, target, year];
+  const description = `Solve-for: to reach ${target} by ${year}, the required contribution is ${amt} ${per}. Close by inviting the user to open Project mode to see the cone.`;
+  const fallback = `To reach ${target} by ${year}, you'd need to contribute ${amt} ${per}. Open Project mode to see the projection.`;
+  const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
   return reply(narration);
 }
 
@@ -325,18 +514,17 @@ export async function POST(req: NextRequest) {
     // asset, run the counterfactual, narrate under the guardrail. Never mutates;
     // does not enter the proposal/mutation branches below.
     if (scenarioRaw) {
-      let parsed: { kind?: unknown; asset?: unknown } = {};
+      let parsed: Record<string, unknown> = {};
       try { parsed = JSON.parse(scenarioRaw.trim()); } catch {}
+      const userMsg = message || "Scenario";
       if (parsed.kind === "counterfactual" && typeof parsed.asset === "string") {
-        return await handleScenarioIntent(
-          supabase,
-          userId,
-          message || "Look back",
-          parsed.asset,
-          (assets ?? []) as AssetRef[],
-          displayCurrency,
-          used,
-        );
+        return await handleScenarioIntent(supabase, userId, userMsg, parsed.asset, (assets ?? []) as AssetRef[], displayCurrency, used);
+      }
+      if (parsed.kind === "present" && Array.isArray(parsed.modifications)) {
+        return await handlePresentScenario(supabase, userId, userMsg, parsed.modifications, (assets ?? []) as PresentAsset[], displayCurrency, used);
+      }
+      if (parsed.kind === "future" && (parsed.mode === "trajectory" || parsed.mode === "solve")) {
+        return await handleFutureScenario(supabase, userId, userMsg, parsed, displayCurrency, used);
       }
     }
 

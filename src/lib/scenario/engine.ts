@@ -32,7 +32,8 @@ export interface ScenarioAsset {
 export type Modification =
   | { kind: "remove"; assetId: string }
   | { kind: "setValue"; assetId: string; nativeValue: number }
-  | { kind: "addByValue"; name: string; type: string; currency: string; nativeValue: number };
+  | { kind: "addByValue"; name: string; type: string; currency: string; nativeValue: number }
+  | { kind: "payDownMortgage"; assetId: string; amount: number };
 
 // ── USD bridge (mirror of toUsd in src/lib/snapshot.ts / apply-changes.ts) ────
 function toUsd(amount: number, currency: string, rates: UsdRates): number {
@@ -148,6 +149,19 @@ export function applyModifications(assets: ScenarioAsset[], mods: Modification[]
       next = next.filter((a) => a.id !== mod.assetId);
     } else if (mod.kind === "setValue") {
       next = next.map((a) => (a.id === mod.assetId ? { ...a, value: mod.nativeValue } : a));
+    } else if (mod.kind === "payDownMortgage") {
+      // Reduce the current (amortized) mortgage balance by `amount`; re-anchor the
+      // recorded date to now so the engine reads the paid-down balance as today's.
+      const at = new Date().toISOString();
+      next = next.map((a) =>
+        a.id === mod.assetId
+          ? {
+              ...a,
+              mortgage_balance: Math.max(0, computeCurrentBalance(a as MortgageAssetInput) - mod.amount),
+              mortgage_balance_recorded_at: at,
+            }
+          : a,
+      );
     } else {
       next = [
         ...next,
@@ -247,6 +261,14 @@ export function sanitizeModifications(input: unknown): Modification[] {
         currency: m.currency,
         nativeValue: m.nativeValue,
       });
+    } else if (
+      m.kind === "payDownMortgage" &&
+      typeof m.assetId === "string" &&
+      typeof m.amount === "number" &&
+      Number.isFinite(m.amount) &&
+      m.amount > 0
+    ) {
+      out.push({ kind: "payDownMortgage", assetId: m.assetId, amount: m.amount });
     }
   }
   return out;
