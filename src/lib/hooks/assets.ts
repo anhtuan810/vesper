@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserSupabase, type Asset, type LiveAsset, type RealEstateAsset } from "@/lib/supabase";
 import { normalizePrice } from "@/lib/prices";
+import { applyLivePrice } from "@/lib/live-pricing";
 import type { PriceResult } from "@/lib/prices-server";
 import {
   SPARKLINES_TTL_MS,
@@ -207,22 +208,7 @@ export function useAssets(userId: string | undefined) {
   }, [fetchPrices, assets.length]);
 
   const liveAssets = useMemo<LiveAsset[]>(
-    () => assets.map((a) => {
-      if (a.symbol && a.units && prices[a.symbol]) {
-        const p = prices[a.symbol];
-        const nativeValue = Math.round(p.price * a.units);
-        return {
-          ...a,
-          value: nativeValue,
-          currency: p.nativeCurrency,
-          livePrice: p.price,
-          livePrev: p.previousClose,
-          nativePrice: p.nativePrice,
-          nativeCurrency: p.nativeCurrency,
-        };
-      }
-      return a;
-    }),
+    () => assets.map((a) => (a.symbol ? applyLivePrice(a, prices[a.symbol]) : a) as LiveAsset),
     [assets, prices]
   );
 

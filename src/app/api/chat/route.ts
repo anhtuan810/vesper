@@ -6,6 +6,7 @@ import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@
 import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
 import { toUsd, getUsdRates } from "@/lib/fx";
 import { fetchHistoricalPrice } from "@/lib/prices";
+import { priceHoldingsLive } from "@/lib/prices-server";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { validateEnv } from "@/lib/env";
@@ -376,12 +377,16 @@ async function handlePortfolioChange(
   const usdRates = await getUsdRates();
   if (displayCurrency !== "USD" && usdRates[displayCurrency]) setUsdRate(displayCurrency, usdRates[displayCurrency]);
 
-  const built = await buildPortfolioMods(modifications, assets, displayCurrency, usdRates);
+  // Baseline = the SAME live, freshly-priced holdings the dashboard shows (stored
+  // values can be stale after a price move). Modifications apply on top of "now".
+  const live = await priceHoldingsLive(assets as Array<Record<string, unknown> & { symbol?: string | null; units?: number | null; value: number; currency: string; country?: string | null }>);
+
+  const built = await buildPortfolioMods(modifications, live, displayCurrency, usdRates);
   if ("error" in built) return reply(built.error);
   if (built.mods.length === 0) return reply("I couldn't read that change — which positions should move, and by how much?");
 
   const { data: urow } = await supabase.from("users").select("country").eq("id", userId).maybeSingle();
-  const readout = computePortfolioChange(assets as unknown as Asset[], built.mods, usdRates, { country: urow?.country ?? null });
+  const readout = computePortfolioChange(live as unknown as Asset[], built.mods, usdRates, { country: urow?.country ?? null });
 
   const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
   const c = readout.current, s = readout.scenario;

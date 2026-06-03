@@ -1,6 +1,7 @@
 import { normalizePrice } from "@/lib/prices";
 import { YAHOO_FINANCE_BASE_URL, FETCH_TIMEOUT_MS, PRICE_CACHE_TTL_MS } from "@/lib/constants";
 import { venuePriorityFor } from "@/lib/venues";
+import { applyLivePrice } from "@/lib/live-pricing";
 
 // ── Price history ─────────────────────────────────────────────────────────────
 
@@ -132,6 +133,30 @@ export async function fetchPriceWithFallback(symbol: string, country?: string): 
   }
 
   return { ...primary, requested_symbol: symbol };
+}
+
+// Live-price a set of holdings the SAME way the dashboard does: fetch every
+// symbol via fetchPriceWithFallback (the /api/prices path) and re-value each
+// tradeable to round(livePrice × units) in the price's native currency, using the
+// shared applyLivePrice formula. Holdings without a symbol+units pass through.
+// This is the canonical "now" portfolio so the scenario baseline matches the
+// dashboard for the same moment.
+export async function priceHoldingsLive<
+  T extends { symbol?: string | null; units?: number | null; value: number; currency: string; country?: string | null },
+>(assets: T[]): Promise<T[]> {
+  const entries = assets
+    .filter((a) => a.symbol && a.units)
+    .map((a) => ({ symbol: a.symbol as string, country: a.country ?? undefined }));
+  if (entries.length === 0) return assets;
+
+  const settled = await Promise.allSettled(entries.map((e) => fetchPriceWithFallback(e.symbol, e.country)));
+  const priceMap: Record<string, PriceResult> = {};
+  for (const r of settled) {
+    if (r.status === "fulfilled" && !r.value.error) {
+      priceMap[r.value.requested_symbol ?? r.value.symbol] = r.value;
+    }
+  }
+  return assets.map((a) => (a.symbol ? applyLivePrice(a, priceMap[a.symbol]) : a));
 }
 
 // ── Quote (name) ──────────────────────────────────────────────────────────────
