@@ -1,0 +1,157 @@
+"use client";
+
+import { formatMoney } from "@/lib/money";
+import type { DisplayCurrency } from "@/lib/money";
+
+// Prop-driven "current vs scenario" readout card. Reused by the Adjust sandbox,
+// the Stress test, and (Phase D) inline scenario results in chat. Every figure
+// arrives via props as USD; formatting to the display currency happens here.
+
+export interface ComparisonReadout {
+  netWorthUsd: number;
+  allocationByCategory: Array<{ category: string; valueUsd: number; pct: number }>;
+  topSingleNameConcentrationPct: number | null;
+  leverage: { ltvPct: number } | null;
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  property: "Property",
+  markets: "Public markets",
+  reserves: "Reserves",
+  crypto: "Crypto",
+};
+const CATEGORY_ORDER = ["markets", "property", "crypto", "reserves"];
+
+interface ScenarioComparisonCardProps {
+  current: ComparisonReadout;
+  scenario: ComparisonReadout;
+  displayCurrency: DisplayCurrency;
+  /** Eyebrow label above the card. */
+  title?: string;
+  /** Label above the net-worth figure. */
+  netWorthLabel?: string;
+  /** "signed" = sign-aware +/− coloured delta (Adjust); "drop" = always-negative delta with percent (Stress). */
+  deltaStyle?: "signed" | "drop";
+  /** Show the single-name concentration row. */
+  showConcentration?: boolean;
+  /** Show the prominent mortgage-LTV callout (when both readouts carry leverage). */
+  showLtvCallout?: boolean;
+  /** Eyebrow above the allocation rows. */
+  allocationLabel?: string;
+  /** Top margin (px) on the allocation eyebrow. */
+  allocationMarginTop?: number;
+  /** Optional footer slot (e.g. a Discuss affordance, an estimate note). */
+  footer?: React.ReactNode;
+}
+
+export function ScenarioComparisonCard({
+  current,
+  scenario,
+  displayCurrency,
+  title = "Comparison",
+  netWorthLabel = "Net worth",
+  deltaStyle = "signed",
+  showConcentration = true,
+  showLtvCallout = false,
+  allocationLabel = "Allocation by category",
+  allocationMarginTop = 14,
+  footer,
+}: ScenarioComparisonCardProps) {
+  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+  const fmtPct = (n: number | null): string =>
+    n == null ? "—" : new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n) + "%";
+
+  const c = current;
+  const s = scenario;
+  const nwDelta = s.netWorthUsd - c.netWorthUsd;
+  const dropPct = c.netWorthUsd !== 0 ? (nwDelta / c.netWorthUsd) * 100 : 0;
+
+  const allocCats = (() => {
+    const set = new Set<string>();
+    c.allocationByCategory.forEach((x) => set.add(x.category));
+    s.allocationByCategory.forEach((x) => set.add(x.category));
+    return CATEGORY_ORDER.filter((cat) => set.has(cat));
+  })();
+  const curAlloc = new Map(c.allocationByCategory.map((x) => [x.category, x]));
+  const scnAlloc = new Map(s.allocationByCategory.map((x) => [x.category, x]));
+
+  const hasLeverage = !!(c.leverage && s.leverage);
+
+  return (
+    <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "16px 16px 8px" }}>
+      <div style={{ ...eyebrowStyle, marginBottom: 14 }}>{title}</div>
+
+      {/* Net worth */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>{netWorthLabel}</div>
+          <div className="font-serif" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--hero)", lineHeight: 1 }}>
+            {m(s.netWorthUsd)}
+          </div>
+        </div>
+        <div style={{ textAlign: "right", fontSize: 13 }}>
+          <div style={{ color: "var(--text-faint)" }}>{m(c.netWorthUsd)} now</div>
+          {deltaStyle === "drop" ? (
+            <div style={{ fontWeight: 500, color: "var(--negative-text)", marginTop: 2 }}>
+              −{m(Math.abs(nwDelta))} ({fmtPct(Math.abs(dropPct))})
+            </div>
+          ) : (
+            <div style={{ fontWeight: 500, color: nwDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)", marginTop: 2 }}>
+              {nwDelta >= 0 ? "+" : "−"}{m(Math.abs(nwDelta))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Single-name concentration */}
+      {showConcentration && (
+        <div style={statRowStyle}>
+          <span style={{ fontSize: 13, color: "var(--text)" }}>Single-name concentration</span>
+          <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+            {fmtPct(c.topSingleNameConcentrationPct)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
+            <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(s.topSingleNameConcentrationPct)}</span>
+          </span>
+        </div>
+      )}
+
+      {/* LTV callout — the sharper read for leveraged property */}
+      {showLtvCallout && hasLeverage && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--negative-soft)" }}>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>Mortgage LTV</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--negative-text)" }}>
+            {fmtPct(c.leverage!.ltvPct)} <span style={{ opacity: 0.6 }}>→</span> {fmtPct(s.leverage!.ltvPct)}
+          </span>
+        </div>
+      )}
+
+      {/* Allocation by category */}
+      <div style={{ ...eyebrowStyle, fontSize: 9, margin: `${allocationMarginTop}px 0 6px` }}>{allocationLabel}</div>
+      {allocCats.map((cat) => (
+        <div key={cat} style={statRowStyle}>
+          <span style={{ fontSize: 13, color: "var(--text)" }}>{CATEGORY_LABEL[cat] ?? cat}</span>
+          <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+            {fmtPct(curAlloc.get(cat)?.pct ?? 0)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
+            <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(scnAlloc.get(cat)?.pct ?? 0)}</span>
+          </span>
+        </div>
+      ))}
+
+      {footer}
+    </div>
+  );
+}
+
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  color: "var(--text-faint)",
+};
+const statRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "7px 0",
+  borderBottom: "0.5px solid var(--border)",
+};

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
 import type { LiveAsset } from "@/lib/supabase";
-import type { Comparison, Modification, Readout } from "@/lib/scenario/engine";
+import type { Comparison, Modification } from "@/lib/scenario/engine";
 import { stashHandoff } from "@/lib/scenario/handoff";
+import { ScenarioComparisonCard } from "@/components/scenario/cards/ScenarioComparisonCard";
 
 // Semantic category map — mirror of CATEGORY_MAP in src/components/PortfolioTab.tsx
 // (component-local there; kept in sync by hand).
@@ -324,66 +325,21 @@ export function ScenarioBuilder({ realAssets, displayCurrency, userId, isDesktop
   }
 
   function comparisonPanel() {
-    const c: Readout | undefined = comparison?.current;
-    const s: Readout | undefined = comparison?.scenario;
-    const d = comparison?.deltas;
-
-    const allocCats = (() => {
-      const set = new Set<string>();
-      c?.allocationByCategory.forEach((x) => set.add(x.category));
-      s?.allocationByCategory.forEach((x) => set.add(x.category));
-      return CATEGORY_ORDER.filter((cat) => set.has(cat));
-    })();
-    const curAlloc = new Map((c?.allocationByCategory ?? []).map((x) => [x.category, x]));
-    const scnAlloc = new Map((s?.allocationByCategory ?? []).map((x) => [x.category, x]));
-
-    const nwDelta = d?.netWorthUsd ?? 0;
-    const nwColor = nwDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)";
-
+    if (!comparison) {
+      return (
+        <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "16px 16px 8px" }}>
+          <div style={{ ...eyebrowStyle, marginBottom: 14 }}>Comparison</div>
+          <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Computing…</div>
+        </div>
+      );
+    }
     return (
-      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "16px 16px 8px" }}>
-        <div style={{ ...eyebrowStyle, marginBottom: 14 }}>Comparison</div>
-
-        {/* Net worth */}
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Net worth</div>
-            <div className="font-serif" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--hero)", lineHeight: 1 }}>
-              {s ? m(s.netWorthUsd) : "—"}
-            </div>
-          </div>
-          <div style={{ textAlign: "right", fontSize: 13 }}>
-            <div style={{ color: "var(--text-faint)" }}>{c ? m(c.netWorthUsd) : "—"} now</div>
-            <div style={{ fontWeight: 500, color: nwColor, marginTop: 2 }}>
-              {nwDelta >= 0 ? "+" : "−"}{m(Math.abs(nwDelta))}
-            </div>
-          </div>
-        </div>
-
-        {/* Single-name concentration */}
-        <div style={statRowStyle}>
-          <span style={{ fontSize: 13, color: "var(--text)" }}>Single-name concentration</span>
-          <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
-            {fmtPct(c?.topSingleNameConcentrationPct ?? null)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
-            <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(s?.topSingleNameConcentrationPct ?? null)}</span>
-          </span>
-        </div>
-
-        {/* Allocation by category */}
-        <div style={{ ...eyebrowStyle, fontSize: 9, margin: "14px 0 6px" }}>Allocation by category</div>
-        {allocCats.map((cat) => (
-          <div key={cat} style={statRowStyle}>
-            <span style={{ fontSize: 13, color: "var(--text)" }}>{CATEGORY_LABEL[cat] ?? cat}</span>
-            <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
-              {fmtPct(curAlloc.get(cat)?.pct ?? 0)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
-              <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(scnAlloc.get(cat)?.pct ?? 0)}</span>
-            </span>
-          </div>
-        ))}
-        {comparison && (
-          <button onClick={discuss} style={discussButtonStyle}>Discuss with assistant →</button>
-        )}
-      </div>
+      <ScenarioComparisonCard
+        current={comparison.current}
+        scenario={comparison.scenario}
+        displayCurrency={displayCurrency}
+        footer={<button onClick={discuss} style={discussButtonStyle}>Discuss with assistant →</button>}
+      />
     );
   }
 
@@ -471,7 +427,6 @@ const valStyle: React.CSSProperties = { marginLeft: "auto", fontSize: 14, color:
 const editValueButtonStyle: React.CSSProperties = { marginLeft: "auto", fontSize: 14, color: "var(--text)", background: "transparent", border: "none", borderBottom: "1px dashed var(--border-strong)", cursor: "pointer", padding: "0 0 1px", fontVariantNumeric: "tabular-nums" };
 const editInputStyle: React.CSSProperties = { marginLeft: "auto", width: 110, textAlign: "right", fontSize: 14, padding: "4px 6px", border: "1px solid var(--accent)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", outline: "none" };
 const removeButtonStyle: React.CSSProperties = { flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", fontSize: 16, lineHeight: "20px" };
-const statRowStyle: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: "0.5px solid var(--border)" };
 const textInputStyle: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 13, fontFamily: "var(--font-sans)", outline: "none" };
 const primaryButtonStyle: React.CSSProperties = { padding: "8px 16px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", letterSpacing: "0.01em" };
 const textButtonStyle: React.CSSProperties = { padding: "8px 10px", background: "transparent", color: "var(--text-dim)", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer" };

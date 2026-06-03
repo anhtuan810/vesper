@@ -5,21 +5,15 @@ import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
 import { stashHandoff } from "@/lib/scenario/handoff";
+import { ScenarioComparisonCard, type ComparisonReadout } from "@/components/scenario/cards/ScenarioComparisonCard";
 
 // Shock figures come from POST /api/scenarios/project (mode "shock") — nothing is
 // recomputed client-side. Canonical Vitals shock severities.
 
 interface ShockEntry { scope: "category"; key: string; factor: number }
-interface AllocationSlice { category: string; valueUsd: number; pct: number }
-interface Readout {
-  netWorthUsd: number;
-  allocationByCategory: AllocationSlice[];
-  topSingleNameConcentrationPct: number | null;
-  leverage: { ltvPct: number } | null;
-}
 interface ShockResp {
   mode: "shock";
-  comparison: { current: Readout; scenario: Readout; deltas: { netWorthUsd: number } };
+  comparison: { current: ComparisonReadout; scenario: ComparisonReadout; deltas: { netWorthUsd: number } };
   assumptions: string[];
 }
 
@@ -130,16 +124,6 @@ export function ScenarioStress({ displayCurrency, isDesktop }: ScenarioStressPro
     router.push(isDesktop ? "/" : "/chat");
   }
 
-  const c = data?.comparison.current;
-  const s = data?.comparison.scenario;
-  const dropUsd = c && s ? s.netWorthUsd - c.netWorthUsd : 0;
-  const dropPct = c && c.netWorthUsd !== 0 ? (dropUsd / c.netWorthUsd) * 100 : 0;
-  const hasLeverage = !!(c?.leverage && s?.leverage);
-
-  const curAlloc = new Map((c?.allocationByCategory ?? []).map((x) => [x.category, x]));
-  const scnAlloc = new Map((s?.allocationByCategory ?? []).map((x) => [x.category, x]));
-  const allocCats = CATEGORY_ORDER.filter((cat) => curAlloc.has(cat) || scnAlloc.has(cat));
-
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ ...eyebrow, marginTop: 14, marginBottom: 12 }}>Stress test</div>
@@ -192,47 +176,25 @@ export function ScenarioStress({ displayCurrency, isDesktop }: ScenarioStressPro
       </div>
 
       {/* Comparison panel — present-mode language */}
-      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "16px 16px 8px" }}>
-        <div style={{ ...eyebrow, marginBottom: 14 }}>Current vs stressed</div>
-
-        {/* Net worth drop */}
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Net worth after shock</div>
-            <div className="font-serif" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--hero)", lineHeight: 1 }}>
-              {s ? m(s.netWorthUsd) : "—"}
-            </div>
-          </div>
-          <div style={{ textAlign: "right", fontSize: 13 }}>
-            <div style={{ color: "var(--text-faint)" }}>{c ? m(c.netWorthUsd) : "—"} now</div>
-            <div style={{ fontWeight: 500, color: "var(--negative-text)", marginTop: 2 }}>
-              {s && c ? `−${m(Math.abs(dropUsd))} (${fmtPct(Math.abs(dropPct))})` : ""}
-            </div>
-          </div>
+      {data ? (
+        <ScenarioComparisonCard
+          current={data.comparison.current}
+          scenario={data.comparison.scenario}
+          displayCurrency={displayCurrency}
+          title="Current vs stressed"
+          netWorthLabel="Net worth after shock"
+          deltaStyle="drop"
+          showConcentration={false}
+          showLtvCallout
+          allocationLabel="Allocation after shock"
+          allocationMarginTop={8}
+        />
+      ) : (
+        <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "16px 16px 8px" }}>
+          <div style={{ ...eyebrow, marginBottom: 14 }}>Current vs stressed</div>
+          <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Applying shock…</div>
         </div>
-
-        {/* LTV — the sharper read for leveraged property */}
-        {hasLeverage && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--negative-soft)" }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>Mortgage LTV</span>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--negative-text)" }}>
-              {fmtPct(c!.leverage!.ltvPct)} <span style={{ opacity: 0.6 }}>→</span> {fmtPct(s!.leverage!.ltvPct)}
-            </span>
-          </div>
-        )}
-
-        {/* Allocation after shock */}
-        <div style={{ ...eyebrow, fontSize: 9, margin: "8px 0 6px" }}>Allocation after shock</div>
-        {allocCats.map((cat) => (
-          <div key={cat} style={statRow}>
-            <span style={{ fontSize: 13, color: "var(--text)" }}>{CATEGORY_LABEL[cat] ?? cat}</span>
-            <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
-              {fmtPct(curAlloc.get(cat)?.pct ?? 0)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
-              <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(scnAlloc.get(cat)?.pct ?? 0)}</span>
-            </span>
-          </div>
-        ))}
-      </div>
+      )}
 
       <div className="font-serif" style={{ fontStyle: "italic", fontSize: 13, color: "var(--text-faint)", marginTop: 10 }}>
         Illustrative shock, not a forecast.
@@ -255,13 +217,6 @@ const eyebrow: React.CSSProperties = {
   letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--text-faint)",
-};
-const statRow: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "7px 0",
-  borderBottom: "0.5px solid var(--border)",
 };
 const textInput: React.CSSProperties = {
   padding: "8px 10px",
