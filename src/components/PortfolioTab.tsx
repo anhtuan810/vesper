@@ -174,20 +174,11 @@ export function PortfolioTab({
               onSelectPoint={setSelectedPoint}
               valuesSettled={valuesSettled}
             />
-            {/* Ambient projection teaser — a quiet trajectory line under the
-                chart. Editorial, not a banner; tapping opens scenario explore. */}
+            {/* Ambient projection teaser — the single scenario entry: a quiet,
+                left-aligned trajectory line under the chart. Tapping opens
+                scenario explore. */}
             <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
               <ProjectionTeaser onExplore={handleExplore} />
-            </div>
-            {/* Single low-emphasis affordance into scenario explore. */}
-            <div className="flex justify-end" style={{ marginTop: 2, marginRight: 40 }}>
-              <button
-                type="button"
-                onClick={handleExplore}
-                style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.01em", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-              >
-                Explore a scenario →
-              </button>
             </div>
           </div>
         )}
