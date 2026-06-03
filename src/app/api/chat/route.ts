@@ -3,7 +3,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
-import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
+import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
 import { toUsd, getUsdRates } from "@/lib/fx";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
@@ -23,6 +23,9 @@ import { resolveProposal } from "@/lib/proposal-resolver";
 import type { CurrentAssetLight } from "@/lib/proposal-resolver";
 import { narrateScenario } from "@/lib/scenario/narrate";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
+import { assembleCounterfactual } from "@/lib/scenario/counterfactual-assemble";
+import { resolveScenarioAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
+import { extractNumbers } from "@/lib/narrate/guardrail";
 
 validateEnv();
 
@@ -72,6 +75,78 @@ async function handleScenarioNarration(userId: string, raw: unknown): Promise<Ne
   );
 
   return NextResponse.json({ message: narration, assets: null, suggested_replies: null, remaining: CHAT_DAILY_LIMIT - used });
+}
+
+function fmtScenarioDate(d: string | null): string {
+  if (!d) return "";
+  const [y, mo, day] = d.slice(0, 10).split("-").map(Number);
+  if (!y) return d;
+  return new Date(y, (mo ?? 1) - 1, day ?? 1).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// Chat-initiated past-counterfactual. Resolves the referenced held tradeable,
+// runs the shared counterfactual assembly, and narrates the result under the
+// guardrail. Read-only — writes only the user + assistant message pair. A
+// non-tradeable / ambiguous / not-held reference yields a graceful clarification
+// rather than a fabricated result.
+async function handleScenarioIntent(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+  userMessage: string,
+  assetQuery: string,
+  assets: AssetRef[],
+  displayCurrency: DisplayCurrency,
+  used: number,
+): Promise<NextResponse> {
+  const reply = async (content: string) => {
+    await supabase.from("messages").insert(
+      timestampedPair(
+        { user_id: userId, role: "user", content: userMessage },
+        { user_id: userId, role: "assistant", content },
+      ),
+    );
+    return NextResponse.json({ message: content, assets: null, suggested_replies: null, remaining: CHAT_DAILY_LIMIT - used });
+  };
+
+  const res = resolveScenarioAsset(assets, assetQuery);
+  if (res.kind === "ambiguous") {
+    return reply(`Happy to look back — which position did you mean: ${res.matches.map((a) => a.name).join(", ")}?`);
+  }
+  if (res.kind === "non_tradeable") {
+    return reply(`Look-back works for held tradeable positions — stocks, ETFs, or crypto. "${res.asset.name}" isn't one of those.`);
+  }
+  if (res.kind === "none") {
+    return reply(`I don't see a held position matching "${assetQuery}". Look-back works for a specific tradeable you hold — which one did you mean?`);
+  }
+
+  const target = res.asset;
+  const result = await assembleCounterfactual(supabase, userId, target.id, "All");
+  if (!result.ok) return reply(`I couldn't reconstruct ${target.name} — ${result.message}`);
+
+  // Display formatting against the real server FX rates.
+  const usdRates = await getUsdRates();
+  const rate = usdRates[displayCurrency];
+  if (displayCurrency !== "USD" && rate) setUsdRate(displayCurrency, rate);
+  const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+
+  const d = result.data;
+  const amt = m(Math.abs(d.contribution));
+  const verb = d.contribution >= 0 ? "added" : "cost";
+  const diaryNotes = d.diaryContext
+    .filter((x) => x.personal_context)
+    .map((x) => ({ date: fmtScenarioDate(x.occurred_at), note: x.personal_context as string, market: x.market_context ?? undefined }));
+
+  const figures = [amt];
+  for (const dn of diaryNotes) {
+    figures.push(...extractNumbers(dn.date), ...extractNumbers(dn.note));
+    if (dn.market) figures.push(...extractNumbers(dn.market));
+  }
+
+  const description = `Look back at ${d.asset.name}: it has ${verb} ${amt} versus the capital deployed (gain or loss; the capital is kept as cash, not redeployed).`;
+  const fallback = `${d.asset.name} has ${verb} ${amt} ${d.contribution >= 0 ? "to your net worth since you bought it." : "since you bought it."}`;
+
+  const { narration } = await narrateScenario({ userMessage, description, figures, fallback, diaryContext: diaryNotes });
+  return reply(narration);
 }
 
 export async function POST(req: NextRequest) {
@@ -242,7 +317,28 @@ export async function POST(req: NextRequest) {
     const proposeChangeRaw = extractTag(raw, "propose_change");
     const suggestedRepliesRaw = extractTag(raw, "suggested_replies");
     const clarifyRaw = extractTag(raw, "clarify");
+    const scenarioRaw = extractTag(raw, "scenario");
     let displayText = stripTags(raw);
+
+    // --- Past-counterfactual scenario intent (read-only narration) ---
+    // Claude flagged a retrospective what-if about a held tradeable. Resolve the
+    // asset, run the counterfactual, narrate under the guardrail. Never mutates;
+    // does not enter the proposal/mutation branches below.
+    if (scenarioRaw) {
+      let parsed: { kind?: unknown; asset?: unknown } = {};
+      try { parsed = JSON.parse(scenarioRaw.trim()); } catch {}
+      if (parsed.kind === "counterfactual" && typeof parsed.asset === "string") {
+        return await handleScenarioIntent(
+          supabase,
+          userId,
+          message || "Look back",
+          parsed.asset,
+          (assets ?? []) as AssetRef[],
+          displayCurrency,
+          used,
+        );
+      }
+    }
 
     let suggestedReplies: string[] | null = null;
     if (suggestedRepliesRaw) {
