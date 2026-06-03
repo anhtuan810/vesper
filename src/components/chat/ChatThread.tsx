@@ -10,6 +10,7 @@ import {
 } from "react";
 import { FormatText } from "@/components/FormatText";
 import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
+import { ScenarioResultCard } from "@/components/scenario/cards/ScenarioResultCard";
 import type { useChatSession } from "@/lib/use-chat-session";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
@@ -279,6 +280,11 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                   </>
                 )}
               </div>
+              {msg.from === "assistant" && msg.scenarioResult && (
+                <div style={{ width: "100%", maxWidth: "92%" }}>
+                  <ScenarioResultCard result={msg.scenarioResult} />
+                </div>
+              )}
               {i === lastAssistantIdx && !loading && msg.suggestedReplies && msg.suggestedReplies.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {msg.suggestedReplies.map((chip) => (

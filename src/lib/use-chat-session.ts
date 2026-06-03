@@ -6,6 +6,7 @@ import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { invalidateAssetsCache, invalidateInsightCache } from "@/lib/hooks";
 import { CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX } from "@/lib/constants";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
+import type { ScenarioResult } from "@/lib/scenario/result";
 
 export interface ChatMessage {
   id?: string;
@@ -13,6 +14,18 @@ export interface ChatMessage {
   text: string;
   imagePreviews?: string[];
   suggestedReplies?: string[] | null;
+  /** Ephemeral inline scenario card (not persisted; lost on history reload). */
+  scenarioResult?: ScenarioResult | null;
+}
+
+interface ChatResponse {
+  message?: string;
+  suggested_replies?: string[] | null;
+  scenarioResult?: ScenarioResult | null;
+  scenarioPending?: Record<string, unknown> | null;
+  remaining?: number;
+  analyticsEvent?: string;
+  assets?: unknown;
 }
 
 const ROUND_AMOUNT: Record<DisplayCurrency, number> = {
@@ -67,12 +80,17 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreInFlight = useRef(false);
+  // Free-typed scenario awaiting a [Show me] confirmation; echoed back to compute.
+  const pendingScenarioRef = useRef<Record<string, unknown> | null>(null);
+  // Latest messages, for callbacks that shouldn't re-create when messages change.
+  const messagesRef = useRef<ChatMessage[]>([]);
 
   // Use refs for callbacks so send() doesn't recreate when parent re-renders
   const onPortfolioUpdateRef = useRef(onPortfolioUpdate);
   const onNewMessageRef = useRef(onNewMessage);
   useEffect(() => { onPortfolioUpdateRef.current = onPortfolioUpdate; }, [onPortfolioUpdate]);
   useEffect(() => { onNewMessageRef.current = onNewMessage; }, [onNewMessage]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
     if (!userId) return;
@@ -230,6 +248,21 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     }
   }, []);
 
+  // Map a chat API response into assistant messages, attaching any inline
+  // scenario card to the final part and capturing a pending free-typed intent.
+  const applyAssistantResponse = useCallback((data: ChatResponse) => {
+    const parts = (data.message || "Done.").split("\n---\n").map((p) => p.trim()).filter(Boolean);
+    const newMsgs: ChatMessage[] = parts.map((p, i) => ({
+      from: "assistant" as const,
+      text: p,
+      suggestedReplies: i === parts.length - 1 && data.suggested_replies ? data.suggested_replies : null,
+      scenarioResult: i === parts.length - 1 && data.scenarioResult ? data.scenarioResult : null,
+    }));
+    setMessages((prev) => [...prev, ...newMsgs]);
+    if (typeof data.remaining === "number") setRemaining(data.remaining);
+    pendingScenarioRef.current = data.scenarioPending ?? null;
+  }, []);
+
   const send = useCallback(async () => {
     const text = input.trim();
     if ((!text && !imageData.length) || loading || !userId) return;
@@ -251,7 +284,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, fromChip: false }),
       });
       const data = await res.json();
       setThinking(false);
@@ -265,14 +298,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      const parts = (data.message || "Done.").split("\n---\n").map((p: string) => p.trim()).filter(Boolean);
-      const newMsgs: ChatMessage[] = parts.map((p: string, i: number) => ({
-        from: "assistant" as const,
-        text: p,
-        suggestedReplies: i === parts.length - 1 && data.suggested_replies ? data.suggested_replies : null,
-      }));
-      setMessages((prev) => [...prev, ...newMsgs]);
-      if (typeof data.remaining === "number") setRemaining(data.remaining);
+      applyAssistantResponse(data);
       if (data.analyticsEvent) track(data.analyticsEvent);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
@@ -288,12 +314,55 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       ]);
     }
     setLoading(false);
-  }, [input, imageData, imagePreviews, loading, userId, clearImage]);
+  }, [input, imageData, imagePreviews, loading, userId, clearImage, applyAssistantResponse]);
 
-  // Send a specific text string without going through the input state — used by suggestion chips.
+  // Confirm a free-typed scenario ([Show me]): echo the pending intent back so the
+  // route computes and renders the card directly, skipping Claude classification.
+  const sendScenarioConfirm = useCallback(async (pending: Record<string, unknown>, originalText: string) => {
+    if (loading || !userId) return;
+    setLoading(true);
+    setThinking(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenarioConfirm: pending, message: originalText }),
+      });
+      const data = await res.json();
+      setThinking(false);
+      if (!res.ok) {
+        setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Something went wrong. Please try again." }]);
+        setLoading(false);
+        return;
+      }
+      applyAssistantResponse(data);
+      onNewMessageRef.current?.();
+    } catch {
+      setThinking(false);
+      setMessages((prev) => [...prev, { from: "assistant", text: "Connection issue. Please try again." }]);
+    }
+    setLoading(false);
+  }, [loading, userId, applyAssistantResponse]);
+
+  // Send a specific text string without going through the input state — used by
+  // suggestion chips. Chip taps are flagged (fromChip) so scenario intents compute
+  // directly rather than asking to confirm.
   const sendText = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading || !userId) return;
+
+    // [Show me] / [Change it] on a pending free-typed scenario.
+    const pending = pendingScenarioRef.current;
+    if (pending && trimmed === "Show me") {
+      pendingScenarioRef.current = null;
+      const original = messagesRef.current.filter((m) => m.from === "user").slice(-1)[0]?.text ?? "Scenario";
+      return sendScenarioConfirm(pending, original);
+    }
+    if (pending && trimmed === "Change it") {
+      pendingScenarioRef.current = null;
+      setMessages((prev) => [...prev, { from: "assistant", text: "Sure — tell me the scenario you'd like to see." }]);
+      return;
+    }
 
     setLoading(true);
     setThinking(true);
@@ -303,7 +372,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, fromChip: true }),
       });
       const data = await res.json();
       setThinking(false);
@@ -317,14 +386,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      const parts = (data.message || "Done.").split("\n---\n").map((p: string) => p.trim()).filter(Boolean);
-      const newMsgs: ChatMessage[] = parts.map((p: string, i: number) => ({
-        from: "assistant" as const,
-        text: p,
-        suggestedReplies: i === parts.length - 1 && data.suggested_replies ? data.suggested_replies : null,
-      }));
-      setMessages((prev) => [...prev, ...newMsgs]);
-      if (typeof data.remaining === "number") setRemaining(data.remaining);
+      applyAssistantResponse(data);
       if (data.analyticsEvent) track(data.analyticsEvent);
       if (data.assets) {
         if (userId) invalidateAssetsCache(userId);
@@ -340,7 +402,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       ]);
     }
     setLoading(false);
-  }, [loading, userId]);
+  }, [loading, userId, applyAssistantResponse, sendScenarioConfirm]);
 
   // Scenario-narration handoff: posts the summarising user turn + the
   // guardrailed assistant narration into this single thread. No portfolio

@@ -29,10 +29,16 @@ import { assembleProject } from "@/lib/scenario/project-assemble";
 import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import type { Modification } from "@/lib/scenario/engine";
 import { extractNumbers } from "@/lib/narrate/guardrail";
+import type { ScenarioResult } from "@/lib/scenario/result";
 
 validateEnv();
 
 const anthropic = new Anthropic();
+
+// Compute and render the result card directly, or (free-typed) confirm first.
+type ScenarioMode = "compute" | "confirm";
+const SCENARIO_SYMBOL: Record<DisplayCurrency, string> = { EUR: "€", USD: "$", GBP: "£" };
+const SHOW_ME_CHIPS = ["Show me", "Change it"];
 
 // Scenario → chat narration handoff. Narrates already-computed figures under the
 // numeric guardrail (Claude produces no numbers of its own) and writes the turn.
@@ -100,16 +106,10 @@ async function handleScenarioIntent(
   assets: AssetRef[],
   displayCurrency: DisplayCurrency,
   used: number,
+  mode: ScenarioMode,
 ): Promise<NextResponse> {
-  const reply = async (content: string) => {
-    await supabase.from("messages").insert(
-      timestampedPair(
-        { user_id: userId, role: "user", content: userMessage },
-        { user_id: userId, role: "assistant", content },
-      ),
-    );
-    return NextResponse.json({ message: content, assets: null, suggested_replies: null, remaining: CHAT_DAILY_LIMIT - used });
-  };
+  const reply = (content: string, extra?: Record<string, unknown>) =>
+    scenarioReply(supabase, userId, userMessage, content, used, extra);
 
   const res = resolveScenarioAsset(assets, assetQuery);
   if (res.kind === "ambiguous") {
@@ -123,6 +123,15 @@ async function handleScenarioIntent(
   }
 
   const target = res.asset;
+
+  // Free-typed: confirm the resolved intent before computing.
+  if (mode === "confirm") {
+    return reply(`Look back at what ${target.name} has done for you?`, {
+      suggested_replies: SHOW_ME_CHIPS,
+      scenarioPending: { kind: "counterfactual", asset: assetQuery },
+    });
+  }
+
   const result = await assembleCounterfactual(supabase, userId, target.id, "All");
   if (!result.ok) return reply(`I couldn't reconstruct ${target.name} — ${result.message}`);
 
@@ -131,6 +140,8 @@ async function handleScenarioIntent(
   const rate = usdRates[displayCurrency];
   if (displayCurrency !== "USD" && rate) setUsdRate(displayCurrency, rate);
   const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+  const dispRate = usdRates[displayCurrency] ?? 1;
+  const toDisp = (usd: number) => usd * dispRate;
 
   const d = result.data;
   const amt = m(Math.abs(d.contribution));
@@ -148,8 +159,16 @@ async function handleScenarioIntent(
   const description = `Look back at ${d.asset.name}: it has ${verb} ${amt} versus the capital deployed (gain or loss; the capital is kept as cash, not redeployed).`;
   const fallback = `${d.asset.name} has ${verb} ${amt} ${d.contribution >= 0 ? "to your net worth since you bought it." : "since you bought it."}`;
 
+  const scenarioResult: ScenarioResult = {
+    kind: "counterfactual",
+    assetName: d.asset.name,
+    actual: d.actualSeries.map((p) => ({ t: Date.parse(p.date), v: toDisp(p.valueUsd) })),
+    counterfactual: d.counterfactualSeries.map((p) => ({ t: Date.parse(p.date), v: toDisp(p.valueUsd) })),
+    symbol: SCENARIO_SYMBOL[displayCurrency] ?? "€",
+  };
+
   const { narration } = await narrateScenario({ userMessage, description, figures, fallback, diaryContext: diaryNotes });
-  return reply(narration);
+  return reply(narration, { scenarioResult });
 }
 
 type PresentAsset = {
@@ -165,13 +184,15 @@ type PresentAsset = {
 const fmtScenarioPct = (n: number | null): string =>
   n == null ? "—" : new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n) + "%";
 
-// Persist the user + assistant pair and return the chat response shape.
+// Persist the user + assistant pair and return the chat response shape. `extra`
+// can carry a scenarioResult card, a scenarioPending intent, or suggested_replies.
 async function scenarioReply(
   supabase: ReturnType<typeof createServerSupabase>,
   userId: string,
   userMessage: string,
   content: string,
   used: number,
+  extra?: Record<string, unknown>,
 ): Promise<NextResponse> {
   await supabase.from("messages").insert(
     timestampedPair(
@@ -179,7 +200,13 @@ async function scenarioReply(
       { user_id: userId, role: "assistant", content },
     ),
   );
-  return NextResponse.json({ message: content, assets: null, suggested_replies: null, remaining: CHAT_DAILY_LIMIT - used });
+  return NextResponse.json({
+    message: content,
+    assets: null,
+    suggested_replies: null,
+    remaining: CHAT_DAILY_LIMIT - used,
+    ...extra,
+  });
 }
 
 // Chat-initiated PRESENT scenario: translate the value-based ops (resolving held
@@ -194,8 +221,25 @@ async function handlePresentScenario(
   assets: PresentAsset[],
   displayCurrency: DisplayCurrency,
   used: number,
+  mode: ScenarioMode,
 ): Promise<NextResponse> {
-  const reply = (content: string) => scenarioReply(supabase, userId, userMessage, content, used);
+  const reply = (content: string, extra?: Record<string, unknown>) =>
+    scenarioReply(supabase, userId, userMessage, content, used, extra);
+
+  // Free-typed: confirm before computing (no resolution/compute yet).
+  if (mode === "confirm") {
+    const single = rawMods.length === 1 && typeof (rawMods[0] as Record<string, unknown>)?.asset === "string"
+      ? (rawMods[0] as Record<string, unknown>).asset as string
+      : null;
+    const interpretation = single
+      ? `Show how a change to ${single} would reshape your portfolio?`
+      : "Show how that would reshape your portfolio?";
+    return reply(interpretation, {
+      suggested_replies: SHOW_ME_CHIPS,
+      scenarioPending: { kind: "present", modifications: rawMods },
+    });
+  }
+
   const refs: AssetRef[] = assets.map((a) => ({ id: a.id, name: a.name, type: a.type, symbol: a.symbol }));
 
   const usdRates = await getUsdRates();
@@ -267,8 +311,9 @@ async function handlePresentScenario(
   const figures = [nw, delta, conCur, conScn];
   const description = `Present hypothetical. Net worth ${nw} (${sign}${delta} versus current). Single-name concentration ${conCur} → ${conScn}.`;
   const fallback = `In that scenario your net worth is ${nw}, ${sign}${delta} versus today, with single-name concentration moving from ${conCur} to ${conScn}.`;
+  const scenarioResult: ScenarioResult = { kind: "present", current: c, scenario: s, displayCurrency };
   const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
-  return reply(narration);
+  return reply(narration, { scenarioResult });
 }
 
 // Chat-initiated FUTURE scenario: run the shared project assembly (rate derived
@@ -281,8 +326,24 @@ async function handleFutureScenario(
   parsed: Record<string, unknown>,
   displayCurrency: DisplayCurrency,
   used: number,
+  mode: ScenarioMode,
 ): Promise<NextResponse> {
-  const reply = (content: string) => scenarioReply(supabase, userId, userMessage, content, used);
+  const reply = (content: string, extra?: Record<string, unknown>) =>
+    scenarioReply(supabase, userId, userMessage, content, used, extra);
+
+  // Free-typed: confirm before computing.
+  if (mode === "confirm") {
+    let interpretation: string;
+    if (parsed.mode === "solve") {
+      interpretation = "Work out the contribution you'd need to hit that target?";
+    } else if (parsed.contribution && typeof parsed.contribution === "object") {
+      interpretation = "Project where you're heading with that contribution?";
+    } else {
+      const h = typeof parsed.horizonYears === "number" ? Math.round(parsed.horizonYears) : 10;
+      interpretation = `Project where you're heading over the next ${h} years?`;
+    }
+    return reply(interpretation, { suggested_replies: SHOW_ME_CHIPS, scenarioPending: parsed });
+  }
 
   const usdRates = await getUsdRates();
   const dispRate = usdRates[displayCurrency];
@@ -312,15 +373,42 @@ async function handleFutureScenario(
   }
 
   const m = (usd: number) => formatMoney(usd, "USD", displayCurrency);
+  const toDisp = (usd: number) => usd * (dispRate ?? 1);
   if (result.mode === "trajectory") {
     const low = m(result.trajectory.low), mid = m(result.trajectory.mid), high = m(result.trajectory.high);
     const rateStr = `${(result.rate * 100).toFixed(1)}%`;
     const horizonStr = `${Math.round(result.horizonYears)}`;
     const figures = [low, mid, high, rateStr, horizonStr];
-    const description = `Forward projection over ${horizonStr} years at a derived ${rateStr} nominal rate. Net worth midpoint ${mid}, range ${low} to ${high}. Close by inviting the user to open Project mode to see the cone.`;
-    const fallback = `Over ${horizonStr} years at ${rateStr}, your net worth projects to ${mid} at the midpoint, ranging from ${low} to ${high}. Open Project mode to see the full cone.`;
+    const description = `Forward projection over ${horizonStr} years at a derived ${rateStr} nominal rate. Net worth midpoint ${mid}, range ${low} to ${high}.`;
+    const fallback = `Over ${horizonStr} years at ${rateStr}, your net worth projects to ${mid} at the midpoint, ranging from ${low} to ${high}.`;
+
+    // Build the cone (history from snapshots + projected band) in display numbers.
+    const { data: snapRows } = await supabase
+      .from("snapshots")
+      .select("date, total_value")
+      .eq("user_id", userId)
+      .order("date", { ascending: true });
+    const now = new Date();
+    const horizonDate = new Date(now);
+    horizonDate.setFullYear(now.getFullYear() + Math.round(result.horizonYears));
+    const scenarioResult: ScenarioResult = {
+      kind: "future",
+      cone: {
+        history: (snapRows ?? []).map((s) => ({ t: Date.parse(s.date as string), v: toDisp(Number(s.total_value)) })),
+        today: { t: now.getTime(), v: toDisp(result.startUsd) },
+        horizon: {
+          t: horizonDate.getTime(),
+          low: toDisp(result.trajectory.low),
+          mid: toDisp(result.trajectory.mid),
+          high: toDisp(result.trajectory.high),
+        },
+        horizonYear: horizonDate.getFullYear(),
+        symbol: SCENARIO_SYMBOL[displayCurrency] ?? "€",
+      },
+    };
+
     const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
-    return reply(narration);
+    return reply(narration, { scenarioResult });
   }
 
   if (result.mode !== "solve") {
@@ -332,10 +420,34 @@ async function handleFutureScenario(
   const per = result.solve.frequency === "annual" ? "per year" : "per month";
   const year = result.date.slice(0, 4);
   const figures = [amt, target, year];
-  const description = `Solve-for: to reach ${target} by ${year}, the required contribution is ${amt} ${per}. Close by inviting the user to open Project mode to see the cone.`;
-  const fallback = `To reach ${target} by ${year}, you'd need to contribute ${amt} ${per}. Open Project mode to see the projection.`;
+  const description = `Solve-for: to reach ${target} by ${year}, the required contribution is ${amt} ${per}.`;
+  const fallback = `To reach ${target} by ${year}, you'd need to contribute ${amt} ${per}.`;
   const { narration } = await narrateScenario({ userMessage, description, figures, fallback });
   return reply(narration);
+}
+
+// Route a parsed scenario intent to the matching handler. Returns null when the
+// intent isn't a recognised scenario (so the caller falls through to normal flow).
+async function dispatchScenario(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+  userMsg: string,
+  parsed: Record<string, unknown>,
+  assets: unknown[],
+  displayCurrency: DisplayCurrency,
+  used: number,
+  mode: ScenarioMode,
+): Promise<NextResponse | null> {
+  if (parsed.kind === "counterfactual" && typeof parsed.asset === "string") {
+    return handleScenarioIntent(supabase, userId, userMsg, parsed.asset, assets as AssetRef[], displayCurrency, used, mode);
+  }
+  if (parsed.kind === "present" && Array.isArray(parsed.modifications)) {
+    return handlePresentScenario(supabase, userId, userMsg, parsed.modifications, assets as PresentAsset[], displayCurrency, used, mode);
+  }
+  if (parsed.kind === "future" && (parsed.mode === "trajectory" || parsed.mode === "solve")) {
+    return handleFutureScenario(supabase, userId, userMsg, parsed, displayCurrency, used, mode);
+  }
+  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -344,7 +456,7 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userId = user.id;
 
-    const { message, images: rawImages, scenarioHandoff } = await req.json();
+    const { message, images: rawImages, scenarioHandoff, scenarioConfirm, fromChip } = await req.json();
 
     // Scenario-narration handoff — handled before the message/mutation flow.
     if (scenarioHandoff) {
@@ -428,6 +540,17 @@ export async function POST(req: NextRequest) {
       ? (userData!.display_currency as DisplayCurrency)
       : "USD";
     const isNewUser = currentAssets.length === 0;
+
+    // --- Confirmed scenario ([Show me] on a free-typed intent) ---
+    // Compute and render directly, skipping Claude classification entirely.
+    if (scenarioConfirm && typeof scenarioConfirm === "object") {
+      const userMsg = typeof message === "string" && message.trim() ? message : "Scenario";
+      const res = await dispatchScenario(
+        supabase, userId, userMsg, scenarioConfirm as Record<string, unknown>,
+        currentAssets, displayCurrency, used, "compute",
+      );
+      if (res) return res;
+    }
 
     // --- Build system prompt ---
     const usdRates = isNewUser ? undefined : await getUsdRates();
@@ -517,15 +640,10 @@ export async function POST(req: NextRequest) {
       let parsed: Record<string, unknown> = {};
       try { parsed = JSON.parse(scenarioRaw.trim()); } catch {}
       const userMsg = message || "Scenario";
-      if (parsed.kind === "counterfactual" && typeof parsed.asset === "string") {
-        return await handleScenarioIntent(supabase, userId, userMsg, parsed.asset, (assets ?? []) as AssetRef[], displayCurrency, used);
-      }
-      if (parsed.kind === "present" && Array.isArray(parsed.modifications)) {
-        return await handlePresentScenario(supabase, userId, userMsg, parsed.modifications, (assets ?? []) as PresentAsset[], displayCurrency, used);
-      }
-      if (parsed.kind === "future" && (parsed.mode === "trajectory" || parsed.mode === "solve")) {
-        return await handleFutureScenario(supabase, userId, userMsg, parsed, displayCurrency, used);
-      }
+      // Chip-originated intents compute directly; free-typed ones confirm first.
+      const mode: ScenarioMode = fromChip ? "compute" : "confirm";
+      const res = await dispatchScenario(supabase, userId, userMsg, parsed, (assets ?? []), displayCurrency, used, mode);
+      if (res) return res;
     }
 
     let suggestedReplies: string[] | null = null;
