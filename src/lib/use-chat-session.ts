@@ -131,16 +131,17 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
             return;
           }
           const mapped: ChatMessage[] = data.messages.flatMap(
-            (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => {
+            (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null; tool_result?: ScenarioResult | null }) => {
               if (m.role === "assistant" && m.content.includes("\n---\n")) {
                 return m.content.split("\n---\n").map((part, i, arr) => ({
                   id: i === 0 ? m.id : undefined,
                   from: "assistant" as const,
                   text: part.trim(),
                   suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
+                  scenarioResult: i === arr.length - 1 ? (m.tool_result ?? null) : null,
                 }));
               }
-              return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null }];
+              return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
             }
           );
           setMessages(mapped);
@@ -157,7 +158,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     if (!userId) return;
     try {
       const latest = messages.slice(-CHAT_LOAD_LIMIT);
-      const stripped = latest.map(({ id, from, text, suggestedReplies }) => ({ id, from, text, suggestedReplies }));
+      const stripped = latest.map(({ id, from, text, suggestedReplies, scenarioResult }) => ({ id, from, text, suggestedReplies, scenarioResult }));
       localStorage.setItem(chatHistoryCacheKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
     } catch {}
   }, [messages, userId]);
@@ -181,16 +182,17 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       }
 
       const older: ChatMessage[] = data.messages.flatMap(
-        (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null }) => {
+        (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null; tool_result?: ScenarioResult | null }) => {
           if (m.role === "assistant" && m.content.includes("\n---\n")) {
             return m.content.split("\n---\n").map((part: string, i: number, arr: string[]) => ({
               id: i === 0 ? m.id : undefined,
               from: "assistant" as const,
               text: part.trim(),
               suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
+              scenarioResult: i === arr.length - 1 ? (m.tool_result ?? null) : null,
             }));
           }
-          return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null }];
+          return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
         }
       );
 
