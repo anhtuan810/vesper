@@ -5,6 +5,7 @@ import { resolveSymbol, normalizeCryptoSymbol } from "./symbol-aliases";
 import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
+import { isCostBasisOnlyEdit, applyCostBasisOnly } from "./cost-basis";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 
@@ -374,23 +375,19 @@ export async function applyPortfolioChanges({
           delete change.value_delta;
         }
 
-        // Historical re-derivation: edit with value + buy_date, no units, no value_delta.
-        // Fires when the user provides a historical buy_date after a value-mode add — the units
-        // recorded at today's price must be recomputed at the stated historical price.
-        const editHasAbsoluteValue = typeof change.value === "number" && change.value > 0;
-        if (!hasValueDelta && !editHasUnits && editHasAbsoluteValue && change.buy_date && isTradeable && existing.symbol) {
-          const historical = await fetchHistoricalPrice(existing.symbol, change.buy_date);
-          if (historical) {
-            const p = normalizePrice(historical.price, historical.currency);
-            const decimals = existing.type === "crypto" ? 8 : 4;
-            const factor = Math.pow(10, decimals);
-            const derivedUnits = Math.round((change.value! / p) * factor) / factor;
-            const derivedValue = Math.round(derivedUnits * p * 100) / 100;
-            change.units = derivedUnits;
-            change.value = derivedValue;
-            change.buy_price = Math.round(p * 100) / 100;
-            change.currency = historical.currency === "GBp" ? "GBP" : historical.currency;
+        // Cost-basis / historical-price update: a buy_date and/or buy_price edit
+        // with no unit change records the basis ONLY. The position's current value
+        // and units are never touched — value is always units × current market
+        // price (the dashboard live-prices it). This is the guard against a basis
+        // edit collapsing current value to the historical cost.
+        if (isCostBasisOnlyEdit(change, existing)) {
+          let historicalNative: number | null =
+            typeof change.buy_price === "number" && change.buy_price > 0 ? change.buy_price : null;
+          if (historicalNative == null && change.buy_date) {
+            const historical = await fetchHistoricalPrice(existing.symbol!, change.buy_date);
+            if (historical) historicalNative = normalizePrice(historical.price, historical.currency);
           }
+          applyCostBasisOnly(change, historicalNative);
         }
 
         // Price-freshness check for Turn-2 edit commits (resolved units + value from a prior proposal).
