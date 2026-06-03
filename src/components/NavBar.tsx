@@ -163,8 +163,17 @@ export function NavBar({
       >
         <div className="relative flex items-center w-full px-5 h-14">
           <Logo size={28} />
-          <div className="hidden md:flex items-center gap-0.5 absolute left-1/2 -translate-x-1/2">
-            {tabButtons}
+          {/* Tabs aligned to the centre column content (i.e. with "Total net worth"):
+              this overlay mirrors the shell's centre track (desktopInset.left/right)
+              and its 720px / margin-auto / 20px-padding wrapper, with the tabs
+              left-aligned to that wrapper's content edge. */}
+          <div
+            className="hidden md:block absolute top-0 bottom-0 pointer-events-none"
+            style={{ left: desktopInset.left, right: desktopInset.right }}
+          >
+            <div style={{ maxWidth: 720, height: "100%", margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "center" }}>
+              <div className="flex items-center gap-0.5 pointer-events-auto">{tabButtons}</div>
+            </div>
           </div>
           <div className="ml-auto">{rightControls}</div>
         </div>
