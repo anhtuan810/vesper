@@ -4,9 +4,13 @@ interface MiniSparklineProps {
   prices: number[];
   width?: number;
   height?: number;
+  // When provided, the sparkline color follows this direction (the row's day-change
+  // sign) so it never contradicts the day %. Falls back to the series' own
+  // first→last direction when omitted.
+  directionUp?: boolean;
 }
 
-export function MiniSparkline({ prices, width = 60, height = 28 }: MiniSparklineProps) {
+export function MiniSparkline({ prices, width = 60, height = 28, directionUp }: MiniSparklineProps) {
   if (prices.length < 2) return <div style={{ width, height }} />;
 
   const W = width;
@@ -20,7 +24,7 @@ export function MiniSparkline({ prices, width = 60, height = 28 }: MiniSparkline
   const toY = (v: number) => H - PAD - ((v - min) / range) * (H - PAD * 2);
 
   const pts = prices.map((p, i) => [toX(i), toY(p)] as [number, number]);
-  const up = prices[prices.length - 1] >= prices[0];
+  const up = directionUp ?? (prices[prices.length - 1] >= prices[0]);
   const color = up ? "var(--positive-text)" : "var(--negative-text)";
 
   const linePath = pts

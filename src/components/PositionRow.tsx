@@ -87,7 +87,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
           )}
         </div>
 
-        {hasSparkline && <MiniSparkline prices={closes} />}
+        {hasSparkline && <MiniSparkline prices={closes} directionUp={chg === null ? undefined : up} />}
 
         {/* Value + change — flush to the row's right edge, matching the group total */}
         <div className="text-right shrink-0">
@@ -96,7 +96,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
           ) : (
             <>
               <div
-                className="text-fg"
+                className={isTradeable && chg !== null ? (up ? "text-positive-text" : "text-negative-text") : "text-fg"}
                 style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
               >
                 {formatMoney(displayValue, asset.currency || "USD", displayCurrency)}
