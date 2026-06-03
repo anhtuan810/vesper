@@ -1,8 +1,22 @@
 export type SeedSource = "onboarding-class" | "asset" | "insight";
 
+// A forward cone attached to a scenario-explore seed. Values are already in
+// display-currency numbers (the seed builder converts them); the chat renders
+// these through the shared ProjectionChart card.
+export interface ExploreCone {
+  history: Array<{ t: number; v: number }>;
+  today: { t: number; v: number } | null;
+  horizon: { t: number; low: number; mid: number; high: number } | null;
+  horizonYear: number;
+  symbol: string;
+  line: string;
+}
+
 export interface ChatSeed {
   message: string;
   chips: string[];
+  /** Present only on the scenario-explore seed: the forward-projection cone. */
+  cone?: ExploreCone;
 }
 
 const ONBOARDING_CLASS_SEEDS: Record<string, ChatSeed> = {

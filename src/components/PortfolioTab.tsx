@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import {
   NetWorthChart,
@@ -14,8 +14,10 @@ import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines } from "@/lib/hooks";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { toUsdClient } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
+import { requestExplore } from "@/lib/scenario/explore";
 import type { LiveAsset } from "@/lib/supabase";
 
 // Semantic category mapping — 4 groups, regardless of how many asset types exist
@@ -59,6 +61,16 @@ interface PortfolioTabProps {
 export function PortfolioTab({
   assets, grossTotal, netTotal, initialSnapshots, valuesSettled,
 }: PortfolioTabProps) {
+  const router = useRouter();
+  const isDesktop = useIsDesktop();
+
+  // Open scenario explore in chat: desktop seeds the mounted panel in place,
+  // mobile navigates to /chat (which reads the flag on mount).
+  const handleExplore = () => {
+    const handled = requestExplore(!!isDesktop);
+    if (!handled) router.push("/chat");
+  };
+
   const symbols = useMemo(
     () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
     [assets]
@@ -165,17 +177,17 @@ export function PortfolioTab({
             {/* Ambient projection teaser — a quiet trajectory line under the
                 chart. Editorial, not a banner; tapping opens scenario explore. */}
             <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
-              <ProjectionTeaser href="/scenarios" />
+              <ProjectionTeaser onExplore={handleExplore} />
             </div>
-            {/* Quiet, editorial entry to the scenario sandbox — anchored under
-                the chart's range pills. Not a banner, not a nav tab. */}
+            {/* Single low-emphasis affordance into scenario explore. */}
             <div className="flex justify-end" style={{ marginTop: 2, marginRight: 40 }}>
-              <Link
-                href="/scenarios"
-                style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.01em" }}
+              <button
+                type="button"
+                onClick={handleExplore}
+                style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.01em", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
               >
                 Explore a scenario →
-              </Link>
+              </button>
             </div>
           </div>
         )}

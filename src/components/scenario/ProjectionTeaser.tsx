@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { getUsdRate } from "@/lib/money";
 import { useDisplayCurrency } from "@/lib/hooks";
 
@@ -28,7 +27,7 @@ function isThinHistory(r: ProjResp): boolean {
   return r.assumptions.some((a) => /default/i.test(a) && /nominal/i.test(a));
 }
 
-export function ProjectionTeaser({ href }: { href: string }) {
+export function ProjectionTeaser({ onExplore }: { onExplore: () => void }) {
   const displayCurrency = useDisplayCurrency();
   const [resp, setResp] = useState<ProjResp | null>(null);
   const [shown, setShown] = useState(false);
@@ -71,11 +70,16 @@ export function ProjectionTeaser({ href }: { href: string }) {
 
   const lineStyle: React.CSSProperties = {
     display: "block",
+    textAlign: "left",
+    width: "100%",
+    background: "transparent",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
     fontStyle: "italic",
     fontSize: 14.5,
     lineHeight: 1.5,
     color: "var(--text-dim)",
-    textDecoration: "none",
     letterSpacing: "0.005em",
     opacity: shown ? 1 : 0,
     transform: shown ? "translateY(0)" : "translateY(3px)",
@@ -83,7 +87,7 @@ export function ProjectionTeaser({ href }: { href: string }) {
   };
 
   return (
-    <Link href={href} className="font-serif" style={lineStyle}>
+    <button type="button" onClick={onExplore} className="font-serif" style={lineStyle}>
       {thin ? (
         <>Add a little more and I&apos;ll show where you&apos;re heading <span style={{ fontStyle: "normal" }}>→</span></>
       ) : (
@@ -93,6 +97,6 @@ export function ProjectionTeaser({ href }: { href: string }) {
           by {year} <span style={{ fontStyle: "normal" }}>→</span>
         </>
       )}
-    </Link>
+    </button>
   );
 }

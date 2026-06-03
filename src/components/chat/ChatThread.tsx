@@ -9,6 +9,7 @@ import {
   useCallback,
 } from "react";
 import { FormatText } from "@/components/FormatText";
+import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
 import type { useChatSession } from "@/lib/use-chat-session";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
@@ -326,6 +327,33 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
             >
               <FormatText text={seedMessage.message} />
             </div>
+            {seedMessage.cone && (
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: "92%",
+                  marginTop: 12,
+                  padding: "14px 14px 12px",
+                  background: "var(--surface)",
+                  border: "0.5px solid var(--border)",
+                  borderRadius: 14,
+                }}
+              >
+                <ProjectionChart
+                  history={seedMessage.cone.history}
+                  today={seedMessage.cone.today}
+                  horizon={seedMessage.cone.horizon}
+                  horizonYear={seedMessage.cone.horizonYear}
+                  symbol={seedMessage.cone.symbol}
+                />
+                <div
+                  className="font-serif"
+                  style={{ fontStyle: "italic", fontSize: 13.5, color: "var(--text-dim)", lineHeight: 1.5, marginTop: 10 }}
+                >
+                  {seedMessage.cone.line}
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 mt-2">
               {seedMessage.chips.map((chip) => (
                 <button

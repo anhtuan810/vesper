@@ -8,6 +8,8 @@ import { VitalsContent } from "@/components/vitals/VitalsContent";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { takeHandoff } from "@/lib/scenario/handoff";
+import { EXPLORE_EVENT, buildExploreSeed } from "@/lib/scenario/explore";
+import type { ChatSeed } from "@/lib/chat-seeds";
 
 const CHAT_WIDTH_KEY = "volnar.chat.width";
 const CHAT_MIN = 300;
@@ -127,6 +129,29 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
   // ── Chat session + thread plumbing ──────────────────────────────────────
   const session = useChatSession({ userId: user?.id });
   const { messages, thinking, loadMore, hasMore, isLoadingMore } = session;
+
+  // Scenario-explore seed for the mounted chat panel. Fired by the Portfolio
+  // teaser / affordance via a window event; built from the latest holdings.
+  const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
+  const [seedBase, setSeedBase] = useState(0);
+  const assetsRef = useRef(assets);
+  const messagesRef = useRef(messages);
+  useEffect(() => { assetsRef.current = assets; }, [assets]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => {
+    const handler = () => {
+      buildExploreSeed(assetsRef.current, displayCurrency).then((seed) => {
+        setSeedBase(messagesRef.current.length);
+        setSeedMessage(seed);
+      }).catch(() => {});
+    };
+    window.addEventListener(EXPLORE_EVENT, handler);
+    return () => window.removeEventListener(EXPLORE_EVENT, handler);
+  }, [displayCurrency]);
+
+  // Hide the seed once a new turn lands (typed or chip tap) — derived from state,
+  // so no synchronous setState in an effect and no ref read during render.
+  const visibleSeed = seedMessage && messages.length <= seedBase ? seedMessage : null;
 
   const threadRef = useRef<ChatThreadHandle>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -266,7 +291,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
           <ChatThread
             variant="popup"
             session={session}
-            seedMessage={null}
+            seedMessage={visibleSeed}
             chatSuggestions={chatSuggestions}
             hasPortfolio={hasPortfolio}
             composerBg="var(--surface)"

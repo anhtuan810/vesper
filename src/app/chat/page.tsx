@@ -8,6 +8,7 @@ import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { getChatSeed, type ChatSeed, type SeedSource } from "@/lib/chat-seeds";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { takeHandoff } from "@/lib/scenario/handoff";
+import { takeExploreFlag, buildExploreSeed } from "@/lib/scenario/explore";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -32,6 +33,8 @@ export default function ChatPage() {
   const savedScrollMetrics = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
   const hasScrolled = useRef(false);
   const autoSubmitRef = useRef(false);
+  const wantExplore = useRef(false);
+  const exploreBuilt = useRef(false);
 
   const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
@@ -85,6 +88,9 @@ export default function ChatPage() {
     const keyParam = params.get("key");
     const src = params.get("source");
     if (src) setSource(src);
+
+    // Scenario-explore entry (teaser / affordance on Portfolio).
+    if (takeExploreFlag()) wantExplore.current = true;
 
     // Text typed in the portfolio empty-state input
     const prefill = sessionStorage.getItem("volnar.empty.input");
@@ -187,6 +193,15 @@ export default function ChatPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAssetId, pendingSeed, assetsLoading]);
+
+  // Build the scenario-explore seed (cone + personalized chips) once assets are
+  // known. setState happens only inside the async callback — never synchronously
+  // in the effect body — so this stays clear of react-hooks/set-state-in-effect.
+  useEffect(() => {
+    if (!wantExplore.current || exploreBuilt.current || assetsLoading) return;
+    exploreBuilt.current = true;
+    buildExploreSeed(assets, displayCurrency).then(setSeedMessage).catch(() => {});
+  }, [assetsLoading, assets, displayCurrency]);
 
   // Desktop hosts chat in the persistent panel, not as a standalone route.
   useEffect(() => {
