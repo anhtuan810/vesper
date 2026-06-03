@@ -18,11 +18,10 @@ import { geocodeAddress } from "@/lib/geocode";
 import { venueChipsFor } from "@/lib/venues";
 import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 import {
-  ALLOWED_IMAGE_TYPES, ALLOWED_CHIPS, CONFIRMATION_CHIPS,
+  ALLOWED_IMAGE_TYPES, CONFIRMATION_CHIPS,
   sanitizeChips, stripTags, extractTag, timestampedPair,
 } from "@/lib/chat-helpers";
 import { resolveProposal } from "@/lib/proposal-resolver";
-import type { CurrentAssetLight } from "@/lib/proposal-resolver";
 import { narrateScenario } from "@/lib/scenario/narrate";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import { assembleProject } from "@/lib/scenario/project-assemble";

@@ -1,16 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { niceCeil, compactMoney } from "@/components/scenario/cards/chart-utils";
 
 // Single-series growth curve (a hypothetical investment's value from buy date to
 // today), in ProjectionChart's visual language. Pure presentational: the series
 // arrives already in display-currency numbers — nothing is recomputed here.
-
-function niceCeil(v: number): number {
-  if (v <= 0) return 0;
-  const step = v < 10_000 ? 1_000 : v < 100_000 ? 5_000 : v < 1_000_000 ? 25_000 : v < 10_000_000 ? 100_000 : 1_000_000;
-  return Math.ceil(v / step) * step;
-}
 
 export function GrowthChart({
   series,
@@ -51,12 +46,6 @@ export function GrowthChart({
   // Soft fill under the line.
   const area = `${path} L ${xOf(maxT).toFixed(1)} ${(PAD_TOP + drawH).toFixed(1)} L ${xOf(minT).toFixed(1)} ${(PAD_TOP + drawH).toFixed(1)} Z`;
 
-  const compact = (n: number) => {
-    const a = Math.abs(n);
-    if (a >= 1_000_000) return `${symbol}${(a / 1_000_000).toFixed(1)}M`;
-    if (a >= 1_000) return `${symbol}${Math.round(a / 1_000)}K`;
-    return `${symbol}${Math.round(a)}`;
-  };
   const yLabels = [0, yMax / 2, yMax];
   const last = series[series.length - 1];
 
@@ -81,7 +70,7 @@ export function GrowthChart({
             key={v}
             style={{ position: "absolute", top: `${(1 - v / yMax) * 100}%`, right: 0, transform: "translateY(-50%)", fontSize: 11, color: "var(--text-faint)", lineHeight: 1, pointerEvents: "none" }}
           >
-            {compact(v)}
+            {compactMoney(v, symbol)}
           </div>
         ))}
       </div>

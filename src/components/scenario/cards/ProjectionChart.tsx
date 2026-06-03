@@ -1,17 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { niceCeil, compactMoney } from "@/components/scenario/cards/chart-utils";
 
 // Forward-projection cone. Pure presentational: every figure arrives via props
 // already in display-currency numbers — nothing is computed or projected here.
 // Historical net worth as a solid line; past "today" a shaded low–high band with
 // a dashed mid line, so the projection reads as estimate, not fact.
-
-function niceCeil(v: number): number {
-  if (v <= 0) return 0;
-  const step = v < 10_000 ? 1_000 : v < 100_000 ? 5_000 : v < 1_000_000 ? 25_000 : v < 10_000_000 ? 100_000 : 1_000_000;
-  return Math.ceil(v / step) * step;
-}
 
 export function ProjectionChart({
   history,
@@ -67,12 +62,6 @@ export function ProjectionChart({
   const band = `M ${xT.toFixed(1)} ${yT.toFixed(1)} L ${xH.toFixed(1)} ${yOf(horizon.high).toFixed(1)} L ${xH.toFixed(1)} ${yOf(horizon.low).toFixed(1)} Z`;
   const midPath = `M ${xT.toFixed(1)} ${yT.toFixed(1)} L ${xH.toFixed(1)} ${yOf(horizon.mid).toFixed(1)}`;
 
-  const compact = (n: number) => {
-    const a = Math.abs(n);
-    if (a >= 1_000_000) return `${symbol}${(a / 1_000_000).toFixed(1)}M`;
-    if (a >= 1_000) return `${symbol}${Math.round(a / 1_000)}K`;
-    return `${symbol}${Math.round(a)}`;
-  };
   const yLabels = [0, yMax / 2, yMax];
 
   return (
@@ -112,7 +101,7 @@ export function ProjectionChart({
               pointerEvents: "none",
             }}
           >
-            {compact(v)}
+            {compactMoney(v, symbol)}
           </div>
         ))}
       </div>

@@ -1,16 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { niceCeil, compactMoney } from "@/components/scenario/cards/chart-utils";
 
 // Actual vs counterfactual curves, in ProjectionChart's visual language. Pure
 // presentational: both series arrive via props already in display-currency
 // numbers — nothing is recomputed here.
-
-function niceCeil(v: number): number {
-  if (v <= 0) return 0;
-  const step = v < 10_000 ? 1_000 : v < 100_000 ? 5_000 : v < 1_000_000 ? 25_000 : v < 10_000_000 ? 100_000 : 1_000_000;
-  return Math.ceil(v / step) * step;
-}
 
 export function CounterfactualChart({
   actual,
@@ -59,12 +54,6 @@ export function CounterfactualChart({
     "M " + actual.map((p) => `${xOf(p.t).toFixed(1)} ${yOf(p.v).toFixed(1)}`).join(" L ") +
     " L " + [...counterfactual].reverse().map((p) => `${xOf(p.t).toFixed(1)} ${yOf(p.v).toFixed(1)}`).join(" L ") + " Z";
 
-  const compact = (n: number) => {
-    const a = Math.abs(n);
-    if (a >= 1_000_000) return `${symbol}${(a / 1_000_000).toFixed(1)}M`;
-    if (a >= 1_000) return `${symbol}${Math.round(a / 1_000)}K`;
-    return `${symbol}${Math.round(a)}`;
-  };
   const yLabels = [0, yMax / 2, yMax];
   const lastA = actual[actual.length - 1];
   const lastC = counterfactual[counterfactual.length - 1];
@@ -96,7 +85,7 @@ export function CounterfactualChart({
             key={v}
             style={{ position: "absolute", top: `${(1 - v / yMax) * 100}%`, right: 0, transform: "translateY(-50%)", fontSize: 11, color: "var(--text-faint)", lineHeight: 1, pointerEvents: "none" }}
           >
-            {compact(v)}
+            {compactMoney(v, symbol)}
           </div>
         ))}
       </div>
