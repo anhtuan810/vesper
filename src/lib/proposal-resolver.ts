@@ -103,6 +103,49 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
   }
 
   if (action === "add") {
+    // Property: enumerate every financial field present in the proposal (plain
+    // language, no field names) so the user can catch an omission before commit —
+    // instead of the old fallthrough that described a property as "shares".
+    if (proposal.type === "real_estate") {
+      const cur = (typeof proposal.currency === "string" ? proposal.currency : "") || "";
+      const num = (v: unknown): number | null =>
+        typeof v === "number" && Number.isFinite(v) ? v : null;
+      const money = (n: number) => `${cur} ${Math.round(n).toLocaleString()}`.trim();
+      const parts: string[] = [];
+
+      const value = num(proposal.value);
+      if (value != null) parts.push(`valued at ${money(value)}`);
+
+      const mortgageBalance = num(proposal.mortgage_balance);
+      if (mortgageBalance != null) {
+        parts.push(mortgageBalance > 0 ? `mortgage balance ${money(mortgageBalance)}` : "no mortgage");
+      }
+
+      const mortgageRate = num(proposal.mortgage_rate);
+      if (mortgageRate != null) parts.push(`rate ${mortgageRate.toFixed(2)}%`);
+
+      const monthlyPayment = num(proposal.monthly_payment);
+      if (monthlyPayment != null) parts.push(`payment ${money(monthlyPayment)} per month`);
+
+      const mortgageType = typeof proposal.mortgage_type === "string" ? proposal.mortgage_type : null;
+      if (mortgageType) {
+        const label = mortgageType === "annuity" ? "annuity"
+          : mortgageType === "linear" ? "linear"
+          : mortgageType === "interest_only" ? "interest-only"
+          : mortgageType;
+        parts.push(`${label} mortgage`);
+      }
+
+      if (proposal.buy_date) parts.push(`purchased ${proposal.buy_date}`);
+      const buyPrice = num(proposal.buy_price);
+      if (buyPrice != null) parts.push(`purchase price ${money(buyPrice)}`);
+
+      const address = typeof proposal.address === "string" ? proposal.address : null;
+      if (address) parts.push(`at ${address}`);
+
+      return parts.length > 0 ? `Add ${name} — ${parts.join(", ")}` : `Add ${name}`;
+    }
+
     const isTradeable = TRADEABLE_TYPES_SET.has(proposal.type ?? "");
     const hasUnits = typeof proposal.units === "number" && proposal.units > 0;
     const hasValue = typeof proposal.value === "number" && proposal.value > 0;

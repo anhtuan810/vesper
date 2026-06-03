@@ -1024,17 +1024,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Background: drop stale pulse whenever the portfolio changes so the next
-    // /vitals load regenerates it via generatePulse rather than serving old text.
+    // Synchronously drop the stale pulse before the response returns (NOT in
+    // after()), so a subsequent forced /api/vitals refetch always regenerates a
+    // fresh pulse rather than racing a background delete and briefly serving the
+    // pre-mutation "no property yet" text on the persistent desktop Vitals rail.
     if (portfolioChanged) {
-      after(async () => {
-        try {
-          const supabaseAfter = createServerSupabase();
-          await supabaseAfter.from("highlights").delete().eq("user_id", userId).eq("type", "pulse");
-        } catch (err) {
-          Sentry.captureException(err, { tags: { background: "pulse-cache-invalidation" } });
-        }
-      });
+      try {
+        await supabase.from("highlights").delete().eq("user_id", userId).eq("type", "pulse");
+      } catch (err) {
+        Sentry.captureException(err, { tags: { background: "pulse-cache-invalidation" } });
+      }
     }
 
     // Background: refresh insight whenever the portfolio changes.

@@ -447,30 +447,38 @@ export async function applyPortfolioChanges({
           const editCur = change.currency || existing.currency || "USD";
           runningTotal += toUsdSync(afterValue, editCur) - toUsdSync(existing.value, existing.currency || "USD");
 
+          // Every edit is logged — including a pure rename, which records the
+          // before/after name (value/units unchanged) so the Diary audit trail
+          // is complete. Market-context backfill is skipped for renames.
           const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
-          if (!onlyNameChanged) {
-            const editOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
-            const { data: editedMutation } = await supabase.from("mutations").insert({
-              user_id: userId,
-              asset_id: existing.id,
-              asset_name: change.new_name || name,
-              action: "edit",
-              asset_type: existing.type,
-              symbol: existing.symbol || null,
-              before_value: existing.value,
-              after_value: afterValue,
-              before_units: existing.units || null,
-              after_units: change.units !== undefined ? change.units : (existing.units || null),
-              currency: change.currency || existing.currency || "USD",
-              personal_context: change.personal_context || contextNote,
-              portfolio_total: runningTotal,
-              occurred_at: editOccurredAt,
-            }).select("id").single();
-            if (editedMutation?.id) {
-              mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
-            }
+          const renameNote = onlyNameChanged ? `Renamed ${existing.name} to ${change.new_name}.` : null;
+          const editOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
+          const { data: editedMutation } = await supabase.from("mutations").insert({
+            user_id: userId,
+            asset_id: existing.id,
+            asset_name: change.new_name || name,
+            action: "edit",
+            asset_type: existing.type,
+            symbol: existing.symbol || null,
+            before_value: existing.value,
+            after_value: afterValue,
+            before_units: existing.units || null,
+            after_units: change.units !== undefined ? change.units : (existing.units || null),
+            currency: change.currency || existing.currency || "USD",
+            personal_context: change.personal_context || contextNote || renameNote,
+            portfolio_total: runningTotal,
+            occurred_at: editOccurredAt,
+          }).select("id").single();
+          if (editedMutation?.id && !onlyNameChanged) {
+            mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
           }
         }
+      } else {
+        // The named asset isn't in the portfolio — surface a clear error instead
+        // of silently no-opping (which left no feedback and no mutation row).
+        throw new ValueModeError(
+          `I couldn't find "${name}" in your portfolio to edit. Could you check the name?`
+        );
       }
 
     } else if (action === "remove") {
