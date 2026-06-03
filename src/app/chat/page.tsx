@@ -245,7 +245,12 @@ export default function ChatPage() {
         className="flex flex-col overflow-hidden bg-bg"
         style={{
           position: "fixed",
-          inset: 0,
+          // Anchor at the top and let height define the box — NOT inset:0, whose
+          // bottom:0 would over-constrain and cancel the height. The bottom edge
+          // therefore sits --kb-inset above the viewport bottom (the keyboard).
+          top: 0,
+          left: 0,
+          right: 0,
           // Shrink by the live keyboard inset so the composer rides above the
           // keyboard (ChatThread publishes --kb-inset via visualViewport). Idle,
           // --kb-inset is 0px, so this is exactly 100dvh — unchanged.
