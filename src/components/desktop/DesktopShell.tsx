@@ -225,6 +225,9 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
         .chat-msg { animation: up 0.25s ease forwards; }
         .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 1.2s ease infinite;margin:0 2px; }
         .chat-dot:nth-child(2){animation-delay:.2s}.chat-dot:nth-child(3){animation-delay:.4s}
+        /* Each column scrolls independently with no visible scrollbar. */
+        .desk-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .desk-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
       `}</style>
 
       <NavBar
@@ -247,27 +250,36 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
           gridTemplateColumns: `${vitalsWidth}px ${HANDLE}px minmax(0, 1fr) ${HANDLE}px ${chatWidth}px`,
         }}
       >
-        {/* Left panel — Vitals */}
+        {/* Left rail — Vitals. Recedes on the cream page bg. */}
         <aside
           style={{
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            background: "var(--bg-deep)",
+            background: "var(--bg)",
           }}
         >
           <div style={panelHeaderStyle}>
             <span style={panelLabelStyle}>Vitals</span>
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px" }}>
+          <div className="desk-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px" }}>
             <VitalsContent layout="grid" libraryPosition="top" showHeader={false} />
           </div>
         </aside>
 
         {renderHandle("vitals", "Resize vitals panel")}
 
-        {/* Main column — centered reading-width content for the current tab */}
-        <main style={{ minWidth: 0, overflowY: "auto" }}>
+        {/* Center — the focal column: lighter surface, hairline dividers either side. */}
+        <main
+          className="desk-scroll"
+          style={{
+            minWidth: 0,
+            overflowY: "auto",
+            background: "var(--surface-center)",
+            borderLeft: "1px solid var(--border)",
+            borderRight: "1px solid var(--border)",
+          }}
+        >
           <div style={{ maxWidth: MAIN_MAX_WIDTH, margin: "0 auto", padding: "20px 20px 40px" }}>
             {children}
           </div>
@@ -275,13 +287,13 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
 
         {renderHandle("chat", "Resize chat panel")}
 
-        {/* Right panel — Assistant chat */}
+        {/* Right rail — Assistant chat. Recedes on the cream page bg. */}
         <aside
           style={{
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            background: "var(--bg-deep)",
+            background: "var(--bg)",
           }}
         >
           <div style={panelHeaderStyle}>
