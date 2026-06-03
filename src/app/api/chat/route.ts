@@ -31,6 +31,8 @@ import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/sce
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
 import { hypotheticalBuyGrowth, buyPriceUsd } from "@/lib/scenario/hypothetical";
 import { validateScenarioIntent, resolveBuyDate } from "@/lib/scenario/validate-intent";
+import { isAgentChatEnabled } from "@/lib/chat/agent-config";
+import { runAgentChat } from "@/lib/chat/agent-loop";
 import type { Modification } from "@/lib/scenario/engine";
 import type { PricePoint } from "@/lib/scenario/counterfactual";
 import { extractNumbers } from "@/lib/narrate/guardrail";
@@ -708,6 +710,26 @@ export async function POST(req: NextRequest) {
       ? (userData!.display_currency as DisplayCurrency)
       : "USD";
     const isNewUser = currentAssets.length === 0;
+
+    // --- Agent tool-calling loop (flag-gated; OFF by default) ---
+    // When enabled, Claude reasons over the thread and calls deterministic tools
+    // for every figure and write, replacing the tag-emission flow below.
+    if (isAgentChatEnabled()) {
+      const result = await runAgentChat({
+        userId,
+        message: message ?? "",
+        images,
+        recentMessages: (recentMessages ?? []).slice(0, 6).reverse().map((mm) => ({ role: mm.role, content: mm.content })),
+        currentAssets: currentAssets as Array<Record<string, unknown>>,
+        displayCurrency,
+        used,
+        profile: profile as Record<string, unknown>,
+        userName,
+        fingerprint: userData?.fingerprint ?? null,
+        isNewUser,
+      });
+      return NextResponse.json(result);
+    }
 
     // --- Confirmed scenario ([Show me] on a free-typed intent) ---
     // Compute and render directly, skipping Claude classification entirely.
