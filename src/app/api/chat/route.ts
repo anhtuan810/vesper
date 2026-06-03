@@ -21,10 +21,58 @@ import {
 } from "@/lib/chat-helpers";
 import { resolveProposal } from "@/lib/proposal-resolver";
 import type { CurrentAssetLight } from "@/lib/proposal-resolver";
+import { narrateScenario } from "@/lib/scenario/narrate";
+import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 
 validateEnv();
 
 const anthropic = new Anthropic();
+
+// Scenario → chat narration handoff. Narrates already-computed figures under the
+// numeric guardrail (Claude produces no numbers of its own) and writes the turn.
+// Self-contained: shares auth + rate limit but never enters the mutation/proposal
+// flow. No portfolio mutation occurs.
+async function handleScenarioNarration(userId: string, raw: unknown): Promise<NextResponse> {
+  const h = raw as Partial<ScenarioHandoff>;
+  if (
+    !h ||
+    typeof h.userMessage !== "string" ||
+    typeof h.description !== "string" ||
+    typeof h.fallback !== "string" ||
+    !Array.isArray(h.figures)
+  ) {
+    return NextResponse.json({ message: "Invalid scenario handoff." }, { status: 400 });
+  }
+
+  const supabase = createServerSupabase();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: newCount, error: rpcError } = await supabase.rpc("increment_rate_limit", {
+    p_user_id: userId,
+    p_bucket: "chat",
+    p_date: today,
+  });
+  if (rpcError || newCount == null) {
+    return NextResponse.json({ message: "Couldn't reach the assistant. Please try again." }, { status: 500 });
+  }
+  if ((newCount as number) > CHAT_DAILY_LIMIT) {
+    return NextResponse.json(
+      { message: `You've reached today's message limit (${CHAT_DAILY_LIMIT}). Come back tomorrow!`, assets: null, remaining: 0 },
+      { status: 429 },
+    );
+  }
+  const used = (newCount as number) - 1;
+
+  const { narration } = await narrateScenario(h as ScenarioHandoff);
+
+  await supabase.from("messages").insert(
+    timestampedPair(
+      { user_id: userId, role: "user", content: h.userMessage },
+      { user_id: userId, role: "assistant", content: narration },
+    ),
+  );
+
+  return NextResponse.json({ message: narration, assets: null, suggested_replies: null, remaining: CHAT_DAILY_LIMIT - used });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +80,13 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userId = user.id;
 
-    const { message, images: rawImages } = await req.json();
+    const { message, images: rawImages, scenarioHandoff } = await req.json();
+
+    // Scenario-narration handoff — handled before the message/mutation flow.
+    if (scenarioHandoff) {
+      return await handleScenarioNarration(userId, scenarioHandoff);
+    }
+
     // Normalise: accept array (new) or single object (old clients)
     const images: Array<{ base64: string; mediaType: string }> = Array.isArray(rawImages)
       ? rawImages

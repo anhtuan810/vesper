@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { formatMoney, getUsdRate } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
 import type { LiveAsset } from "@/lib/supabase";
+import { stashHandoff } from "@/lib/scenario/handoff";
+import { extractNumbers } from "@/lib/narrate/guardrail";
 
 // Every figure comes from POST /api/scenarios/counterfactual — nothing is
 // recomputed client-side. This component fetches, formats, and draws.
@@ -44,9 +47,11 @@ function fmtDate(d: string): string {
 interface ScenarioLookbackProps {
   realAssets: LiveAsset[];
   displayCurrency: DisplayCurrency;
+  isDesktop: boolean;
 }
 
-export function ScenarioLookback({ realAssets, displayCurrency }: ScenarioLookbackProps) {
+export function ScenarioLookback({ realAssets, displayCurrency, isDesktop }: ScenarioLookbackProps) {
+  const router = useRouter();
   const rate = getUsdRate(displayCurrency);
   const sym = SYMBOL[displayCurrency] ?? "€";
   const m = useCallback((usd: number) => formatMoney(usd, "USD", displayCurrency), [displayCurrency]);
@@ -88,6 +93,27 @@ export function ScenarioLookback({ realAssets, displayCurrency }: ScenarioLookba
 
   const contribution = view?.contribution ?? 0;
   const positive = contribution >= 0;
+
+  // Hand the computed contribution + recorded reasons to the assistant. Allowed
+  // figures = the contribution plus any numbers in the user's own notes/dates, so
+  // the narration can quote them verbatim without tripping the guardrail.
+  function discuss() {
+    if (!view) return;
+    const amt = m(Math.abs(view.contribution));
+    const verb = view.contribution >= 0 ? "added" : "cost";
+    const diaryContext = view.diaryContext
+      .filter((d) => d.personal_context)
+      .map((d) => ({ date: fmtDate(d.occurred_at), note: d.personal_context as string, market: d.market_context ?? undefined }));
+    const figures = [amt];
+    for (const d of diaryContext) {
+      figures.push(...extractNumbers(d.date), ...extractNumbers(d.note));
+      if (d.market) figures.push(...extractNumbers(d.market));
+    }
+    const description = `Look back at ${view.asset.name}: it has ${verb} ${amt} versus the capital deployed (gain or loss; the capital is kept as cash, not redeployed).`;
+    const fallback = `${view.asset.name} has ${verb} ${amt} ${view.contribution >= 0 ? "to your net worth since you bought it." : "since you bought it."}`;
+    stashHandoff({ userMessage: `What did ${view.asset.name} contribute?`, description, figures, fallback, diaryContext });
+    router.push(isDesktop ? "/" : "/chat");
+  }
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -166,6 +192,12 @@ export function ScenarioLookback({ realAssets, displayCurrency }: ScenarioLookba
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>No recorded notes for this position.</div>
           )}
         </div>
+      )}
+
+      {view && (
+        <button onClick={discuss} style={{ marginTop: 14, padding: "8px 0", background: "transparent", color: "var(--accent-text)", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" }}>
+          Discuss with assistant →
+        </button>
       )}
     </div>
   );

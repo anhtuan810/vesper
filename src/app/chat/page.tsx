@@ -7,6 +7,7 @@ import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread"
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { getChatSeed, type ChatSeed, type SeedSource } from "@/lib/chat-seeds";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
+import { takeHandoff } from "@/lib/scenario/handoff";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -191,6 +192,19 @@ export default function ChatPage() {
   useEffect(() => {
     if (isDesktop) router.replace("/");
   }, [isDesktop, router]);
+
+  // Scenario → chat handoff (mobile/tablet). Consume once the user is known and
+  // we're on the mobile chat route (desktop is handled by the chat panel).
+  const handoffDone = useRef(false);
+  useEffect(() => {
+    if (handoffDone.current) return;
+    if (isDesktop === false && user?.id) {
+      handoffDone.current = true;
+      const h = takeHandoff();
+      if (h) session.sendScenario(h);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDesktop, user?.id]);
 
   if (isDesktop !== false) {
     return <div className="min-h-screen bg-bg" />;

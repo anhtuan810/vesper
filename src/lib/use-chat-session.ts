@@ -5,6 +5,7 @@ import { track } from "@vercel/analytics";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { invalidateAssetsCache, invalidateInsightCache } from "@/lib/hooks";
 import { CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX } from "@/lib/constants";
+import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 
 export interface ChatMessage {
   id?: string;
@@ -341,6 +342,46 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setLoading(false);
   }, [loading, userId]);
 
+  // Scenario-narration handoff: posts the summarising user turn + the
+  // guardrailed assistant narration into this single thread. No portfolio
+  // mutation occurs (the route never enters the mutation flow).
+  const sendScenario = useCallback(async (h: ScenarioHandoff) => {
+    if (loading || !userId) return;
+
+    setLoading(true);
+    setThinking(true);
+    setMessages((prev) => [...prev, { from: "user", text: h.userMessage }]);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenarioHandoff: h }),
+      });
+      const data = await res.json();
+      setThinking(false);
+
+      if (!res.ok) {
+        const errText = res.status === 401
+          ? "Session expired. Please refresh the page."
+          : data.message || "Something went wrong. Please try again.";
+        setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
+        setLoading(false);
+        return;
+      }
+
+      const parts = (data.message || "Done.").split("\n---\n").map((p: string) => p.trim()).filter(Boolean);
+      const newMsgs: ChatMessage[] = parts.map((p: string) => ({ from: "assistant" as const, text: p, suggestedReplies: null }));
+      setMessages((prev) => [...prev, ...newMsgs]);
+      if (typeof data.remaining === "number") setRemaining(data.remaining);
+      onNewMessageRef.current?.();
+    } catch {
+      setThinking(false);
+      setMessages((prev) => [...prev, { from: "assistant", text: "Connection issue. Please try again." }]);
+    }
+    setLoading(false);
+  }, [loading, userId]);
+
   return {
     messages,
     input,
@@ -353,6 +394,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     canSend: !loading && !!(input.trim() || imageData.length) && (remaining === null || remaining > 0),
     send,
     sendText,
+    sendScenario,
     clearImage,
     removeImage,
     handlePaste,

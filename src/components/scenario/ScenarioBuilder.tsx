@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
 import type { LiveAsset } from "@/lib/supabase";
 import type { Comparison, Modification, Readout } from "@/lib/scenario/engine";
+import { stashHandoff } from "@/lib/scenario/handoff";
 
 // Semantic category map — mirror of CATEGORY_MAP in src/components/PortfolioTab.tsx
 // (component-local there; kept in sync by hand).
@@ -78,6 +80,7 @@ function buildModifications(real: SandboxAsset[], sandbox: SandboxAsset[]): Modi
 }
 
 export function ScenarioBuilder({ realAssets, displayCurrency, userId, isDesktop }: ScenarioBuilderProps) {
+  const router = useRouter();
   // Clone the real portfolio once, on mount. `real` is the frozen baseline used
   // to diff modifications; `sandbox` is the editable working copy. Real data is
   // never touched.
@@ -195,6 +198,22 @@ export function ScenarioBuilder({ realAssets, displayCurrency, userId, isDesktop
     } finally {
       setSaving(false);
     }
+  }
+
+  // Hand the computed comparison to the assistant for narration (figures only).
+  function discuss() {
+    if (!comparison) return;
+    const c = comparison.current, s = comparison.scenario, d = comparison.deltas;
+    const nw = m(s.netWorthUsd);
+    const delta = m(Math.abs(d.netWorthUsd));
+    const sign = d.netWorthUsd >= 0 ? "+" : "−";
+    const conCur = fmtPct(c.topSingleNameConcentrationPct);
+    const conScn = fmtPct(s.topSingleNameConcentrationPct);
+    const figures = [nw, delta, conCur, conScn];
+    const description = `Adjusted-portfolio scenario. Net worth ${nw} (${sign}${delta} versus current). Single-name concentration ${conCur} → ${conScn}.`;
+    const fallback = `In this scenario your net worth is ${nw}, ${sign}${delta} versus today, with single-name concentration moving from ${conCur} to ${conScn}.`;
+    stashHandoff({ userMessage: "Talk me through the adjustments I sketched.", description, figures, fallback });
+    router.push(isDesktop ? "/" : "/chat");
   }
 
   // ── Grouping ──────────────────────────────────────────────────────────────
@@ -361,6 +380,9 @@ export function ScenarioBuilder({ realAssets, displayCurrency, userId, isDesktop
             </span>
           </div>
         ))}
+        {comparison && (
+          <button onClick={discuss} style={discussButtonStyle}>Discuss with assistant →</button>
+        )}
       </div>
     );
   }
@@ -453,3 +475,4 @@ const statRowStyle: React.CSSProperties = { display: "flex", alignItems: "center
 const textInputStyle: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 13, fontFamily: "var(--font-sans)", outline: "none" };
 const primaryButtonStyle: React.CSSProperties = { padding: "8px 16px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", letterSpacing: "0.01em" };
 const textButtonStyle: React.CSSProperties = { padding: "8px 10px", background: "transparent", color: "var(--text-dim)", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer" };
+const discussButtonStyle: React.CSSProperties = { marginTop: 14, padding: "8px 0", background: "transparent", color: "var(--accent-text)", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" };

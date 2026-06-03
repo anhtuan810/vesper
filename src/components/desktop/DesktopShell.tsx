@@ -7,6 +7,7 @@ import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread"
 import { VitalsContent } from "@/components/vitals/VitalsContent";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
+import { takeHandoff } from "@/lib/scenario/handoff";
 
 const CHAT_WIDTH_KEY = "volnar.chat.width";
 const CHAT_MIN = 300;
@@ -136,6 +137,17 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinking]);
+
+  // Scenario → chat handoff (desktop): the persistent panel consumes the stashed
+  // payload once the user is known and narrates it into this thread.
+  const handoffDone = useRef(false);
+  useEffect(() => {
+    if (handoffDone.current || !user?.id) return;
+    handoffDone.current = true;
+    const h = takeHandoff();
+    if (h) session.sendScenario(h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { validateNarration } from "@/lib/narrate/guardrail";
 import type { Asset } from "./supabase";
 import type { FxRates } from "./fx";
 
@@ -209,19 +210,6 @@ function templateSentence(ctx: AnyCtx): string {
   return formatCtx(ctx).sentence;
 }
 
-// ── Numeric-integrity guard ──────────────────────────────────────────────────
-// Every numeric token in Haiku's output must be one of the pre-formatted
-// figures. A currency symbol or trailing % is kept; trailing separators and
-// whitespace are dropped before comparison.
-
-const NUM_TOKEN = /[€$£]?\s?\d[\d.,]*%?/g;
-const normFigure = (t: string) => t.replace(/[.,\s]+$/, "").replace(/\s+/g, "");
-
-function numbersAllowed(sentence: string, figures: string[]): boolean {
-  const allowed = new Set(figures.map(normFigure));
-  const tokens = sentence.match(NUM_TOKEN) ?? [];
-  return tokens.every((t) => allowed.has(normFigure(t)));
-}
 
 // ── Haiku wrapper ─────────────────────────────────────────────────────────────
 
@@ -262,7 +250,7 @@ async function wrapWithHaiku(
       // deterministic allow-list is replaced by its deterministic fallback, so
       // a shown figure can never diverge from the computed one.
       const sentences = parsed.map((s, i) =>
-        numbersAllowed(s as string, formatted[i].figures) ? (s as string) : fallbacks[i],
+        validateNarration(s as string, formatted[i].figures) ? (s as string) : fallbacks[i],
       );
       return { sentences, inputTokens, outputTokens };
     }

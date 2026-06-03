@@ -80,7 +80,7 @@ export default function ScenariosPage() {
           />
         )}
         {mode === "project" && <ScenarioProjection displayCurrency={currency} isDesktop={!!isDesktop} />}
-        {mode === "lookback" && <ScenarioLookback realAssets={assets} displayCurrency={currency} />}
+        {mode === "lookback" && <ScenarioLookback realAssets={assets} displayCurrency={currency} isDesktop={!!isDesktop} />}
       </div>
     </div>
   );

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { formatMoney, getUsdRate } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
+import { stashHandoff } from "@/lib/scenario/handoff";
 
 // All projected figures come from POST /api/scenarios/project — nothing is
 // recomputed or projected client-side. This component only fetches, formats,
@@ -40,7 +42,8 @@ interface ScenarioProjectionProps {
   isDesktop: boolean;
 }
 
-export function ScenarioProjection({ displayCurrency }: ScenarioProjectionProps) {
+export function ScenarioProjection({ displayCurrency, isDesktop }: ScenarioProjectionProps) {
+  const router = useRouter();
   const rate = getUsdRate(displayCurrency);
   const sym = SYMBOL[displayCurrency] ?? "€";
   const m = useCallback((usd: number) => formatMoney(usd, "USD", displayCurrency), [displayCurrency]);
@@ -143,6 +146,19 @@ export function ScenarioProjection({ displayCurrency }: ScenarioProjectionProps)
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [targetInput, yearInput, solveFreq, parseToUsd]);
 
+  // Hand the computed projection to the assistant for narration (figures only).
+  function discuss() {
+    if (!traj) return;
+    const low = m(traj.trajectory.low), mid = m(traj.trajectory.mid), high = m(traj.trajectory.high);
+    const rateStr = `${(traj.rate * 100).toFixed(1)}%`;
+    const horizonStr = `${horizonYears}`;
+    const figures = [low, mid, high, rateStr, horizonStr];
+    const description = `Forward projection over ${horizonStr} years at a derived ${rateStr} nominal rate. Net worth midpoint ${mid}, range ${low} to ${high}.`;
+    const fallback = `Over ${horizonStr} years at ${rateStr}, your net worth projects to ${mid} at the midpoint, ranging from ${low} to ${high}.`;
+    stashHandoff({ userMessage: `Explain my ${horizonStr}-year projection.`, description, figures, fallback });
+    router.push(isDesktop ? "/" : "/chat");
+  }
+
   // ── Chart data (display-currency numbers) ─────────────────────────────────
   const now = new Date();
   const horizonDate = new Date(now.getTime());
@@ -224,6 +240,12 @@ export function ScenarioProjection({ displayCurrency }: ScenarioProjectionProps)
             Estimate, not advice.
           </div>
         </div>
+      )}
+
+      {traj && (
+        <button onClick={discuss} style={{ marginTop: 14, padding: "8px 0", background: "transparent", color: "var(--accent-text)", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" }}>
+          Discuss with assistant →
+        </button>
       )}
 
       {/* Solve-for */}
