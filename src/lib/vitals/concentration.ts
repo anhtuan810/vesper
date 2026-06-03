@@ -1,4 +1,5 @@
 import type { Asset } from '@/lib/supabase';
+import { computeCurrentBalance } from '@/lib/mortgage';
 import type { Band, Snapshot, VitalScope, VitalUser } from './types';
 
 export const scope: VitalScope = 'both';
@@ -25,8 +26,15 @@ export function compute(
   assets: Asset[],
   snapshots?: Snapshot[],
 ): ConcentrationValue {
-  const gross = assets.reduce((s, a) => s + a.value, 0);
-  if (gross <= 0) {
+  // All-asset base uses EQUITY for real estate (value − current mortgage balance),
+  // the identical formula net worth uses in snapshots / liquidity / drawdown, so the
+  // concentration denominator equals equity net worth. Non-real-estate assets are
+  // unlevered, so their equity equals their value.
+  const equityValue = (a: Asset): number =>
+    a.type === 'real_estate' ? Math.max(0, a.value - computeCurrentBalance(a)) : a.value;
+
+  const base = assets.reduce((s, a) => s + equityValue(a), 0);
+  if (base <= 0) {
     return {
       topPositionPct: 0, topPositionName: '', top3Pct: 0, weeksAboveThreshold: 0,
       topPositionIsRealEstate: false,
@@ -34,11 +42,11 @@ export function compute(
     };
   }
 
-  const sorted = [...assets].sort((a, b) => b.value - a.value);
-  const topPositionPct = (sorted[0].value / gross) * 100;
+  const sorted = [...assets].sort((a, b) => equityValue(b) - equityValue(a));
+  const topPositionPct = (equityValue(sorted[0]) / base) * 100;
   const topPositionName = sorted[0].name;
   const topPositionIsRealEstate = sorted[0].type === 'real_estate';
-  const top3Pct = sorted.slice(0, 3).reduce((s, a) => s + (a.value / gross) * 100, 0);
+  const top3Pct = sorted.slice(0, 3).reduce((s, a) => s + (equityValue(a) / base) * 100, 0);
   const topType = sorted[0].type;
 
   let weeksAboveThreshold = 0;
