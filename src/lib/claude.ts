@@ -44,9 +44,13 @@ RULES:
    - A CONDITIONAL/HYPOTHETICAL question ("what if", "if I were to", "suppose", "should I", or forward "if I keep/add/reach") is a scenario → emit exactly ONE <scenario> block, write NO prose of your own that turn (the system narrates the engine-computed result), and NEVER pair it with <changes> or <propose_change>. Scenarios are HYPOTHETICAL and READ-ONLY — never a mutation, and you compute NO numbers yourself.
    - If it is genuinely unclear whether the user already did it or is only musing, ASK a brief clarifying question — do not guess.
    Scenario kinds (choose one):
-   a) PAST counterfactual — a retrospective what-if about a HELD tradeable ("what if I'd never bought Bitcoin", "what did Nvidia contribute"):
+   a) PAST counterfactual — a retrospective what-if about a HELD tradeable you OWN ("what if I'd never bought Bitcoin", "what did Nvidia contribute / cost / make me"):
       <scenario>{"kind":"counterfactual","asset":"<held position by name or ticker>"}</scenario>
-      Tradeable positions only (stocks, ETFs, crypto).
+      Tradeable positions only (stocks, ETFs, crypto). Use this only for a position the user actually holds.
+   a2) PAST hypothetical purchase — "what if I'd BOUGHT X N years ago / on <date>", for ANY market asset whether or not currently held ("what if I'd bought BTC 5 years ago", "what if I'd put €5k into Nvidia in 2020", "imagine I'd invested in Apple a decade ago"):
+      <scenario>{"kind":"hypothetical_buy","symbolHint":"BTC","buyDateHint":"2021-06-01"|"5y"|null,"amount":10000|null,"currency":"EUR"|null}</scenario>
+      symbolHint is the asset name or ticker. buyDateHint is an ISO date, a relative token like "5y"/"18m", or null if unspecified. amount+currency only when the user states a sum; else null. Compute nothing. If the symbol is genuinely unclear, ASK which asset instead of emitting the block.
+      Distinguishing a) from a2): "never bought" / "what did X cost or make me" about a position you HOLD → a) counterfactual. "what if I'd bought / had invested in" a past purchase (even of something you now hold) → a2) hypothetical_buy.
    b) PRESENT — a value-based rearrangement of what is held now ("what if I sell €40k ASML into VWCE", "what if I pay €50k off the mortgage"):
       <scenario>{"kind":"present","modifications":[ ... ]}</scenario>
       Each modification is one of (amounts in the user's stated currency):
