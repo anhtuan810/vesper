@@ -48,6 +48,28 @@ function subLine(asset: LiveAsset): string {
   return "";
 }
 
+// Compact equity/debt bar for property rows — mirrors the detail screen's
+// ValueComposition (green equity fill, muted debt remainder), sized to occupy the
+// same slot a tradeable row's sparkline would. A property has no daily price
+// series, so this shows how much is owned vs still owed.
+function PropertyEquityBar({ asset }: { asset: LiveAsset }) {
+  const value = asset.value;
+  const debt = computeCurrentBalance(asset); // current mortgage balance (shared helper)
+  const equity = Math.max(0, value - debt);
+  const equityPct = value > 0 ? Math.max(0, Math.min(100, (equity / value) * 100)) : 100;
+  const mortgagePct = 100 - equityPct;
+  return (
+    <div style={{ width: 60, flexShrink: 0 }}>
+      <div style={{ display: "flex", width: "100%", height: 6, borderRadius: 999, overflow: "hidden", background: "var(--surface-elev)" }}>
+        <div style={{ width: `${equityPct}%`, height: "100%", background: "var(--category-property)", borderRadius: mortgagePct > 0 ? "999px 0 0 999px" : 999 }} />
+        {mortgagePct > 0 && (
+          <div style={{ flex: 1, height: "100%", background: "var(--surface-deep)", borderRadius: "0 999px 999px 0" }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asset: LiveAsset; closes?: number[]; valuesSettled?: boolean }) {
   const { closes: fetchedCloses } = usePriceHistory(closesProp != null ? null : asset.symbol, "1W");
   const closes = closesProp ?? fetchedCloses;
@@ -88,6 +110,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
         </div>
 
         {hasSparkline && <MiniSparkline prices={closes} directionUp={chg === null ? undefined : up} />}
+        {asset.type === "real_estate" && <PropertyEquityBar asset={asset} />}
 
         {/* Value + change — flush to the row's right edge, matching the group total */}
         <div className="text-right shrink-0">
