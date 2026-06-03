@@ -1,51 +1,58 @@
 # Scenario classification — manual (live) check list
 
-The deterministic layer — the validation gate, resolvers, date resolver, and
-units/amount normalizer — is covered by `scripts/verify-scenario-intent.ts`
-(plus the per-engine `verify-*` scripts). Those run in the build sandbox with no
-API key or DB.
+Every portfolio-changing what-if now returns ONE answer: the **whole portfolio
+before → after** (net worth, distribution, single-name concentration, and up to
+two contextual vitals the move changes). The kinds collapsed: present,
+counterfactual, and hypothetical_buy are now a single `portfolio_change`; a
+hypothetical past purchase is just a buy valued at TODAY's price (no growth
+curve). `future` (the cone) stays the one separate forward answer.
+
+The deterministic layer — the validation gate, the before→after readout, and the
+resolvers — is covered by `scripts/verify-scenario-intent.ts` and
+`scripts/verify-portfolio-readout.ts` (plus the per-engine `verify-*` scripts).
+Those run in the sandbox with no API key or DB.
 
 What **cannot** run in the sandbox is the **live classification harness**: does
-Claude emit the right `<scenario>` block (correct `kind` and parameters) for
-representative phrasings, and — critically — does it route a *stated completed
-action* to a mutation rather than a scenario? That needs an `ANTHROPIC_API_KEY`
-and a seeded DB (held positions to resolve against), so it is run **by hand**
-against a dev environment.
+Claude emit the right `<scenario>` block, and route a *stated completed action*
+to a mutation rather than a scenario? That needs an `ANTHROPIC_API_KEY` and a
+seeded DB, so it is run **by hand**.
 
 ## How to run by hand
 
-1. Point a dev build at a test user whose portfolio holds, e.g., **NVIDIA
-   (NVDA)**, **Bitcoin (BTC)**, a **Home** (real estate, with a mortgage), and
-   **Savings** (cash).
-2. Send each phrasing below in chat. Confirm the **expected routing** — inspect
-   the emitted `<scenario>`/`<changes>` tag (server logs) and the rendered card.
-3. The deterministic gate is the backstop: even on a misread, an implausible or
-   unresolvable parameter must **ask**, never compute a confident wrong answer.
+1. Point a dev build at a test user holding e.g. **NVIDIA (NVDA)**, **Bitcoin
+   (BTC)**, a **Home** (real estate, mortgaged), and **Savings** (cash).
+2. Send each phrasing; confirm the routing (server logs) and the rendered card.
+3. The gate is the backstop: an implausible/unresolvable parameter must **ask**,
+   never compute a confident wrong answer.
 
-## ~15 representative phrasings
+## Representative phrasings
 
-| # | Phrasing | Expected routing |
-|---|----------|------------------|
-| 1 | "what if I'd bought 1 BTC 5 years ago" | `hypothetical_buy`, **units = 1** (one bitcoin — NOT €1) |
-| 2 | "what if I'd put €5,000 into Nvidia in 2020" | `hypothetical_buy`, amount = 5000, currency EUR, buyDateHint 2020 |
-| 3 | "what if I'd put €1 in BTC" | `hypothetical_buy` → gate **clarifies** (sub-floor amount, likely units) |
-| 4 | "what if I'd bought Apple a decade ago" | `hypothetical_buy`, no amount → default €10,000 stated |
-| 5 | "what if I'd bought 100 shares of Tesla in 2019" | `hypothetical_buy`, units = 100 (Tesla not held — still resolves via market) |
-| 6 | "imagine I'd invested in Dogecoin 3 years ago" | `hypothetical_buy`, symbolHint Dogecoin → DOGE-USD |
-| 7 | "what if I'd never bought Nvidia" | `counterfactual` (HELD look-back), asset NVIDIA |
-| 8 | "what did Bitcoin make me" | `counterfactual`, asset Bitcoin |
-| 9 | "what if I'd bought my Nvidia 5 years earlier" | `hypothetical_buy` (a *purchase* what-if, even though held) |
-| 10 | "what if I sell €40k of Nvidia into VWCE" | `present`, sell + add modifications |
-| 11 | "what if I pay €50k off the mortgage" | `present`, payMortgage |
-| 12 | "what if I add €1,500 a month for 10 years" | `future` trajectory, contribution 1500 monthly |
-| 13 | "what would it take to reach €1.5M by 2040" | `future` solve, target 1.5M, year 2040 |
-| 14 | "I sold 2 ASML yesterday" | **mutation** via `<changes>`/`<propose_change>` — NOT a scenario |
-| 15 | "what if I'd bought Xyzzy in 2018" | `hypothetical_buy` → gate **clarifies** (symbol unresolvable) |
+| # | Phrasing | Expected |
+|---|----------|----------|
+| 1 | "what if I buy 2 BTC" | `portfolio_change` (buy, units 2) → **portfolio before → after**; concentration + **drawdown** surface, leverage/liquidity suppressed |
+| 2 | "what if the market drops 30%" | `portfolio_change` (shock markets 30) → before → after; net worth + distribution shift, drawdown moves |
+| 3 | "what if I'd bought 2 BTC 2 years ago" | `portfolio_change` (buy, units 2) — valued at **today's price**; same before → after card, NO growth curve |
+| 4 | "what if I put €5,000 into Nvidia" | `portfolio_change` (buy, amount 5000 EUR) → before → after |
+| 5 | "what if I'd put €1 in BTC" | gate **clarifies** ("1 BTC units, or €1?") — sub-floor amount, likely units |
+| 6 | "what if I sell €40k of Nvidia" | `portfolio_change` (sell) → before → after |
+| 7 | "what if I pay €50k off the mortgage" | `portfolio_change` (pay_mortgage) → **leverage + liquidity** surface, drawdown suppressed |
+| 8 | "what if I had no Nvidia" | `portfolio_change` (remove/sell NVIDIA) → before → after |
+| 9 | "what if I'd bought 100 shares of Tesla" | `portfolio_change` (buy units 100); Tesla not held → resolves via market, added at today's price |
+| 10 | "what if I buy Xyzzy" | gate **clarifies** (symbol unresolvable) — no card |
+| 11 | "what if I add €1,500 a month for 10 years" | `future` trajectory → the cone |
+| 12 | "what would it take to reach €1.5M by 2040" | `future` solve |
+| 13 | "I sold 2 ASML yesterday" | **mutation** via `<changes>`/`<propose_change>` — NOT a scenario |
+| 14 | "buy 2 BTC" (just a quantity) | units = 2 (a bare number next to an asset is a QUANTITY, not money) |
+| 15 | "what if crypto crashes 50%" | `portfolio_change` (shock crypto 50) → before → after |
 
 ## Sanity outcomes to verify
 
-- #1 grows **one bitcoin**, not a €1 investment.
-- #3 and #15 **ask a clarifying question** and do not render a card.
-- #14 changes the portfolio (mutation), and never emits `<scenario>`.
-- Every computed card shows figures consistent with the narration (guardrail),
-  and hypothetical-buy framing is standalone growth — never overlaid on net worth.
+- #1, #2, #3 all render the **portfolio before → after** card — net worth + a
+  before/after allocation bar that visibly shifts + concentration + the right
+  contextual vitals. No single-asset growth or regret line charts anywhere.
+- #1/#3: a crypto buy surfaces **concentration + drawdown**; #7: a mortgage
+  paydown surfaces **leverage + liquidity**. Vitals that don't move are hidden.
+- #3 uses today's price (it is identical to #1 — the "2 years ago" is ignored).
+- #5 and #10 **ask**, no card.
+- #13 changes the portfolio (mutation) and never emits `<scenario>`.
+- Card figures match the narration (numeric guardrail), nl-NL, display currency.
