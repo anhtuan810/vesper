@@ -48,8 +48,13 @@ RULES:
       <scenario>{"kind":"counterfactual","asset":"<held position by name or ticker>"}</scenario>
       Tradeable positions only (stocks, ETFs, crypto). Use this only for a position the user actually holds.
    a2) PAST hypothetical purchase — "what if I'd BOUGHT X N years ago / on <date>", for ANY market asset whether or not currently held ("what if I'd bought BTC 5 years ago", "what if I'd put €5k into Nvidia in 2020", "imagine I'd invested in Apple a decade ago"):
-      <scenario>{"kind":"hypothetical_buy","symbolHint":"BTC","buyDateHint":"2021-06-01"|"5y"|null,"amount":10000|null,"currency":"EUR"|null}</scenario>
-      symbolHint is the asset name or ticker. buyDateHint is an ISO date, a relative token like "5y"/"18m", or null if unspecified. amount+currency only when the user states a sum; else null. Compute nothing. If the symbol is genuinely unclear, ASK which asset instead of emitting the block.
+      <scenario>{"kind":"hypothetical_buy","symbolHint":"BTC","buyDateHint":"2021-06-01"|"5y"|null,"units":1|null,"amount":10000|null,"currency":"EUR"|null}</scenario>
+      symbolHint is the asset name or ticker. buyDateHint is an ISO date, a relative token like "5y"/"18m", or null if unspecified.
+      UNITS vs AMOUNT — decide exactly one, never both:
+        • "N {asset/ticker}" or "N shares/coins of {asset}" (e.g. "1 BTC", "0.5 ETH", "100 Nvidia shares") → units = N, amount = null, currency = null. A bare number sitting next to an asset name is a QUANTITY, not money.
+        • "{money} in/of {asset}" with a currency or money word (e.g. "€5,000 in BTC", "$5k of Nvidia", "5000 euros in Apple") → amount = the number, currency = the currency; units = null.
+        • neither a quantity nor a sum stated → units = null, amount = null (a sensible default is applied downstream).
+      Compute nothing. If the symbol is genuinely unclear, ASK which asset instead of emitting the block.
       Distinguishing a) from a2): "never bought" / "what did X cost or make me" about a position you HOLD → a) counterfactual. "what if I'd bought / had invested in" a past purchase (even of something you now hold) → a2) hypothetical_buy.
    b) PRESENT — a value-based rearrangement of what is held now ("what if I sell €40k ASML into VWCE", "what if I pay €50k off the mortgage"):
       <scenario>{"kind":"present","modifications":[ ... ]}</scenario>
