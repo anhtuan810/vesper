@@ -14,7 +14,7 @@ import { applyPortfolioChanges, ValueModeError } from "@/lib/apply-changes";
 import { generateMarketContext } from "@/lib/market-context";
 import { generateInsight } from "@/lib/insight-generator";
 import { validatePortfolioChanges } from "@/lib/validations";
-import { geocodeAddress } from "@/lib/geocode";
+import { geocodeAddress, compareEnteredAddress } from "@/lib/geocode";
 import { venueChipsFor } from "@/lib/venues";
 import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 import {
@@ -713,8 +713,10 @@ export async function POST(req: NextRequest) {
       const proposedAddress = proposeAddressRaw.trim();
       const geo = await geocodeAddress(proposedAddress, null);
 
+      // No result, or a partial match missing a house number, is not confirmable —
+      // ask the user to re-enter rather than forcing the geocoder's best guess.
       if (!geo || !geo.hasHouseNumber) {
-        const clarification = `I couldn't find "${proposedAddress}" — could you double-check the spelling or share a postcode?`;
+        const clarification = `I couldn't confirm "${proposedAddress}" — could you re-enter it with the street, house number, and postcode?`;
         await supabase.from("messages").insert(timestampedPair(
           { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
           { user_id: userId, role: "assistant", content: clarification },
@@ -722,8 +724,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: clarification, assets: null, remaining: CHAT_DAILY_LIMIT - used });
       }
 
+      // Flag when the geocoder changed the entered postcode or house number instead
+      // of presenting its best guess as a clean match. The "Resolved address:" line
+      // is always included so the commit turn can still parse the canonical address.
+      const match = compareEnteredAddress(proposedAddress, geo);
       const canonicalLine = `Resolved address: ${geo.canonicalAddress}`;
-      const proposalText = displayText ? `${displayText}\n\n${canonicalLine}` : canonicalLine;
+      let confirmationBody = canonicalLine;
+      if (match.changed) {
+        const enteredBits = [match.enteredHouseNumber, match.enteredPostcode].filter(Boolean).join(" ");
+        const enteredPhrase = enteredBits ? `You entered ${enteredBits}, which I couldn't match exactly. ` : "I couldn't match that exactly. ";
+        confirmationBody = `${enteredPhrase}The closest match is below — please confirm it's right or send a correction.\n${canonicalLine}`;
+      }
+      const proposalText = displayText ? `${displayText}\n\n${confirmationBody}` : confirmationBody;
       // Address-confirmation chips are distinct from the commit step's
       // "Confirm and save". Confirming the address only advances to the price
       // question — it never saves the property.

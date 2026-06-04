@@ -13,6 +13,10 @@ export type GeocodeResult = {
   latitude: number;
   longitude: number;
   hasHouseNumber: boolean;
+  // Resolved postcode / house number as returned by the geocoder, so callers can
+  // compare them to what the user actually typed and flag a changed match.
+  postcode: string | null;
+  houseNumber: string | null;
 };
 
 const cache = new Map<string, GeocodeResult>();
@@ -109,6 +113,8 @@ export async function geocodeAddress(
         latitude: parseFloat(data[0].lat),
         longitude: parseFloat(data[0].lon),
         hasHouseNumber: !!data[0].address?.house_number,
+        postcode: data[0].address?.postcode ?? null,
+        houseNumber: data[0].address?.house_number ?? null,
       };
       cache.set(cacheKey, result);
       return result;
@@ -130,7 +136,62 @@ export async function geocodeAddress(
     latitude: parseFloat(data[0].lat),
     longitude: parseFloat(data[0].lon),
     hasHouseNumber: !!data[0].address?.house_number,
+    postcode: data[0].address?.postcode ?? null,
+    houseNumber: data[0].address?.house_number ?? null,
   };
   cache.set(cacheKey, result);
   return result;
+}
+
+// ── Entered-vs-resolved comparison ───────────────────────────────────────────
+// The geocoder returns its best guess even for a wrong or ambiguous input (e.g.
+// "5629NJ" silently resolved to "5625NJ"). Compare the resolved postcode and
+// house number to what the user typed so a changed match can be flagged instead
+// of presented as clean. Pure / no I/O. Conservative: only reports `changed`
+// when BOTH sides expose a comparable token and they differ — a field we cannot
+// parse from the user's text is never treated as a mismatch (no false flags).
+
+export interface AddressMatch {
+  changed: boolean;
+  enteredPostcode: string | null;
+  resolvedPostcode: string | null;
+  enteredHouseNumber: string | null;
+  resolvedHouseNumber: string | null;
+}
+
+// Strip whitespace and upper-case — postcodes compare regardless of spacing/case.
+const squash = (s: string): string => s.replace(/\s+/g, "").toUpperCase();
+
+// First postcode-looking token in the text (NL "1234 AB" form).
+function extractEnteredPostcode(entered: string): string | null {
+  const m = entered.match(/\b\d{4}\s?[A-Za-z]{2}\b/);
+  return m ? squash(m[0]) : null;
+}
+
+// House number = the trailing number on the street segment (before the first
+// comma), so postcode digits elsewhere in the string don't get mistaken for it.
+function extractEnteredHouseNumber(entered: string): string | null {
+  const firstSegment = entered.split(",")[0] ?? "";
+  const m = firstSegment.match(/(\d+\s?[a-zA-Z]?)\s*$/);
+  return m ? squash(m[1]) : null;
+}
+
+export function compareEnteredAddress(entered: string, resolved: GeocodeResult): AddressMatch {
+  const enteredPostcode = extractEnteredPostcode(entered);
+  const resolvedPostcode = resolved.postcode ? squash(resolved.postcode) : null;
+  const enteredHouseNumber = extractEnteredHouseNumber(entered);
+  const resolvedHouseNumber = resolved.houseNumber ? squash(resolved.houseNumber) : null;
+
+  const postcodeChanged =
+    enteredPostcode != null && resolvedPostcode != null && enteredPostcode !== resolvedPostcode;
+  const houseChanged =
+    enteredHouseNumber != null && resolvedHouseNumber != null && enteredHouseNumber !== resolvedHouseNumber;
+
+  return {
+    changed: postcodeChanged || houseChanged,
+    enteredPostcode,
+    resolvedPostcode,
+    enteredHouseNumber,
+    resolvedHouseNumber,
+  };
 }
