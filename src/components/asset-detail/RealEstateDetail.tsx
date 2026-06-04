@@ -7,6 +7,7 @@ import { PropertyMap } from "@/components/PropertyMap";
 import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
 import { WhatIfPill } from "@/components/WhatIfPill";
+import { EstimatedValueChart } from "@/components/asset-detail/EstimatedValueChart";
 import { formatDate } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
@@ -218,6 +219,9 @@ export function RealEstateDetail({ asset }: Props) {
             </div>
           </>
         )}
+
+        {/* Per-year indicative value chart (NL only; self-hides when unavailable) */}
+        <EstimatedValueChart asset={asset} />
 
         {/* Mortgage section */}
         {hasMortgage && (
