@@ -3,6 +3,7 @@ import { fetchYahooPrice } from "./prices-server";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { normalizeCryptoSymbol } from "./symbol-aliases";
 import { getUsdRates } from "./fx";
+import { estimatePropertyValue } from "./property-estimate-resolve";
 
 export type ProposalChange = {
   action: "add" | "edit" | "remove";
@@ -143,7 +144,22 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
       const address = typeof proposal.address === "string" ? proposal.address : null;
       if (address) parts.push(`at ${address}`);
 
-      return parts.length > 0 ? `Add ${name} — ${parts.join(", ")}` : `Add ${name}`;
+      const base = parts.length > 0 ? `Add ${name} — ${parts.join(", ")}` : `Add ${name}`;
+
+      // Indicative current value: a logged purchase (price + date) but no stated
+      // value. The figure is computed by the deterministic estimate engine — the
+      // model never produces it. Falls through silently when unavailable so the
+      // assistant can ask the user for a value instead.
+      if (value == null && buyPrice != null && proposal.buy_date) {
+        const country = typeof proposal.country === "string" ? proposal.country : null;
+        const est = await estimatePropertyValue({ address, country, buyPrice, buyDate: proposal.buy_date });
+        if (est.available && est.currentEstimate != null) {
+          const since = est.clamped ? "1995" : String(proposal.buy_date).slice(0, 4);
+          return `${base}. Current value: about ${money(est.currentEstimate)} — indicative, based on ${est.regionName} price trends since ${since}, not an appraisal. Confirm, or give your own figure.`;
+        }
+      }
+
+      return base;
     }
 
     const isTradeable = TRADEABLE_TYPES_SET.has(proposal.type ?? "");

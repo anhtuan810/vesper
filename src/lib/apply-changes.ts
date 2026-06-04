@@ -6,6 +6,7 @@ import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
 import { isCostBasisOnlyEdit, applyCostBasisOnly } from "./cost-basis";
+import { estimatePropertyValue } from "./property-estimate-resolve";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 
@@ -271,6 +272,30 @@ export async function applyPortfolioChanges({
       const resolvedLat: number | null = change.latitude ?? null;
       const resolvedLng: number | null = change.longitude ?? null;
 
+      // Indicative current value: a property add with a logged purchase (price +
+      // date) but no stated value gets a deterministic estimate from the regional
+      // CBS PBK index. Server-authoritative — the figure is computed here, not by
+      // the model. An override (the user's own figure) arrives as change.value and
+      // skips this entirely. Unavailable estimates leave the value untouched.
+      let valueProvenance: string | null = null;
+      if (
+        isRealEstate &&
+        (change.value == null || change.value === 0) &&
+        resolvedBuyPrice != null &&
+        change.buy_date
+      ) {
+        const est = await estimatePropertyValue({
+          address: change.address ?? null,
+          country: change.country ?? null,
+          buyPrice: resolvedBuyPrice,
+          buyDate: change.buy_date,
+        });
+        if (est.available && est.currentEstimate != null) {
+          resolvedValue = est.currentEstimate;
+          valueProvenance = `Initial value set from indicative regional estimate (${est.regionName}, ${est.asOfPeriod}${est.clamped ? ", indexed from 1995" : ""}).`;
+        }
+      }
+
       const { data: inserted, error } = await supabase.from("assets").insert({
         name: resolvedAssetName,
         type: change.type || "other",
@@ -314,7 +339,7 @@ export async function applyPortfolioChanges({
           before_units: null,
           after_units: change.units || null,
           currency: resolvedCurrency,
-          personal_context: change.personal_context || contextNote,
+          personal_context: valueProvenance || change.personal_context || contextNote,
           portfolio_total: runningTotal,
           occurred_at: addOccurredAt,
         }).select("id").single();

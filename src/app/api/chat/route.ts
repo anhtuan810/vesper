@@ -22,6 +22,7 @@ import {
   sanitizeChips, stripTags, extractTag, timestampedPair,
 } from "@/lib/chat-helpers";
 import { resolveProposal } from "@/lib/proposal-resolver";
+import { extractNumbers, validateNarration } from "@/lib/narrate/guardrail";
 import { narrateScenario } from "@/lib/scenario/narrate";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import { assembleProject } from "@/lib/scenario/project-assemble";
@@ -811,8 +812,19 @@ export async function POST(req: NextRequest) {
           resolvedLines.push(line);
         }
 
+        // Narration guard for property proposals: the indicative value is computed
+        // by the estimate engine and rendered in the server's Resolved block. If
+        // the model's prose introduces any number the engine didn't produce (e.g. a
+        // fabricated valuation), drop the prose and keep only the deterministic
+        // block — the assistant can never surface an unverified property figure.
+        let safeDisplayText = displayText;
+        const hasRealEstate = proposals.some((p) => p?.type === "real_estate");
+        if (hasRealEstate && displayText && !validateNarration(displayText, extractNumbers(resolvedLines.join(" ")))) {
+          safeDisplayText = "";
+        }
+
         const resolvedBlock = `Resolved:\n${resolvedLines.join("\n")}`;
-        const proposalText = displayText ? `${displayText}\n\n${resolvedBlock}` : resolvedBlock;
+        const proposalText = safeDisplayText ? `${safeDisplayText}\n\n${resolvedBlock}` : resolvedBlock;
         const proposalChips = ["Confirm and save", "No, let me correct it"];
 
         await supabase.from("messages").insert(timestampedPair(
