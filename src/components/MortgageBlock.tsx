@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween, type MortgageProjection } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney } from "@/lib/money";
@@ -47,6 +47,8 @@ function buildPayoffPath(
 
 export function MortgageBlock({ asset }: Props) {
   const displayCurrency = useDisplayCurrency();
+  // Index of the scrubbed point on the projected-balance curve (null = not scrubbing).
+  const [scrubIdx, setScrubIdx] = useState<number | null>(null);
   const {
     mortgage_rate: rate,
     monthly_payment: payment,
@@ -126,6 +128,20 @@ export function MortgageBlock({ asset }: Props) {
   const startYear = startDate ? startDate.getFullYear().toString() : "";
   const endYear = projection?.payoffDate ? projection.payoffDate.getFullYear().toString() : "";
 
+  // Scrub geometry — snaps to the nearest point on the projected-balance series,
+  // using the SAME toX/toY mapping as buildPayoffPath so the marker sits on the
+  // curve. Reading the series only; no mortgage math is recomputed.
+  const SCRUB_PAD = 4;
+  const scrubMaxBalance = curve.length >= 2 ? (curve[0].balance || 1) : 1;
+  const scrubI = showCurve && scrubIdx != null ? Math.min(scrubIdx, curve.length - 1) : null;
+  const scrubX = scrubI != null ? (scrubI / (curve.length - 1)) * W : null;
+  const scrubY = scrubI != null ? H - SCRUB_PAD - (curve[scrubI].balance / scrubMaxBalance) * (H - SCRUB_PAD * 2) : null;
+  const handleScrub = (clientX: number, rect: DOMRect) => {
+    if (curve.length < 2 || rect.width <= 0) return;
+    const relX = (clientX - rect.left) / rect.width;
+    setScrubIdx(Math.min(Math.max(Math.round(relX * (curve.length - 1)), 0), curve.length - 1));
+  };
+
   const typeLabel = type === "annuity" ? "Annuity"
     : type === "linear" ? "Linear"
     : type === "interest_only" ? "Interest only"
@@ -199,22 +215,38 @@ export function MortgageBlock({ asset }: Props) {
           padding: 12,
           marginTop: -14,
         }}>
-          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block" }}>
-            <defs>
-              <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
-                <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <path d={area} fill={`url(#${gradId})`} />
-            <path d={line} fill="none" stroke={strokeColor} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-            {todayX > 0 && (
-              <>
-                <line x1={todayX} y1={0} x2={todayX} y2={H} stroke="var(--text)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.35} />
-                <circle cx={todayX} cy={todayY} r={3.5} fill={strokeColor} />
-              </>
-            )}
-          </svg>
+          {/* Interaction target: touch/pointer scrubbing along the payoff curve */}
+          <div
+            style={{ touchAction: "none" }}
+            onMouseMove={(e) => handleScrub(e.clientX, e.currentTarget.getBoundingClientRect())}
+            onMouseLeave={() => setScrubIdx(null)}
+            onTouchStart={(e) => handleScrub(e.touches[0].clientX, e.currentTarget.getBoundingClientRect())}
+            onTouchMove={(e) => handleScrub(e.touches[0].clientX, e.currentTarget.getBoundingClientRect())}
+            onTouchEnd={() => setScrubIdx(null)}
+          >
+            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block" }}>
+              <defs>
+                <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
+                  <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <path d={area} fill={`url(#${gradId})`} />
+              <path d={line} fill="none" stroke={strokeColor} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              {todayX > 0 && (
+                <>
+                  <line x1={todayX} y1={0} x2={todayX} y2={H} stroke="var(--text)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.35} />
+                  <circle cx={todayX} cy={todayY} r={3.5} fill={strokeColor} />
+                </>
+              )}
+              {scrubX !== null && scrubY !== null && (
+                <>
+                  <line x1={scrubX} y1={0} x2={scrubX} y2={H} stroke="var(--text-dim)" strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
+                  <circle cx={scrubX} cy={scrubY} r={3.5} fill={strokeColor} />
+                </>
+              )}
+            </svg>
+          </div>
           <div style={{
             display: "flex",
             justifyContent: "space-between",
@@ -226,19 +258,33 @@ export function MortgageBlock({ asset }: Props) {
             fontFeatureSettings: '"tnum" 1',
             fontFamily: "var(--font-sans)",
           }}>
-            <span>{startYear}</span>
-            <span style={{
-              background: "var(--accent-soft)",
-              color: "var(--accent-text)",
-              fontWeight: 500,
-              padding: "2px 8px",
-              borderRadius: 999,
-              fontSize: 10,
-              letterSpacing: "0.04em",
-            }}>
-              TODAY
-            </span>
-            <span>{endYear}</span>
+            {scrubI !== null ? (
+              <>
+                {/* Readout: projected balance + date at the scrubbed point */}
+                <span style={{ color: "var(--text)", fontWeight: 500 }}>
+                  {formatMoney(curve[scrubI].balance, asset.currency || "USD", displayCurrency)}
+                </span>
+                <span>
+                  {curve[scrubI].date.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                </span>
+              </>
+            ) : (
+              <>
+                <span>{startYear}</span>
+                <span style={{
+                  background: "var(--accent-soft)",
+                  color: "var(--accent-text)",
+                  fontWeight: 500,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  fontSize: 10,
+                  letterSpacing: "0.04em",
+                }}>
+                  TODAY
+                </span>
+                <span>{endYear}</span>
+              </>
+            )}
           </div>
         </div>
       )}
