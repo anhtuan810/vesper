@@ -16,8 +16,10 @@ import type { IndexPoint } from "@/lib/property-estimate";
 const CBS = {
   odata4: "https://datasets.cbs.nl/odata/v1/CBS/85792NED",
   legacy: "https://opendata.cbs.nl/ODataApi/odata/85792NED",
-  // The PBK index measure — matched by its title, then resolved to its code/key.
-  measureMatch: /prijsindex bestaande koopwoningen/i,
+  // The PBK measure published by 85792NED is titled "Prijsindex verkoopprijzen".
+  // It is NOT the table-title group header "Prijsindex bestaande koopwoningen",
+  // which is an empty-Key group row — match the measure, not the header.
+  measureMatch: /prijsindex\s+verkoopprijzen/i,
   // Cities that have their own RegioS code; everything else uses the province.
   bigCities: ["Amsterdam", "Rotterdam", "'s-Gravenhage", "Utrecht"],
   // CBS yearly period identifier, e.g. "2024JJ00" (JJ = whole year).
@@ -33,6 +35,26 @@ export interface RegionIndex {
 }
 
 const norm = (s: unknown): string => String(s ?? "").trim().toLowerCase();
+
+// CBS RegioS Titles carry a trailing group marker, e.g. "Noord-Brabant (PV)",
+// "Amsterdam (GM)", "Nederland (LD)". Strip that suffix (and surrounding space)
+// before comparing to the chosen region name.
+const stripGroupMarker = (title: unknown): string =>
+  String(title ?? "").replace(/\s*\([A-Za-z]{1,4}\)\s*$/, "").trim();
+
+// Match a RegioS Title to a region name, ignoring the group marker and case.
+const regionTitleMatches = (title: unknown, name: string): boolean =>
+  norm(stripGroupMarker(title)) === norm(name);
+
+// A measure row is the real PBK measure only when it both matches the title regex
+// AND has a non-empty code (Identifier for v4, Key for legacy). The group header
+// "Prijsindex bestaande koopwoningen" has an empty Key and must be skipped.
+const hasCode = (x: Record<string, unknown>): boolean =>
+  (typeof x.Identifier === "string" && x.Identifier !== "") ||
+  (typeof x.Key === "string" && x.Key !== "");
+
+const isMeasureRow = (x: Record<string, unknown>): boolean =>
+  CBS.measureMatch.test(String(x.Title ?? "")) && hasCode(x);
 
 async function fetchJson(url: string): Promise<unknown> {
   try {
@@ -88,14 +110,14 @@ function buildRegionIndex(
 async function resolveRegionCode4(name: string): Promise<string | null> {
   const list = listOf(await fetchJson(`${CBS.odata4}/RegioS`));
   if (!list) return null;
-  const m = list.find((r) => norm(r.Title) === norm(name));
+  const m = list.find((r) => regionTitleMatches(r.Title, name));
   return typeof m?.Identifier === "string" && m.Identifier ? m.Identifier : null;
 }
 
 async function resolveMeasureCode4(): Promise<string | null> {
   const list = listOf(await fetchJson(`${CBS.odata4}/MeasureCodes`));
   if (!list) return null;
-  const m = list.find((x) => CBS.measureMatch.test(String(x.Title ?? "")));
+  const m = list.find(isMeasureRow);
   return typeof m?.Identifier === "string" && m.Identifier ? m.Identifier : null;
 }
 
@@ -111,14 +133,14 @@ async function fetchSeries4(regionCode: string, measureCode: string): Promise<Re
 async function resolveRegionKeyLegacy(name: string): Promise<string | null> {
   const list = listOf(await fetchJson(`${CBS.legacy}/RegioS`));
   if (!list) return null;
-  const m = list.find((r) => norm(r.Title) === norm(name));
+  const m = list.find((r) => regionTitleMatches(r.Title, name));
   return typeof m?.Key === "string" && m.Key ? m.Key : null;
 }
 
 async function resolveMeasureKeyLegacy(): Promise<string | null> {
   const list = listOf(await fetchJson(`${CBS.legacy}/DataProperties`));
   if (!list) return null;
-  const m = list.find((x) => CBS.measureMatch.test(String(x.Title ?? "")));
+  const m = list.find(isMeasureRow);
   return typeof m?.Key === "string" && m.Key ? m.Key : null;
 }
 
@@ -181,22 +203,9 @@ export async function getRegionIndex(
   const name = targetRegionName(gemeente, province);
   if (!name) return null;
 
-  // OData4 first.
-  const code4 = await resolveRegionCode4(name);
-  if (code4) {
-    const cached = await readCache(code4);
-    if (cached) return cached;
-    const measure = await resolveMeasureCode4();
-    if (measure) {
-      const series = await fetchSeries4(code4, measure);
-      if (series) {
-        await writeCache(series);
-        return series;
-      }
-    }
-  }
-
-  // Legacy fallback.
+  // Legacy OData (opendata.cbs.nl) is the working source for 85792NED. The v4
+  // base (datasets.cbs.nl) currently 404s for this table, so it stays only as an
+  // inert fallback below.
   const keyL = await resolveRegionKeyLegacy(name);
   if (keyL) {
     const cached = await readCache(keyL);
@@ -207,6 +216,22 @@ export async function getRegionIndex(
       if (seriesL) {
         await writeCache(seriesL);
         return seriesL;
+      }
+    }
+  }
+
+  // OData4 fallback (inert while datasets.cbs.nl 404s for this table; kept so the
+  // path lights up automatically if/when the v4 publication appears).
+  const code4 = await resolveRegionCode4(name);
+  if (code4) {
+    const cached = await readCache(code4);
+    if (cached) return cached;
+    const measure = await resolveMeasureCode4();
+    if (measure) {
+      const series = await fetchSeries4(code4, measure);
+      if (series) {
+        await writeCache(series);
+        return series;
       }
     }
   }
@@ -325,9 +350,9 @@ export async function diagnoseRegionIndex(
     dbg.v4.regioCount = list?.length ?? null;
     if (list) {
       dbg.v4.regioMatches = list
-        .filter((x) => String(x.Title ?? "").toLowerCase().includes(nameLc) || norm(x.Title) === norm(chosenRegionName))
+        .filter((x) => String(x.Title ?? "").toLowerCase().includes(nameLc) || regionTitleMatches(x.Title, chosenRegionName))
         .map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
-      const exact = list.find((x) => norm(x.Title) === norm(chosenRegionName));
+      const exact = list.find((x) => regionTitleMatches(x.Title, chosenRegionName));
       dbg.v4.regioMatchFound = !!exact;
       if (exact && typeof exact.Identifier === "string") dbg.chosenRegionCode = exact.Identifier;
     }
@@ -337,7 +362,7 @@ export async function diagnoseRegionIndex(
     dbg.v4.measureCount = mList?.length ?? null;
     if (mList) {
       dbg.v4.measures = mList.map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
-      const mm = mList.find((x) => CBS.measureMatch.test(String(x.Title ?? "")));
+      const mm = mList.find(isMeasureRow);
       dbg.v4.measureMatched = mm && typeof mm.Identifier === "string" ? mm.Identifier : null;
     }
     if (dbg.chosenRegionCode && dbg.v4.measureMatched) {
@@ -357,9 +382,9 @@ export async function diagnoseRegionIndex(
     let legacyKey: string | null = null;
     if (list) {
       dbg.legacy.regioMatches = list
-        .filter((x) => String(x.Title ?? "").toLowerCase().includes(nameLc) || norm(x.Title) === norm(chosenRegionName))
+        .filter((x) => String(x.Title ?? "").toLowerCase().includes(nameLc) || regionTitleMatches(x.Title, chosenRegionName))
         .map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
-      const exact = list.find((x) => norm(x.Title) === norm(chosenRegionName));
+      const exact = list.find((x) => regionTitleMatches(x.Title, chosenRegionName));
       dbg.legacy.regioMatchFound = !!exact;
       if (exact && typeof exact.Key === "string") legacyKey = exact.Key;
       if (dbg.chosenRegionCode == null && legacyKey) dbg.chosenRegionCode = legacyKey;
@@ -371,7 +396,7 @@ export async function diagnoseRegionIndex(
     let legacyMeasure: string | null = null;
     if (mList) {
       dbg.legacy.measures = mList.map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
-      const mm = mList.find((x) => CBS.measureMatch.test(String(x.Title ?? "")));
+      const mm = mList.find(isMeasureRow);
       legacyMeasure = mm && typeof mm.Key === "string" ? mm.Key : null;
       dbg.legacy.measureMatched = legacyMeasure;
     }
