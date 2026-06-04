@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { resolveRegion } from "@/lib/property-region";
-import { getRegionIndex } from "@/lib/cbs-pbk";
+import { getRegionIndex, targetRegionName } from "@/lib/cbs-pbk";
 import { estimateValue, estimateSeries, parseBuyYear, clampBuyYear } from "@/lib/property-estimate";
 
 // GET /api/property-estimate?assetId=<id> — deterministic CBS-PBK value estimate
@@ -57,6 +57,9 @@ export async function GET(request: NextRequest) {
       available: true as const,
       currentEstimate: Math.round(currentEstimate),
       series: series.map((p) => ({ year: p.year, value: Math.round(p.value) })),
+      // Human-readable region actually used for the index (G4 city or province),
+      // from the already-resolved region — no second lookup.
+      regionName: targetRegionName(region.gemeente, region.province) ?? regionIndex.regionCode,
       regionCode: regionIndex.regionCode,
       asOfPeriod: regionIndex.asOfPeriod,
       clamped: clampBuyYear(requestedYear).clamped,
