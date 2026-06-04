@@ -14,7 +14,8 @@ import { LeverageTrend } from "@/components/vitals/charts/LeverageTrend";
 import { DrawdownBars } from "@/components/vitals/charts/DrawdownBars";
 import { CashWaterfall } from "@/components/vitals/charts/CashWaterfall";
 import { RealGrowthDualLine } from "@/components/vitals/charts/RealGrowthDualLine";
-import { useVitals } from "@/lib/hooks";
+import { useVitals, useUser, useAssets } from "@/lib/hooks";
+import { AllocationDonut } from "@/components/vitals/charts/AllocationDonut";
 import type { VitalResult } from "@/lib/vitals/index";
 import type { VitalScope } from "@/lib/vitals/types";
 import type { ConcentrationValue } from "@/lib/vitals/concentration";
@@ -721,6 +722,11 @@ export function VitalsContent({
 }: VitalsContentProps = {}) {
   const router = useRouter();
   const { data, isLoading, error } = useVitals();
+  // Full live holdings (with mortgage fields) for the allocation donut — the same
+  // source the Portfolio holdings groups use, so the donut's per-class equity
+  // totals agree exactly. Refetches on mutation via the shared revision store.
+  const { user } = useUser();
+  const { assets: liveAssets } = useAssets(user?.id);
 
   // ── Property lens state ───────────────────────────────────────────────────
   const [showProperty, setShowProperty] = useState<boolean>(true);
@@ -1040,6 +1046,10 @@ export function VitalsContent({
 
       {/* Library (top placement) */}
       {libraryPosition === "top" && library}
+
+      {/* Allocation donut — overview anchor at the top of the active section
+          (not a threshold vital; does not affect the vital count). */}
+      <AllocationDonut assets={liveAssets} />
 
       {/* 3. Active vitals eyebrow */}
       <div
