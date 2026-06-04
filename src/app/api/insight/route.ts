@@ -1,16 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import type { Asset } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateEnv } from "@/lib/env";
 import { generateInsight } from "@/lib/insight-generator";
 import { parseMarketDetail } from "@/lib/market-highlights";
+import {
+  generatePortfolioInsights,
+  valueToEur,
+  type SnapshotRow,
+  type AssetWithEur,
+} from "@/lib/portfolio-insights";
+import { getUsdRates } from "@/lib/fx";
 
 validateEnv();
+
+const SNAPSHOT_LOOKBACK_DAYS = 35;
+
+// Forced (post-mutation) refresh of the Portfolio band. Recomputes the
+// concentration detectors from CURRENT assets and replaces the cached cards, so a
+// removed or changed top position can never linger in the band. Clears the legacy
+// "insight" card too, so the on-demand fallback below regenerates from current
+// assets. Best-effort: any failure leaves the existing flow to serve what it can.
+// The deterministic figure is always recomputed here; only the phrasing is cached.
+async function regenPortfolioHighlights(supabase: SupabaseClient, userId: string): Promise<void> {
+  try {
+    await supabase.from("highlights").delete().eq("user_id", userId).in("type", ["portfolio", "insight"]);
+
+    const { data: assets } = await supabase.from("assets").select("*").eq("user_id", userId);
+    if (!assets || assets.length === 0) return;
+
+    const cutoffDate = new Date(Date.now() - SNAPSHOT_LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
+    const [userRow, snapRows, fxRates] = await Promise.all([
+      supabase.from("users").select("display_currency").eq("id", userId).maybeSingle(),
+      supabase.from("snapshots").select("date, breakdown").eq("user_id", userId).gte("date", cutoffDate),
+      getUsdRates(),
+    ]);
+
+    const displayCurrency = (userRow.data?.display_currency as string | null) ?? "EUR";
+    const snapshots = (snapRows.data ?? []) as SnapshotRow[];
+    const assetsWithEur: AssetWithEur[] = (assets as Asset[]).map((a) => ({
+      ...a,
+      valueEur: valueToEur(a.value, a.currency ?? "USD", fxRates),
+    }));
+
+    const { sentences } = await generatePortfolioInsights(assetsWithEur, displayCurrency, snapshots);
+    if (sentences.length === 0) return;
+
+    const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+    await supabase.from("highlights").insert(
+      sentences.map((s) => ({ user_id: userId, type: "portfolio", title: s, detail: s, expires_at: expiresAt, seen: false })),
+    );
+  } catch (err) {
+    console.warn("[insight] regenPortfolioHighlights failed:", err);
+  }
+}
 
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerSupabase();
+
+  // A forced read (the client sends fresh=1 after a portfolio mutation, the same
+  // signal holdings/Vitals refresh on) regenerates the band from current assets
+  // BEFORE reading, so the cards below reflect the current top position.
+  if (request.nextUrl.searchParams.get("fresh") === "1") {
+    await regenPortfolioHighlights(supabase, user.id);
+  }
+
   const now = new Date().toISOString();
 
   // Fetch portfolio cards, insight fallback, and market highlights in parallel

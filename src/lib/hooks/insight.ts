@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { MarketHighlight } from "@/lib/market-highlights";
 import { INSIGHT_CACHE_TTL_MS } from "@/lib/constants";
+import { usePortfolioRevision } from "@/lib/portfolio-revision";
 
 let _insightCache: { detail: string | null; portfolio: string[]; market: MarketHighlight[]; fetchedAt: number } | null = null;
 
@@ -16,13 +17,14 @@ export function invalidateInsightCache() {
 }
 
 export function useInsight() {
+  const revision = usePortfolioRevision();
   const [detail, setDetail] = useState<string | null>(null);
   const [portfolio, setPortfolio] = useState<string[]>([]);
   const [market, setMarket] = useState<MarketHighlight[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (_insightCache && Date.now() - _insightCache.fetchedAt < INSIGHT_CACHE_TTL_MS) {
+  const load = useCallback((force: boolean) => {
+    if (!force && _insightCache && Date.now() - _insightCache.fetchedAt < INSIGHT_CACHE_TTL_MS) {
       setDetail(_insightCache.detail);
       setPortfolio(_insightCache.portfolio);
       setMarket(_insightCache.market);
@@ -30,7 +32,12 @@ export function useInsight() {
       return;
     }
 
-    fetch("/api/insight", { cache: "no-store" })
+    // A forced read (after a portfolio mutation) regenerates the portfolio cards
+    // from current assets server-side (fresh=1) and bypasses BOTH the client cache
+    // (force) and any HTTP/edge cache (no-store + a unique query param), so a
+    // removed or changed top position can never linger in the band.
+    const url = force ? `/api/insight?fresh=1&rev=${Date.now()}` : "/api/insight";
+    fetch(url, { cache: "no-store" })
       .then((r) => r.json())
       .then(({ insight, portfolio: p, market: m }: { insight: { detail: string | null }; portfolio: string[]; market: MarketHighlight[] }) => {
         const d = insight?.detail ?? null;
@@ -44,6 +51,15 @@ export function useInsight() {
       .catch(() => { setDetail(null); setPortfolio([]); setMarket([]); })
       .finally(() => setLoading(false));
   }, []);
+
+  // Initial mount respects the cache; every later revision bump forces a refresh,
+  // the same way the holdings list and Vitals refetch on a portfolio change.
+  const mounted = useRef(false);
+  useEffect(() => {
+    const force = mounted.current;
+    mounted.current = true;
+    load(force);
+  }, [revision, load]);
 
   return { detail, portfolio, market, loading };
 }
