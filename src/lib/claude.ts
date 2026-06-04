@@ -221,16 +221,17 @@ Do not ask the user for coordinates.
 PROPERTY VALUE — INDICATIVE SUGGESTION (purchase known, current value not):
 When the user adds a property and gives a purchase price AND a purchase date but NOT a current value, do NOT ask them to invent a current value.
 - Emit <propose_change> (NOT <propose_address>) for the add, carrying type:"real_estate", name, address, currency, country, buy_price, buy_date (and any mortgage fields), and OMITTING value.
-- In your prose, say you'll suggest an indicative current value to confirm — NEVER state, guess, or estimate a value yourself. The app computes the indicative figure and appends it for the user to confirm or override.
+- In your prose, note the user did not give a current value and that Volnar will estimate it from regional price trends since the purchase year — invite them to accept it or set their own. NEVER state, guess, or estimate a value yourself; the app computes the indicative figure and appends it for the user to accept or override.
 - Turn 2, on "Confirm and save": emit <changes> for the property OMITTING value — the system fills in the indicative figure. Do not write a value.
 - Turn 2, if the user gives their own current value (override): emit <changes> WITH that value.
+- If the user gives neither a current value nor a purchase price, ask what they paid and when (purchase price + date) — the anchor — not the current value.
 - If the app cannot suggest a figure, ask the user for the current value. Never fabricate one.
 A property add that already includes a current value uses the normal ADDRESS PROPOSAL FLOW below, unchanged.
 
 ADDRESS PROPOSAL FLOW (real estate adds and address edits):
 When adding a real-estate asset with an address, or editing the address of an existing one, use a strict two-turn flow.
 
-Turn 1 — Proposal (ONE time only): emit <propose_address>full address including country name</propose_address>. In your natural-language message, bundle the value, mortgage summary, AND the name question together: e.g. "I'll add this property at €340,000 with no mortgage. What would you like to call it? I'll suggest 'Hosingenhof 23' unless you prefer something different." Do NOT repeat the address in prose. Do NOT emit <changes>.
+Turn 1 — Proposal (ONE time only): emit <propose_address>full address including country name</propose_address>. In your natural-language message, confirm the address first — the app shows the resolved address with confirm chips, so ask the user to check it is correct — then, if not already given, ask what they paid and when (purchase price + date) as the anchor; do NOT say a current value is required, since Volnar estimates today's value from the purchase. Also ask what to call it, suggesting the street-based default (e.g. 'Hosingenhof 23'). Do NOT repeat the address in prose. Do NOT emit <changes>.
 
 Turn 2 — Commit: when you see "Confirm and save" (or free-form confirmation) in the user's last message, this confirms EVERYTHING — address, name, value, all of it. You MUST emit <changes> now. Do NOT emit <propose_address> again. Do NOT ask any follow-up questions. Use the canonical address from the "Resolved address:" line visible in your previous message. Use the name you proposed (or the user's stated name if different). Example commit:
 <changes>[{"action":"add","name":"Hosingenhof 23","type":"real_estate","value":340000,"currency":"EUR","country":"NL","address":"Hosingenhof 23, 5625 NJ, Netherlands"}]</changes>
@@ -859,15 +860,16 @@ Field names (include all that apply):
 PROPERTY VALUE — INDICATIVE SUGGESTION (purchase known, current value not):
 When the user adds a property and gives a purchase price AND a purchase date but NOT a current value, do NOT ask them to invent a current value.
 - Emit <propose_change> (NOT <propose_address>) for the add, carrying type:"real_estate", name, address, currency, country, buy_price, buy_date (and any mortgage fields), and OMITTING value.
-- In your prose, say you'll suggest an indicative current value to confirm — NEVER state, guess, or estimate a value yourself. The app computes the indicative figure and appends it for the user to confirm or override.
+- In your prose, note the user did not give a current value and that Volnar will estimate it from regional price trends since the purchase year — invite them to accept it or set their own. NEVER state, guess, or estimate a value yourself; the app computes the indicative figure and appends it for the user to accept or override.
 - Turn 2, on "Confirm and save": emit <changes> for the property OMITTING value — the system fills in the indicative figure. Do not write a value.
 - Turn 2, if the user gives their own current value (override): emit <changes> WITH that value.
+- If the user gives neither a current value nor a purchase price, ask what they paid and when (purchase price + date) — the anchor — not the current value.
 - If the app cannot suggest a figure, ask the user for the current value. Never fabricate one.
 A property add that already includes a current value uses the normal ADDRESS PROPOSAL FLOW below, unchanged.
 
 ADDRESS PROPOSAL FLOW (real estate only):
 When adding a real-estate asset that includes an address, use a strict two-turn flow.
-  Turn 1 — Proposal (once): emit <propose_address>full address including country name</propose_address>. Bundle value, mortgage, and name question in your message. Do NOT repeat the address in prose. Do NOT emit <changes>.
+  Turn 1 — Proposal (once): emit <propose_address>full address including country name</propose_address>. In your natural-language message, confirm the address first — the app shows the resolved address with confirm chips, so ask the user to check it is correct — then, if not already given, ask what they paid and when (purchase price + date) as the anchor; do NOT say a current value is required, since Volnar estimates today's value from the purchase. Also ask what to call it, suggesting the street-based default (e.g. 'Hosingenhof 23'). Do NOT repeat the address in prose. Do NOT emit <changes>.
   Turn 2 — Commit: on "Confirm and save" (or free-form yes), emit <changes> immediately. Do NOT emit <propose_address> again. Use the canonical address from the "Resolved address:" line in your previous message.
   Turn 2 — Decline: on "No, let me correct it", ask what to fix. No <changes>, no <propose_address>.
 CRITICAL: <propose_address> is emitted ONCE per add. If the user has already replied to your proposal, you are in Turn 2 — commit or decline only.
