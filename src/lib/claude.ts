@@ -208,6 +208,9 @@ Field names for add (include all that apply):
 
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only) — include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
 
+MORTGAGE & FINANCIAL FIELDS — CURRENT INTERACTION ONLY:
+When adding or modifying a property, only include mortgage and other financial fields (mortgage_balance, mortgage_rate, mortgage_start_date, value) that the user states for THIS property in the CURRENT add/modify interaction. Do NOT carry forward mortgage or financial details from earlier in the conversation, from a previously added asset, or from a property the user removed and is re-adding — a removed-and-re-added property starts fresh. If you have a figure from earlier that may still apply, ASK the user to confirm it explicitly before recording it — never record it silently. Details the user gives across several messages while setting up the same property still count as the current interaction and are fine to record.
+
 For real_estate assets, also include when mentioned:
   address (full street address — include in <changes> on the commit turn using the canonical form from the "Resolved address:" line),
   property_type (apartment|house|office|land|other),
@@ -856,6 +859,9 @@ Field names (include all that apply):
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type — include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
   For property, also capture buy_date / buy_price when the user says when they bought it or what they paid, and mortgage_start_date when they give the mortgage's start. A stated purchase date or price goes into the structured field, never only the note. Ask once at most; never guess.
+
+MORTGAGE & FINANCIAL FIELDS — CURRENT INTERACTION ONLY:
+When adding or modifying a property, only include mortgage and other financial fields (mortgage_balance, mortgage_rate, mortgage_start_date, value) that the user states for THIS property in the CURRENT add/modify interaction. Do NOT carry forward mortgage or financial details from earlier in the conversation, from a previously added asset, or from a property the user removed and is re-adding — a removed-and-re-added property starts fresh. If you have a figure from earlier that may still apply, ASK the user to confirm it explicitly before recording it — never record it silently. Details the user gives across several messages while setting up the same property still count as the current interaction and are fine to record.
 
 PROPERTY VALUE — INDICATIVE SUGGESTION (purchase known, current value not):
 When the user adds a property and gives a purchase price AND a purchase date but NOT a current value, do NOT ask them to invent a current value.

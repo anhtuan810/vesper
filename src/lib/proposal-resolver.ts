@@ -137,6 +137,11 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
         parts.push(`${label} mortgage`);
       }
 
+      // Surface the mortgage start date too, so every mortgage field that will be
+      // recorded (balance, rate, start) is visible in the confirm block before save.
+      const mortgageStart = typeof proposal.mortgage_start_date === "string" ? proposal.mortgage_start_date : null;
+      if (mortgageStart) parts.push(`mortgage started ${mortgageStart}`);
+
       if (proposal.buy_date) parts.push(`purchased ${proposal.buy_date}`);
       const buyPrice = num(proposal.buy_price);
       if (buyPrice != null) parts.push(`purchase price ${money(buyPrice)}`);
