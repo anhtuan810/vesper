@@ -296,6 +296,19 @@ export async function applyPortfolioChanges({
         }
       }
 
+      // Safety net: a property must never be stored at 0. If no value was given and
+      // the indicative estimate was unavailable (e.g. a non-NL property, which CBS
+      // cannot estimate, or a CBS miss), resolvedValue is still 0 here. Skip the
+      // insert and ask for the current value rather than committing a EUR 0 asset.
+      // No asset row and no mutation are written for the skipped add. For a single
+      // add this surfaces the message to the user; in a multi-row batch it is
+      // collected as a per-row failure and the other rows continue.
+      if (isRealEstate && (resolvedValue == null || resolvedValue <= 0)) {
+        throw new ValueModeError(
+          `I couldn't estimate a value for ${resolvedAssetName} — what is its current value?`
+        );
+      }
+
       const { data: inserted, error } = await supabase.from("assets").insert({
         name: resolvedAssetName,
         type: change.type || "other",
