@@ -7,6 +7,7 @@ import { PropertyMap } from "@/components/PropertyMap";
 import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
 import { WhatIfPill } from "@/components/WhatIfPill";
+import { WozHistory } from "@/components/asset-detail/WozHistory";
 import { formatDate } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
@@ -218,6 +219,9 @@ export function RealEstateDetail({ asset }: Props) {
             </div>
           </>
         )}
+
+        {/* WOZ valuation history (NL only; self-hides when unavailable) */}
+        <WozHistory asset={asset} />
 
         {/* Mortgage section */}
         {hasMortgage && (
