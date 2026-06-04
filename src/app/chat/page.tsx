@@ -9,6 +9,7 @@ import { getChatSeed, type ChatSeed, type SeedSource } from "@/lib/chat-seeds";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { takeHandoff } from "@/lib/scenario/handoff";
 import { takeExploreFlag, buildExploreSeed } from "@/lib/scenario/explore";
+import { takeWhatIfSeed } from "@/lib/scenario/whatif";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -91,6 +92,11 @@ export default function ChatPage() {
 
     // Scenario-explore entry (teaser / affordance on Portfolio).
     if (takeExploreFlag()) wantExplore.current = true;
+
+    // Per-asset "What if?" seed (deterministic mortgage chips), stashed by the
+    // asset-detail pill before navigating here.
+    const whatIfSeed = takeWhatIfSeed();
+    if (whatIfSeed) setSeedMessage(whatIfSeed);
 
     // Text typed in the portfolio empty-state input
     const prefill = sessionStorage.getItem("volnar.empty.input");

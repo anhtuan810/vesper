@@ -1,5 +1,7 @@
 export type SeedSource = "onboarding-class" | "asset" | "insight";
 
+import type { ScenarioHandoff } from "@/lib/scenario/handoff";
+
 // A forward cone attached to a scenario-explore seed. Values are already in
 // display-currency numbers (the seed builder converts them); the chat renders
 // these through the shared ProjectionChart card.
@@ -17,6 +19,10 @@ export interface ChatSeed {
   chips: string[];
   /** Present only on the scenario-explore seed: the forward-projection cone. */
   cone?: ExploreCone;
+  /** Per-chip pre-computed scenario handoffs. When a tapped chip has one, the
+   *  chat dispatches it via sendScenario (deterministic figures, model narrates)
+   *  rather than sending the chip text to the classifier. */
+  chipActions?: Record<string, ScenarioHandoff>;
 }
 
 const ONBOARDING_CLASS_SEEDS: Record<string, ChatSeed> = {

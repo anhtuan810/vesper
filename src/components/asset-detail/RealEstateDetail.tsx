@@ -6,9 +6,12 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { PropertyMap } from "@/components/PropertyMap";
 import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
+import { WhatIfPill } from "@/components/WhatIfPill";
 import { formatDate } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
+import { buildPropertyWhatIfSeed, requestWhatIf } from "@/lib/scenario/whatif";
 import { formatMoney, formatMoneyParts } from "@/lib/money";
 import type { RealEstateAsset, Mutation } from "@/lib/supabase";
 
@@ -47,9 +50,19 @@ export function RealEstateDetail({ asset }: Props) {
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
   const displayCurrency = useDisplayCurrency();
+  const isDesktop = useIsDesktop();
   const currentBalance = computeCurrentBalance(asset);
   const equity = asset.value - currentBalance;
   const hasMortgage = currentBalance > 0;
+
+  // "What if?" — open chat seeded with deterministic mortgage scenario chips for
+  // THIS property (figures pre-computed via projectMortgage/annuityPayment).
+  const handleWhatIf = () => {
+    const seed = buildPropertyWhatIfSeed(asset, displayCurrency);
+    if (!seed) return;
+    const handled = requestWhatIf(seed, !!isDesktop);
+    if (!handled) router.push("/chat");
+  };
 
   // Compute equity gain from purchase mutation
   const purchaseMutation = mutations.slice().reverse().find(m => m.action === "add");
@@ -213,6 +226,11 @@ export function RealEstateDetail({ asset }: Props) {
               Mortgage
             </div>
             <MortgageBlock asset={asset} />
+            {asset.mortgage_rate != null && (
+              <div style={{ marginTop: 14 }}>
+                <WhatIfPill onClick={handleWhatIf} />
+              </div>
+            )}
           </>
         )}
 

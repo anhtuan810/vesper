@@ -11,6 +11,7 @@ import {
 } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
+import { WhatIfPill } from "@/components/WhatIfPill";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines } from "@/lib/hooks";
@@ -179,6 +180,12 @@ export function PortfolioTab({
                 scenario explore. */}
             <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
               <ProjectionTeaser onExplore={handleExplore} />
+            </div>
+            {/* What if? — opens chat seeded with deterministic portfolio scenario
+                chips (projection cone from /api/scenarios/project, plus shock /
+                contribution chips the scenario engine computes). */}
+            <div style={{ marginTop: 12, paddingLeft: 4, paddingRight: 4 }}>
+              <WhatIfPill onClick={handleExplore} />
             </div>
           </div>
         )}

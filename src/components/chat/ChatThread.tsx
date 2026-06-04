@@ -61,9 +61,17 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
   ) {
     const {
       messages, input, setInput, loading, thinking, remaining,
-      imagePreviews, imageData, canSend, send, sendText, removeImage, handlePaste, handleFile,
+      imagePreviews, imageData, canSend, send, sendText, sendScenario, removeImage, handlePaste, handleFile,
       isLoadingMore,
     } = session;
+
+    // A seeded chip with a pre-computed scenario handoff dispatches deterministic
+    // figures (model only narrates); otherwise it sends the chip text as usual.
+    const tapSeedChip = (chip: string) => {
+      const handoff = seedMessage?.chipActions?.[chip];
+      if (handoff) sendScenario(handoff);
+      else sendText(chip);
+    };
 
     const isPage = variant === "page";
 
@@ -415,7 +423,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               {seedMessage.chips.map((chip) => (
                 <button
                   key={chip}
-                  onClick={() => sendText(chip)}
+                  onClick={() => tapSeedChip(chip)}
                   style={{
                     height: 32,
                     padding: "0 14px",

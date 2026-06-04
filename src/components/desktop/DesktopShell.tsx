@@ -9,6 +9,7 @@ import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { takeHandoff } from "@/lib/scenario/handoff";
 import { EXPLORE_EVENT, buildExploreSeed } from "@/lib/scenario/explore";
+import { WHATIF_EVENT, takeWhatIfSeed } from "@/lib/scenario/whatif";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
 const CHAT_WIDTH_KEY = "volnar.chat.width";
@@ -148,6 +149,19 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
     window.addEventListener(EXPLORE_EVENT, handler);
     return () => window.removeEventListener(EXPLORE_EVENT, handler);
   }, [displayCurrency]);
+
+  // Per-asset "What if?" seed (pre-computed deterministic chips) → chat rail.
+  useEffect(() => {
+    const handler = () => {
+      const seed = takeWhatIfSeed();
+      if (seed) {
+        setSeedBase(messagesRef.current.length);
+        setSeedMessage(seed);
+      }
+    };
+    window.addEventListener(WHATIF_EVENT, handler);
+    return () => window.removeEventListener(WHATIF_EVENT, handler);
+  }, []);
 
   // Hide the seed once a new turn lands (typed or chip tap) — derived from state,
   // so no synchronous setState in an effect and no ref read during render.
