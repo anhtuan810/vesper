@@ -213,3 +213,190 @@ export async function getRegionIndex(
 
   return null;
 }
+
+// ── Diagnostics (gated, read-only) ───────────────────────────────────────────
+// Captures the intermediate resolution steps against the live OData so we can see
+// which constant is off (region code, measure key, period format). Self-contained
+// — does NOT touch the normal getRegionIndex path. Reports RAW (untrimmed)
+// Title/Key/Identifier values so trailing-space / exact-title issues are visible.
+// No credentials or secrets are involved or emitted.
+
+export interface CbsSourceDebug {
+  base: string;
+  regioStatus: number | null;
+  regioCount: number | null;
+  regioMatches: Array<{ identifier: unknown; key: unknown; title: unknown }>;
+  regioMatchFound: boolean;
+  measureEndpoint: string;
+  measureStatus: number | null;
+  measureCount: number | null;
+  measures: Array<{ identifier: unknown; key: unknown; title: unknown }>;
+  measureMatched: string | null;
+  obsStatus: number | null;
+  obsCount: number | null;
+  periodsSample: string[];
+}
+
+export interface CbsDebug {
+  region: { gemeente: string | null; province: string | null; chosenRegionName: string | null };
+  chosenRegionCode: string | null;
+  buyYearPeriod: string | null;
+  latestPeriod: string | null;
+  v4: CbsSourceDebug;
+  legacy: CbsSourceDebug;
+  firstNullStep: string | null;
+  reason: string | null;
+}
+
+function blankSource(base: string, measureEndpoint: string): CbsSourceDebug {
+  return {
+    base, regioStatus: null, regioCount: null, regioMatches: [], regioMatchFound: false,
+    measureEndpoint, measureStatus: null, measureCount: null, measures: [], measureMatched: null,
+    obsStatus: null, obsCount: null, periodsSample: [],
+  };
+}
+
+async function debugFetch(url: string): Promise<{ status: number | null; data: unknown }> {
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(CBS.timeoutMs) });
+    let data: unknown = null;
+    try { data = await res.json(); } catch { /* non-JSON body */ }
+    return { status: res.status, data };
+  } catch {
+    return { status: null, data: null };
+  }
+}
+
+// Yearly-period sampling: keep RAW period strings in the sample (so trailing
+// spaces show), but match the JJ pattern on a trimmed copy.
+function samplePeriods(perioden: unknown[]): { sample: string[]; latest: string | null; byYear: Map<number, string> } {
+  const byYear = new Map<number, string>();
+  let latest: string | null = null;
+  const sample: string[] = [];
+  for (const p of perioden) {
+    const period = String(p ?? "");
+    const m = CBS.yearlyPeriod.exec(period.trim());
+    if (!m) continue;
+    if (sample.length < 8) sample.push(period);
+    byYear.set(Number(m[1]), period);
+    if (latest == null || period > latest) latest = period;
+  }
+  return { sample, latest, byYear };
+}
+
+export async function diagnoseRegionIndex(
+  gemeente: string | null,
+  province: string | null,
+  buyYear: number | null,
+): Promise<CbsDebug> {
+  const chosenRegionName = targetRegionName(gemeente, province);
+  const dbg: CbsDebug = {
+    region: { gemeente, province, chosenRegionName },
+    chosenRegionCode: null,
+    buyYearPeriod: null,
+    latestPeriod: null,
+    v4: blankSource(CBS.odata4, `${CBS.odata4}/MeasureCodes`),
+    legacy: blankSource(CBS.legacy, `${CBS.legacy}/DataProperties`),
+    firstNullStep: null,
+    reason: null,
+  };
+
+  if (!chosenRegionName) {
+    dbg.firstNullStep = "regionName";
+    dbg.reason = "no gemeente/province resolved to a region name";
+    return dbg;
+  }
+  const nameLc = chosenRegionName.toLowerCase();
+
+  const applyPeriods = (rows: Record<string, unknown>[] | null, source: CbsSourceDebug) => {
+    if (!rows) return;
+    source.obsCount = rows.length;
+    const { sample, latest, byYear } = samplePeriods(rows.map((r) => r.Perioden));
+    source.periodsSample = sample;
+    if (dbg.latestPeriod == null) dbg.latestPeriod = latest;
+    if (dbg.buyYearPeriod == null && buyYear != null) dbg.buyYearPeriod = byYear.get(buyYear) ?? null;
+  };
+
+  // ── OData4 (datasets.cbs.nl) ──
+  {
+    const r = await debugFetch(`${CBS.odata4}/RegioS`);
+    dbg.v4.regioStatus = r.status;
+    const list = listOf(r.data);
+    dbg.v4.regioCount = list?.length ?? null;
+    if (list) {
+      dbg.v4.regioMatches = list
+        .filter((x) => String(x.Title ?? "").toLowerCase().includes(nameLc) || norm(x.Title) === norm(chosenRegionName))
+        .map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
+      const exact = list.find((x) => norm(x.Title) === norm(chosenRegionName));
+      dbg.v4.regioMatchFound = !!exact;
+      if (exact && typeof exact.Identifier === "string") dbg.chosenRegionCode = exact.Identifier;
+    }
+    const m = await debugFetch(`${CBS.odata4}/MeasureCodes`);
+    dbg.v4.measureStatus = m.status;
+    const mList = listOf(m.data);
+    dbg.v4.measureCount = mList?.length ?? null;
+    if (mList) {
+      dbg.v4.measures = mList.map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
+      const mm = mList.find((x) => CBS.measureMatch.test(String(x.Title ?? "")));
+      dbg.v4.measureMatched = mm && typeof mm.Identifier === "string" ? mm.Identifier : null;
+    }
+    if (dbg.chosenRegionCode && dbg.v4.measureMatched) {
+      const filter = `RegioS eq '${dbg.chosenRegionCode}' and Measure eq '${dbg.v4.measureMatched}'`;
+      const obs = await debugFetch(`${CBS.odata4}/Observations?$select=Perioden,Value&$filter=${encodeURIComponent(filter)}`);
+      dbg.v4.obsStatus = obs.status;
+      applyPeriods(listOf(obs.data), dbg.v4);
+    }
+  }
+
+  // ── Legacy (opendata.cbs.nl) ──
+  {
+    const r = await debugFetch(`${CBS.legacy}/RegioS`);
+    dbg.legacy.regioStatus = r.status;
+    const list = listOf(r.data);
+    dbg.legacy.regioCount = list?.length ?? null;
+    let legacyKey: string | null = null;
+    if (list) {
+      dbg.legacy.regioMatches = list
+        .filter((x) => String(x.Title ?? "").toLowerCase().includes(nameLc) || norm(x.Title) === norm(chosenRegionName))
+        .map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
+      const exact = list.find((x) => norm(x.Title) === norm(chosenRegionName));
+      dbg.legacy.regioMatchFound = !!exact;
+      if (exact && typeof exact.Key === "string") legacyKey = exact.Key;
+      if (dbg.chosenRegionCode == null && legacyKey) dbg.chosenRegionCode = legacyKey;
+    }
+    const m = await debugFetch(`${CBS.legacy}/DataProperties`);
+    dbg.legacy.measureStatus = m.status;
+    const mList = listOf(m.data);
+    dbg.legacy.measureCount = mList?.length ?? null;
+    let legacyMeasure: string | null = null;
+    if (mList) {
+      dbg.legacy.measures = mList.map((x) => ({ identifier: x.Identifier ?? null, key: x.Key ?? null, title: x.Title }));
+      const mm = mList.find((x) => CBS.measureMatch.test(String(x.Title ?? "")));
+      legacyMeasure = mm && typeof mm.Key === "string" ? mm.Key : null;
+      dbg.legacy.measureMatched = legacyMeasure;
+    }
+    if (legacyKey && legacyMeasure) {
+      const filter = `(RegioS eq '${legacyKey}')`;
+      const obs = await debugFetch(`${CBS.legacy}/TypedDataSet?$select=${encodeURIComponent(`Perioden,${legacyMeasure}`)}&$filter=${encodeURIComponent(filter)}`);
+      dbg.legacy.obsStatus = obs.status;
+      applyPeriods(listOf(obs.data), dbg.legacy);
+    }
+  }
+
+  // ── First failing step ──
+  if (dbg.v4.regioStatus == null && dbg.legacy.regioStatus == null) {
+    dbg.firstNullStep = "regios_fetch";
+    dbg.reason = "RegioS list fetch failed on both OData bases (network or endpoint)";
+  } else if (!dbg.v4.regioMatchFound && !dbg.legacy.regioMatchFound) {
+    dbg.firstNullStep = "regios_match";
+    dbg.reason = `no RegioS Title matched "${chosenRegionName}" (check exact title / trailing space)`;
+  } else if (!dbg.v4.measureMatched && !dbg.legacy.measureMatched) {
+    dbg.firstNullStep = "measure_match";
+    dbg.reason = "no measure Title matched the index regex (check the measure title)";
+  } else if (dbg.latestPeriod == null) {
+    dbg.firstNullStep = "observations";
+    dbg.reason = "no yearly (JJ) periods parsed from observations (check period format / filter)";
+  }
+
+  return dbg;
+}

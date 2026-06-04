@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { resolveRegion } from "@/lib/property-region";
-import { getRegionIndex, targetRegionName } from "@/lib/cbs-pbk";
+import { getRegionIndex, targetRegionName, diagnoseRegionIndex } from "@/lib/cbs-pbk";
 import { estimateValue, estimateSeries, parseBuyYear, clampBuyYear } from "@/lib/property-estimate";
 
 // GET /api/property-estimate?assetId=<id> — deterministic CBS-PBK value estimate
@@ -30,6 +30,33 @@ export async function GET(request: NextRequest) {
       .eq("id", assetId)
       .eq("user_id", user.id)
       .maybeSingle();
+
+    // Gated diagnostic: authed + ?debug=1 only. Returns the intermediate CBS
+    // resolution and the first failing step instead of the normal result. No
+    // secrets are involved; the address shown is the requesting user's own asset.
+    if (request.nextUrl.searchParams.get("debug") === "1") {
+      const country = (asset?.country as string | null) ?? null;
+      const addr = (asset?.address as string | null) ?? null;
+      const buyPrice = typeof asset?.buy_price === "number" && asset.buy_price > 0 ? asset.buy_price : null;
+      const storedValue = typeof asset?.value === "number" && asset.value > 0 ? asset.value : null;
+      const requestedYear = parseBuyYear((asset?.buy_date as string | null) ?? null);
+      const region = asset && asset.type === "real_estate" && isNL(country) && addr ? await resolveRegion(addr) : null;
+      const cbs = region ? await diagnoseRegionIndex(region.gemeente, region.province, requestedYear) : null;
+      return NextResponse.json({
+        debug: true,
+        asset: {
+          found: !!asset,
+          type: (asset?.type as string | null) ?? null,
+          isRealEstate: asset?.type === "real_estate",
+          country,
+          isNL: isNL(country),
+          hasAddress: !!addr,
+        },
+        basis: { buyPrice, storedValue, basis: buyPrice ?? storedValue, buyDate: (asset?.buy_date as string | null) ?? null, requestedYear },
+        region,
+        cbs,
+      });
+    }
 
     if (!asset || asset.type !== "real_estate" || !isNL(asset.country as string | null)) {
       return NextResponse.json(UNAVAILABLE);
