@@ -698,9 +698,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // A confirmation chip ("Confirm and save", etc.) means "apply" — it must never
+    // re-trigger a proposal step. Both the address and change proposal branches
+    // skip on a confirmation turn so the model's text/commit response flows through
+    // instead of re-emitting the same proposal card (the property-add loop fix).
+    const isConfirmationTurn = typeof message === "string" && CONFIRMATION_CHIPS.has(message.trim());
+
     // --- Address proposal flow (real estate adds / address edits) ---
     // When Claude emits <propose_address>, geocode and return chips — no DB write this turn.
-    if (proposeAddressRaw) {
+    // Skipped on a confirmation turn: address confirmation uses its own chips
+    // ("Yes, that's the address"), so a confirmation chip here would be a stale
+    // re-emit — let the model's response (ask for price, or commit) through instead.
+    if (proposeAddressRaw && !isConfirmationTurn) {
       const proposedAddress = proposeAddressRaw.trim();
       const geo = await geocodeAddress(proposedAddress, null);
 
@@ -715,7 +724,10 @@ export async function POST(req: NextRequest) {
 
       const canonicalLine = `Resolved address: ${geo.canonicalAddress}`;
       const proposalText = displayText ? `${displayText}\n\n${canonicalLine}` : canonicalLine;
-      const suggestedReplies = ["Confirm and save", "No, let me correct it"];
+      // Address-confirmation chips are distinct from the commit step's
+      // "Confirm and save". Confirming the address only advances to the price
+      // question — it never saves the property.
+      const suggestedReplies = ["Yes, that's the address", "No, let me correct it"];
 
       await supabase.from("messages").insert(timestampedPair(
         { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
@@ -800,7 +812,6 @@ export async function POST(req: NextRequest) {
     // When Claude emits <propose_change>, resolve numbers and return chips — no DB write this turn.
     // Skip if the user just sent a confirmation chip — Claude sometimes echoes <propose_change>
     // in the confirmation response, which would cause the chips to appear a second time.
-    const isConfirmationTurn = typeof message === "string" && CONFIRMATION_CHIPS.has(message.trim());
     if (proposeChangeRaw && !proposeAddressRaw && !isConfirmationTurn) {
       try {
         const proposals = JSON.parse(proposeChangeRaw.trim());

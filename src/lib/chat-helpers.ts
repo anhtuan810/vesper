@@ -4,6 +4,7 @@ export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gi
 
 export const ALLOWED_CHIPS: ReadonlySet<string> = new Set([
   "Confirm and save",
+  "Yes, that's the address",
   "No, let me correct it",
   "Use the proposed name",
   "I'll pick a different name",
