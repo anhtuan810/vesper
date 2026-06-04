@@ -65,13 +65,14 @@ export function RealEstateDetail({ asset }: Props) {
     if (!handled) router.push("/chat");
   };
 
-  // Compute equity gain from purchase mutation
-  const purchaseMutation = mutations.slice().reverse().find(m => m.action === "add");
-  const purchaseValue = purchaseMutation?.after_value ?? null;
-  const purchaseYear = purchaseMutation?.occurred_at
-    ? new Date(purchaseMutation.occurred_at).getFullYear()
-    : null;
-  const valueGain = purchaseValue != null ? asset.value - purchaseValue : null;
+  // Value appreciation since purchase: current value minus the recorded purchase
+  // price (both structured fields on the asset). Equity-at-purchase would need the
+  // original mortgage, which isn't stored (only the current balance is), so the
+  // badge tracks value appreciation. The "since YEAR" label uses the structured
+  // buy_date — never a record-creation timestamp or a mutation occurred_at.
+  const purchasePrice = typeof asset.buy_price === "number" && asset.buy_price > 0 ? asset.buy_price : null;
+  const purchaseYear = asset.buy_date ? new Date(asset.buy_date).getFullYear() : null;
+  const valueGain = purchasePrice != null ? asset.value - purchasePrice : null;
 
   // "Owned since" uses a REAL acquisition date from structured fields (the stated
   // acquisition/buy date, or the mortgage start date) — never the record-creation

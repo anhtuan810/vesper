@@ -341,6 +341,15 @@ export async function applyPortfolioChanges({
         changed = true;
         runningTotal += toUsdSync(resolvedValue, resolvedCurrency);
         const addOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
+        // A property acquisition is recorded as the PURCHASE (buy_price at buy_date),
+        // not the current/indicative value — the value estimate lives on the asset
+        // row. This keeps the activity line "Bought <purchase price>" honest and lets
+        // the detail view show real appreciation since purchase. Other asset types
+        // (and properties added without a purchase price) record the add's value.
+        const acquisitionAmount =
+          isRealEstate && resolvedBuyPrice != null && resolvedBuyPrice > 0
+            ? resolvedBuyPrice
+            : resolvedValue;
         const { data: addedMutation } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
@@ -348,7 +357,7 @@ export async function applyPortfolioChanges({
           action: "add",
           asset_type: change.type || "other",
           symbol: effectiveSymbol,
-          after_value: resolvedValue,
+          after_value: acquisitionAmount,
           before_units: null,
           after_units: change.units || null,
           currency: resolvedCurrency,
