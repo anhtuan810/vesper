@@ -7,6 +7,7 @@ import { computeAllVitals } from "@/lib/vitals/index";
 import type { VitalResult } from "@/lib/vitals/index";
 import { generatePulse } from "@/lib/pulse-generator";
 import { buildVitalsInputs } from "@/lib/vitals/build-inputs";
+import { computeCurrentBalance } from "@/lib/mortgage";
 
 validateEnv();
 
@@ -102,12 +103,15 @@ export async function GET(request: NextRequest) {
       pulseLiquid = await generatePulse(liquidActiveVitals, displayCurrency, "liquid");
     }
 
-    // Build minimal asset list for ConcentrationBars.
-    // assets.value is already EUR-normalized by buildVitalsInputs.
+    // Build minimal asset list for ConcentrationBars. value/mortgage are already
+    // EUR-normalized by buildVitalsInputs. The bar feed is EQUITY (real estate at
+    // value − current mortgage balance), so the per-position bars divide by equity
+    // net worth — matching the concentration headline/top-3 and the allocation
+    // donut, instead of the old gross/gross basis.
     const minimalAssets = assets.map((a) => ({
       name: a.name,
       type: a.type,
-      eurValue: a.value,
+      eurValue: a.type === "real_estate" ? Math.max(0, a.value - computeCurrentBalance(a)) : a.value,
       symbol: a.symbol,
     }));
 

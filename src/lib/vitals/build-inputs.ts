@@ -53,12 +53,25 @@ export async function buildVitalsInputs(
   const netWorthUsd = computeNetWorth(assets, toUsdSync);
   const netWorthEur = netWorthUsd * eurRate;
 
-  // Normalize every asset value to EUR so all vital modules operate on a
-  // single currency basis. For an all-EUR account this is an identity transform.
-  const normalizedAssets: Asset[] = assets.map((a) => ({
-    ...a,
-    value: toUsdSync(a.value, a.currency || "USD") * eurRate,
-  }));
+  // Normalize every asset value to EUR so all vital modules operate on a single
+  // currency basis. The mortgage balance AND monthly payment are normalized too —
+  // computeCurrentBalance amortizes the balance using the payment, so both must be
+  // in the same currency as value, or a non-EUR property yields a wrong equity
+  // (EUR value − native-currency balance). The rate is a percentage — no conversion.
+  // For an all-EUR account this is an identity transform.
+  const toEur = (amount: number, currency: string): number => toUsdSync(amount, currency) * eurRate;
+  const normalizedAssets: Asset[] = assets.map((a) => {
+    const cur = a.currency || "USD";
+    if (a.type === "real_estate") {
+      return {
+        ...a,
+        value: toEur(a.value, cur),
+        mortgage_balance: a.mortgage_balance != null ? toEur(a.mortgage_balance, cur) : a.mortgage_balance,
+        monthly_payment: a.monthly_payment != null ? toEur(a.monthly_payment, cur) : a.monthly_payment,
+      };
+    }
+    return { ...a, value: toEur(a.value, cur) };
+  });
 
   return { user, assets: normalizedAssets, snapshots, netWorthEur, fxRates };
 }

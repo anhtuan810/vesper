@@ -1,4 +1,5 @@
 import { TYPE_COLOR_TOKENS } from "@/lib/tokens";
+import { computeCurrentBalance } from "@/lib/mortgage";
 
 export const TYPE_COLOR: Record<string, string> = TYPE_COLOR_TOKENS;
 
@@ -54,13 +55,26 @@ export function getMonthLabel(key: string): string {
 }
 
 export function computeNetWorth(
-  assets: Array<{ type: string; value: number; currency?: string | null; mortgage_balance?: number | null }>,
+  assets: Array<{
+    type: string;
+    value: number;
+    currency?: string | null;
+    mortgage_balance?: number | null;
+    mortgage_balance_recorded_at?: string | null;
+    mortgage_rate?: number | null;
+    monthly_payment?: number | null;
+    mortgage_type?: string | null;
+  }>,
   toUsd: (amount: number, currency: string) => number = (a) => a
 ): number {
   return assets.reduce((sum, a) => {
     const cur = a.currency || "USD";
     const valueUsd = toUsd(a.value, cur);
-    const mortgageUsd = a.type === "real_estate" ? toUsd(a.mortgage_balance ?? 0, cur) : 0;
+    // Real estate contributes equity = value − current (amortized) mortgage balance,
+    // the same basis the Portfolio hero and the allocation donut use, so this stays
+    // matched as the loan amortizes. computeCurrentBalance degrades to the stored
+    // balance when the amortization fields (recorded_at/rate/payment/type) are absent.
+    const mortgageUsd = a.type === "real_estate" ? toUsd(computeCurrentBalance(a), cur) : 0;
     return sum + valueUsd - mortgageUsd;
   }, 0);
 }
