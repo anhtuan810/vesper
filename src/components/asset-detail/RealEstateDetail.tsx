@@ -227,12 +227,12 @@ export function RealEstateDetail({ asset }: Props) {
             <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Mortgage
             </div>
-            <MortgageBlock asset={asset} />
             {asset.mortgage_rate != null && (
-              <div style={{ marginTop: 14, paddingLeft: 4, paddingRight: 4 }}>
+              <div style={{ marginBottom: 14, paddingLeft: 4, paddingRight: 4 }}>
                 <MortgageProjectionLine asset={asset} onExplore={handleWhatIf} />
               </div>
             )}
+            <MortgageBlock asset={asset} />
           </div>
         )}
 
