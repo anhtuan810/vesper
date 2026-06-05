@@ -27,6 +27,7 @@ export function ScenarioCueLine({
   onActivate,
   style,
   telemetryTemplate,
+  impressionKey,
 }: {
   statement?: ReactNode;
   clause: string;
@@ -34,6 +35,10 @@ export function ScenarioCueLine({
   onActivate: () => void;
   style?: CSSProperties;
   telemetryTemplate?: string;
+  /** Per-instance discriminator for the impression dedup key only (e.g. asset
+   *  id). NOT added to the analytics payload — it just lets distinct instances
+   *  (two property mortgage lines) each log their own impression in a session. */
+  impressionKey?: string;
 }) {
   const payload: ChipEventPayload | null = telemetryTemplate
     ? { surface: "scenario_cue", chipType: "scenario", position: 0, labelTemplate: telemetryTemplate }
@@ -43,8 +48,11 @@ export function ScenarioCueLine({
   useEffect(() => {
     if (!payload || impressionFired.current) return;
     impressionFired.current = true;
-    // No message id on this surface — dedup on template + surface per session.
-    if (markImpression(`scenario_cue::0:${payload.labelTemplate}`)) trackChipImpression(payload);
+    // No message id on this surface — dedup on surface + template, plus an
+    // optional per-instance key so each instance logs once per session.
+    if (markImpression(`scenario_cue:${payload.labelTemplate}:${impressionKey ?? ""}`)) {
+      trackChipImpression(payload);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
