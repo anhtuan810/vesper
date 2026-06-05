@@ -4,6 +4,7 @@ import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { normalizeCryptoSymbol } from "./symbol-aliases";
 import { getUsdRates } from "./fx";
 import { estimatePropertyValue } from "./property-estimate-resolve";
+import { validatePensionChange, buildPensionEcho } from "./pension-intake";
 
 export type ProposalChange = {
   action: "add" | "edit" | "remove";
@@ -104,6 +105,16 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
   }
 
   if (action === "add") {
+    // Pension: a confirmation echo of EVERY captured field for the shape. The
+    // deterministic gate runs first — if any required field is missing, refuse
+    // to produce a commit-able echo and surface the next question instead, so an
+    // incomplete pension can never reach commit.
+    if (proposal.type === "pension") {
+      const gate = validatePensionChange(proposal);
+      if (!gate.ok) throw new ValueModeError(gate.question);
+      return buildPensionEcho(proposal, name);
+    }
+
     // Property: enumerate every financial field present in the proposal (plain
     // language, no field names) so the user can catch an omission before commit —
     // instead of the old fallthrough that described a property as "shares".

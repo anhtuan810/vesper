@@ -1,5 +1,7 @@
 // Utility helpers shared across the /api/chat route handler.
 
+import { ALL_PENSION_CHIPS } from "./pension-intake";
+
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 export const ALLOWED_CHIPS: ReadonlySet<string> = new Set([
@@ -31,6 +33,8 @@ export const ALLOWED_CHIPS: ReadonlySet<string> = new Set([
   "Earlier — I'll type the date",
   "Use US TSLA",
   "Keep TL0.DE",
+  // Pension intake chips (type fork, provider, contribution, growth, age, echo)
+  ...ALL_PENSION_CHIPS,
 ]);
 
 // Chips that mean "go ahead and apply" — if the user sends one of these,
@@ -44,6 +48,8 @@ export const CONFIRMATION_CHIPS: ReadonlySet<string> = new Set([
   "Today",
   "Yesterday",
   "Skip — track from today",
+  // Pension confirmation-echo commit chip
+  "Looks right, add it",
 ]);
 
 export function sanitizeChips(raw: unknown): string[] | null {
@@ -53,7 +59,10 @@ export function sanitizeChips(raw: unknown): string[] | null {
     .map((c) => c.trim())
     .filter((c) => ALLOWED_CHIPS.has(c));
   const safe = cleaned.filter((c) => !/[\$\[\]<>]/.test(c));
-  if (safe.length < 2 || safe.length > 3) return null;
+  // Most flows emit 2–3 chips; the pension intake's provider/contribution rows
+  // can offer up to 5. The chat renders chips in a wrapping flex row, so a longer
+  // set lays out fine.
+  if (safe.length < 2 || safe.length > 5) return null;
   return safe;
 }
 

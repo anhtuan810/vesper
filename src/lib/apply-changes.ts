@@ -7,6 +7,12 @@ import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
 import { isCostBasisOnlyEdit, applyCostBasisOnly } from "./cost-basis";
 import { estimatePropertyValue } from "./property-estimate-resolve";
+import {
+  validatePensionChange,
+  pensionShapeOfKind,
+  type PensionKind,
+  type PensionChangeInput,
+} from "./pension-intake";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 
@@ -25,6 +31,13 @@ type CurrentAsset = {
   units?: number | null;
   mortgage_balance?: number | null;
   country?: string | null;
+  // Pension fields — present on pension rows; needed to merge + re-validate edits.
+  pension_kind?: PensionKind | null;
+  annual_income?: number | null;
+  monthly_contribution?: number | null;
+  mortgage_rate?: number | null;
+  access_age?: number | null;
+  pension_provider?: string | null;
 };
 
 type PortfolioChange = {
@@ -50,6 +63,12 @@ type PortfolioChange = {
   maturity_date?: string;
   issuer?: string;
   isin?: string;
+  // Pension intake fields
+  pension_kind?: PensionKind | null;
+  annual_income?: number | null;
+  monthly_contribution?: number | null;
+  access_age?: number | null;
+  pension_provider?: string | null;
   address?: string;
   property_type?: string;
   size_sqm?: number;
@@ -285,8 +304,8 @@ export async function applyPortfolioChanges({
 
       // Monetary fields stay in the asset's native currency — no conversion to USD.
       // toUsdSync is used only for the runningTotal metadata below.
-      let resolvedMortgageBalance = change.mortgage_balance ?? null;
-      let resolvedMonthlyPayment = change.monthly_payment ?? null;
+      const resolvedMortgageBalance = change.mortgage_balance ?? null;
+      const resolvedMonthlyPayment = change.monthly_payment ?? null;
 
       const resolvedLat: number | null = change.latitude ?? null;
       const resolvedLng: number | null = change.longitude ?? null;
@@ -328,10 +347,39 @@ export async function applyPortfolioChanges({
         );
       }
 
+      // Pension intake: enforce the deterministic gate, then set shape-correct
+      // fields. CAPITAL keeps value + mortgage_rate(growth) + monthly_contribution;
+      // INCOME (db/state) leaves value NULL and carries annual_income only, so an
+      // income entitlement never lands on the balance sheet.
+      let pensionKind: PensionKind | null = null;
+      let pensionAnnualIncome: number | null = null;
+      let pensionMonthlyContribution: number | null = null;
+      let pensionAccessAge: number | null = null;
+      let pensionProvider: string | null = null;
+      let pensionGrowthRate: number | null = change.mortgage_rate ?? null;
+      let insertValue: number | null = resolvedValue;
+      if ((change.type || "other") === "pension") {
+        const gate = validatePensionChange(change);
+        if (!gate.ok) throw new ValueModeError(gate.question);
+        pensionKind = (change.pension_kind ?? "dc") as PensionKind;
+        pensionAccessAge = change.access_age ?? null;
+        pensionProvider = (change.pension_provider ?? "").trim() || null;
+        if (pensionShapeOfKind(pensionKind) === "income") {
+          pensionAnnualIncome = change.annual_income ?? null;
+          pensionMonthlyContribution = null;
+          pensionGrowthRate = null;   // income has no growth assumption
+          insertValue = null;          // off-balance: no owned pot
+          resolvedValue = 0;           // running-total metadata contribution is 0
+        } else {
+          pensionAnnualIncome = null;
+          pensionMonthlyContribution = change.monthly_contribution ?? 0;
+        }
+      }
+
       const { data: inserted, error } = await supabase.from("assets").insert({
         name: resolvedAssetName,
         type: change.type || "other",
-        value: resolvedValue,
+        value: insertValue,
         currency: resolvedCurrency,
         country: change.country || null,
         symbol: effectiveSymbol,
@@ -341,8 +389,13 @@ export async function applyPortfolioChanges({
         buy_price_source: change.buy_price_source || null,
         mortgage_balance: resolvedMortgageBalance,
         mortgage_balance_recorded_at: resolvedMortgageBalance != null ? new Date().toISOString() : null,
-        mortgage_rate: change.mortgage_rate ?? null,
+        mortgage_rate: pensionGrowthRate,
         monthly_payment: resolvedMonthlyPayment,
+        pension_kind: pensionKind,
+        annual_income: pensionAnnualIncome,
+        monthly_contribution: pensionMonthlyContribution,
+        access_age: pensionAccessAge,
+        pension_provider: pensionProvider,
         mortgage_type: change.mortgage_type || null,
         mortgage_start_date: change.mortgage_start_date || null,
         mortgage_end_date: change.mortgage_end_date || null,
@@ -374,9 +427,11 @@ export async function applyPortfolioChanges({
         // the detail view show real appreciation since purchase. Other asset types
         // (and properties added without a purchase price) record the add's value.
         const acquisitionAmount =
-          isRealEstate && resolvedBuyPrice != null && resolvedBuyPrice > 0
-            ? resolvedBuyPrice
-            : resolvedValue;
+          pensionKind && pensionShapeOfKind(pensionKind) === "income"
+            ? pensionAnnualIncome ?? 0
+            : isRealEstate && resolvedBuyPrice != null && resolvedBuyPrice > 0
+              ? resolvedBuyPrice
+              : resolvedValue;
         const { data: addedMutation } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
@@ -515,15 +570,61 @@ export async function applyPortfolioChanges({
 
         // Monetary fields stay in the asset's native currency — no conversion.
 
+        // Pension edit: respect the shape, re-validate the gate over the MERGED
+        // state (existing row + this change), and write shape-correct columns.
+        // Income pensions keep value NULL (never NaN); switching pension_kind is
+        // allowed and re-validated here.
+        let pensionEditIncomeAmount: number | null = null;
+        if (existing.type === "pension" || change.type === "pension") {
+          const merged: PensionChangeInput = {
+            type: "pension",
+            pension_kind: (change.pension_kind ?? existing.pension_kind ?? "dc") as PensionKind,
+            value: change.value ?? existing.value ?? null,
+            currency: change.currency ?? existing.currency,
+            annual_income: change.annual_income ?? existing.annual_income ?? null,
+            monthly_contribution: change.monthly_contribution ?? existing.monthly_contribution ?? null,
+            mortgage_rate: change.mortgage_rate ?? existing.mortgage_rate ?? null,
+            access_age: change.access_age ?? existing.access_age ?? null,
+            pension_provider: change.pension_provider ?? existing.pension_provider ?? null,
+          };
+          const gate = validatePensionChange(merged);
+          if (!gate.ok) throw new ValueModeError(gate.question);
+          const kind = (merged.pension_kind ?? "dc") as PensionKind;
+          updateData.pension_kind = kind;
+          updateData.access_age = merged.access_age ?? null;
+          updateData.pension_provider =
+            (typeof merged.pension_provider === "string" ? merged.pension_provider.trim() : "") || null;
+          if (pensionShapeOfKind(kind) === "income") {
+            updateData.value = null;
+            updateData.annual_income = merged.annual_income ?? null;
+            updateData.monthly_contribution = null;
+            updateData.mortgage_rate = null;
+            pensionEditIncomeAmount = merged.annual_income ?? 0;
+          } else {
+            updateData.value = merged.value ?? null;
+            updateData.annual_income = null;
+            updateData.monthly_contribution = merged.monthly_contribution ?? 0;
+            updateData.mortgage_rate = merged.mortgage_rate ?? null;
+          }
+        }
+
         const { error } = await supabase.from("assets").update(updateData).eq("id", existing.id);
 
         if (error) {
           console.error("EDIT ERROR:", error);
         } else {
           changed = true;
-          const afterValue = updateData.value !== undefined ? (updateData.value as number) : existing.value;
+          const isIncomePensionEdit = pensionEditIncomeAmount !== null;
+          const rawAfter = updateData.value !== undefined ? (updateData.value as number | null) : existing.value;
           const editCur = change.currency || existing.currency || "USD";
-          runningTotal += toUsdSync(afterValue, editCur) - toUsdSync(existing.value, existing.currency || "USD");
+          // Income pensions are off-balance — their net-worth contribution is 0,
+          // so the running total never picks up an annual-income figure. Capital
+          // pensions and all other assets use the resolved value.
+          const afterValueForTotal = isIncomePensionEdit ? 0 : (rawAfter ?? 0);
+          runningTotal += toUsdSync(afterValueForTotal, editCur) - toUsdSync(existing.value ?? 0, existing.currency || "USD");
+          // The mutation records the annual income for income pensions (phrased
+          // "€X / year" downstream), the resolved value otherwise.
+          const afterValue: number | null = isIncomePensionEdit ? pensionEditIncomeAmount : rawAfter;
 
           // Every edit is logged — including a pure rename, which records the
           // before/after name (value/units unchanged) so the Diary audit trail

@@ -2,7 +2,7 @@ import type { Asset, UserProfile, Mutation } from "./supabase";
 import type { DisplayCurrency } from "./money";
 import { computeCurrentBalance } from "./mortgage";
 import { ONBOARDING_OPENER } from "./copy";
-import { PRICE_KNOWLEDGE_BLOCK, IMAGE_IMPORT_BLOCK, OPTIONS_BLOCK, CHIPS_RULES_BLOCK, clarifyBlock } from "./prompt-blocks";
+import { PRICE_KNOWLEDGE_BLOCK, IMAGE_IMPORT_BLOCK, OPTIONS_BLOCK, CHIPS_RULES_BLOCK, PENSION_INTAKE_BLOCK, clarifyBlock } from "./prompt-blocks";
 
 // Injects the display-currency rendering directive into a prompt block.
 function displayDirective(displayCurrency: DisplayCurrency): string {
@@ -98,8 +98,10 @@ Use <propose_change> instead of <changes> in any of these cases:
   - Mode 3 (full purchase with explicit units AND buy_price
     AND buy_date all stated by the user)
   - Pure renames (edit with only new_name set)
-  - Cash, pension, bond, or other static-asset value updates
+  - Cash, bond, or other static-asset value updates
     with an explicit absolute amount stated by the user
+    (PENSIONS ARE EXCLUDED — they follow the PENSION INTAKE flow,
+    which gates every add behind the confirmation echo)
   - Real estate confirmation Turn 2 (existing <propose_address>
     flow already handles this — do not change)
 
@@ -315,6 +317,8 @@ defaulted value.
 ${clarifyBlock()}
 
 ${IMAGE_IMPORT_BLOCK}
+
+${PENSION_INTAKE_BLOCK}
 
 CORRECTION DETECTION:
 
@@ -536,7 +540,9 @@ Never re-ask: if RECENT CHANGES shows [starting position] after an asset name, t
 
 ADDITIONAL LOTS ("bought N more"): when the user buys more of an existing position, record it as ONE immediate edit on that position — units increase (or value_delta for a stated amount), valued at current market price. Do NOT reprocess or re-confirm previously recorded lots, and do NOT walk through lots one at a time. Example: holding 100 NVIDIA, "bought 30 more yesterday" → a single edit to 130 shares (with buy_date if stated), committed now.
 
-NON-TRADEABLE HOLDINGS (cash, pension, bonds, other): a plainly stated balance or holding is an immediate ADD, exactly like a tradeable starting position — phrasing such as "I have a workplace pension of £85,000", "I've got £53k in savings", or "my pension is worth €120k" is NOT mere context. Emit the committing <changes> THIS turn with action:"add", the matching type (pension/cash/bonds/other), a name, value = the stated amount in its native currency, and currency. These have no units, no live price, and no basis to elicit: never gate on a purchase price or date, and never just acknowledge ("Done") without writing. Example: "I have a workplace pension of £85,000" → <changes>[{"action":"add","type":"pension","name":"Workplace pension","value":85000,"currency":"GBP"}]</changes>
+NON-TRADEABLE HOLDINGS (cash, bonds, other): a plainly stated balance or holding is an immediate ADD, exactly like a tradeable starting position — phrasing such as "I've got £53k in savings" is NOT mere context. Emit the committing <changes> THIS turn with action:"add", the matching type (cash/bonds/other), a name, value = the stated amount in its native currency, and currency. These have no units, no live price, and no basis to elicit: never gate on a purchase price or date, and never just acknowledge ("Done") without writing.
+
+PENSIONS ARE THE EXCEPTION: a pension is NEVER an immediate one-line add. A stated pension balance such as "I have a workplace pension of £85,000" or "my pension is worth €120k" BEGINS the PENSION INTAKE flow (see the PENSION INTAKE block) — collect every required field for its shape, echo it back, and commit only on confirmation. Never emit a committing <changes> for a pension from a single stated balance.
 
 TRUTHFUL SUCCESS: only say "Done" / "Recorded" / "Saved" / "Added" / "Logged" on a turn where you actually emit the committing <changes> (or it is the confirmed commit of a prior <propose_change>). If this turn only asks a follow-up, proposes a change for confirmation, or clarifies, do NOT claim the position was saved — nothing was written yet. Never claim success without a write.
 
@@ -741,8 +747,10 @@ Use <propose_change> instead of <changes> in any of these cases:
   - Mode 3 (full purchase with explicit units AND buy_price AND
     buy_date all stated by the user)
   - Pure renames (edit with only new_name set)
-  - Cash, pension, bond, or other static-asset value updates with
+  - Cash, bond, or other static-asset value updates with
     an explicit absolute amount stated by the user
+    (PENSIONS ARE EXCLUDED — they follow the PENSION INTAKE flow,
+    which gates every add behind the confirmation echo)
   - Real estate confirmation Turn 2 (existing <propose_address>
     flow already handles this)
 
@@ -780,6 +788,8 @@ defaulted value.
 ${clarifyBlock(true)}
 
 ${IMAGE_IMPORT_BLOCK}
+
+${PENSION_INTAKE_BLOCK}
 
 CORRECTION DETECTION:
 
@@ -998,7 +1008,9 @@ Mode 5 — Value-delta edit (user adds or removes value from an
   user states both units and value, prefer units (existing edit
   semantics, no value_delta).
 
-NON-TRADEABLE HOLDINGS (cash, pension, bonds, other): a plainly stated balance or holding is an immediate ADD, exactly like a tradeable starting position — phrasing such as "I have a workplace pension of £85,000", "I've got £53k in savings", or "my pension is worth €120k" is NOT mere context. Emit the committing <changes> THIS turn with action:"add", the matching type (pension/cash/bonds/other), a name, value = the stated amount in its native currency, and currency. These have no units, no live price, and no basis to elicit: never gate on a purchase price or date, and never just acknowledge ("Done") without writing. Example: "I have a workplace pension of £85,000" → <changes>[{"action":"add","type":"pension","name":"Workplace pension","value":85000,"currency":"GBP"}]</changes>
+NON-TRADEABLE HOLDINGS (cash, bonds, other): a plainly stated balance or holding is an immediate ADD, exactly like a tradeable starting position — phrasing such as "I've got £53k in savings" is NOT mere context. Emit the committing <changes> THIS turn with action:"add", the matching type (cash/bonds/other), a name, value = the stated amount in its native currency, and currency. These have no units, no live price, and no basis to elicit: never gate on a purchase price or date, and never just acknowledge ("Done") without writing.
+
+PENSIONS ARE THE EXCEPTION: a pension is NEVER an immediate one-line add. A stated pension balance such as "I have a workplace pension of £85,000" or "my pension is worth €120k" BEGINS the PENSION INTAKE flow (see the PENSION INTAKE block) — collect every required field for its shape, echo it back, and commit only on confirmation. Never emit a committing <changes> for a pension from a single stated balance.
 
 Never attach chips to the basis-capture follow-up. The user
 types a price/date or types "skip" / "no" — there are no

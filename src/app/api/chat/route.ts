@@ -22,6 +22,7 @@ import {
   sanitizeChips, stripTags, extractTag, timestampedPair,
 } from "@/lib/chat-helpers";
 import { resolveProposal } from "@/lib/proposal-resolver";
+import { PENSION_ECHO_CHIPS } from "@/lib/pension-intake";
 import { extractNumbers, validateNarration } from "@/lib/narrate/guardrail";
 import { narrateScenario } from "@/lib/scenario/narrate";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
@@ -848,7 +849,12 @@ export async function POST(req: NextRequest) {
 
         const resolvedBlock = `Resolved:\n${resolvedLines.join("\n")}`;
         const proposalText = safeDisplayText ? `${safeDisplayText}\n\n${resolvedBlock}` : resolvedBlock;
-        const proposalChips = ["Confirm and save", "No, let me correct it"];
+        // Pension adds use the intake's own confirmation-echo chips; everything
+        // else uses the standard confirm/correct pair.
+        const isPensionProposal = proposals.some((p) => p?.type === "pension");
+        const proposalChips = isPensionProposal
+          ? [...PENSION_ECHO_CHIPS]
+          : ["Confirm and save", "No, let me correct it"];
 
         await supabase.from("messages").insert(timestampedPair(
           { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
