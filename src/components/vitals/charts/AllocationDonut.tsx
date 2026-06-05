@@ -1,7 +1,7 @@
 "use client";
 
 import { computeCurrentBalance } from "@/lib/mortgage";
-import { toUsdClient, formatMoney, getUsdRate } from "@/lib/money";
+import { toUsdClient, getUsdRate } from "@/lib/money";
 import { useDisplayCurrency } from "@/lib/hooks";
 import type { LiveAsset } from "@/lib/supabase";
 
@@ -88,10 +88,11 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
   const yTop = 16;
   const yBottom = VB_H - 16;
   // A slice whose mid-angle is within ~40° of straight up gets a centred callout
-  // ABOVE the ring (short near-vertical leader) instead of a long line across the
-  // card. Only the single closest-to-up slice qualifies, so two never collide.
+  // ABOVE the ring, connected by an L-shaped leader (up from the slice, then
+  // across to centre) instead of a long line across the card. Only the single
+  // closest-to-up slice qualifies, so two never collide.
   const TOP_THRESH = 40 / 360;
-  const TOP_DOT_Y = 40; // leader terminus; the two text lines sit above it
+  const TOP_LINE_Y = 41; // leader's horizontal run + dot; text lines sit above it
 
   // One callout per slice, anchored at the slice mid-angle. Arcs start at 12
   // o'clock and run clockwise (rotate(-90)), so for fraction f along the ring:
@@ -165,7 +166,7 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
 
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
-        style={{ width: "100%", maxWidth: 380, margin: "0 auto", display: "block" }}
+        style={{ width: "100%", maxWidth: 480, margin: "0 auto", display: "block" }}
       >
         {/* Donut — one arc per class */}
         {slices.map((s, i) => {
@@ -187,50 +188,25 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
           );
         })}
 
-        {/* Centre net-worth label (full formatMoney, unchanged) */}
-        <text
-          x={cx}
-          y={cy - 6}
-          textAnchor="middle"
-          style={{ fontSize: 8, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", fill: "var(--text-faint)" }}
-        >
-          Net worth
-        </text>
-        <text
-          x={cx}
-          y={cy + 14}
-          textAnchor="middle"
-          style={{
-            fontFamily: "var(--font-serif)",
-            fontSize: 18,
-            fontWeight: 500,
-            fill: "var(--hero)",
-            letterSpacing: "-0.01em",
-            fontFeatureSettings: '"tnum" 1',
-            fontVariationSettings: "'opsz' 18",
-          }}
-        >
-          {formatMoney(total, "USD", displayCurrency)}
-        </text>
-
         {/* Floating callouts: leader + full name + compact value · share */}
         {callouts.map((c) => {
           if (c.position === "top") {
-            // Centred above the ring; short near-vertical leader to a dot whose
-            // text sits above it (leader stays below the text — never crosses it).
+            // L-shaped leader: straight up from the slice edge, then across to
+            // centre, with the dot at the corner and the text above it (the
+            // leader runs below the text, never crossing it).
             return (
               <g key={c.category}>
                 <polyline
-                  points={`${c.p0.x.toFixed(1)},${c.p0.y.toFixed(1)} ${cx},${TOP_DOT_Y}`}
+                  points={`${c.p0.x.toFixed(1)},${c.p0.y.toFixed(1)} ${c.p0.x.toFixed(1)},${TOP_LINE_Y} ${cx},${TOP_LINE_Y}`}
                   fill="none"
                   stroke={c.color}
                   strokeWidth={1.1}
                 />
-                <circle cx={cx} cy={TOP_DOT_Y} r={3} fill={c.color} />
-                <text x={cx} y={22} textAnchor="middle" style={{ fontSize: 13, fontWeight: 500, fill: "var(--text)" }}>
+                <circle cx={cx} cy={TOP_LINE_Y} r={3} fill={c.color} />
+                <text x={cx} y={21} textAnchor="middle" style={{ fontSize: 13, fontWeight: 500, fill: "var(--text)" }}>
                   {c.label}
                 </text>
-                <text x={cx} y={34} textAnchor="middle" style={{ fontSize: 10.5, fill: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+                <text x={cx} y={33} textAnchor="middle" style={{ fontSize: 10.5, fill: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
                   {compactMoney(c.value)}
                   <tspan style={{ fill: "var(--text-faint)" }}>{" · "}{c.pct}%</tspan>
                 </text>
