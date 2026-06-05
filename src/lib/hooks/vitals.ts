@@ -43,20 +43,57 @@ export function useVitals() {
 
     // A forced read (after a mutation or on tab focus) bypasses BOTH the 1-hour
     // client cache (force) and any HTTP/edge cache (no-store + a unique query
-    // param), so the server-regenerated Pulse is actually retrieved.
-    const url = force ? `/api/vitals?rev=${Date.now()}` : "/api/vitals";
-    fetch(url, { cache: "no-store" })
+    // param), so the server-regenerated body/Pulse is actually retrieved.
+    const suffix = force ? `?rev=${Date.now()}` : "";
+
+    // The Pulse arrives on its own slower channel; we merge it whenever it lands,
+    // whether that's before or after the body resolves.
+    let pulsePayload: Pick<VitalsResponse, "pulse" | "pulseLiquid"> | null = null;
+    let bodyReady = false;
+    const mergePulse = () => {
+      if (!pulsePayload) return;
+      const merge = pulsePayload;
+      setData((prev) => (prev ? { ...prev, ...merge } : prev));
+      if (_vitalsCache) {
+        _vitalsCache = {
+          data: { ..._vitalsCache.data, ...merge },
+          fetchedAt: _vitalsCache.fetchedAt,
+        };
+      }
+    };
+
+    // Body — deterministic, fast. As soon as it resolves the page can paint, so
+    // this is what clears isLoading. Pulse fields start null and fill in later.
+    fetch(`/api/vitals${suffix}`, { cache: "no-store" })
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<VitalsResponse>;
+        return r.json() as Promise<Omit<VitalsResponse, "pulse" | "pulseLiquid">>;
       })
-      .then((d) => {
-        _vitalsCache = { data: d, fetchedAt: Date.now() };
-        setData(d);
+      .then((body) => {
+        const merged: VitalsResponse = { ...body, pulse: null, pulseLiquid: null };
+        _vitalsCache = { data: merged, fetchedAt: Date.now() };
+        setData(merged);
         setError(null);
+        bodyReady = true;
+        mergePulse();
       })
       .catch((e) => setError(e instanceof Error ? e : new Error(String(e))))
       .finally(() => setIsLoading(false));
+
+    // Pulse — slow (Haiku). Failure must never block the body or trip the page
+    // error state; we simply leave the pulse null.
+    fetch(`/api/vitals/pulse${suffix}`, { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<Pick<VitalsResponse, "pulse" | "pulseLiquid">>;
+      })
+      .then((p) => {
+        pulsePayload = { pulse: p.pulse ?? null, pulseLiquid: p.pulseLiquid ?? null };
+        if (bodyReady) mergePulse();
+      })
+      .catch(() => {
+        /* swallow — the body already rendered; the Pulse slot stays a shimmer */
+      });
   }, []);
 
   // Initial mount respects the cache; every later revision bump forces a refresh.

@@ -1065,7 +1065,7 @@ export async function POST(req: NextRequest) {
     // pre-mutation "no property yet" text on the persistent desktop Vitals rail.
     if (portfolioChanged) {
       try {
-        await supabase.from("highlights").delete().eq("user_id", userId).eq("type", "pulse");
+        await supabase.from("highlights").delete().eq("user_id", userId).in("type", ["pulse", "pulse_liquid"]);
       } catch (err) {
         Sentry.captureException(err, { tags: { background: "pulse-cache-invalidation" } });
       }

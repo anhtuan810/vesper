@@ -704,6 +704,23 @@ function SkeletonStripLine() {
   );
 }
 
+// Slim placeholder occupying the PulseBanner slot while the Pulse sentence is
+// still loading on its separate channel — same horizontal footprint and bottom
+// margin as PulseBanner so the cards below don't jump when the sentence lands.
+function PulseBannerSkeleton() {
+  return (
+    <div
+      style={{
+        margin: "0 0 10px",
+        background: "var(--surface-elev)",
+        borderRadius: 14,
+        height: 36,
+        opacity: 0.4,
+      }}
+    />
+  );
+}
+
 // ── Body content ──────────────────────────────────────────────────────────
 
 interface VitalsContentProps {
@@ -1025,18 +1042,24 @@ export function VitalsContent({
 
       {/* 2. Pulse banner — lens-aware: liquid pulse when Property is off,
              all-assets pulse otherwise. Falls back to all-assets pulse if
-             pulseLiquid wasn't generated (non-mixed user or Haiku failure). */}
+             pulseLiquid wasn't generated (non-mixed user or Haiku failure).
+             The Pulse loads on a separate channel after the body paints, so
+             until the sentence lands we hold the slot with a shimmer (only when
+             the user actually has assets) to avoid shifting the cards below. */}
       {(() => {
         const pulseSentence = showProperty
           ? data.pulse
           : (data.pulseLiquid ?? data.pulse);
-        return pulseSentence ? (
-          <PulseBanner
-            dateLabel={`Pulse · ${fmtDate()}`}
-            sentence={pulseSentence}
-            metaLabel={`${activeVitals.length} vitals · 0 shifted`}
-          />
-        ) : null;
+        if (pulseSentence) {
+          return (
+            <PulseBanner
+              dateLabel={`Pulse · ${fmtDate()}`}
+              sentence={pulseSentence}
+              metaLabel={`${activeVitals.length} vitals · 0 shifted`}
+            />
+          );
+        }
+        return data.assets.length > 0 ? <PulseBannerSkeleton /> : null;
       })()}
 
       {/* Library (top placement) */}
