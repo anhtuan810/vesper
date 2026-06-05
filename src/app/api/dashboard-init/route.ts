@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
       .gt("expires_at", now)
       .order("created_at", { ascending: false })
       .limit(3),
+    // Insight is READ-ONLY here: return the fresh cached insight if present, else
+    // null. Generation (Haiku) is never invoked on this critical path — the chart
+    // and mutations must never wait behind it. On a miss the client fills the band
+    // from /api/insight separately. See src/app/(main)/page.tsx fetchDashboardInit.
     supabase
       .from("highlights")
       .select("detail")

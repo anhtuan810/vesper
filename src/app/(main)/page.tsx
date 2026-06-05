@@ -51,9 +51,25 @@ export default function Dashboard() {
     const res = await fetch("/api/dashboard-init");
     if (!res.ok) return;
     const { insight, portfolio, market, snapshots, mutations } = await res.json();
-    primeInsightCache(insight, portfolio ?? [], market ?? []);
+    // Chart + diary badge come from dashboard-init's fast, deterministic data —
+    // paint them immediately, never behind the insight Haiku.
     setInitialSnapshots(snapshots ?? []);
     setMutations(mutations ?? []);
+
+    const cards: string[] = portfolio ?? [];
+    if (insight != null || cards.length > 0) {
+      // Insight cache HIT: dashboard-init already carries the band's content (the
+      // cached legacy insight and/or the deterministic portfolio cards). Prime the
+      // band exactly as before — one round-trip, no extra fetch.
+      primeInsightCache(insight, cards, market ?? []);
+    }
+    // Insight cache MISS (no cards, no cached insight): dashboard-init returned
+    // without paying the Haiku cost, so we deliberately leave the insight cache
+    // cold. The band's own useInsight then fetches /api/insight on its separate,
+    // non-blocking channel — rendering its placeholder while in flight and
+    // swapping in the generated insight when it lands. Priming a null here would
+    // poison that cache and the band would never fill. A failed fetch is swallowed
+    // by useInsight (band falls back to its empty state).
   }, [user?.id]);
 
   const refreshMutations = useCallback(async () => {
