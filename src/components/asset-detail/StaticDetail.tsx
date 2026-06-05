@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { BondBlock } from "@/components/asset-detail/BondBlock";
 import { formatDate } from "@/lib/utils";
@@ -51,7 +50,6 @@ function AssetIcon({ asset }: { asset: StaticAsset | BondsAsset }) {
 }
 
 export function StaticDetail({ asset }: Props) {
-  const router = useRouter();
   const supabase = createBrowserSupabase();
   const [mutations, setMutations] = useState<Mutation[]>([]);
 
@@ -85,19 +83,6 @@ export function StaticDetail({ asset }: Props) {
   return (
     <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
       <div className="px-0 md:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
-
-        {/* Top bar: back only */}
-        <div style={{ display: "flex", alignItems: "center", padding: "14px 0 18px" }}>
-          <button
-            onClick={() => router.back()}
-            style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -8, color: "var(--text)", background: "none", border: "none", cursor: "pointer" }}
-            aria-label="Back"
-          >
-            <svg width="22" height="22" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="160 208 80 128 160 48" />
-            </svg>
-          </button>
-        </div>
 
         {/* Identity */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>

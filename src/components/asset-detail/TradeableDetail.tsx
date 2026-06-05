@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PriceChart, type Range, type ScrubInfo } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
@@ -47,11 +46,9 @@ function ActivityDate({ dateStr }: { dateStr: string }) {
 }
 
 export function TradeableDetail({ asset }: Props) {
-  const router = useRouter();
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [livePrev, setLivePrev] = useState<number | null>(null);
   const [nativePrice, setNativePrice] = useState<number | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [periodInfo, setPeriodInfo] = useState<{ pct: number; range: Range; label: string } | null>(null);
   const [scrubInfo, setScrubInfo] = useState<ScrubInfo | null>(null);
@@ -98,7 +95,7 @@ export function TradeableDetail({ asset }: Props) {
       })
       .catch((err) => { console.error("Price fetch failed:", err); });
     return () => { cancelled = true; };
-  }, [asset.symbol, refreshKey]);
+  }, [asset.symbol]);
 
   const fetchMutations = useCallback(async () => {
     const { data } = await supabase
@@ -140,35 +137,6 @@ export function TradeableDetail({ asset }: Props) {
   return (
     <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
       <div className="px-0 md:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
-
-        {/* Top bar: back left, refresh right */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 18px" }}>
-          <button
-            onClick={() => router.back()}
-            style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -8, color: "var(--text)", background: "none", border: "none", cursor: "pointer" }}
-            aria-label="Back"
-          >
-            <svg width="22" height="22" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="160 208 80 128 160 48" />
-            </svg>
-          </button>
-          {asset.symbol && (
-            <div style={{ display: "flex", gap: 18, alignItems: "center", color: "var(--text-dim)" }}>
-              <button
-                onClick={() => setRefreshKey((k) => k + 1)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", display: "flex" }}
-                aria-label="Refresh price"
-              >
-                <svg width="22" height="22" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="176 40 224 40 224 88" />
-                  <path d="M65.16,65.16a88,88,0,0,1,124.49,0L224,99.51" />
-                  <polyline points="80 216 32 216 32 168" />
-                  <path d="M190.84,190.84a88,88,0,0,1-124.49,0L32,156.49" />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
 
         {/* Identity header */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
