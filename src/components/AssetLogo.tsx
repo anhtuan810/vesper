@@ -1,12 +1,17 @@
 "use client";
 
 import { displayTicker } from "@/lib/utils";
+import { HouseFillIcon } from "@/components/HouseFillIcon";
 
 interface Props {
   type: string | null;
   symbol: string | null;
   name: string | null;
   size?: number;
+  // When provided on a real_estate logo, the house is drawn filled to this owned
+  // share (HouseFillIcon) instead of the static outline. Holdings rows opt in;
+  // other call sites leave it undefined and keep the static house.
+  ownedFraction?: number;
 }
 
 import { useState } from "react";
@@ -130,7 +135,7 @@ function GoldIcon({ size }: { size: number }) {
   );
 }
 
-export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
+export function AssetLogo({ type, symbol, name, size = 32, ownedFraction }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
 
   let imgUrl: string | null = null;
@@ -165,7 +170,11 @@ export function AssetLogo({ type, symbol, name, size = 32 }: Props) {
       : "var(--surface)";
 
   const renderIcon = () => {
-    if (type === "real_estate") return <HouseIcon size={size} />;
+    if (type === "real_estate") {
+      return ownedFraction !== undefined
+        ? <HouseFillIcon ownedFraction={ownedFraction} size={Math.round(size * 0.6)} />
+        : <HouseIcon size={size} />;
+    }
     if (type === "cash") return <BanknoteIcon size={size} />;
     if (type === "pension") return <PensionIcon size={size} />;
     if (type === "bonds") return <CertificateIcon size={size} />;
