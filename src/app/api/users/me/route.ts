@@ -108,9 +108,42 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+// Property map thumbnails live in this public bucket at `{user_id}/{asset_id}-{theme}.png`
+// (see PropertyMap.tsx). They are user-owned and must be purged on account deletion.
+const PROPERTY_PHOTOS_BUCKET = "property-photos";
+const STORAGE_LIST_PAGE = 100;
+
+// Removes every object under the user's `{userId}/` prefix in the property-photos
+// bucket, paging until the folder is empty. Tolerates a missing/empty folder (no
+// objects → no-op) and is safe to re-run (removing already-removed paths is a
+// no-op). Throws a labelled error on a genuine list/remove failure.
+async function purgeUserPropertyPhotos(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+): Promise<void> {
+  const storage = supabase.storage.from(PROPERTY_PHOTOS_BUCKET);
+  // Defensive cap so a list/remove inconsistency can never loop forever. Each
+  // iteration removes the objects it just listed, so the folder strictly shrinks.
+  for (let guard = 0; guard < 10_000; guard++) {
+    const { data, error } = await storage.list(userId, { limit: STORAGE_LIST_PAGE });
+    if (error) throw new Error(`Failed listing storage for ${userId}: ${error.message}`);
+    if (!data || data.length === 0) return;
+
+    const paths = data.map((obj) => `${userId}/${obj.name}`);
+    const { error: removeError } = await storage.remove(paths);
+    if (removeError) throw new Error(`Failed removing storage objects: ${removeError.message}`);
+
+    if (data.length < STORAGE_LIST_PAGE) return; // last (partial) page handled
+  }
+}
+
 // Permanent, irreversible account deletion. The user id is resolved from the
-// session only — never from the request body. Removes every row owned by the
-// user across all tables, then the users row, then the auth user itself.
+// session only — never from the request body. Removes the user's Storage objects,
+// then every row owned by the user across all tables, then the users row, then
+// the auth user itself. Every step is idempotent, so a mid-sequence failure can be
+// safely retried while the session (and thus the auth user) is still valid — which
+// is why the auth user is deleted LAST. Any step failure returns 500 rather than a
+// silent partial success.
 export async function DELETE(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -119,25 +152,36 @@ export async function DELETE(request: NextRequest) {
   const supabase = createServerSupabase();
 
   try {
-    // Order matters: dependent data first, the users row last, auth user after.
-    // Every user-scoped table is listed explicitly (all keyed by user_id).
-    // rate_limits is omitted — it has ON DELETE CASCADE to users(id); fx_rates
-    // is global and intentionally untouched.
+    // 1. Storage first — user-owned property-map thumbnails (public bucket).
+    await purgeUserPropertyPhotos(supabase, userId);
+
+    // 2. Dependent table rows. Every user-scoped table is listed explicitly (all
+    // keyed by user_id). rate_limits is omitted — it has ON DELETE CASCADE to
+    // users(id); fx_rates is global and price_index_cache is region-keyed, both
+    // intentionally untouched.
     const tables = ["messages", "highlights", "goals", "snapshots", "mutations", "assets", "diary_summaries", "vital_snapshots", "scenarios"];
     for (const table of tables) {
       const { error } = await supabase.from(table).delete().eq("user_id", userId);
       if (error) throw new Error(`Failed deleting ${table}: ${error.message}`);
     }
 
+    // 3. The users row (cascades rate_limits).
     const { error: userError } = await supabase.from("users").delete().eq("id", userId);
     if (userError) throw new Error(`Failed deleting users row: ${userError.message}`);
 
+    // 4. The auth user LAST — so the session stays valid for a retry if any
+    // earlier step failed.
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);
     if (authError) throw new Error(`Failed deleting auth user: ${authError.message}`);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     Sentry.captureException(err, { tags: { route: "DELETE /api/users/me" } });
-    return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
+    // Surface a clear, non-silent failure so the client knows deletion is
+    // incomplete and can retry. The specific failing step is captured to Sentry.
+    return NextResponse.json(
+      { error: "Account deletion did not complete. Please try again." },
+      { status: 500 },
+    );
   }
 }
