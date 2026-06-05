@@ -141,7 +141,7 @@ export function RealEstateDetail({ asset }: Props) {
             letterSpacing: "0.18em",
             textTransform: "uppercase",
             color: "var(--text-faint)",
-            marginBottom: 8,
+            marginBottom: 4,
           }}>
             Equity
           </div>
@@ -191,7 +191,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Property section */}
         {propertyRows.length > 0 && (
           <>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Property
             </div>
             <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 26 }}>
@@ -224,7 +224,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Mortgage section */}
         {hasMortgage && (
           <div style={{ marginBottom: 26 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Mortgage
             </div>
             {asset.mortgage_rate != null && (
@@ -242,7 +242,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Activity */}
         {mutations.length > 0 && (
           <div style={{ marginTop: 26 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Activity
             </div>
             {mutations.map((m) => {

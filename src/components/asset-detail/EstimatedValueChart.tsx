@@ -116,7 +116,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
     <div style={{ marginBottom: 26 }}>
       <div style={{
         fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase",
-        color: "var(--text-faint)", marginBottom: 12,
+        color: "var(--text-faint)", marginBottom: 6,
       }}>
         Indicative value
       </div>
