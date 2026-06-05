@@ -46,12 +46,18 @@ export const SPARKLINES_CACHE_PREFIX = "volnar.sparklines.v1.";
 export const PRICES_TS_CACHE_PREFIX  = "volnar.prices.ts.";
 export const VITALS_CACHE_PREFIX     = "volnar.vitals.v1.";
 export const DIARY_CACHE_PREFIX      = "volnar.diary.v1.";
+export const PROFILE_BASELINE_CACHE_PREFIX = "volnar.profile.baseline.v1.";
 
 export const assetsCacheKey     = (userId: string)                        => `${ASSETS_CACHE_PREFIX}${userId}`;
 export const sparklinesCacheKey = (symbolKey: string, range: string)      => `${SPARKLINES_CACHE_PREFIX}${range}.${symbolKey}`;
 export const pricesTsCacheKey   = (userId: string)                        => `${PRICES_TS_CACHE_PREFIX}${userId}`;
 export const vitalsCacheKey     = (userId: string)                        => `${VITALS_CACHE_PREFIX}${userId}`;
 export const diaryCacheKey      = (userId: string)                        => `${DIARY_CACHE_PREFIX}${userId}`;
+export const profileBaselineCacheKey = (userId: string)                   => `${PROFILE_BASELINE_CACHE_PREFIX}${userId}`;
+
+// The Profile trajectory baseline (net worth ~365 days ago) barely moves day to
+// day, so its derived value is cached this long before a background revalidate.
+export const PROFILE_BASELINE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 // ── localStorage cache keys ────────────────────────────────────────────────────
 export const CHAT_HISTORY_PREFIX  = "volnar.chat.history.";

@@ -9,9 +9,28 @@ import type { DisplayCurrency } from "@/lib/money";
 import { computePerspective } from "@/lib/vitals/perspective";
 import { findBaselineSnapshot, MIN_BASELINE_AGE_DAYS } from "@/lib/vitals/realGrowth";
 import { PerspectiveCard } from "@/components/perspective/PerspectiveCard";
+import { profileBaselineCacheKey, PROFILE_BASELINE_TTL_MS } from "@/lib/constants";
 import type { Snapshot } from "@/lib/vitals/types";
 
 const supabase = createBrowserSupabase();
+
+// Cached trajectory baseline (net worth ~365d ago), so repeat Profile visits don't
+// re-pull snapshot history. `value` is null when no ≥330-day baseline exists yet.
+// All storage/JSON access is wrapped so a failure is a silent no-op.
+type BaselineCache = { value: number | null; ageDays: number | null; fetchedAt: number };
+
+function readBaselineCache(userId: string): BaselineCache | null {
+  try {
+    const raw = sessionStorage.getItem(profileBaselineCacheKey(userId));
+    return raw ? (JSON.parse(raw) as BaselineCache) : null;
+  } catch { return null; }
+}
+
+function writeBaselineCache(userId: string, cache: BaselineCache): void {
+  try { sessionStorage.setItem(profileBaselineCacheKey(userId), JSON.stringify(cache)); } catch {}
+}
+
+const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 const CURRENCY_DISPLAY: Record<DisplayCurrency, { symbol: string; label: string }> = {
   EUR: { symbol: "€", label: "Euro" },
@@ -48,6 +67,7 @@ function ChevronRight() {
 export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = {}) {
   const router = useRouter();
   const { user } = useUser();
+  const userId = user?.id;
   const profile = useProfile(user?.id);
   const signOut = useSignOut();
   const { theme: currentTheme, setTheme } = useTheme();
@@ -77,18 +97,36 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       });
   }, [user?.id]);
 
-  useEffect(() => {
-    fetch("/api/snapshots?range=All")
+  // Trajectory baseline: hydrate instantly from cache when fresh (<24h); otherwise
+  // fetch only a bounded window of snapshots around the 365-day target (a small
+  // fraction of the full history) and cache the derived value. findBaselineSnapshot
+  // + the MIN_BASELINE_AGE_DAYS guard are unchanged, so the chip's threshold matches.
+  const loadBaseline = useCallback(() => {
+    if (!userId) return;
+    const cached = readBaselineCache(userId);
+    if (cached && Date.now() - cached.fetchedAt < PROFILE_BASELINE_TTL_MS) {
+      if (cached.value != null) setNetWorth12moAgoEur(cached.value);
+      return; // fresh — no snapshot refetch
+    }
+    const now = Date.now();
+    const after = isoDay(now - 400 * 86_400_000);
+    const before = isoDay(now - 300 * 86_400_000);
+    fetch(`/api/snapshots?after=${after}&before=${before}`)
       .then((r) => r.json())
       .then(({ data }) => {
         const snaps = (data ?? []) as Snapshot[];
         const baseline = findBaselineSnapshot(snaps);
         if (baseline && baseline.ageDays >= MIN_BASELINE_AGE_DAYS) {
           setNetWorth12moAgoEur(baseline.snapshot.total_value);
+          writeBaselineCache(userId, { value: baseline.snapshot.total_value, ageDays: baseline.ageDays, fetchedAt: Date.now() });
+        } else {
+          writeBaselineCache(userId, { value: null, ageDays: baseline?.ageDays ?? null, fetchedAt: Date.now() });
         }
       })
       .catch(() => {});
-  }, []);
+  }, [userId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadBaseline(); }, [loadBaseline]);
 
   const perspective = useMemo(() => {
     if (nwLoading || netWorthEur <= 0) return null;

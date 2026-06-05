@@ -15,10 +15,14 @@ export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const range = request.nextUrl.searchParams.get("range") ?? "1M";
-  const days = Object.prototype.hasOwnProperty.call(RANGE_DAYS, range)
-    ? RANGE_DAYS[range]
-    : 30;
+  const params = request.nextUrl.searchParams;
+
+  // Optional explicit date window (YYYY-MM-DD), additive: when either bound is
+  // present it OVERRIDES the preset range. Lets callers fetch a narrow slice (e.g.
+  // the trajectory baseline ~365d ago) instead of pulling range=All. Existing
+  // callers that pass only `range` are unaffected.
+  const after = params.get("after");
+  const before = params.get("before");
 
   const supabase = createServerSupabase();
   let query = supabase
@@ -28,10 +32,19 @@ export async function GET(request: NextRequest) {
     .gt("total_value", 0)
     .order("date", { ascending: true });
 
-  if (days !== null) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    query = query.gte("date", cutoff.toISOString().slice(0, 10));
+  if (after || before) {
+    if (after) query = query.gte("date", after);
+    if (before) query = query.lte("date", before);
+  } else {
+    const range = params.get("range") ?? "1M";
+    const days = Object.prototype.hasOwnProperty.call(RANGE_DAYS, range)
+      ? RANGE_DAYS[range]
+      : 30;
+    if (days !== null) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      query = query.gte("date", cutoff.toISOString().slice(0, 10));
+    }
   }
 
   const { data, error } = await query;
