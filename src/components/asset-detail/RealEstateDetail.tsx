@@ -97,7 +97,7 @@ export function RealEstateDetail({ asset }: Props) {
       <div className="px-0 md:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
 
         {/* Back */}
-        <div style={{ padding: "8px 0 10px" }}>
+        <div style={{ padding: "12px 0 14px" }}>
           <button
             onClick={() => router.back()}
             style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -6, color: "var(--text)", background: "none", border: "none", cursor: "pointer" }}
@@ -110,12 +110,12 @@ export function RealEstateDetail({ asset }: Props) {
         </div>
 
         {/* Map */}
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 18 }}>
           <PropertyMap asset={asset} />
         </div>
 
         {/* Identity */}
-        <div style={{ marginBottom: 10 }}>
+        <div style={{ marginBottom: 14 }}>
           <div style={{
             fontFamily: "var(--font-serif)",
             fontSize: 24,
@@ -134,26 +134,26 @@ export function RealEstateDetail({ asset }: Props) {
         </div>
 
         {/* Equity hero */}
-        <div style={{ marginBottom: 8 }}>
+        <div style={{ marginBottom: 10 }}>
           <div style={{
             fontSize: 10,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
             color: "var(--text-faint)",
-            marginBottom: 5,
+            marginBottom: 8,
           }}>
             Equity
           </div>
           <div style={{
             fontFamily: "var(--font-serif)",
-            fontSize: 40,
+            fontSize: 44,
             fontWeight: 600,
             letterSpacing: "-0.03em",
             color: "var(--hero)",
             lineHeight: 1,
             fontVariationSettings: "'opsz' 60",
-            marginBottom: 8,
+            marginBottom: 10,
           }}>
             <HeroPrice amount={equity} fromCurrency={asset.currency || "USD"} displayCurrency={displayCurrency} />
           </div>
@@ -183,7 +183,7 @@ export function RealEstateDetail({ asset }: Props) {
 
         {/* Value composition bar */}
         {hasMortgage && (
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 16 }}>
             <ValueComposition propertyValue={asset.value} mortgageBalance={currentBalance} />
           </div>
         )}
@@ -191,16 +191,16 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Property section */}
         {propertyRows.length > 0 && (
           <>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Property
             </div>
-            <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 16 }}>
+            <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 26 }}>
               {propertyRows.map((row, idx) => (
                 <div key={row.label} style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "8px 16px",
+                  padding: "10px 16px",
                   borderBottom: idx < propertyRows.length - 1 ? "0.5px solid var(--border)" : "none",
                   gap: 14,
                 }}>
@@ -223,13 +223,13 @@ export function RealEstateDetail({ asset }: Props) {
 
         {/* Mortgage section */}
         {hasMortgage && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
+          <div style={{ marginBottom: 26 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Mortgage
             </div>
             <MortgageBlock asset={asset} />
             {asset.mortgage_rate != null && (
-              <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
+              <div style={{ marginTop: 14, paddingLeft: 4, paddingRight: 4 }}>
                 <MortgageProjectionLine asset={asset} onExplore={handleWhatIf} />
               </div>
             )}
@@ -241,8 +241,8 @@ export function RealEstateDetail({ asset }: Props) {
 
         {/* Activity */}
         {mutations.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
+          <div style={{ marginTop: 26 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Activity
             </div>
             {mutations.map((m) => {
@@ -269,7 +269,7 @@ export function RealEstateDetail({ asset }: Props) {
               if (!delta && !m.personal_context) return null;
 
               return (
-                <div key={m.id} style={{ display: "flex", gap: 14, padding: "8px 0", borderBottom: "0.5px solid var(--border)" }}>
+                <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
                   <div style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
                     {dateStr ? formatDate(dateStr) : "—"}
                   </div>
