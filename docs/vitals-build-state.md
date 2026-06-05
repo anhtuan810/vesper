@@ -178,11 +178,26 @@ improved framing. Old rows are superseded on next load; no migration required.
 
 ---
 
+## 3c. Income-pension exclusion (added 2026-06) — SHIPPED
+
+Pensions became a two-shape class (`pension_kind`): capital (`dc`) counts toward
+net worth; income (`db`/`state`) is off-balance future income. The five aggregating
+vitals now **filter `isIncomePension` at the top of `compute`, before any value
+math**: concentration, real-asset weight, liquidity posture, leverage, and drawdown.
+`build-inputs.ts` skips income pensions in EUR-normalization (their `value` is NULL),
+and the shared `computeNetWorth` (`utils.ts`) excludes them — so no Vitals denominator
+or exposure can pick up an income entitlement. Capital pensions are unchanged and a
+capital pension still maps to the liquidity `locked` tier. Second line of defence:
+income `value` is NULL and `toUsdClient(null) → 0`. Shipped in commit `2a7bb26`;
+see `vitals-metrics-reference.md` Conventions for the per-vital reference.
+
+---
+
 ## 3. File inventory
 
 ### Schema (migration `20260522_vitals_foundation.sql` — APPLIED)
 - `users.country` (text, nullable) — reserved, unused in V1
-- `users.birth_year` (integer, nullable) — reserved, unused in V1
+- `users.birth_year` (integer, nullable) — reserved for Vitals/Perspective cohorts (still unused there); **now read by the pension capital projection** to derive current age (`currentYear − birth_year`) for `projectPension` (2026-06)
 - `vital_snapshots` (id, user_id, vital_key, date, value jsonb, band, created_at) + RLS + unique(user_id, vital_key, date) + index
 - `vital_highlights` (id, user_id, vital_key, event_type, detail, detected_at) + RLS + index — **BUILT BUT UNUSED** (Phase 2 shift detection)
 

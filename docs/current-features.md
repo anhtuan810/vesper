@@ -33,7 +33,7 @@
 - Change pill on the hero: percentage + EUR delta vs 1 month ago (or vs the first snapshot in the selected range), with explicit `+`/`−` signs and `accent-soft` / `negative-soft` background. Renders only when at least 2 historical snapshots exist.
 - Net worth chart between hero and Holdings — range pills `1W / 1M / 3M / 1Y / 3Y / All`, straight-line segments in accent green connecting each snapshot point exactly (no smoothing), end-point dot, scrub/hover marker, Y-axis price labels (IBKR-style, no gridlines), empty state until 2 snapshots exist.
 - WORTH KNOWING insight band (in the slot the milestone bar previously occupied) — Claude-generated single italic-serif sentence, accent-soft tinted band, chevron right, tap navigates to `/chat`. Renders nothing when the API returns `{ detail: null }`.
-- Holdings list — grouped by semantic category (Property = `real_estate`; Public markets = `stocks`, `etf`; Reserves = `cash`, `pension`, `bonds`, `gold`, `other`; Crypto = `crypto`). Group order by total value descending. All collapsed by default, tap to expand, session-persisted. Each position inside renders via `PositionRow`.
+- Holdings list — grouped by semantic category (Property = `real_estate`; Public markets = `stocks`, `etf`; Reserves = `cash`, `pension`, `bonds`, `gold`, `other`; Crypto = `crypto`). Group order by total value descending. All collapsed by default, tap to expand, session-persisted. Each position inside renders via `PositionRow`. Capital (`dc`) pensions count in Reserves; **income (`db`/`state`) pensions are off-balance** — excluded from the four groups and shown in a separate "Future income" section below them (see Pensions (Two-Shape Model)).
 - No "Allocation" card (proportional bars in HoldingsGroup headers carry the same information).
 - No "Recent Activity" preview (mutations remain accessible via `/diary`).
 - No stat cards (Positions / Countries / Asset classes / Largest were removed — raw counts didn't drive decisions; see `next-build-plan.md` for the replacement plan).
@@ -58,7 +58,7 @@
 - Files: `src/app/api/insight/route.ts`, `src/lib/insight-generator.ts`, `src/components/InsightBand.tsx`, `src/lib/hooks.ts` (`useInsight()`)
 
 ### Asset Detail Pages (Read-Only)
-- Three layout variants dispatched by asset type from `src/app/asset/[id]/page.tsx`
+- Four layout variants dispatched by asset type from `src/app/asset/[id]/page.tsx` (pension routes through the `PensionDetail` dispatcher to a capital or income layout)
 - All three are read-only — no inline edits, no delete button, no Discuss CTA on the page. Modifications happen via chat, which captures reasoning at the moment of change.
 - Top bar: back chevron (left); on TradeableDetail, a refresh button (right) re-fetches live price for this asset
 - Context-aware Chat tab: from any asset detail page, the bottom-nav Chat tab routes to `/chat?asset=<id>` and pre-fills the composer with `Tell me about my <name>.`
@@ -79,14 +79,17 @@
 - `MortgageBlock` (read-only): Balance / Rate / Payment / Type / Mortgage-free as list rows. Balance is the auto-amortized current value (not the stored anchor). Payoff chart with `TODAY` marker positioned at the computed balance, accent stroke throughout, dashed vertical with accent dot
 - Activity scoped to the asset
 
-**Static** (cash, pension, bonds, other):
-- Asset logo (wallet for cash/pension; certificate for bonds; monogram for gold/other), serif name
+**Pension** (capital pot / income entitlement):
+- Dispatched via `PensionDetail`: a `dc` pot renders `PensionCapitalDetail` (value hero, growth / contribution / access-age rows, a deterministic projection card, locked note); a `db`/`state` entitlement renders `PensionIncomeDetail` (a "Guaranteed income" hero phrased "€X / year", off-balance banner, now→start-age timeline, never a net-worth figure). Shared `PensionActivity` shows the corrected verb. See **Pensions (Two-Shape Model)** below.
+
+**Static** (cash, bonds, other):
+- Asset logo (wallet for cash; certificate for bonds; monogram for gold/other), serif name
 - Balance hero with editorial currency prefix; positive/negative pill for current-year delta
 - Native-currency subtitle for transparency (e.g., a USD cash pot shows `USD` below the EUR-equivalent balance)
 - For bonds: `BondBlock` with issuer / coupon (with annual income) / maturity (with time-to-maturity) / ISIN as read-only list rows
 - Activity scoped to the asset
 
-- Files: `src/components/asset-detail/{TradeableDetail,RealEstateDetail,StaticDetail,CryptoVolatilityBlock,BondBlock}.tsx`, `src/components/PriceChart.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`
+- Files: `src/components/asset-detail/{TradeableDetail,RealEstateDetail,StaticDetail,PensionDetail,PensionCapitalDetail,PensionIncomeDetail,PensionActivity,CryptoVolatilityBlock,BondBlock}.tsx`, `src/components/PriceChart.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`
 
 ### Real Estate & Mortgage Tracking
 - Properties stored as assets with `type = 'real_estate'`
@@ -100,6 +103,17 @@
 - Address geocoding via OSM Nominatim happens server-side when a property is added via chat
 - Country-agnostic — pure math, no tax assumptions
 - Files: `src/components/asset-detail/RealEstateDetail.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/lib/mortgage.ts`, `src/lib/maps.ts`, `src/app/api/geocode/route.ts`, `src/lib/geocode.ts`, `src/styles/map-light.json`, `src/styles/map-dark.json`
+
+### Pensions (Two-Shape Model)
+- Pension is **one asset class** (`type='pension'`) with two economic shapes, selected by `pension_kind`: **capital** (`dc`) and **income** (`db` | `state`). `pension_kind` null is treated as capital (legacy rows backfilled to `'dc'`). Shape helpers live in `src/lib/pension.ts` (`pensionShape`, `isCapitalPension`, `isIncomePension`).
+- **Capital (`dc`)** — a pot you own. Uses `value` (the pot), a growth assumption stored in `mortgage_rate` (the static-asset interest-rate convention, reused as a % per year — no conversion), `monthly_contribution`, and `access_age`. **Counts toward net worth**, sits in the Reserves holdings group, and maps to the `locked` liquidity tier as before. Renders `PensionCapitalDetail` with a deterministic projection card.
+- **Income (`db` = defined benefit, `state` = state / PAYG)** — a future income entitlement, not an owned balance. Uses `annual_income`, `access_age` (the start age), and `pension_provider`; `value` is **NULL**. **Off-balance**: excluded from net worth, the gross total, allocation, and the four holdings groups. Shown instead in a separate **"Future income"** section in `PortfolioTab` (each row plus a subtotal as "€X / year", with a not-in-net-worth caption; tapping a row opens its detail page). Renders `PensionIncomeDetail` — an off-balance banner, a now→start-age timeline, and `annual_income` phrased "€X / year"; never a net-worth/value figure.
+- **Detail routing**: `asset/[id]/page.tsx` branches pension to the `PensionDetail` dispatcher (capital vs income by `isCapitalPension`); `birth_year` is read from the `users` table and passed through so the capital projection and the income timeline can derive the user's current age. Cash / bonds / other stay on `StaticDetail`.
+- **Projection (capital only, deterministic)**: `projectPension({ potValue, monthlyContribution, growthRatePct, yearsToAccess })` — monthly-compounded future value of the pot plus contributions, all outputs `Math.round`ed integers, guarded for `i = 0` and `yearsToAccess <= 0` (no NaN/Infinity). **The LLM never computes it.** The card is **hidden entirely** unless `value`, `mortgage_rate`, `access_age`, and `birth_year` are all present and `yearsToAccess > 0`; it shows the projected value, a Contributed-vs-Growth split bar, and `PENSION_PROJECTION_DISCLAIMER` ("An estimate of future value based on your inputs. Not financial advice.").
+- **Shared Activity**: `PensionActivity` renders the corrected verb for both layouts — pension adds read **"Added"/"Recorded"**, never "Bought"; income amounts are phrased "€X / year".
+- **Chat intake** (`PENSION_INTAKE_BLOCK` in `prompt-blocks.ts`): a **required, chips-first** flow. A type-first fork (Workplace/private pot · Defined benefit · State pension · Not sure) precedes everything, then the shape's required fields one at a time. **No skips on required fields and no silent defaults** — the growth assumption and the access age must be chosen by the user. A **mandatory confirmation echo** (`<propose_change>` → the server renders every captured field with "Looks right, add it" / "Change something" chips) gates the commit; nothing is written until the user confirms. A deterministic gate (`validatePensionChange` in `src/lib/pension-intake.ts`) re-checks completeness in both the echo step and the write path, so an incomplete pension can never be saved.
+- **Known gaps (deferred by design)**: **indexation is not captured** — the income page shows Indexation: "Not captured"; there is **no in-payment / in-retirement transition**; and a **DB entitlement is never capitalized into net worth** (off-balance is the design, not a TODO).
+- Files: `src/lib/pension.ts`, `src/lib/pension-intake.ts`, `src/components/asset-detail/{PensionDetail,PensionCapitalDetail,PensionIncomeDetail,PensionActivity}.tsx`, `src/app/asset/[id]/page.tsx`, `src/components/PortfolioTab.tsx`, `src/lib/prompt-blocks.ts`, `src/lib/proposal-resolver.ts`, `src/lib/apply-changes.ts`, `supabase/migrations/20260610_pension_two_shape.sql`
 
 ### Indicative Property Value (CBS-PBK)
 - Replaces the dead WOZ integration (all WOZ code removed; `woz_cache` dropped) with a **deterministic, server-side indicative value**. No LLM produces the figure.

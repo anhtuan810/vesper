@@ -14,6 +14,7 @@ threshold, or adding a vital. Pairs with `vitals-build-state.md` (status) and
 - Each module exports `applies()`, `compute()`, `band()`, and `scope`. All pure,
   deterministic, no DB or LLM. Band values: `green` | `amber` | `red`.
 - All economic constants come from `getCountryDefaults()` (V1 = NL).
+- **Income pensions are excluded (2026-06).** Assets where `isIncomePension` (`pension_kind` `db` | `state`) are filtered out at the top of `compute` for the five aggregating vitals — concentration, real-asset weight, liquidity posture, leverage, drawdown — **before any value math**; `build-inputs.ts` also skips them in EUR-normalization, and the shared `computeNetWorth` excludes them. They are off-balance future income, not holdings. Capital pensions (`dc` / null) are unchanged, and a capital pension still maps to the liquidity `locked` tier. (Commit `2a7bb26`.)
 
 ### Scope descriptor
 
@@ -83,7 +84,7 @@ any property or mortgage mention.
 **Measures:** how much of net worth is deployable, by time-to-cash tier.
 **`applies`:** always (`true`)
 **`compute`** → `{ deployable1wPct, sameDayPct, oneWeekPct, oneMonthPct, sixMonthPlusPct, lockedPct, liquidBufferPct }`
-- Tier mapping by asset type: cash → same-day · stocks/etf/crypto → 1-week · bonds → 1-month · real_estate → 6-month+ · pension → locked
+- Tier mapping by asset type: cash → same-day · stocks/etf/crypto → 1-week · bonds → 1-month · real_estate → 6-month+ · capital pension → locked (income pensions are excluded entirely — see Conventions)
 - Each tier as % of net worth
 - `deployable1wPct` = sameDay + 1-week
 - `liquidBufferPct` = `getCountryDefaults().liquidBufferTargetPct` (15)
