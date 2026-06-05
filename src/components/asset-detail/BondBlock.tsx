@@ -46,7 +46,7 @@ export function BondBlock({ asset }: Props) {
 
   const rows = [
     { label: "Issuer", value: issuer ?? "—", meta: null, isin: false },
-    { label: "Coupon", value: coupon_rate != null ? `${coupon_rate.toFixed(1)}%` : "—", meta: annualCoupon != null ? `${formatMoney(annualCoupon, asset.currency || "USD", displayCurrency)} / year` : null, isin: false },
+    { label: "Coupon", value: coupon_rate != null ? `${parseFloat(coupon_rate.toFixed(2))}%` : "—", meta: annualCoupon != null ? `${formatMoney(annualCoupon, asset.currency || "USD", displayCurrency)} / year` : null, isin: false },
     { label: "Maturity", value: maturityDisplay, meta: timeToMaturity, isin: false },
     { label: "ISIN", value: isin ?? "—", meta: null, isin: true },
   ];

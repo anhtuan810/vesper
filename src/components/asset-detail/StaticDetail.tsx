@@ -6,7 +6,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { BondBlock } from "@/components/asset-detail/BondBlock";
 import { formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney, formatMoneyParts } from "@/lib/money";
+import { formatMoney, formatMoneyParts, type DisplayCurrency } from "@/lib/money";
 import type { StaticAsset, BondsAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
@@ -173,10 +173,13 @@ export function StaticDetail({ asset }: Props) {
               {thisYearDelta >= 0 ? "+" : "−"}{formatMoney(Math.abs(thisYearDelta), asset.currency || "USD", displayCurrency)} this year
             </div>
           )}
-          {/* Native currency subtitle */}
-          {asset.currency && asset.currency !== "USD" && (
+          {/* Native currency subtitle — shown whenever the asset's native currency
+              differs from the display currency (not just for non-USD), so a USD
+              asset viewed in EUR makes clear the hero is a converted figure and
+              shows the original native amount. */}
+          {asset.currency && asset.currency !== displayCurrency && (
             <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-sans)" }}>
-              Native currency: {asset.currency}
+              Native currency: {asset.currency} · {formatMoney(asset.value, asset.currency, asset.currency as DisplayCurrency)}
             </div>
           )}
         </div>
