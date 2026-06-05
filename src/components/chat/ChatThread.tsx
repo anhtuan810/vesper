@@ -11,6 +11,8 @@ import {
 import { FormatText } from "@/components/FormatText";
 import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
 import { ScenarioResultCard } from "@/components/scenario/cards/ScenarioResultCard";
+import { Chip } from "@/components/chat/Chip";
+import { classifyChip, cheapHash } from "@/lib/chip-telemetry";
 import type { useChatSession } from "@/lib/use-chat-session";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
@@ -256,23 +258,30 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               {emptyText}
             </div>
             <div className="flex flex-col items-start gap-2">
-              {chatSuggestions.map((s) => (
-                <button
-                  key={s}
-                  style={{
-                    fontSize: 13,
-                    color: "var(--accent-text)",
-                    background: "var(--accent-soft)",
-                    padding: "8px 14px",
-                    borderRadius: 999,
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => sendText(s)}
-                >
-                  {s}
-                </button>
-              ))}
+              {chatSuggestions.map((s, i) => {
+                const c = classifyChip(s, { surface: "chat_empty_suggestion" });
+                return (
+                  <Chip
+                    key={s}
+                    label={s}
+                    surface="chat_empty_suggestion"
+                    chipType={c.chipType}
+                    labelTemplate={c.labelTemplate}
+                    sendRawLabel={c.sendRawLabel}
+                    position={i}
+                    onTap={sendText}
+                    style={{
+                      fontSize: 13,
+                      color: "var(--accent-text)",
+                      background: "var(--accent-soft)",
+                      padding: "8px 14px",
+                      borderRadius: 999,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
@@ -346,27 +355,36 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               )}
               {i === lastAssistantIdx && !loading && msg.suggestedReplies && msg.suggestedReplies.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {msg.suggestedReplies.map((chip) => (
-                    <button
-                      key={chip}
-                      onClick={() => sendText(chip)}
-                      style={{
-                        height: 32,
-                        padding: "0 14px",
-                        borderRadius: 999,
-                        fontSize: chipFontSize,
-                        background: "var(--surface-elev)",
-                        color: "var(--text)",
-                        border: chip === "Confirm and save"
-                          ? "1px solid var(--accent)"
-                          : "1px solid var(--border)",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {chip}
-                    </button>
-                  ))}
+                  {msg.suggestedReplies.map((chip, ci) => {
+                    const c = classifyChip(chip, { surface: "chat_suggested_reply" });
+                    return (
+                      <Chip
+                        key={chip}
+                        label={chip}
+                        surface="chat_suggested_reply"
+                        chipType={c.chipType}
+                        labelTemplate={c.labelTemplate}
+                        sendRawLabel={c.sendRawLabel}
+                        position={ci}
+                        messageId={msg.id}
+                        contentHash={cheapHash(msg.text)}
+                        onTap={sendText}
+                        style={{
+                          height: 32,
+                          padding: "0 14px",
+                          borderRadius: 999,
+                          fontSize: chipFontSize,
+                          background: "var(--surface-elev)",
+                          color: "var(--text)",
+                          border: chip === "Confirm and save"
+                            ? "1px solid var(--accent)"
+                            : "1px solid var(--border)",
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -420,25 +438,34 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               </div>
             )}
             <div className="flex flex-wrap gap-2 mt-2">
-              {seedMessage.chips.map((chip) => (
-                <button
-                  key={chip}
-                  onClick={() => tapSeedChip(chip)}
-                  style={{
-                    height: 32,
-                    padding: "0 14px",
-                    borderRadius: 999,
-                    fontSize: chipFontSize,
-                    background: "var(--surface-elev)",
-                    color: "var(--text)",
-                    border: "1px solid var(--border)",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {chip}
-                </button>
-              ))}
+              {seedMessage.chips.map((chip, ci) => {
+                const c = classifyChip(chip, { surface: "chat_seed", chipActions: seedMessage.chipActions });
+                return (
+                  <Chip
+                    key={chip}
+                    label={chip}
+                    surface="chat_seed"
+                    chipType={c.chipType}
+                    labelTemplate={c.labelTemplate}
+                    sendRawLabel={c.sendRawLabel}
+                    seedKind={c.seedKind}
+                    position={ci}
+                    contentHash={cheapHash(seedMessage.message)}
+                    onTap={tapSeedChip}
+                    style={{
+                      height: 32,
+                      padding: "0 14px",
+                      borderRadius: 999,
+                      fontSize: chipFontSize,
+                      background: "var(--surface-elev)",
+                      color: "var(--text)",
+                      border: "1px solid var(--border)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         )}

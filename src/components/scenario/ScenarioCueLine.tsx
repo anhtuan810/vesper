@@ -1,6 +1,12 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import {
+  trackChipInteraction,
+  trackChipImpression,
+  markImpression,
+  type ChipEventPayload,
+} from "@/lib/chip-telemetry";
 
 // Shared editorial "scenario cue" line — the affordance that replaced the
 // saturated "What if?" pill on both the portfolio hero and the mortgage card.
@@ -9,23 +15,48 @@ import type { CSSProperties, ReactNode } from "react";
 // that opens the existing scenario flow (a native <button>: role=button,
 // focusable, Enter/Space activation for free). On hover/press the arrow nudges
 // right ~2px — no fill, no inversion, no scale-pop.
+//
+// Telemetry: when `telemetryTemplate` is supplied, the line emits chip telemetry
+// on the 'scenario_cue' surface. It is a scenario chip (sendRawLabel = false), so
+// only the stable template id is sent — never the rendered sentence, which
+// carries user-derived figures (years, deltas).
 export function ScenarioCueLine({
   statement,
   clause,
   ariaLabel,
   onActivate,
   style,
+  telemetryTemplate,
 }: {
   statement?: ReactNode;
   clause: string;
   ariaLabel: string;
   onActivate: () => void;
   style?: CSSProperties;
+  telemetryTemplate?: string;
 }) {
+  const payload: ChipEventPayload | null = telemetryTemplate
+    ? { surface: "scenario_cue", chipType: "scenario", position: 0, labelTemplate: telemetryTemplate }
+    : null;
+
+  const impressionFired = useRef(false);
+  useEffect(() => {
+    if (!payload || impressionFired.current) return;
+    impressionFired.current = true;
+    // No message id on this surface — dedup on template + surface per session.
+    if (markImpression(`scenario_cue::0:${payload.labelTemplate}`)) trackChipImpression(payload);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleClick = () => {
+    if (payload) trackChipInteraction(payload);
+    onActivate();
+  };
+
   return (
     <button
       type="button"
-      onClick={onActivate}
+      onClick={handleClick}
       aria-label={ariaLabel}
       className="group font-serif rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       style={{

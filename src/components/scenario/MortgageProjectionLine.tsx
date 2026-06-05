@@ -133,6 +133,7 @@ export function MortgageProjectionLine({
         clause="See what else shortens it"
         ariaLabel={`Adding €${EXTRA_PER_MONTH} a month makes you mortgage-free by ${newYear}, ${soonerLabel}. Explore what else shortens your mortgage.`}
         onActivate={onExplore}
+        telemetryTemplate="mortgage_extra_payment"
       />
     );
   }
@@ -143,6 +144,7 @@ export function MortgageProjectionLine({
       clause="See how much sooner you could be"
       ariaLabel={`${view.yearsToGo} ${view.yearsToGo === 1 ? "year" : "years"} to go. Explore how much sooner you could be mortgage-free.`}
       onActivate={onExplore}
+      telemetryTemplate="mortgage_extra_payment"
     />
   );
 }

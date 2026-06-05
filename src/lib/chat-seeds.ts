@@ -55,6 +55,22 @@ const ONBOARDING_CLASS_SEEDS: Record<string, ChatSeed> = {
 const ASSET_CHIPS = ["How is it performing?", "When did I buy?", "What's my return?"];
 const INSIGHT_CHIPS = ["Tell me more", "Why does this matter?", "What should I do?"];
 
+// Seed-chip vocabulary buckets, for deterministic telemetry classification. The
+// labels are static UI prompts (no user data), so chip telemetry can tag which
+// seed surface a tapped chip came from without sending anything PII-bearing.
+const ONBOARDING_SEED_CHIPS: ReadonlySet<string> = new Set(
+  Object.values(ONBOARDING_CLASS_SEEDS).flatMap((s) => s.chips),
+);
+const ASSET_SEED_CHIPS: ReadonlySet<string> = new Set(ASSET_CHIPS);
+const INSIGHT_SEED_CHIPS: ReadonlySet<string> = new Set(INSIGHT_CHIPS);
+
+export function seedKindForChip(label: string): "onboarding" | "asset" | "insight" | null {
+  if (ONBOARDING_SEED_CHIPS.has(label)) return "onboarding";
+  if (ASSET_SEED_CHIPS.has(label)) return "asset";
+  if (INSIGHT_SEED_CHIPS.has(label)) return "insight";
+  return null;
+}
+
 export function getChatSeed(
   source: SeedSource,
   key: string,

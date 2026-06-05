@@ -110,6 +110,7 @@ export function ProjectionTeaser({ onExplore }: { onExplore: () => void }) {
       clause={clause}
       ariaLabel={aria}
       onActivate={onExplore}
+      telemetryTemplate="projection_teaser"
       style={{
         opacity: shown ? 1 : 0,
         transform: shown ? "translateY(0)" : "translateY(3px)",
