@@ -187,7 +187,7 @@ export function MortgageBlock({ asset }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "10px 16px",
+            padding: "8px 16px",
             borderBottom: idx < rows.length - 1 ? "0.5px solid var(--border)" : "none",
             gap: 14,
           }}>
