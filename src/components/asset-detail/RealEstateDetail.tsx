@@ -221,12 +221,9 @@ export function RealEstateDetail({ asset }: Props) {
           </>
         )}
 
-        {/* Per-year indicative value chart (NL only; self-hides when unavailable) */}
-        <EstimatedValueChart asset={asset} />
-
         {/* Mortgage section */}
         {hasMortgage && (
-          <>
+          <div style={{ marginBottom: 26 }}>
             <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Mortgage
             </div>
@@ -236,8 +233,11 @@ export function RealEstateDetail({ asset }: Props) {
                 <WhatIfPill onClick={handleWhatIf} />
               </div>
             )}
-          </>
+          </div>
         )}
+
+        {/* Per-year indicative value chart (NL only; self-hides when unavailable) */}
+        <EstimatedValueChart asset={asset} />
 
         {/* Activity */}
         {mutations.length > 0 && (
