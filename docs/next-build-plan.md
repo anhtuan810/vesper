@@ -2,6 +2,15 @@
 
 This is the prioritized roadmap for Volnar. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
 
+## What just shipped — Pension two-shape (2026-06)
+
+Pension became one asset class with two economic shapes, selected by `pension_kind` (`20260610_pension_two_shape.sql`).
+
+- **Capital (`dc`) (DONE).** A pot you own: `value` + growth assumption (`mortgage_rate`) + `monthly_contribution` + `access_age`. Counts toward net worth; renders `PensionCapitalDetail` with a deterministic `projectPension` card (gated on `users.birth_year`).
+- **Income (`db`/`state`) (DONE).** A future entitlement: `annual_income` + `access_age` + `pension_provider`; `value` NULL. Off-balance — excluded from net worth, gross, allocation, the four holdings groups, and all five aggregating vitals; surfaced in a separate "Future income" section. Renders `PensionIncomeDetail`.
+- **Chat intake (DONE).** Required, chips-first, type-first fork; no skips, no silent defaults; mandatory confirmation echo before commit (`pension-intake.ts` gate, `prompt-blocks.ts` `PENSION_INTAKE_BLOCK`, deterministic re-check in `proposal-resolver.ts` and `apply-changes.ts`).
+- **Deferred by design:** indexation capture, in-payment transition, DB capitalization into net worth. See `current-features.md` → Pensions (Two-Shape Model).
+
 ## What just shipped — Property pivot, basis consistency & deletion completeness (2026-06)
 
 One session, all in-place; one new table (`price_index_cache`), `woz_cache` dropped.
@@ -79,12 +88,16 @@ A multi-chat migration moved Volnar from the old amber/Fraunces dark-only design
 
 ## Build Order
 
-1. **Scenario analysis UI** (largest remaining feature on the original roadmap)
-2. **Portfolio insight cards** (replacement for the removed stat cards — when there's enough portfolio history per user)
+> **Update (2026-06):** both items below have since shipped in some form — see the SHIPPED banners on each section. The forward roadmap no longer holds a large feature; what remains are the polish/robustness items under "Deferred / next", "Tech Debts", and "Post-MVP / Future".
+
+1. **Scenario analysis** — ✅ SHIPPED as a chat-driven flow (not the standalone builder originally specced). See §1.
+2. **Portfolio insight cards** — ◑ PARTIALLY SHIPPED (deterministic detectors). See §2.
 
 ---
 
 ## 1. Scenario Analysis UI
+
+> **✅ SHIPPED (2026-06) — as a chat-driven flow, not the two-column builder specced below.** What-if questions are explored in chat: `/api/chat` classifies a `<scenario>` block into `portfolio_change` (a whole-portfolio before→after card) or `future` (a forward projection cone), narrated under the numeric guardrail. The deterministic engine lives in `src/lib/scenario/` (`validate-intent`, `engine`, `portfolio-readout`, `narrate`, …), with a `scenarios` table (`20260602_scenarios.sql`) and a standalone `/api/scenarios` engine (`compute` / `counterfactual` / `project`). The Portfolio entry point is the ambient `ProjectionTeaser`; `src/app/scenarios/page.tsx` now just redirects to `/`. The original two-column builder spec below was deliberately NOT built — kept for historical context.
 
 ### Goal
 Let users explore "what if" questions visually, not just conversationally. Examples: "what if I sell my apartment", "what if NVIDIA doubles", "what if I add €50k to ETFs".
@@ -115,6 +128,8 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 ---
 
 ## 2. Portfolio insight cards (replacement for removed stat cards)
+
+> **◑ PARTIALLY SHIPPED (2026-06).** Deterministic insight detectors now exist in `src/lib/portfolio-insights.ts` — `detectConcentration`, `detectCashDrag`, `detectCurrencyMismatch` — feeding the "Worth knowing" band via `/api/insight` and the `market-highlights` cron. They cover three candidates below (concentration depth, cash drag, currency exposure). Still unbuilt: a dedicated card surface and the remaining candidates.
 
 The four stat cards (Positions / Countries / Asset classes / Largest) were removed because raw counts don't drive decisions. The space they occupied should eventually carry one or two genuine portfolio insights — the kind a private banker would surface during a quarterly review. The AI insight band shipped in PR 16 covers one slot of this idea; deterministic insight cards would complement it.
 

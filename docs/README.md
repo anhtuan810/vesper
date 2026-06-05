@@ -1,16 +1,40 @@
-# Volnar Vitals — Documentation Set
+# Volnar — Documentation Index
 
-Save all of these into the repo `docs/` folder and add them to Claude
-project knowledge. Together they are the complete record of the Vitals
-feature.
+Code is the source of truth. These docs explain intent, history, and the parts
+that can't be read off the code (live-only behaviour, design decisions, manual
+QA). New to the project? Start with `volnar-project-handoff.md`.
 
-| File | What it is | Source of truth for |
-|------|-----------|---------------------|
-| `vitals-build-state.md` | Build status, file inventory, data flow, resolved issues, latent items, decision log, where-to-pick-up. | Project STATUS and history. Start here in a new chat. |
-| `vitals-metrics-reference.md` | Per-vital formulas, thresholds, guards; Perspective percentile logic; sourced benchmark figures. | How numbers are CALCULATED. |
-| `vitals-design-spec.md` | Tokens, token mapping, typography, spacing, per-component contracts, per-chart geometry. | Anything VISUAL / UI. |
-| `vitals-mockup.html` | The canonical polished render (open in a browser). Section comments mark each card. | Exact MARKUP / SVG geometry. |
+## Start here / overview
+| File | What it is |
+|------|------------|
+| `volnar-project-handoff.md` | Product vision, target user, stack, and a high-level repo map. **Start here in a new chat.** |
+| `current-features.md` | What is built and what is fragile, feature by feature, with file pointers. |
+| `technical-decisions.md` | Stack, Supabase schema, API routes, and the calculation rules (net worth, currency, mutations, pensions). |
 
-Status as of 22 May 2026: feature built, all six known issues resolved,
-renders correctly on light and dark themes. Remaining = judgment calls
-(see build-state §6 and §8), not bugs.
+## Product decisions & roadmap
+| File | What it is |
+|------|------------|
+| `redesign-decisions.md` | The 11 locked product decisions (frozen historical record). |
+| `next-build-plan.md` | Prioritized roadmap, a "what just shipped" log, and tech debt. |
+
+## Feature notes
+| File | What it is |
+|------|------------|
+| `currency-feature-spec.md` | Display-currency feature history. The body predates the final design; the canonical model is `technical-decisions.md` → Currency Rules. |
+| `mobile-build.md` | iOS Capacitor remote-URL wrapper — config and common tasks. |
+
+## Vitals (its own doc set)
+| File | Source of truth for |
+|------|---------------------|
+| `vitals-build-state.md` | Vitals status, file inventory, data flow, decision log. Start here for Vitals. |
+| `vitals-metrics-reference.md` | Per-vital formulas, thresholds, guards; Perspective percentiles. |
+| `vitals-design-spec.md` | Tokens, typography, per-component and per-chart geometry. |
+| `vitals-mockup.html` | The canonical rendered Vitals mockup (open in a browser). |
+
+## Testing & manual QA
+| File | What it is |
+|------|------------|
+| `testing-strategies.md` | Layered test-activation plan (deferred — there are no automated tests yet). |
+| `add-edit-flow-checks.md` | Manual (live, API-key) checklist for the chat add/edit cost-basis contract. |
+| `scenario-classification-manual-checks.md` | Manual checklist for chat what-if / scenario routing. |
+| `agent-chat-live-eval.md` | Gate checklist for enabling the flag-gated agent tool-loop (OFF by default). |
