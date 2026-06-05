@@ -24,6 +24,21 @@ export function currencySymbol(code: string): string {
   return CURRENCY_SYMBOL[code?.toUpperCase()] ?? code;
 }
 
+// English ordinal suffix for a rank/percentile: 1st, 2nd, 3rd, 4th–20th "th",
+// then 21st/22nd/23rd, with 11th/12th/13th kept as "th". Returns the suffix only
+// (so callers can style the number and suffix separately).
+export function ordinalSuffix(n: number): string {
+  const abs = Math.abs(Math.trunc(n));
+  const mod100 = abs % 100;
+  if (mod100 >= 11 && mod100 <= 13) return "th";
+  switch (abs % 10) {
+    case 1: return "st";
+    case 2: return "nd";
+    case 3: return "rd";
+    default: return "th";
+  }
+}
+
 export function pctChange(price?: number, prev?: number): number | null {
   if (!price || !prev) return null;
   return ((price - prev) / prev) * 100;

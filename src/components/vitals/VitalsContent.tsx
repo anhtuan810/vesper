@@ -7,6 +7,7 @@ import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
 import type { DormantVital } from "@/components/vitals/LibraryExpander";
+import { ordinalSuffix } from "@/lib/utils";
 import { ConcentrationBars } from "@/components/vitals/charts/ConcentrationBars";
 import { RealAssetBullet } from "@/components/vitals/charts/RealAssetBullet";
 import { LiquidityStack } from "@/components/vitals/charts/LiquidityStack";
@@ -567,7 +568,7 @@ function buildRealAssetCard(vital: VitalResult): CardConfig {
       heroNumber: fmtPct(v.propertyEquityPct),
       heroNumberClass: vital.band === "green" ? "positive" : "default",
       subLine: "equity / net worth",
-      rightStat: { label: "EU rank", value: `${v.percentileEU}th` },
+      rightStat: { label: "EU rank", value: `${v.percentileEU}${ordinalSuffix(v.percentileEU)}` },
       benchLine: "EU homeowner median ~63% real-asset weight",
       suggestion: realAssetSuggestion(v, vital.band),
     },

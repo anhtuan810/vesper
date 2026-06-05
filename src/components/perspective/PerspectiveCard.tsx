@@ -1,6 +1,7 @@
 "use client";
 
 import { type Perspective } from "@/lib/vitals/perspective";
+import { ordinalSuffix } from "@/lib/utils";
 
 function formatCurrency(eur: number, displayCurrency: string): string {
   const sym = displayCurrency.toUpperCase() === "EUR" ? "€" : "$";
@@ -271,7 +272,7 @@ export function PerspectiveCard({
               >
                 {Math.round(row.percentile)}
                 <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                  th
+                  {ordinalSuffix(Math.round(row.percentile))}
                 </span>
               </div>
               <div
@@ -289,40 +290,63 @@ export function PerspectiveCard({
         ))}
       </div>
 
-      {/* Trajectory chip — only if data.trajectory is not null */}
-      {data.trajectory != null && (
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-            padding: "7px 11px",
-            background: "var(--perspective-chip-bg)",
-            borderRadius: 999,
-            marginTop: 14,
-          }}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--accent-deep)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ width: 11, height: 11 }}
+      {/* Trajectory chip — only if data.trajectory is not null. The direction
+          word and arrow follow the sign; the magnitude carries no minus sign. */}
+      {data.trajectory != null && (() => {
+        const pts = data.trajectory.pointsThisYear;
+        const magnitude = Math.abs(pts);
+        const direction = pts > 0 ? "up" : pts < 0 ? "down" : "flat";
+        return (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "7px 11px",
+              background: "var(--perspective-chip-bg)",
+              borderRadius: 999,
+              marginTop: 14,
+            }}
           >
-            <path d="M3 17l6-6 4 4 8-9" />
-            <path d="M14 6h7v7" />
-          </svg>
-          <span style={{ fontSize: 11, color: "var(--text)" }}>
-            Up{" "}
-            <strong style={{ fontWeight: 600 }}>
-              {data.trajectory.pointsThisYear} percentile points
-            </strong>{" "}
-            in {data.trajectory.region} this year
-          </span>
-        </div>
-      )}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--accent-deep)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ width: 11, height: 11 }}
+            >
+              {direction === "up" && (
+                <>
+                  <path d="M3 17l6-6 4 4 8-9" />
+                  <path d="M14 6h7v7" />
+                </>
+              )}
+              {direction === "down" && (
+                <>
+                  <path d="M3 7l6 6 4-4 8 9" />
+                  <path d="M14 18h7v-7" />
+                </>
+              )}
+              {direction === "flat" && <path d="M5 12h14" />}
+            </svg>
+            <span style={{ fontSize: 11, color: "var(--text)" }}>
+              {direction === "flat" ? (
+                <>No change in {data.trajectory.region} this year</>
+              ) : (
+                <>
+                  {direction === "up" ? "Up" : "Down"}{" "}
+                  <strong style={{ fontWeight: 600 }}>
+                    {magnitude} percentile points
+                  </strong>{" "}
+                  in {data.trajectory.region} this year
+                </>
+              )}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Closing italic line */}
       <div
