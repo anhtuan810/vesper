@@ -71,28 +71,30 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
     }).format(usdValue * getUsdRate(displayCurrency));
 
   // ── Geometry (viewBox units; the SVG scales to its container width) ──────────
-  // Big, thick, centred ring; the viewBox is tuned wide enough that full class
-  // names ("Public markets") never clip while the ring stays large.
+  // Big, thick, centred ring tuned to fill the card: the viewBox is wide enough
+  // that full class names ("Public markets") never clip, the ring is thick so the
+  // hole stays small (no empty centre), and the height hugs the ring + callouts
+  // so there's no dead band above or below.
   const VB_W = 400;
-  const VB_H = 224;
+  const VB_H = 206;
   const cx = 200;
-  const cy = 128;
-  const R = 70;
-  const stroke = 26;
+  const cy = 116;
+  const R = 62;
+  const stroke = 36;
   const C = 2 * Math.PI * R;
-  const rEdge = R + stroke / 2; // 83 — outer edge of the ring (leader start)
+  const rEdge = R + stroke / 2; // 80 — outer edge of the ring (leader start)
   const rElbow = rEdge + 9; // short radial kick before the horizontal run
-  const rightColX = cx + 94; // side label column — hugs the ring
-  const leftColX = cx - 94;
+  const rightColX = cx + 92; // side label column — hugs the ring
+  const leftColX = cx - 92;
   const MIN_GAP = 26; // minimum vertical spacing between side callouts
-  const yTop = 16;
-  const yBottom = VB_H - 16;
-  // A slice whose mid-angle is within ~40° of straight up gets a centred callout
-  // ABOVE the ring, connected by an L-shaped leader (up from the slice, then
-  // across to centre) instead of a long line across the card. Only the single
-  // closest-to-up slice qualifies, so two never collide.
+  const yTop = 14;
+  const yBottom = VB_H - 14;
+  // A slice whose mid-angle is within ~40° of straight up gets a callout centred
+  // ABOVE the slice it points at, joined by a short vertical leader, instead of a
+  // line jogging across the card. Only the single closest-to-up slice qualifies,
+  // so two never collide.
   const TOP_THRESH = 40 / 360;
-  const TOP_LINE_Y = 41; // leader's horizontal run + dot; text lines sit above it
+  const TOP_DOT_Y = 32; // dot sits here; the leader drops from it to the slice edge
 
   // One callout per slice, anchored at the slice mid-angle. Arcs start at 12
   // o'clock and run clockwise (rotate(-90)), so for fraction f along the ring:
@@ -150,7 +152,7 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
       background: "var(--surface)",
       border: "0.5px solid var(--border)",
       borderRadius: 14,
-      padding: 16,
+      padding: 14,
       marginBottom: 11,
     }}>
       <div style={{
@@ -159,7 +161,7 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
         letterSpacing: "0.18em",
         textTransform: "uppercase",
         color: "var(--text-faint)",
-        marginBottom: 14,
+        marginBottom: 8,
       }}>
         Allocation
       </div>
@@ -191,22 +193,25 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
         {/* Floating callouts: leader + full name + compact value · share */}
         {callouts.map((c) => {
           if (c.position === "top") {
-            // L-shaped leader: straight up from the slice edge, then across to
-            // centre, with the dot at the corner and the text above it (the
-            // leader runs below the text, never crossing it).
+            // Centred directly ABOVE the slice it points at: a short vertical
+            // leader from the slice edge up to a dot, name + value stacked over
+            // it. Pointing straight at the slice reads far cleaner than jogging
+            // the leader across to the card centre.
             return (
               <g key={c.category}>
-                <polyline
-                  points={`${c.p0.x.toFixed(1)},${c.p0.y.toFixed(1)} ${c.p0.x.toFixed(1)},${TOP_LINE_Y} ${cx},${TOP_LINE_Y}`}
-                  fill="none"
+                <line
+                  x1={c.p0.x.toFixed(1)}
+                  y1={c.p0.y.toFixed(1)}
+                  x2={c.p0.x.toFixed(1)}
+                  y2={TOP_DOT_Y}
                   stroke={c.color}
                   strokeWidth={1.1}
                 />
-                <circle cx={cx} cy={TOP_LINE_Y} r={3} fill={c.color} />
-                <text x={cx} y={21} textAnchor="middle" style={{ fontSize: 13, fontWeight: 500, fill: "var(--text)" }}>
+                <circle cx={c.p0.x} cy={TOP_DOT_Y} r={3} fill={c.color} />
+                <text x={c.p0.x} y={13} textAnchor="middle" style={{ fontSize: 13, fontWeight: 500, fill: "var(--text)" }}>
                   {c.label}
                 </text>
-                <text x={cx} y={33} textAnchor="middle" style={{ fontSize: 10.5, fill: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+                <text x={c.p0.x} y={25} textAnchor="middle" style={{ fontSize: 10.5, fill: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
                   {compactMoney(c.value)}
                   <tspan style={{ fill: "var(--text-faint)" }}>{" · "}{c.pct}%</tspan>
                 </text>
