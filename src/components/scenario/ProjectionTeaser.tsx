@@ -3,17 +3,22 @@
 import { useState, useEffect } from "react";
 import { getUsdRate } from "@/lib/money";
 import { useDisplayCurrency } from "@/lib/hooks";
+import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
 
-// Ambient projection line under the net-worth chart. Quiet and editorial — not a
-// banner, not a popup. The midpoint comes from POST /api/scenarios/project
-// (trajectory, 10y, no contribution); nothing is projected client-side.
+// Ambient, tappable projection line under the net-worth chart. Quiet and
+// editorial — the sentence itself is the affordance (the old "What if?" pill is
+// gone). The midpoint and the annualized growth rate both come from
+// POST /api/scenarios/project (trajectory, 10y, no contribution); nothing is
+// projected or branched client-side beyond reading that response.
 //
 // Thin-history guard: when the route falls back to its default growth rate
-// (flagged in `assumptions`), we never show a fabricated figure — we show an
-// onboarding nudge instead, or nothing.
+// (flagged in `assumptions`), we never show a fabricated figure or a trajectory
+// verdict — we show an onboarding nudge instead.
 
 const HORIZON_YEARS = 10;
 const SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
+// An annualized move smaller than this reads as "holding steady".
+const FLAT_BAND = 0.02;
 
 interface ProjResp {
   startUsd: number;
@@ -68,35 +73,48 @@ export function ProjectionTeaser({ onExplore }: { onExplore: () => void }) {
     return `${sym}${Math.round(n)}`;
   };
 
-  const lineStyle: React.CSSProperties = {
-    display: "block",
-    textAlign: "left",
-    width: "100%",
-    background: "transparent",
-    border: "none",
-    padding: 0,
-    cursor: "pointer",
-    fontStyle: "italic",
-    fontSize: 14.5,
-    lineHeight: 1.5,
-    color: "var(--text-dim)",
-    letterSpacing: "0.005em",
-    opacity: shown ? 1 : 0,
-    transform: shown ? "translateY(0)" : "translateY(3px)",
-    transition: "opacity 0.7s ease, transform 0.7s ease",
-  };
+  // Trajectory verdict drives the copy. The statement is ink; the trailing clause
+  // and arrow are the accent-green affordance. Branch deterministically off the
+  // same annualized rate the projection band is built from — flat/declining
+  // portfolios never see "keep this pace".
+  let statement: React.ReactNode = null;
+  let clause: string;
+  let aria: string;
+  if (thin) {
+    clause = "Add a little more and I’ll show where you’re heading";
+    aria = "Explore your portfolio projection";
+  } else if (resp.rate >= FLAT_BAND) {
+    const projected = compact(resp.trajectory.mid);
+    statement = (
+      <>
+        Keep this pace and you reach about{" "}
+        <span style={{ fontStyle: "normal", fontWeight: 600 }}>{projected}</span>{" "}
+        by {year}.{" "}
+      </>
+    );
+    clause = "See what moves it";
+    aria = `Keep this pace and you reach about ${projected} by ${year}. Explore what moves your projection.`;
+  } else if (resp.rate <= -FLAT_BAND) {
+    statement = <>Down lately.{" "}</>;
+    clause = "See what turns it around";
+    aria = "Your portfolio is down lately. Explore what could turn it around.";
+  } else {
+    statement = <>Holding steady.{" "}</>;
+    clause = "See what could bend the curve";
+    aria = "Your portfolio is holding steady. Explore what could bend the curve.";
+  }
 
   return (
-    <button type="button" onClick={onExplore} className="font-serif" style={lineStyle}>
-      {thin ? (
-        <>Add a little more and I&apos;ll show where you&apos;re heading <span style={{ fontStyle: "normal" }}>→</span></>
-      ) : (
-        <>
-          Keep this pace and you&apos;re near{" "}
-          <span style={{ fontStyle: "normal", fontWeight: 600, color: "var(--text)" }}>{compact(resp.trajectory.mid)}</span>{" "}
-          by {year} <span style={{ fontStyle: "normal" }}>→</span>
-        </>
-      )}
-    </button>
+    <ScenarioCueLine
+      statement={statement}
+      clause={clause}
+      ariaLabel={aria}
+      onActivate={onExplore}
+      style={{
+        opacity: shown ? 1 : 0,
+        transform: shown ? "translateY(0)" : "translateY(3px)",
+        transition: "opacity 0.7s ease, transform 0.7s ease",
+      }}
+    />
   );
 }
