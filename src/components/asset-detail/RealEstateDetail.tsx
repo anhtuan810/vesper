@@ -96,6 +96,19 @@ export function RealEstateDetail({ asset }: Props) {
     <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
       <div className="px-0 md:px-8" style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 110 }}>
 
+        {/* Back */}
+        <div style={{ padding: "12px 0 14px" }}>
+          <button
+            onClick={() => router.back()}
+            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -6, color: "var(--text)", background: "none", border: "none", cursor: "pointer" }}
+            aria-label="Back"
+          >
+            <svg width="18" height="18" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="160 208 80 128 160 48" />
+            </svg>
+          </button>
+        </div>
+
         {/* Map */}
         <div style={{ marginBottom: 18 }}>
           <PropertyMap asset={asset} />
