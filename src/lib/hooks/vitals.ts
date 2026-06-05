@@ -18,9 +18,16 @@ export interface VitalsResponse {
   assets: Array<{ name: string; type: string; eurValue: number; symbol?: string }>;
 }
 
+type VitalsBody = Omit<VitalsResponse, "pulse" | "pulseLiquid">;
+type VitalsPulse = Pick<VitalsResponse, "pulse" | "pulseLiquid">;
+
 // Module-level cache survives client-side nav (but not a full page reload — that's
 // what the per-user sessionStorage mirror below is for).
 let _vitalsCache: { data: VitalsResponse; fetchedAt: number } | null = null;
+
+// In-flight non-forced fetches, keyed by userId, so a prefetch and a navigation
+// that race collapse onto a single request instead of two.
+const _inflight = new Map<string, Promise<VitalsResponse | null>>();
 
 function readSessionVitals(userId: string): VitalsResponse | null {
   try {
@@ -33,8 +40,98 @@ function writeSessionVitals(userId: string, data: VitalsResponse): void {
   try { sessionStorage.setItem(vitalsCacheKey(userId), JSON.stringify(data)); } catch {}
 }
 
+function writeCaches(userId: string | undefined, data: VitalsResponse): void {
+  _vitalsCache = { data, fetchedAt: Date.now() };
+  if (userId) writeSessionVitals(userId, data);
+}
+
 function cacheStale(ms: number): boolean {
   return !_vitalsCache || Date.now() - _vitalsCache.fetchedAt >= ms;
+}
+
+// Whether a warm Vitals cache exists and is younger than `ms`. Reuses the same
+// staleness logic/threshold the focus revalidate uses, so the idle prefetcher
+// doesn't duplicate the number — it just skips warming when a fresh cache is
+// already present.
+export function vitalsCacheIsFresh(ms: number = VITALS_SWR_STALE_MS): boolean {
+  return !cacheStale(ms);
+}
+
+// The single loader, shared by useVitals and the idle prefetcher. Fetches the
+// body and pulse in parallel, merges the pulse in when it lands, swallows a pulse
+// failure (the body still resolves), and writes the merged response to BOTH the
+// module cache and the per-user sessionStorage mirror. Optional progress hooks let
+// useVitals paint the body before the (slow) pulse arrives; the prefetcher omits
+// them and just warms the caches.
+//
+// A forced read (revision bump / stale focus revalidate) bypasses the in-flight
+// dedupe and always runs, with ?rev= + no-store so the regenerated pulse is
+// actually retrieved. Rejects on body failure; pulse failure is silent.
+function runVitalsFetch(
+  userId: string | undefined,
+  force: boolean,
+  onBody?: (body: VitalsBody) => void,
+  onPulse?: (pulse: VitalsPulse) => void,
+): Promise<VitalsResponse | null> {
+  const suffix = force ? `?rev=${Date.now()}` : "";
+
+  let merged: VitalsResponse | null = null;
+  let pulsePayload: VitalsPulse = { pulse: null, pulseLiquid: null };
+
+  const bodyPromise = fetch(`/api/vitals${suffix}`, { cache: "no-store" })
+    .then(async (r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<VitalsBody>;
+    })
+    .then((body) => {
+      onBody?.(body);
+      merged = { ...body, ...pulsePayload };
+      writeCaches(userId, merged);
+    });
+
+  const pulsePromise = fetch(`/api/vitals/pulse${suffix}`, { cache: "no-store" })
+    .then(async (r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<VitalsPulse>;
+    })
+    .then((p) => {
+      pulsePayload = { pulse: p.pulse ?? null, pulseLiquid: p.pulseLiquid ?? null };
+      onPulse?.(pulsePayload);
+      if (merged) {
+        merged = { ...merged, ...pulsePayload };
+        writeCaches(userId, merged);
+      }
+    })
+    .catch(() => {
+      /* swallow — the body still resolves; the pulse stays null */
+    });
+
+  return bodyPromise.then(() => pulsePromise).then(() => merged);
+}
+
+export function fetchAndCacheVitals(
+  userId: string | undefined,
+  opts?: {
+    force?: boolean;
+    onBody?: (body: VitalsBody) => void;
+    onPulse?: (pulse: VitalsPulse) => void;
+  },
+): Promise<VitalsResponse | null> {
+  const force = opts?.force ?? false;
+
+  // Dedupe only non-forced reads (the prefetch + first navigation case). A forced
+  // read always starts its own request.
+  if (!force && userId) {
+    const existing = _inflight.get(userId);
+    if (existing) return existing;
+  }
+
+  const promise = runVitalsFetch(userId, force, opts?.onBody, opts?.onPulse).finally(() => {
+    if (userId && _inflight.get(userId) === promise) _inflight.delete(userId);
+  });
+
+  if (!force && userId) _inflight.set(userId, promise);
+  return promise;
 }
 
 // Drops the module-level Vitals cache AND every per-user sessionStorage mirror so
@@ -73,70 +170,54 @@ export function useVitals() {
     setIsLoading(false);
   }, []);
 
-  // Commit freshly-fetched data: paint it and persist to both caches.
-  const commit = useCallback((d: VitalsResponse, uid: string | undefined) => {
-    dataRef.current = d;
-    setData(d);
-    setIsLoading(false);
-    _vitalsCache = { data: d, fetchedAt: Date.now() };
-    if (uid) writeSessionVitals(uid, d);
-  }, []);
-
-  // Background fetch of body + pulse. Never clears data; on failure it keeps the
-  // existing data (only a cold start with nothing to show surfaces an error).
+  // Background fetch of body + pulse via the shared loader. Never clears data; on
+  // failure it keeps the existing data (only a cold start with nothing to show
+  // surfaces an error). Caching is owned by the shared loader; these callbacks
+  // only drive React state.
   const load = useCallback((force: boolean, uid: string | undefined) => {
-    // Cache-bust only the genuinely-forced paths (revision bump, stale focus
-    // revalidate) so the server-regenerated pulse is actually retrieved.
-    const suffix = force ? `?rev=${Date.now()}` : "";
+    let progressivePainted = false;
 
-    let pulsePayload: Pick<VitalsResponse, "pulse" | "pulseLiquid"> | null = null;
-    let bodyDone = false;
-    const mergePulse = () => {
-      if (!pulsePayload) return;
-      const prev = dataRef.current;
-      if (!prev) return;
-      commit({ ...prev, ...pulsePayload }, uid);
-    };
-
-    // Body — deterministic, fast. On a background refetch (data already present)
-    // we keep the existing pulse visible until the fresh one lands, so the banner
-    // never flashes back to a shimmer.
-    fetch(`/api/vitals${suffix}`, { cache: "no-store" })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Omit<VitalsResponse, "pulse" | "pulseLiquid">>;
-      })
-      .then((body) => {
+    fetchAndCacheVitals(uid, {
+      force,
+      onBody: (body) => {
+        progressivePainted = true;
+        // On a background refetch (data already present) keep the existing pulse
+        // visible until the fresh one lands, so the banner never flashes back to
+        // a shimmer.
         const prev = dataRef.current;
         const next: VitalsResponse = prev
           ? { ...prev, ...body }
           : { ...body, pulse: null, pulseLiquid: null };
-        commit(next, uid);
+        dataRef.current = next;
+        setData(next);
+        setIsLoading(false);
         setError(null);
-        bodyDone = true;
-        mergePulse();
+      },
+      onPulse: (p) => {
+        const prev = dataRef.current;
+        if (!prev) return;
+        const next = { ...prev, ...p };
+        dataRef.current = next;
+        setData(next);
+      },
+    })
+      .then((result) => {
+        // The progress callbacks fire only for a request THIS call started. When
+        // we instead deduped onto an in-flight prefetch, paint the final merged
+        // result so the navigation still renders. (Dedupe only happens on
+        // non-forced cold loads, where there is no prior pulse to preserve.)
+        if (!progressivePainted && result) {
+          dataRef.current = result;
+          setData(result);
+          setError(null);
+        }
       })
       .catch((e) => {
         // Keep showing existing data; only a true cold start surfaces the error.
         if (!dataRef.current) setError(e instanceof Error ? e : new Error(String(e)));
       })
       .finally(() => setIsLoading(false));
-
-    // Pulse — slow (Haiku). Failure must never block the body, trip the error
-    // state, or clear data; we simply leave the pulse as-is.
-    fetch(`/api/vitals/pulse${suffix}`, { cache: "no-store" })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Pick<VitalsResponse, "pulse" | "pulseLiquid">>;
-      })
-      .then((p) => {
-        pulsePayload = { pulse: p.pulse ?? null, pulseLiquid: p.pulseLiquid ?? null };
-        if (bodyDone) mergePulse();
-      })
-      .catch(() => {
-        /* swallow — the body already rendered; the Pulse slot stays a shimmer */
-      });
-  }, [commit]);
+  }, []);
 
   // Decide what to show on mount / revision bump / auth resolution. Every branch
   // that has data to show paints it WITHOUT a skeleton; only a genuine cold start

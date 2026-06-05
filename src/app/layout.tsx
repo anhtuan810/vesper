@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { UndoDeleteToast } from "@/components/UndoDeleteToast";
+import { VitalsPrefetch } from "@/components/VitalsPrefetch";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
@@ -78,6 +79,7 @@ export default async function RootLayout({
             </div>
             {!isMarketing && <BottomNav />}
             {!isMarketing && <UndoDeleteToast />}
+            {!isMarketing && <VitalsPrefetch />}
           </UserProvider>
         </ThemeProvider>
         <NativeBootstrap />
