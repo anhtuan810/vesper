@@ -45,11 +45,13 @@ export const ASSETS_CACHE_PREFIX     = "volnar.assets.";
 export const SPARKLINES_CACHE_PREFIX = "volnar.sparklines.v1.";
 export const PRICES_TS_CACHE_PREFIX  = "volnar.prices.ts.";
 export const VITALS_CACHE_PREFIX     = "volnar.vitals.v1.";
+export const DIARY_CACHE_PREFIX      = "volnar.diary.v1.";
 
 export const assetsCacheKey     = (userId: string)                        => `${ASSETS_CACHE_PREFIX}${userId}`;
 export const sparklinesCacheKey = (symbolKey: string, range: string)      => `${SPARKLINES_CACHE_PREFIX}${range}.${symbolKey}`;
 export const pricesTsCacheKey   = (userId: string)                        => `${PRICES_TS_CACHE_PREFIX}${userId}`;
 export const vitalsCacheKey     = (userId: string)                        => `${VITALS_CACHE_PREFIX}${userId}`;
+export const diaryCacheKey      = (userId: string)                        => `${DIARY_CACHE_PREFIX}${userId}`;
 
 // ── localStorage cache keys ────────────────────────────────────────────────────
 export const CHAT_HISTORY_PREFIX  = "volnar.chat.history.";

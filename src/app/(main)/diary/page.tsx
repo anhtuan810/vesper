@@ -8,14 +8,36 @@ import { DiaryTab } from "@/components/DiaryTab";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Mutation } from "@/lib/supabase";
-import { DIARY_PAGE_SIZE } from "@/lib/constants";
+import { DIARY_PAGE_SIZE, diaryCacheKey } from "@/lib/constants";
 
 const supabase = createBrowserSupabase();
+
+// First-page SWR cache (sessionStorage), mirroring the assets/vitals pattern: a
+// revisit paints instantly from this, then revalidates in the background. Only the
+// first page is cached; pagination beyond it stays live. All storage/JSON access
+// is wrapped so a failure is a silent no-op.
+type DiaryCache = { mutations: Mutation[]; totalCount: number };
+
+function readDiaryCache(userId: string): DiaryCache | null {
+  try {
+    const raw = sessionStorage.getItem(diaryCacheKey(userId));
+    return raw ? (JSON.parse(raw) as DiaryCache) : null;
+  } catch { return null; }
+}
+
+function writeDiaryCache(userId: string, cache: DiaryCache): void {
+  try { sessionStorage.setItem(diaryCacheKey(userId), JSON.stringify(cache)); } catch {}
+}
+
+function clearDiaryCache(userId: string): void {
+  try { sessionStorage.removeItem(diaryCacheKey(userId)); } catch {}
+}
 
 export default function DiaryPage() {
   const router = useRouter();
   const isDesktop = useIsDesktop();
   const { user, loading: userLoading } = useUser();
+  const userId = user?.id;
   const { assets } = useAssets(user?.id);
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -34,11 +56,21 @@ export default function DiaryPage() {
     if (error) { console.error("Failed to load diary:", error.message); return; }
     const loaded = data?.length ?? 0;
     const total = count ?? 0;
-    setMutations(data || []);
+    const rows = data || [];
+    setMutations(rows);
     setTotalCount(total);
     setHasMore(total > loaded);
     loadedRef.current = loaded;
+    writeDiaryCache(user.id, { mutations: rows, totalCount: total });
   }, [user?.id]);
+
+  // Clear the first-page cache and refetch — used by the revision bump and the
+  // backfill "rows changed" path so a stale cache never lingers if the refetch
+  // were to fail.
+  const reloadFirstPage = useCallback(() => {
+    if (userId) clearDiaryCache(userId);
+    fetchMutations();
+  }, [userId, fetchMutations]);
 
   const loadMore = useCallback(async () => {
     if (!user?.id) return;
@@ -56,13 +88,31 @@ export default function DiaryPage() {
     setHasMore(loadedRef.current < totalCount);
   }, [user?.id, totalCount]);
 
+  // Instant paint on revisit: hydrate the first page from sessionStorage as soon
+  // as the user is known, before the background revalidate (the mount fetch below)
+  // lands. A true first-ever load (no cache) falls through to the empty state,
+  // then the fetched list.
+  const hydratedRef = useRef(false);
+  const hydrateFromCache = useCallback(() => {
+    if (!userId || hydratedRef.current) return;
+    hydratedRef.current = true;
+    const cached = readDiaryCache(userId);
+    if (!cached) return;
+    setMutations(cached.mutations);
+    setTotalCount(cached.totalCount);
+    setHasMore(cached.totalCount > cached.mutations.length);
+    loadedRef.current = cached.mutations.length;
+  }, [userId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { hydrateFromCache(); }, [hydrateFromCache]);
+
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
   // Refetch the diary when a mutation bumps the revision, and when the tab
   // regains focus — so a chat save elsewhere shows up without a manual refresh.
   const revision = usePortfolioRevision();
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (revision > 0) fetchMutations(); }, [revision, fetchMutations]);
+  useEffect(() => { if (revision > 0) reloadFirstPage(); }, [revision, reloadFirstPage]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -79,7 +129,7 @@ export default function DiaryPage() {
     setBackfillDone(true);
     fetch("/api/backfill", { method: "POST" }).then(async (res) => {
       const { updated } = await res.json();
-      if (updated > 0) fetchMutations();
+      if (updated > 0) reloadFirstPage();
     }).catch((err) => { console.error("Backfill fetch failed:", err); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
