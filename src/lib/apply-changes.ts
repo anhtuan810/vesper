@@ -46,6 +46,10 @@ type PortfolioChange = {
   mortgage_type?: string;
   mortgage_start_date?: string;
   mortgage_end_date?: string;
+  coupon_rate?: number;
+  maturity_date?: string;
+  issuer?: string;
+  isin?: string;
   address?: string;
   property_type?: string;
   size_sqm?: number;
@@ -327,6 +331,10 @@ export async function applyPortfolioChanges({
         mortgage_type: change.mortgage_type || null,
         mortgage_start_date: change.mortgage_start_date || null,
         mortgage_end_date: change.mortgage_end_date || null,
+        coupon_rate: change.coupon_rate ?? null,
+        maturity_date: change.maturity_date || null,
+        issuer: change.issuer || null,
+        isin: change.isin || null,
         address: change.address || null,
         property_type: change.property_type || null,
         size_sqm: change.size_sqm || null,
@@ -475,6 +483,10 @@ export async function applyPortfolioChanges({
         if (change.mortgage_rate !== undefined) updateData.mortgage_rate = change.mortgage_rate;
         if (change.monthly_payment !== undefined) updateData.monthly_payment = change.monthly_payment;
         if (change.mortgage_type !== undefined) updateData.mortgage_type = change.mortgage_type;
+        if (change.coupon_rate !== undefined) updateData.coupon_rate = change.coupon_rate;
+        if (change.maturity_date !== undefined) updateData.maturity_date = change.maturity_date;
+        if (change.issuer !== undefined) updateData.issuer = change.issuer;
+        if (change.isin !== undefined) updateData.isin = change.isin;
         if (change.address !== undefined) updateData.address = change.address;
         if (change.property_type !== undefined) updateData.property_type = change.property_type;
         if (change.size_sqm !== undefined) updateData.size_sqm = change.size_sqm;

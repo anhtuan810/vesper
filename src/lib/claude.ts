@@ -208,6 +208,8 @@ Field names for add (include all that apply):
 
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only) — include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
 
+  For bonds, also capture (in the structured fields, not only the note) whatever the user states: issuer (e.g. "Bundesrepublik Deutschland"), coupon_rate (annual coupon as a number, e.g. 3.2), maturity_date (redemption date — prefer YYYY-MM-DD; a bare year like "2030" is acceptable), isin (the 12-character ISIN). Record ONLY values the user gives; never invent a coupon, maturity, or ISIN.
+
 MORTGAGE & FINANCIAL FIELDS — CURRENT INTERACTION ONLY:
 When adding or modifying a property, only include mortgage and other financial fields (mortgage_balance, mortgage_rate, mortgage_start_date, value) that the user states for THIS property in the CURRENT add/modify interaction. Do NOT carry forward mortgage or financial details from earlier in the conversation, from a previously added asset, or from a property the user removed and is re-adding — a removed-and-re-added property starts fresh. If you have a figure from earlier that may still apply, ASK the user to confirm it explicitly before recording it — never record it silently. Details the user gives across several messages while setting up the same property still count as the current interaction and are fine to record.
 
@@ -856,6 +858,7 @@ Field names (include all that apply):
   units, buy_price, buy_date,
   mortgage_balance, mortgage_rate, monthly_payment, mortgage_type — include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
   For property, also capture buy_date / buy_price when the user says when they bought it or what they paid, and mortgage_start_date when they give the mortgage's start. A stated purchase date or price goes into the structured field, never only the note. Ask once at most; never guess.
+  For bonds, also capture (in the structured fields, not only the note) whatever the user states: issuer (e.g. "Bundesrepublik Deutschland"), coupon_rate (annual coupon as a number, e.g. 3.2), maturity_date (redemption date — prefer YYYY-MM-DD; a bare year like "2030" is acceptable), isin (the 12-character ISIN). Record ONLY values the user gives; never invent a coupon, maturity, or ISIN.
 
 MORTGAGE & FINANCIAL FIELDS — CURRENT INTERACTION ONLY:
 When adding or modifying a property, only include mortgage and other financial fields (mortgage_balance, mortgage_rate, mortgage_start_date, value) that the user states for THIS property in the CURRENT add/modify interaction. Do NOT carry forward mortgage or financial details from earlier in the conversation, from a previously added asset, or from a property the user removed and is re-adding — a removed-and-re-added property starts fresh. If you have a figure from earlier that may still apply, ASK the user to confirm it explicitly before recording it — never record it silently. Details the user gives across several messages while setting up the same property still count as the current interaction and are fine to record.
