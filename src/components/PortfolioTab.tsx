@@ -13,10 +13,11 @@ import { InsightBand } from "@/components/InsightBand";
 import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
 import { PositionRow } from "@/components/PositionRow";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
-import { useSparklines } from "@/lib/hooks";
+import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
-import { toUsdClient } from "@/lib/money";
+import { toUsdClient, formatMoney } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
+import { isIncomePension } from "@/lib/pension";
 import { requestExplore } from "@/lib/scenario/explore";
 import type { LiveAsset } from "@/lib/supabase";
 
@@ -63,6 +64,13 @@ export function PortfolioTab({
 }: PortfolioTabProps) {
   const router = useRouter();
   const isDesktop = useIsDesktop();
+  const displayCurrency = useDisplayCurrency();
+
+  // Income pensions (db/state) are off-balance future income — they are kept out
+  // of the four net-worth groups, the allocation bars, the position count, and
+  // every total, and surfaced separately in the "Future income" section below.
+  const netWorthAssets = useMemo(() => assets.filter((a) => !isIncomePension(a)), [assets]);
+  const incomePensions = useMemo(() => assets.filter((a) => isIncomePension(a)), [assets]);
 
   // Open scenario explore in chat: desktop seeds the mounted panel in place,
   // mobile navigates to /chat (which reads the flag on mount).
@@ -72,8 +80,8 @@ export function PortfolioTab({
   };
 
   const symbols = useMemo(
-    () => assets.map((a) => a.symbol).filter((s): s is string => !!s),
-    [assets]
+    () => netWorthAssets.map((a) => a.symbol).filter((s): s is string => !!s),
+    [netWorthAssets]
   );
   const sparklines = useSparklines(symbols, "1W");
 
@@ -114,7 +122,7 @@ export function PortfolioTab({
   // Group by semantic category, sort groups by total value desc, rows within group by value desc
   const groups = useMemo(() => {
     const byCategory: Record<string, LiveAsset[]> = {};
-    for (const a of assets) {
+    for (const a of netWorthAssets) {
       const cat = CATEGORY_MAP[a.type] ?? "reserves";
       (byCategory[cat] ??= []).push(a);
     }
@@ -129,7 +137,7 @@ export function PortfolioTab({
         }, 0),
       }))
       .sort((a, b) => b.total - a.total);
-  }, [assets]);
+  }, [netWorthAssets]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     try {
@@ -204,7 +212,7 @@ export function PortfolioTab({
             Holdings
           </div>
           <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
-            {assets.length} {assets.length === 1 ? "position" : "positions"}
+            {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
           </div>
         </div>
         <div>
@@ -229,6 +237,53 @@ export function PortfolioTab({
             </HoldingsGroup>
           ))}
         </div>
+
+        {/* Future income — income pensions (db/state). Off-balance: shown below
+            the net-worth holdings, never added to any total or the allocation. */}
+        {incomePensions.length > 0 && (
+          <div style={{ marginTop: 28 }}>
+            <div className="flex items-baseline justify-between" style={{ marginBottom: 4 }}>
+              <div
+                className="font-serif"
+                style={{ fontSize: 20, fontWeight: 500, letterSpacing: "-0.01em", color: "var(--text)", fontVariationSettings: "'opsz' 22" }}
+              >
+                Future income
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+                {formatMoney(
+                  incomePensions.reduce((s, a) => s + toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), 0),
+                  "USD",
+                  displayCurrency,
+                )} / year
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.45 }}>
+              Not part of net worth — future income you&apos;ll receive, not a holding you own today.
+            </div>
+            <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+              {incomePensions.map((a, idx) => (
+                <button
+                  key={a.id}
+                  onClick={() => router.push(`/asset/${a.id}`)}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    width: "100%", textAlign: "left", padding: "12px 16px", gap: 14,
+                    background: "none", border: "none",
+                    borderBottom: idx < incomePensions.length - 1 ? "0.5px solid var(--border)" : "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {a.name}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-serif)", fontSize: 15, fontWeight: 500, color: "var(--hero)", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 16", flexShrink: 0 }}>
+                    {formatMoney(toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), "USD", displayCurrency)} / year
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

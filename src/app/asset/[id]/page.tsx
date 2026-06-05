@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { TradeableDetail } from "@/components/asset-detail/TradeableDetail";
 import { RealEstateDetail } from "@/components/asset-detail/RealEstateDetail";
 import { StaticDetail } from "@/components/asset-detail/StaticDetail";
+import { PensionDetail } from "@/components/asset-detail/PensionDetail";
 import { DesktopFrame } from "@/components/desktop/DesktopFrame";
 import type { TradeableAsset, RealEstateAsset, StaticAsset, BondsAsset } from "@/lib/supabase";
 
@@ -47,7 +48,17 @@ export default async function AssetPage({
     detail = <TradeableDetail asset={asset as TradeableAsset} />;
   } else if (type === "real_estate") {
     detail = <RealEstateDetail asset={asset as RealEstateAsset} />;
-  } else if (type === "bonds" || type === "cash" || type === "pension" || type === "other") {
+  } else if (type === "pension") {
+    // Pension branches to its own two-shape layouts; birth_year (from the users
+    // table) feeds the capital projection / income timeline.
+    const { data: urow } = await supabase
+      .from("users")
+      .select("birth_year")
+      .eq("id", user.id)
+      .single();
+    const birthYear = typeof urow?.birth_year === "number" ? urow.birth_year : null;
+    detail = <PensionDetail asset={asset as StaticAsset} birthYear={birthYear} />;
+  } else if (type === "bonds" || type === "cash" || type === "other") {
     detail = <StaticDetail asset={asset as StaticAsset | BondsAsset} />;
   }
 

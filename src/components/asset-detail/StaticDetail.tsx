@@ -7,7 +7,6 @@ import { BondBlock } from "@/components/asset-detail/BondBlock";
 import { formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney, formatMoneyParts, type DisplayCurrency } from "@/lib/money";
-import { isIncomePension } from "@/lib/pension";
 import type { StaticAsset, BondsAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
@@ -203,11 +202,7 @@ export function StaticDetail({ asset }: Props) {
               const mCur = m.currency || asset.currency || "USD";
               if (m.after_value != null) {
                 if (m.action === "add" && m.before_value == null) {
-                  // Pensions are recorded, not "bought"; income pensions show a yearly amount.
-                  const amount = formatMoney(m.after_value, mCur, displayCurrency);
-                  const verb = asset.type === "pension" ? "Added" : "Bought";
-                  const suffix = asset.type === "pension" && isIncomePension(asset) ? " / year" : "";
-                  delta = `${verb} ${amount}${suffix}`; deltaNeutral = true;
+                  delta = `Bought ${formatMoney(m.after_value, mCur, displayCurrency)}`; deltaNeutral = true;
                 } else if (m.action === "add" && m.before_value != null) {
                   const d = m.after_value - m.before_value;
                   delta = `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), mCur, displayCurrency)}`; deltaPositive = d >= 0;
