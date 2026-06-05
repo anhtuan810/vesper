@@ -2,6 +2,24 @@
 
 This is the prioritized roadmap for Volnar. MVP-focused. Avoid enterprise architecture. Each feature should be shippable in 1–3 days.
 
+## What just shipped — Property pivot, basis consistency & deletion completeness (2026-06)
+
+One session, all in-place; one new table (`price_index_cache`), `woz_cache` dropped.
+
+- **Property valuation: WOZ → CBS-PBK indicative value (DONE).** Dead WOZ integration removed; deterministic `buy_price × (PBK index now / at purchase)` engine added (`property-estimate`, `cbs-pbk`, `property-region`, `property-estimate-resolve`), `GET /api/property-estimate` with a gated `?debug=1` diagnostic, `price_index_cache` table, per-year indicative chart on the asset detail. NL-only. CBS source = legacy OData `85792NED`, measure `PrijsindexVerkoopprijzen_1`, RegioS matched by stripped title (e.g. `"Noord-Brabant (PV)"` → key `"PV30  "`), yearly `JJ` periods — the single live-verify point. See `technical-decisions.md`.
+- **Chat property-add flow (DONE).** Confirm address first (distinct "Yes, that's the address" chips), purchase price + date as the anchor, indicative value suggested to accept/override; geocoder address changes flagged (5629 → 5625); never commits a €0 property; mortgage/financials recorded only from the current interaction (no carry-forward); confirm echo shows all fields incl. mortgage. Mirrored into onboarding.
+- **Cost-basis honesty (DONE).** Acquisition mutation records the purchase price (not the estimate); equity badge shows real appreciation from `buy_price`; "since YEAR" uses `buy_date`.
+- **Insight band (DONE).** Revision-driven regeneration; no longer references removed assets.
+- **Equity/net-worth basis consistency (DONE).** Concentration bar now equity-based; Vitals path EUR-normalizes `mortgage_balance`/`monthly_payment`; `computeNetWorth` uses the amortized balance so Vitals net worth matches the Portfolio hero by construction.
+- **Account deletion completeness (DONE).** Purges all user-keyed tables, the Supabase auth user, AND `property-photos` Storage; auth user deleted last; idempotent/re-runnable; clear error on partial failure.
+- **UI polish (DONE).** Correct ordinal suffixes (41st/93rd); sign-aware percentile-change pill.
+
+### Deferred / next
+- **Phase 2 — shared `equityValue` / `equityNetWorth` helper.** Fold the five duplicated `value − computeCurrentBalance` expressions and the local `computeNetWorth` copies inside the vital modules into one helper so the basis can't drift again. (The 2026-06 fix made the shared `utils.computeNetWorth` amortized; the per-vital local copies still use the raw balance.)
+- **Conditional baseline-guard robustness.** Only if the trend/baseline cards (Real growth, Perspective trajectory) misbehave after a clean snapshot baseline accumulates.
+- **Back-button removal on detail pages.** Pending confirmation that swipe-back is reliable across target devices.
+- **Scenario Analysis UI** — see Build Order §1 below.
+
 ## What just shipped — Pilot-readiness batch
 
 Implemented in one session against the audit results from `docs/`. All changes are in-place; no new schema tables.
@@ -203,9 +221,9 @@ Adding a currency outside that pattern (JPY, SEK, INR, etc.) requires:
 
 The architecture supports this without a refactor.
 
-### Auto-WOZ valuation for Dutch properties
+### ~~Auto-WOZ valuation for Dutch properties~~ — superseded (2026-06)
 
-Currently the property `value` is whatever was last stated via chat. A periodic WOZ lookup for NL properties (annual cadence aligned with WOZ updates) would write a fresh value automatically and log a single mutation per year per property. Equivalent for other countries via market-data APIs is a much larger project; WOZ is the cheap, well-defined first step.
+Superseded by the deterministic CBS-PBK **indicative value** (`buy_price × regional PBK index ratio`), shipped 2026-06. Unlike a per-property WOZ write, the indicative value is computed on read from the purchase anchor and a shared regional index (`price_index_cache`), so it needs no per-property annual mutation and no per-municipality scraping. Still NL-only; an equivalent for other countries via market-data APIs remains a larger, separate project. See `technical-decisions.md` → "Indicative Property Value — CBS PBK over WOZ".
 
 ### Test activation
 

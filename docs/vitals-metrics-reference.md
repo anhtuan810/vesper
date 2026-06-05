@@ -46,20 +46,20 @@ house-free and needs no change.
 ## 1. The 7 V1 Vitals
 
 ### 1.1 Concentration
-**Measures:** exposure to a single position and to the top three, by gross value (whole portfolio) and by investable value (non-real-estate positions).
+**Measures:** exposure to a single position and to the top three, on an **equity / net-worth basis** (whole portfolio) and by investable value (non-real-estate positions).
 **`applies`:** `assets.length >= 2`
 **`scope`:** `both`
 **`compute`** → `{ topPositionPct, topPositionName, top3Pct, weeksAboveThreshold, topPositionIsRealEstate, investableTopPositionPct, investableTopPositionName, investableTop3Pct }`
-- Gross fields (over all assets):
-  - `topPositionPct` = largest position's current value ÷ gross portfolio × 100
+- All-asset fields use **equity** for real estate (`value − computeCurrentBalance`, i.e. the amortized balance), the same basis as net worth; non-real-estate positions are unlevered so equity = value:
+  - `topPositionPct` = largest position's equity ÷ equity net worth × 100
   - `topPositionName` = that position's name
-  - `top3Pct` = sum of top three positions' values ÷ gross portfolio × 100
+  - `top3Pct` = sum of top three positions' equity ÷ equity net worth × 100
   - `weeksAboveThreshold` = count of weekly snapshots in the last 26 weeks where top1 > 40%. **0 if no snapshot history.**
-  - `topPositionIsRealEstate` = boolean; true when the gross top position is a real-estate asset
+  - `topPositionIsRealEstate` = boolean; true when the (equity) top position is a real-estate asset
 - Investable fields (over assets where `type !== 'real_estate'`):
   - `investableTopPositionPct` / `investableTopPositionName` / `investableTop3Pct` — **null when there are no non-property positions** (property-only portfolio)
 **`band`:** keys off `investableTopPositionPct ?? topPositionPct`. A primary residence is not a decision the user can act on; severity tracks the rebalanceable book, checkbox-independent. `> 50` → red · `> 35` → amber · else green
-**Display basis:** Property checkbox on = gross hero ("by gross value"). Property checkbox off = investable hero ("of investable assets"), bars renormalized to 100% over non-RE positions.
+**Display basis (2026-06):** the headline, top-3, AND the per-position **bar** are all equity-based — the bar feed (`/api/vitals` `minimalAssets`) sends real estate at `value − computeCurrentBalance`, so the bars divide by equity net worth and match the headline and the allocation donut (previously the bar used a gross/gross basis and read higher than the headline). The Vitals input path (`build-inputs.ts`) EUR-normalizes `mortgage_balance` and `monthly_payment` alongside `value`, so equity is computed entirely in EUR for non-EUR property; `computeNetWorth` uses the amortized balance so the denominator equals the Portfolio hero. Property checkbox off = investable hero ("of investable assets"), bars renormalized to 100% over non-RE positions.
 When `topPositionIsRealEstate` is true and checkbox is on: hero shown as "default" (neutral, never red); sub-line frames the home as a structural anchor and surfaces investable concentration.
 **Pulse framing:** the Pulse generator receives the lens as a parameter. For the
 all-assets lens, a deterministic safety net checks that any generated sentence with

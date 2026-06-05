@@ -114,6 +114,12 @@ Atomic per-user rate limiting (migration `20260508_rate_limits.sql`).
 - `increment_rate_limit(p_user_id, p_bucket, p_date)` RPC upserts and returns the new count.
 - Buckets: `chat` (50/day, `/api/chat`), `diary` (100/day, `/api/diary-summary`). Replaced the prior non-atomic count-then-check.
 
+### price_index_cache
+Regional CBS PBK index-series cache (migration `20260606_price_index_cache.sql`). **Region-keyed, NOT user-keyed** — shared across all users and intentionally untouched by account deletion.
+- `region_code text PRIMARY KEY`, `points jsonb` (yearly `{year, index}` series), `as_of_period text`, `fetched_at timestamptz`.
+- Written only via the service role by `/api/property-estimate`; refreshed when `fetched_at` is older than ~30 days. Reads/writes are best-effort — a missing row degrades to a live CBS fetch.
+- Replaced the dropped `woz_cache` table (the WOZ integration was removed entirely).
+
 ## Cron Jobs
 
 Configured in `vercel.json`:
@@ -162,11 +168,32 @@ After portfolio events, `/api/insight` may regenerate a single italic-serif "WOR
 ### Strict topic boundary
 System prompt tells Claude to refuse off-topic requests with a fixed redirect message.
 
+## Indicative Property Value — CBS PBK over WOZ (2026-06)
+
+**Decision:** replace the dead WOZ integration with a **deterministic, server-side indicative value** built on the CBS *Prijsindex Bestaande Koopwoningen* (PBK). WOZ code is removed and `woz_cache` is dropped.
+
+**Rationale:** WOZ requires per-municipality scraping/lookups with no stable free API and lags ~1–2 years; the CBS PBK is a single free official OData series, base 2020 = 100, from 1995, regionally broken down — enough for an *indicative* (not appraisal) value with one well-defined source.
+
+**Method (no LLM):** `currentValue = buy_price × (index_now / index_buyYear)`. The figure is computed server-side and is server-authoritative — the model never produces it. Purchases before 1995 clamp to the 1995 baseline (`clamped`). Output is always wrapped so it never throws — any miss returns `{ available: false }`.
+
+**Region:** address → gemeente + province via PDOK Locatieserver; index region is the province, or the city for the G4 (Amsterdam, Rotterdam, 's-Gravenhage, Utrecht). **NL-only.**
+
+**The single live-verify point (`src/lib/cbs-pbk.ts`):**
+- Source = legacy OData base `https://opendata.cbs.nl/ODataApi/odata/85792NED` (the v4 `datasets.cbs.nl` base 404s for this table; kept only as an inert fallback).
+- RegioS matched by **stripping the trailing group marker** from the Title (`"Noord-Brabant (PV)"` → `"Noord-Brabant"`) and using the **Key exactly as returned, with trailing spaces** (e.g. `"PV30  "`) in the TypedDataSet filter.
+- Measure = the one titled `Prijsindex verkoopprijzen` with a **non-empty key** (`PrijsindexVerkoopprijzen_1`), never the empty-key group header `Prijsindex bestaande koopwoningen`.
+- Periods are yearly `{YYYY}JJ00`.
+- A gated `?debug=1` (`diagnoseRegionIndex`) surfaces the intermediate resolution and first-failing step. Verify against the live CBS service on device.
+
+**Caching:** per-region series in `price_index_cache` (see Supabase Tables), shared across users, ~30-day TTL.
+
+**Files:** `src/lib/cbs-pbk.ts`, `src/lib/property-estimate.ts`, `src/lib/property-region.ts`, `src/lib/property-estimate-resolve.ts`, `src/app/api/property-estimate/route.ts`, `src/components/asset-detail/EstimatedValueChart.tsx`.
+
 ## Portfolio Calculation Rules
 
 - **Gross total** = sum of `toUsdClient(asset.value, asset.currency)` for all assets
-- **Net worth** = sum where real estate assets contribute `(value − computeCurrentBalance(asset))` instead of value. **Every read site goes through `computeCurrentBalance` rather than reading `assets.mortgage_balance` directly** (see Mortgage Auto-Amortization below). Result converted to USD for aggregation.
-- **Equity per real estate asset** = `value − computeCurrentBalance(asset)` (in native currency)
+- **Net worth** = sum where real estate assets contribute `(value − computeCurrentBalance(asset))` instead of value. **Every read site goes through `computeCurrentBalance` rather than reading `assets.mortgage_balance` directly** (see Mortgage Auto-Amortization below). Result converted to USD for aggregation. As of 2026-06 the shared `computeNetWorth` helper (`src/lib/utils.ts`) also uses `computeCurrentBalance` (the **amortized** balance) instead of the raw `mortgage_balance`, so the Vitals net worth (`build-inputs.ts`) equals the Portfolio hero by construction and stays equal as the loan amortizes. It degrades to the stored balance when the amortization fields are absent (the two mutation-snapshot callers carry only `mortgage_balance`, so their behaviour is unchanged).
+- **Equity per real estate asset** = `value − computeCurrentBalance(asset)` (in native currency). **Equity-everywhere basis:** the Portfolio hero/holdings, the allocation donut, the Vitals net worth, and the **full** Concentration card (headline, top-3, AND per-position bar) all use this equity basis over equity net worth. The Vitals input path (`build-inputs.ts`) EUR-normalizes `mortgage_balance` and `monthly_payment` alongside `value` so equity is computed entirely in EUR for non-EUR property.
 - **Allocation percentages** calculated against gross total (USD)
 - **Holdings grouping** (PR 14, updated PR 23): positions grouped into four groups — Property (`real_estate`), Public markets (`stocks` / `etf`), Reserves (`cash` / `pension` / `bonds` / `gold` / `other`), Crypto (`crypto`). Gold and bonds remain in Reserves. Group order by total value descending. All collapsed by default, tap to expand, session-persisted.
 

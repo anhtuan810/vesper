@@ -123,16 +123,27 @@ off. A later recompute pass will exclude the house; cashRealYield is already
 house-free. **This recompute is NOT in the current PR.**
 
 ### Concentration dual-scope
-`ConcentrationValue` now carries both gross fields (over all assets) and
-investable fields (over non-real-estate assets):
+`ConcentrationValue` carries both all-asset fields and investable fields (over
+non-real-estate assets):
 - `topPositionIsRealEstate: boolean`
 - `investableTopPositionPct / Name / Top3Pct` — null when there are no non-property positions.
 - `band()` keys off `investableTopPositionPct ?? topPositionPct` (checkbox-independent).
-- Concentration card TOP 1 follows the checkbox (gross when on, investable when off).
-- When the gross top position is real estate and checkbox is on, the card frames
+- Concentration card TOP 1 follows the checkbox (all-asset when on, investable when off).
+- When the top position is real estate and checkbox is on, the card frames
   the home as a structural anchor and surfaces investable concentration in the sub-line.
 - Pulse framing updated: when `topPositionIsRealEstate` is true, the Haiku
   system prompt directs concentration commentary to `investableTopPositionPct`.
+
+**Equity basis (2026-06).** The all-asset fields use **equity** for real estate
+(`value − computeCurrentBalance`), the same basis as net worth — not gross value.
+As of the 2026-06 basis-consistency fix, the per-position **bar** is equity-based
+too: the `/api/vitals` bar feed (`minimalAssets`) sends real estate at
+`value − computeCurrentBalance`, so the bars divide by equity net worth and match
+the headline, top-3, and the allocation donut (the bar previously used gross/gross
+and read higher than the headline). The Vitals input path (`build-inputs.ts`)
+EUR-normalizes `mortgage_balance` and `monthly_payment` alongside `value` so equity
+is entirely in EUR for non-EUR property, and `computeNetWorth` (`utils.ts`) uses the
+amortized balance so the denominator equals the Portfolio hero by construction.
 
 ### Lens-aware Pulse (added 2026-05-22)
 `generatePulse` now accepts a `lens: 'all' | 'liquid'` parameter:

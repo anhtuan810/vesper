@@ -13,7 +13,8 @@
 ### Account Deletion
 - Permanent, irreversible deletion from the Profile account area. A low-emphasis 'Delete account' affordance opens a confirmation requiring the user to type `DELETE`; the confirm button stays disabled until it matches.
 - On confirm: `DELETE /api/users/me` runs, then the client signs out and redirects to `/login`.
-- `DELETE /api/users/me` resolves the user id from the session only (never the request body), returns 401 unauthenticated, then runs an explicit per-table delete loop over the user-scoped tables `messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots` (each keyed by `user_id`), then deletes the `users` row, then the auth user via `auth.admin.deleteUser`. `rate_limits` is left to its `ON DELETE CASCADE` on `users(id)`; `fx_rates` is global and intentionally untouched. Failures throw and are captured to Sentry.
+- `DELETE /api/users/me` resolves the user id from the session only (never the request body), returns 401 unauthenticated, then runs in order: (1) **purges the user's `property-photos` Storage objects** (lists the `{user_id}/` prefix and removes every object, paging until empty — tolerates a missing/empty folder); (2) an explicit per-table delete loop over the user-scoped tables `messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots, scenarios` (each keyed by `user_id`); (3) deletes the `users` row; (4) deletes the auth user via `auth.admin.deleteUser` **last**. `rate_limits` is left to its `ON DELETE CASCADE` on `users(id)`; `fx_rates` (global) and `price_index_cache` (region-keyed) are intentionally untouched. Every step is idempotent, so the operation is safely re-runnable while the session is still valid; any step failure is captured to Sentry and returns 500 with a clear message rather than a silent partial success.
+- Complete data erasure: every user-keyed table, the Supabase auth user, and user-owned Storage are removed.
 - Satisfies GDPR right-to-erasure and the Apple App Store in-app-deletion requirement.
 - Files: `src/app/api/users/me/route.ts`, `src/app/profile/page.tsx`
 
@@ -50,6 +51,7 @@
 - **Thin-portfolio handling**: portfolios of 1–3 assets return deterministic copy without calling Haiku — names the held positions and highlights the most common absent categories (cash, pension, property). No LLM cost. Portfolios of 4+ assets call Claude Haiku for a two-sentence observation.
 - Generated per user, cached 24h in `highlights` table (`type='insight'`, `detail=<sentence>`, `expires_at = now() + 24h`). No new schema.
 - `/api/insight` GET returns cached row if non-expired; generates fresh, INSERTs, returns on miss. On failure returns `{ detail: null }` and does NOT INSERT.
+- **Revision-driven freshness**: `useInsight()` subscribes to the portfolio-revision store (like the holdings list and Vitals). On a portfolio change it force-refetches `/api/insight?fresh=1`, which regenerates the band's concentration card from the **current** assets before returning. The band can no longer name a removed asset — the deterministic figure is always recomputed from current assets; only the phrasing is cached.
 - LLM marks the key noun phrase with `*asterisks*`; the frontend wraps that span in `<em>` for italic styling
 - Cost: ~$0.0001–0.0003 per Haiku call (waived for thin portfolios)
 - Tap navigates to `/chat`
@@ -98,6 +100,26 @@
 - Address geocoding via OSM Nominatim happens server-side when a property is added via chat
 - Country-agnostic — pure math, no tax assumptions
 - Files: `src/components/asset-detail/RealEstateDetail.tsx`, `src/components/PropertyMap.tsx`, `src/components/MortgageBlock.tsx`, `src/components/ValueComposition.tsx`, `src/lib/mortgage.ts`, `src/lib/maps.ts`, `src/app/api/geocode/route.ts`, `src/lib/geocode.ts`, `src/styles/map-light.json`, `src/styles/map-dark.json`
+
+### Indicative Property Value (CBS-PBK)
+- Replaces the dead WOZ integration (all WOZ code removed; `woz_cache` dropped) with a **deterministic, server-side indicative value**. No LLM produces the figure.
+- **Method**: `currentValue = buy_price × (regionalIndex_now / regionalIndex_buyYear)` using the CBS *Prijsindex Bestaande Koopwoningen* (PBK, table 85792NED, base 2020 = 100, series from 1995). A purchase before 1995 clamps to the 1995 baseline (flagged as `clamped`).
+- **Region**: resolved from the address via the free PDOK Locatieserver → gemeente + province; the index region is the province, or the city for the four big cities (Amsterdam, Rotterdam, 's-Gravenhage, Utrecht). **NL-only**; non-NL properties have no estimate.
+- **CBS source — the single live-verify point** (`src/lib/cbs-pbk.ts`): legacy OData base `https://opendata.cbs.nl/ODataApi/odata/85792NED` (the v4 `datasets.cbs.nl` base 404s for this table and is an inert fallback). RegioS is matched by stripping the trailing group marker from the Title (e.g. `"Noord-Brabant (PV)"` → `"Noord-Brabant"`) and using the **Key exactly as returned, with trailing spaces** (e.g. `"PV30  "`). The measure is the one titled `Prijsindex verkoopprijzen` with a non-empty key (`PrijsindexVerkoopprijzen_1`) — NOT the empty-key group header `Prijsindex bestaande koopwoningen`. Periods are yearly `{YYYY}JJ00`.
+- **Caching**: per-region series cached in `price_index_cache` (region-keyed, shared across users), refreshed when older than ~30 days; a miss degrades to a live fetch.
+- **API**: `GET /api/property-estimate?assetId=...` returns `{ available, currentEstimate, series, regionName, regionCode, asOfPeriod, clamped }` (NL real-estate, authed user only) or `{ available: false }`. Everything is wrapped so it never throws. A gated `?debug=1` (authed) returns the intermediate CBS resolution and first-failing step for diagnosis.
+- **Surfaces**: the asset detail page shows an "Indicative value" per-year chart (`EstimatedValueChart`), labelled as indicative (not an appraisal) with the region and reference period; the stated value is marked separately when it diverges. The chat add-flow suggests the figure on add.
+- Files: `src/lib/cbs-pbk.ts`, `src/lib/property-estimate.ts`, `src/lib/property-region.ts`, `src/lib/property-estimate-resolve.ts`, `src/app/api/property-estimate/route.ts`, `src/components/asset-detail/EstimatedValueChart.tsx`, `supabase/migrations/20260606_price_index_cache.sql`
+
+### Chat Property-Add Flow
+- A property add is a deliberate two-step flow (`buildStaticSystem` and `buildOnboardingPrompt`, mirrored):
+  - **Step 1 — confirm the address first.** The model emits `<propose_address>` once; the server geocodes and shows the resolved address with distinct **"Yes, that's the address" / "No, let me correct it"** chips (separate from the commit step's "Confirm and save", so confirming the address never saves a property). If the geocoder **changed** the entered postcode or house number (e.g. `5629NJ` → `5625NJ`), the change is surfaced in the confirmation; a non-resolvable / partial match asks the user to re-enter rather than forcing a best guess.
+  - **Step 2 — anchor + value.** After the address is confirmed, the model asks for the **purchase price + date** (the anchor) as plain text. It then emits `<propose_change>` — the only committable step and the only one that shows the indicative value ("Current value: about €X — accept or change"). The confirm echo lists every field that will be recorded, **including mortgage balance, rate and start date**.
+  - **Step 3 — commit** via `<changes>` only after the `<propose_change>` confirmation.
+- **No silent carry-forward**: mortgage and financial fields are recorded only from what the user states in the *current* add interaction — never carried forward from earlier messages or a removed-and-re-added property. A remembered figure must be confirmed before it is recorded.
+- **Never commits a €0 property**: if no value is given and the estimate is unavailable (any non-NL property, or a CBS miss), the add is skipped and the user is asked for the current value — no asset or mutation is written.
+- **Cost-basis honesty**: the acquisition mutation records the **purchase price** at `buy_date` (not the current estimate), so the diary reads "Bought €200,000 (2014)"; the detail equity badge shows real appreciation `value − buy_price`, with the "since YEAR" label taken from `buy_date`.
+- Files: `src/lib/claude.ts`, `src/app/api/chat/route.ts`, `src/lib/proposal-resolver.ts`, `src/lib/apply-changes.ts`, `src/lib/geocode.ts`, `src/components/asset-detail/RealEstateDetail.tsx`
 
 ### Real-time Prices
 - Yahoo Finance via server-side API route at `/api/prices`
@@ -247,6 +269,8 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 - Seven portfolio vitals on `/vitals`: Concentration, Real-asset weight, Liquidity posture, Leverage, Drawdown vulnerability, Cash & real yield, Real growth. Each user sees only the vitals that apply to their portfolio; the rest sit dormant in the Library expander.
 - Pulse sentence (LLM, Haiku, 24h cache) synthesises the active vitals in one line.
 - **Property pill toggle (2026-05-22).** Shown only for mixed portfolios (real estate + investable assets). Off hides `scope = 'house'` vitals (Real-asset weight, Leverage) to the Library and switches Concentration card TOP 1 to investable figures. Default adaptive: `grossProperty / grossAssets ≥ 50%` → on. Persisted in sessionStorage. No mutations, no schema change.
+- **Equity / net-worth basis consistency (2026-06).** The Concentration card is fully equity-based: the headline, top-3, AND the per-position bar all divide property at equity (`value − computeCurrentBalance`) over equity net worth — matching the allocation donut and the Portfolio hero (previously the bar used a gross/gross basis and read ~63% where the headline read ~52%). The Vitals API path EUR-normalizes `mortgage_balance` and `monthly_payment` alongside `value` so equity is computed entirely in EUR for non-EUR property, and `computeNetWorth` uses the amortized balance (`computeCurrentBalance`) so Vitals net worth equals the Portfolio hero by construction.
+- **Ordinals & sign-aware pill (2026-06).** Ranks/percentiles render correct ordinal suffixes (`ordinalSuffix` in `utils.ts`: 41st, 93rd, 22nd, with 11th/12th/13th kept "th") for the EU rank and all three Perspective percentiles. The Perspective change pill's word and arrow follow the sign — "Up N" (up arrow) / "Down N" (down arrow, magnitude only) / "No change" (flat) — no more "Up -9".
 - Read-only surface; all modifications through Chat.
 - Files: `src/app/vitals/page.tsx`, `src/lib/vitals/` (index, types, 7 modules), `src/components/vitals/`, `src/app/api/vitals/route.ts`, `src/lib/pulse-generator.ts`, `src/lib/hooks/vitals.ts`
 
@@ -263,6 +287,8 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 
 ## Known Bugs and Risks
 
+- **CBS OData constants are the single live-verify point** — the indicative-value engine depends on the legacy CBS endpoint, the measure key (`PrijsindexVerkoopprijzen_1`), the stripped-title RegioS match (keys carry trailing spaces, e.g. `"PV30  "`), and the yearly `JJ` period format. If CBS renames the table/measure or changes the endpoint, estimates degrade to `{ available: false }` (never an error). Verify against the live service on device; `?debug=1` surfaces the first failing step. NL-only by design.
+- **Trend cards depend on a clean snapshot history** — Vitals trend/baseline cards (Real growth, the Perspective trajectory chip) read `snapshots`; a sparse or backfilled history can make them read oddly until a clean ≥330-day baseline accumulates. Not a correctness bug in the metric.
 - **Multiple lockfiles warning** in Next.js — cosmetic
 - **Middleware deprecation warning** in Next.js 16 — file convention is being renamed to `proxy`, currently functional
 - **Token usage grows with portfolio size** — at 50+ assets the system prompt gets large; no compression layer
