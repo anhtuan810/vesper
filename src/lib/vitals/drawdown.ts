@@ -1,5 +1,6 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
+import { isIncomePension } from '@/lib/pension';
 import type { Band, Snapshot, VitalScope, VitalUser } from './types';
 
 export const scope: VitalScope = 'liquid';
@@ -19,9 +20,12 @@ export function applies(_user: VitalUser, assets: Asset[], _snapshots?: Snapshot
 
 export function compute(
   _user: VitalUser,
-  assets: Asset[],
+  rawAssets: Asset[],
   _snapshots?: Snapshot[],
 ): DrawdownValue {
+  // Income pensions (db/state) hold no shockable balance — exclude from exposures
+  // and the net-worth denominator.
+  const assets = rawAssets.filter(a => !isIncomePension(a));
   const netWorth = computeNetWorth(assets);
 
   let equitiesExposure = 0;

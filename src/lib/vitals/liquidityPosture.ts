@@ -1,5 +1,6 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
+import { isIncomePension } from '@/lib/pension';
 import { getCountryDefaults } from '@/lib/vitals/country-defaults';
 import type { Band, Snapshot, VitalScope, VitalUser } from './types';
 
@@ -21,10 +22,13 @@ export function applies(_user: VitalUser, _assets: Asset[], _snapshots?: Snapsho
 
 export function compute(
   user: VitalUser,
-  assets: Asset[],
+  rawAssets: Asset[],
   _snapshots?: Snapshot[],
 ): LiquidityPostureValue {
   const { liquidBufferTargetPct } = getCountryDefaults(user.country);
+  // Income pensions (db/state) are not owned balances — exclude them from both the
+  // bucketed numerator and the net-worth denominator. Capital pensions stay 'locked'.
+  const assets = rawAssets.filter(a => !isIncomePension(a));
   const netWorth = computeNetWorth(assets);
 
   if (netWorth <= 0) {

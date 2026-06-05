@@ -1,5 +1,6 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
+import { isIncomePension } from '@/lib/pension';
 import { EU_HOMEOWNER_RE_WEIGHT_PCT } from '@/lib/vitals/benchmarks';
 import type { Band, Snapshot, VitalScope, VitalUser } from './types';
 
@@ -17,9 +18,12 @@ export function applies(_user: VitalUser, assets: Asset[], _snapshots?: Snapshot
 
 export function compute(
   _user: VitalUser,
-  assets: Asset[],
+  rawAssets: Asset[],
   snapshots?: Snapshot[],
 ): RealAssetWeightValue {
+  // Income pensions (db/state) are not owned balances — keep them out of the
+  // net-worth denominator so they can't dilute the property-equity weight.
+  const assets = rawAssets.filter(a => !isIncomePension(a));
   const netWorth = computeNetWorth(assets);
   if (netWorth <= 0) {
     return { propertyEquityPct: 0, percentileEU: 0, trend12moPts: 0 };

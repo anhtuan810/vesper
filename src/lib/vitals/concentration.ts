@@ -1,5 +1,6 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
+import { isIncomePension } from '@/lib/pension';
 import type { Band, Snapshot, VitalScope, VitalUser } from './types';
 
 export const scope: VitalScope = 'both';
@@ -23,9 +24,12 @@ export function applies(_user: VitalUser, assets: Asset[], _snapshots?: Snapshot
 
 export function compute(
   _user: VitalUser,
-  assets: Asset[],
+  rawAssets: Asset[],
   snapshots?: Snapshot[],
 ): ConcentrationValue {
+  // Income pensions (db/state) are entitlements, not positions — exclude them from
+  // every concentration set (gross base, top positions, and investable subset).
+  const assets = rawAssets.filter(a => !isIncomePension(a));
   // All-asset base uses EQUITY for real estate (value − current mortgage balance),
   // the identical formula net worth uses in snapshots / liquidity / drawdown, so the
   // concentration denominator equals equity net worth. Non-real-estate assets are

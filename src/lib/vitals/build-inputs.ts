@@ -1,6 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { getUsdRates } from "@/lib/fx";
 import { computeNetWorth } from "@/lib/utils";
+import { isIncomePension } from "@/lib/pension";
 import type { Asset } from "@/lib/supabase";
 import type { Snapshot } from "@/lib/vitals/types";
 
@@ -62,6 +63,10 @@ export async function buildVitalsInputs(
   const toEur = (amount: number, currency: string): number => toUsdSync(amount, currency) * eurRate;
   const normalizedAssets: Asset[] = assets.map((a) => {
     const cur = a.currency || "USD";
+    // Income pensions (db/state) carry a null value — there's nothing to EUR-normalize,
+    // and the vitals filter them out anyway. Pass through untouched so a null value
+    // never becomes NaN.
+    if (isIncomePension(a)) return a;
     if (a.type === "real_estate") {
       return {
         ...a,

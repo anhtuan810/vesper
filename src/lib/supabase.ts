@@ -82,7 +82,13 @@ export interface BondsAsset extends BaseAsset {
 
 export interface StaticAsset extends BaseAsset {
   type: "cash" | "pension" | "other";
-  mortgage_rate?: number; // repurposed as interest_rate for cash/pension
+  mortgage_rate?: number; // repurposed as interest_rate for cash/pension (and growth assumption for capital pensions)
+  // Pension two-shape fields. pension_kind null is treated as 'dc' (capital) defensively.
+  pension_kind?: "dc" | "db" | "state" | null;
+  annual_income?: number | null;    // income pensions only (db/state)
+  monthly_contribution?: number | null; // capital pensions
+  access_age?: number | null;        // capital: projection horizon; income: start age
+  pension_provider?: string | null;  // income pensions
 }
 
 export type Asset = TradeableAsset | RealEstateAsset | BondsAsset | StaticAsset;

@@ -1,5 +1,6 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
+import { isIncomePension } from '@/lib/pension';
 import type { Band, Snapshot, VitalScope, VitalUser } from './types';
 
 export const scope: VitalScope = 'house';
@@ -26,7 +27,10 @@ export function compute(
   const reAssets = assets.filter(a => a.type === 'real_estate');
   const totalPropertyValue = reAssets.reduce((s, a) => s + a.value, 0);
   const totalDebt = reAssets.reduce((s, a) => s + computeCurrentBalance(a), 0);
-  const grossAssets = assets.reduce((s, a) => s + a.value, 0);
+  // Income pensions (db/state, value null) own no balance — keep them out of the
+  // debt-to-assets denominator so a stray value can't dilute leverage. Yield calc
+  // (bonds/cash only) is untouched and already ignores them.
+  const grossAssets = assets.reduce((s, a) => (isIncomePension(a) ? s : s + a.value), 0);
 
   const ltvPct = totalPropertyValue > 0 ? (totalDebt / totalPropertyValue) * 100 : 0;
   const debtToAssetsPct = grossAssets > 0 ? (totalDebt / grossAssets) * 100 : 0;

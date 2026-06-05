@@ -74,6 +74,7 @@ export function computeNetWorth(
     type: string;
     value: number;
     currency?: string | null;
+    pension_kind?: "dc" | "db" | "state" | null;
     mortgage_balance?: number | null;
     mortgage_balance_recorded_at?: string | null;
     mortgage_rate?: number | null;
@@ -83,6 +84,11 @@ export function computeNetWorth(
   toUsd: (amount: number, currency: string) => number = (a) => a
 ): number {
   return assets.reduce((sum, a) => {
+    // Income pensions (db/state) are entitlements, not owned balances — they never
+    // contribute to net worth. Skip BEFORE any value math so a stray value can't leak.
+    if (a.type === "pension" && (a.pension_kind === "db" || a.pension_kind === "state")) {
+      return sum;
+    }
     const cur = a.currency || "USD";
     const valueUsd = toUsd(a.value, cur);
     // Real estate contributes equity = value − current (amortized) mortgage balance,
