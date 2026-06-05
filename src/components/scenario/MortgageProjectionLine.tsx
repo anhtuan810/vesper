@@ -126,10 +126,12 @@ export function MortgageProjectionLine({
 
   if (view.sooner) {
     const { newYear, yearsSooner } = view.sooner;
+    const soonerLabel = `${yearsSooner} ${yearsSooner === 1 ? "year" : "years"} sooner`;
     return (
       <ScenarioCueLine
-        clause={`Add €${EXTRA_PER_MONTH} a month and you’re mortgage-free by ${newYear}, ${yearsSooner} ${yearsSooner === 1 ? "year" : "years"} sooner.`}
-        ariaLabel={`Adding €${EXTRA_PER_MONTH} a month makes you mortgage-free by ${newYear}, ${yearsSooner} ${yearsSooner === 1 ? "year" : "years"} sooner. Explore mortgage scenarios.`}
+        statement={<>Add €{EXTRA_PER_MONTH} a month and you’re mortgage-free by {newYear}, {soonerLabel}.{" "}</>}
+        clause="See what else shortens it"
+        ariaLabel={`Adding €${EXTRA_PER_MONTH} a month makes you mortgage-free by ${newYear}, ${soonerLabel}. Explore what else shortens your mortgage.`}
         onActivate={onExplore}
       />
     );
