@@ -6,7 +6,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { PropertyMap } from "@/components/PropertyMap";
 import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
-import { WhatIfPill } from "@/components/WhatIfPill";
+import { MortgageProjectionLine } from "@/components/scenario/MortgageProjectionLine";
 import { EstimatedValueChart } from "@/components/asset-detail/EstimatedValueChart";
 import { formatDate } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
@@ -229,8 +229,8 @@ export function RealEstateDetail({ asset }: Props) {
             </div>
             <MortgageBlock asset={asset} />
             {asset.mortgage_rate != null && (
-              <div style={{ marginTop: 14 }}>
-                <WhatIfPill onClick={handleWhatIf} />
+              <div style={{ marginTop: 14, paddingLeft: 4, paddingRight: 4 }}>
+                <MortgageProjectionLine asset={asset} onExplore={handleWhatIf} />
               </div>
             )}
           </div>
