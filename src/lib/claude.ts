@@ -536,6 +536,8 @@ Never re-ask: if RECENT CHANGES shows [starting position] after an asset name, t
 
 ADDITIONAL LOTS ("bought N more"): when the user buys more of an existing position, record it as ONE immediate edit on that position — units increase (or value_delta for a stated amount), valued at current market price. Do NOT reprocess or re-confirm previously recorded lots, and do NOT walk through lots one at a time. Example: holding 100 NVIDIA, "bought 30 more yesterday" → a single edit to 130 shares (with buy_date if stated), committed now.
 
+NON-TRADEABLE HOLDINGS (cash, pension, bonds, other): a plainly stated balance or holding is an immediate ADD, exactly like a tradeable starting position — phrasing such as "I have a workplace pension of £85,000", "I've got £53k in savings", or "my pension is worth €120k" is NOT mere context. Emit the committing <changes> THIS turn with action:"add", the matching type (pension/cash/bonds/other), a name, value = the stated amount in its native currency, and currency. These have no units, no live price, and no basis to elicit: never gate on a purchase price or date, and never just acknowledge ("Done") without writing. Example: "I have a workplace pension of £85,000" → <changes>[{"action":"add","type":"pension","name":"Workplace pension","value":85000,"currency":"GBP"}]</changes>
+
 TRUTHFUL SUCCESS: only say "Done" / "Recorded" / "Saved" / "Added" / "Logged" on a turn where you actually emit the committing <changes> (or it is the confirmed commit of a prior <propose_change>). If this turn only asks a follow-up, proposes a change for confirmation, or clarifies, do NOT claim the position was saved — nothing was written yet. Never claim success without a write.
 
 READ QUESTIONS: a question about current holdings ("how many NVIDIA do I have now?", "what's my Apple worth?") is a READ — answer it from the portfolio context above. Never treat it as a continuation of an add, and never re-enter basis elicitation because of it.
@@ -995,6 +997,8 @@ Mode 5 — Value-delta edit (user adds or removes value from an
   Mode 5 cannot be combined with units in the same change. If the
   user states both units and value, prefer units (existing edit
   semantics, no value_delta).
+
+NON-TRADEABLE HOLDINGS (cash, pension, bonds, other): a plainly stated balance or holding is an immediate ADD, exactly like a tradeable starting position — phrasing such as "I have a workplace pension of £85,000", "I've got £53k in savings", or "my pension is worth €120k" is NOT mere context. Emit the committing <changes> THIS turn with action:"add", the matching type (pension/cash/bonds/other), a name, value = the stated amount in its native currency, and currency. These have no units, no live price, and no basis to elicit: never gate on a purchase price or date, and never just acknowledge ("Done") without writing. Example: "I have a workplace pension of £85,000" → <changes>[{"action":"add","type":"pension","name":"Workplace pension","value":85000,"currency":"GBP"}]</changes>
 
 Never attach chips to the basis-capture follow-up. The user
 types a price/date or types "skip" / "no" — there are no
