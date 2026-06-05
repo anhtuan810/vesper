@@ -59,12 +59,64 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
   // Omit empty/zero classes; render nothing until there's a positive net worth.
   if (slices.length === 0 || total <= 0) return null;
 
-  const size = 132;
-  const stroke = 18;
-  const r = (size - stroke) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const C = 2 * Math.PI * r;
+  // ── Geometry (viewBox units; the SVG scales to its container width) ──────────
+  const VB_W = 440;
+  const VB_H = 220;
+  const cx = 220;
+  const cy = 110;
+  const R = 54;
+  const stroke = 16;
+  const C = 2 * Math.PI * R;
+  const rEdge = R + stroke / 2; // outer edge of the ring — leader start
+  const rElbow = R + 16; // short radial kick before the label
+  const rightX = cx + 90; // leader endpoint column, right side
+  const leftX = cx - 90; // leader endpoint column, left side
+  const MIN_GAP = 26; // minimum vertical spacing between callouts (viewBox units)
+  const yTop = 16;
+  const yBottom = VB_H - 16;
+
+  // One callout per slice, anchored at the slice mid-angle. Arcs start at 12
+  // o'clock and run clockwise (rotate(-90)), so for fraction f along the ring:
+  //   x = cx + r·sin(2πf), y = cy − r·cos(2πf).
+  type Callout = {
+    category: string; label: string; color: string; value: number;
+    pct: number; side: "left" | "right";
+    p0: { x: number; y: number }; elbow: { x: number; y: number };
+    labelY: number;
+  };
+
+  const callouts: Callout[] = slices.map((s, i) => {
+    const frac = s.value / total;
+    // Cumulative fraction before this slice (pure — mirrors the arc offset).
+    const before = slices.slice(0, i).reduce((sum, x) => sum + x.value / total, 0);
+    const mid = before + frac / 2;
+    const a = 2 * Math.PI * mid;
+    const sin = Math.sin(a);
+    const cos = Math.cos(a);
+    const side: "left" | "right" = sin >= 0 ? "right" : "left";
+    return {
+      category: s.category, label: s.label, color: s.color, value: s.value,
+      pct: Math.round(frac * 100),
+      side,
+      p0: { x: cx + rEdge * sin, y: cy - rEdge * cos },
+      elbow: { x: cx + rElbow * sin, y: cy - rElbow * cos },
+      labelY: cy - rElbow * cos, // seed; resolved below
+    };
+  });
+
+  // Collision avoidance: per side, sort by anchor y and enforce MIN_GAP. A forward
+  // pass nudges labels down; if the group overflows the bottom, shift it up and
+  // re-clamp. Holds for up to 4 slices on a side.
+  for (const side of ["left", "right"] as const) {
+    const group = callouts.filter((c) => c.side === side).sort((a, b) => a.labelY - b.labelY);
+    if (group.length === 0) continue;
+    let prev = -Infinity;
+    for (const c of group) { c.labelY = Math.max(c.labelY, prev + MIN_GAP); prev = c.labelY; }
+    const overflow = group[group.length - 1].labelY - yBottom;
+    if (overflow > 0) for (const c of group) c.labelY -= overflow;
+    prev = -Infinity;
+    for (const c of group) { c.labelY = Math.max(c.labelY, Math.max(prev + MIN_GAP, yTop)); prev = c.labelY; }
+  }
 
   return (
     <div style={{
@@ -85,76 +137,92 @@ export function AllocationDonut({ assets }: { assets: LiveAsset[] }) {
         Allocation
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-        {/* Donut — one arc per class, with net worth in the centre */}
-        <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }}>
-            {slices.map((s, i) => {
-              const len = (s.value / total) * C;
-              // Cumulative arc length before this slice (pure — no render mutation).
-              const offset = slices.slice(0, i).reduce((sum, x) => sum + (x.value / total) * C, 0);
-              return (
-                <circle
-                  key={s.category}
-                  cx={cx}
-                  cy={cy}
-                  r={r}
-                  fill="none"
-                  stroke={s.color}
-                  strokeWidth={stroke}
-                  strokeDasharray={`${len.toFixed(2)} ${(C - len).toFixed(2)}`}
-                  strokeDashoffset={(-offset).toFixed(2)}
-                  transform={`rotate(-90 ${cx} ${cy})`}
-                />
-              );
-            })}
-          </svg>
-          <div style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-          }}>
-            <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-faint)" }}>
-              Net worth
-            </div>
-            <div style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: 17,
-              fontWeight: 500,
-              color: "var(--hero)",
-              letterSpacing: "-0.01em",
-              fontFeatureSettings: '"tnum" 1',
-              fontVariationSettings: "'opsz' 18",
-              lineHeight: 1.1,
-              marginTop: 2,
-            }}>
-              {formatMoney(total, "USD", displayCurrency)}
-            </div>
-          </div>
-        </div>
+      <svg
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        style={{ width: "100%", maxWidth: 420, margin: "0 auto", display: "block" }}
+      >
+        {/* Donut — one arc per class */}
+        {slices.map((s, i) => {
+          const len = (s.value / total) * C;
+          const offset = slices.slice(0, i).reduce((sum, x) => sum + (x.value / total) * C, 0);
+          return (
+            <circle
+              key={s.category}
+              cx={cx}
+              cy={cy}
+              r={R}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={stroke}
+              strokeDasharray={`${len.toFixed(2)} ${(C - len).toFixed(2)}`}
+              strokeDashoffset={(-offset).toFixed(2)}
+              transform={`rotate(-90 ${cx} ${cy})`}
+            />
+          );
+        })}
 
-        {/* Legend — class · value · % share */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 9 }}>
-          {slices.map((s) => (
-            <div key={s.category} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {s.label}
-              </span>
-              <span style={{ fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1', flexShrink: 0 }}>
-                {formatMoney(s.value, "USD", displayCurrency)}
-              </span>
-              <span style={{ fontSize: 11.5, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 38, textAlign: "right", flexShrink: 0 }}>
-                {((s.value / total) * 100).toFixed(0)}%
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+        {/* Centre net-worth label */}
+        <text
+          x={cx}
+          y={cy - 6}
+          textAnchor="middle"
+          style={{ fontSize: 8, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", fill: "var(--text-faint)" }}
+        >
+          Net worth
+        </text>
+        <text
+          x={cx}
+          y={cy + 14}
+          textAnchor="middle"
+          style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: 18,
+            fontWeight: 500,
+            fill: "var(--hero)",
+            letterSpacing: "-0.01em",
+            fontFeatureSettings: '"tnum" 1',
+            fontVariationSettings: "'opsz' 18",
+          }}
+        >
+          {formatMoney(total, "USD", displayCurrency)}
+        </text>
+
+        {/* Floating callouts: leader line + full name + value · share */}
+        {callouts.map((c) => {
+          const labelX = c.side === "right" ? rightX : leftX;
+          const textX = c.side === "right" ? labelX + 12 : labelX - 12;
+          const dotX = c.side === "right" ? labelX + 4 : labelX - 4;
+          const anchor = c.side === "right" ? "start" : "end";
+          return (
+            <g key={c.category}>
+              <polyline
+                points={`${c.p0.x.toFixed(1)},${c.p0.y.toFixed(1)} ${c.elbow.x.toFixed(1)},${c.elbow.y.toFixed(1)} ${labelX},${c.labelY.toFixed(1)}`}
+                fill="none"
+                stroke={c.color}
+                strokeWidth={1}
+              />
+              <circle cx={dotX} cy={c.labelY - 4} r={3} fill={c.color} />
+              <text
+                x={textX}
+                y={c.labelY - 1}
+                textAnchor={anchor}
+                style={{ fontSize: 11, fontWeight: 500, fill: "var(--text)" }}
+              >
+                {c.label}
+              </text>
+              <text
+                x={textX}
+                y={c.labelY + 11}
+                textAnchor={anchor}
+                style={{ fontSize: 10, fill: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}
+              >
+                {formatMoney(c.value, "USD", displayCurrency)}
+                <tspan style={{ fill: "var(--text-faint)" }}>{" · "}{c.pct}%</tspan>
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
