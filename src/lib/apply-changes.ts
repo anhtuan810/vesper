@@ -66,6 +66,21 @@ export class ValueModeError extends Error {
   }
 }
 
+// Coerce a stated bond maturity into a full ISO date the DB `date` column accepts.
+// The model may emit a full date ("2029-03-01"), a year-month ("2029-03"), a bare
+// year ("2030"), or natural language ("March 2029"); a bare year/month is anchored
+// to the first day so the insert never fails on a partial date. Unparseable input
+// returns null (omit it) rather than breaking the whole add.
+function normalizeMaturityDate(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+  if (/^\d{4}$/.test(s)) return `${s}-01-01`;
+  const parsed = new Date(s);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
 // USD-bridged cross-currency conversion using the app's existing FX rates.
 // rates[X] = how many X per 1 USD, so: amount_from / rates[from] * rates[to]
 async function convertCurrency(amount: number, from: string, to: string): Promise<number> {
@@ -332,7 +347,7 @@ export async function applyPortfolioChanges({
         mortgage_start_date: change.mortgage_start_date || null,
         mortgage_end_date: change.mortgage_end_date || null,
         coupon_rate: change.coupon_rate ?? null,
-        maturity_date: change.maturity_date || null,
+        maturity_date: normalizeMaturityDate(change.maturity_date),
         issuer: change.issuer || null,
         isin: change.isin || null,
         address: change.address || null,
@@ -344,7 +359,11 @@ export async function applyPortfolioChanges({
       }).select("id").single();
 
       if (error) {
+        // Surface the failure instead of silently swallowing it — otherwise the
+        // asset is never written yet the model still narrates "Logged". Recorded
+        // as a per-row failure so the commit tool reports it back to the user.
         console.error("ADD ERROR:", error);
+        failures.push({ name: resolvedAssetName, reason: error.message });
       } else {
         changed = true;
         runningTotal += toUsdSync(resolvedValue, resolvedCurrency);
@@ -484,7 +503,7 @@ export async function applyPortfolioChanges({
         if (change.monthly_payment !== undefined) updateData.monthly_payment = change.monthly_payment;
         if (change.mortgage_type !== undefined) updateData.mortgage_type = change.mortgage_type;
         if (change.coupon_rate !== undefined) updateData.coupon_rate = change.coupon_rate;
-        if (change.maturity_date !== undefined) updateData.maturity_date = change.maturity_date;
+        if (change.maturity_date !== undefined) updateData.maturity_date = normalizeMaturityDate(change.maturity_date);
         if (change.issuer !== undefined) updateData.issuer = change.issuer;
         if (change.isin !== undefined) updateData.isin = change.isin;
         if (change.address !== undefined) updateData.address = change.address;
