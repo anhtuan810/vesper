@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import {
@@ -12,6 +13,7 @@ import {
 import { InsightBand } from "@/components/InsightBand";
 import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
 import { PositionRow } from "@/components/PositionRow";
+import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
@@ -260,30 +262,31 @@ export function PortfolioTab({
             <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.45 }}>
               Not part of net worth — future income you&apos;ll receive, not a holding you own today.
             </div>
-            {/* Flat rows mirroring a Holdings group row (HoldingsGroup): same hairline
-                divider, label, and right-aligned value treatment — only without the
-                allocation bar (a flex spacer takes its place) and with a "/ year"
-                value. No card surface. */}
+            {/* Each pension renders as an INDIVIDUAL asset row — same element,
+                classes, logo and typography as PositionRow (15px/500 name, 32px
+                AssetLogo, 13px/500 tabular value, 9px row padding, border-strong
+                divider) — so it reads as one asset, lighter than the category
+                rows. Value is the annual income, not a net-worth figure. */}
             <div>
               {incomePensions.map((a) => (
-                <div key={a.id} style={{ borderBottom: "0.5px solid var(--border-strong)" }}>
-                  <button
-                    onClick={() => router.push(`/asset/${a.id}`)}
-                    style={{
-                      width: "100%", display: "flex", alignItems: "center", gap: 14,
-                      padding: "24px 0 12px", background: "none", border: "none",
-                      cursor: "pointer", WebkitTapHighlightColor: "transparent",
-                    }}
+                <Link key={a.id} href={`/asset/${a.id}`} className="block">
+                  <div
+                    className="flex items-center border-b border-border-strong last:border-0 gap-3"
+                    style={{ paddingTop: 9, paddingBottom: 9 }}
                   >
-                    <span style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--text)", flexShrink: 0, minWidth: 140, textAlign: "left" }}>
-                      {a.name}
-                    </span>
-                    <div style={{ flex: 1 }} />
-                    <span style={{ fontSize: 15, fontWeight: 500, fontVariantNumeric: "tabular-nums", color: "var(--text)", flexShrink: 0 }}>
-                      {formatMoney(toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), "USD", displayCurrency)} / year
-                    </span>
-                  </button>
-                </div>
+                    <AssetLogo type={a.type} symbol={a.symbol ?? null} name={a.name} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-fg leading-snug truncate" style={{ fontSize: 15, fontWeight: 500 }}>
+                        {a.name}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-fg" style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}>
+                        {formatMoney(toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), "USD", displayCurrency)} / year
+                      </div>
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
