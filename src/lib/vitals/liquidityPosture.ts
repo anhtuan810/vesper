@@ -1,6 +1,6 @@
 import type { Asset } from '@/lib/supabase';
 import { computeCurrentBalance } from '@/lib/mortgage';
-import { isIncomePension } from '@/lib/pension';
+import { isIncomePension, isCapitalPension } from '@/lib/pension';
 import { getCountryDefaults } from '@/lib/vitals/country-defaults';
 import type { Band, Snapshot, VitalScope, VitalUser } from './types';
 
@@ -14,6 +14,11 @@ export interface LiquidityPostureValue {
   sixMonthPlusPct: number;
   lockedPct: number;
   liquidBufferPct: number;
+  // EUR-normalized euro figures for the locked tier, so the card's deterministic
+  // context can name the locked driver. lockedPensionEur is the capital-pension
+  // portion of the locked tier; both come from the same eurValue sum, never invented.
+  lockedEur: number;
+  lockedPensionEur: number;
 }
 
 export function applies(_user: VitalUser, _assets: Asset[], _snapshots?: Snapshot[]): boolean {
@@ -40,6 +45,8 @@ export function compute(
       sixMonthPlusPct: 0,
       lockedPct: 0,
       liquidBufferPct: liquidBufferTargetPct,
+      lockedEur: 0,
+      lockedPensionEur: 0,
     };
   }
 
@@ -48,16 +55,19 @@ export function compute(
   let oneMonth = 0;
   let sixMonthPlus = 0;
   let locked = 0;
+  let lockedPension = 0; // capital-pension portion of the locked tier (EUR)
 
   for (const a of assets) {
     const contribution = assetContribution(a);
-    switch (liquidityTier(a.type)) {
+    const tier = liquidityTier(a.type);
+    switch (tier) {
       case 'same-day':    sameDay += contribution; break;
       case '1w':          oneWeek += contribution; break;
       case '1mo':         oneMonth += contribution; break;
       case '6mo+':        sixMonthPlus += contribution; break;
       case 'locked':      locked += contribution; break;
     }
+    if (tier === 'locked' && isCapitalPension(a)) lockedPension += contribution;
   }
 
   const pct = (v: number) => (v / netWorth) * 100;
@@ -70,6 +80,8 @@ export function compute(
     lockedPct: pct(locked),
     deployable1wPct: pct(sameDay + oneWeek),
     liquidBufferPct: liquidBufferTargetPct,
+    lockedEur: locked,
+    lockedPensionEur: lockedPension,
   };
 }
 

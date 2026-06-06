@@ -231,8 +231,30 @@ function realAssetSuggestion(
 
 function liquiditySuggestion(
   v: LiquidityPostureValue,
-  band: string
+  band: string,
+  displayCurrency: string
 ): SuggestionConfig {
+  // Name pensions when they drive the locked tier, so "X% locked" is interpretable:
+  // retirement money by design, not an ambiguous illiquid flag. Deterministic — the
+  // euro figure is the EUR-normalized sum from the vital, never invented. When there
+  // are no capital pensions the clause is null and the copy is unchanged.
+  const pensionSum = fmtCurrency(v.lockedPensionEur, displayCurrency);
+  const pensionDominatesLocked =
+    v.lockedPensionEur > 0 && v.lockedEur > 0 && v.lockedPensionEur / v.lockedEur >= 0.5;
+  const pensionClause =
+    v.lockedPensionEur <= 0 ? null : pensionDominatesLocked ? (
+      <>
+        {" "}Most of what&apos;s locked is your pensions — about{" "}
+        <strong>{pensionSum}</strong>, untouchable until retirement. That&apos;s by
+        design, not a flag; the rest of your portfolio stays flexible.
+      </>
+    ) : (
+      <>
+        {" "}What&apos;s locked includes about <strong>{pensionSum}</strong> in
+        pensions, set aside until retirement.
+      </>
+    );
+
   if (band === "red") {
     return {
       variant: "alert",
@@ -242,7 +264,7 @@ function liquiditySuggestion(
           Only <strong>{v.deployable1wPct.toFixed(0)}%</strong> of your net
           worth is accessible within a week — below the{" "}
           {v.liquidBufferPct}% buffer target. An unexpected expense could force
-          selling illiquid assets at a loss.
+          selling illiquid assets at a loss.{pensionClause}
         </>
       ),
     };
@@ -254,7 +276,7 @@ function liquiditySuggestion(
       <>
         <strong>{v.deployable1wPct.toFixed(0)}%</strong> of your net worth is
         accessible within a week — above the {v.liquidBufferPct}% buffer
-        target.
+        target.{pensionClause}
       </>
     ),
   };
@@ -575,7 +597,7 @@ function buildRealAssetCard(vital: VitalResult): CardConfig {
   };
 }
 
-function buildLiquidityCard(vital: VitalResult): CardConfig {
+function buildLiquidityCard(vital: VitalResult, displayCurrency: string): CardConfig {
   const v = vital.value as LiquidityPostureValue;
   return {
     props: {
@@ -588,7 +610,7 @@ function buildLiquidityCard(vital: VitalResult): CardConfig {
         value: `${v.liquidBufferPct.toFixed(0)}%`,
       },
       benchLine: `target: ≥ ${v.liquidBufferPct}% deployable within 1 week`,
-      suggestion: liquiditySuggestion(v, vital.band),
+      suggestion: liquiditySuggestion(v, vital.band, displayCurrency),
     },
     chart: <LiquidityStack data={v} />,
   };
@@ -968,7 +990,7 @@ export function VitalsContent({
         cfg = buildRealAssetCard(vital);
         break;
       case "liquidityPosture":
-        cfg = buildLiquidityCard(vital);
+        cfg = buildLiquidityCard(vital, displayCurrency);
         break;
       case "leverage":
         cfg = buildLeverageCard(vital);
