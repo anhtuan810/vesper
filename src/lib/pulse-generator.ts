@@ -62,54 +62,62 @@ export async function generatePulse(
     return buildThinPulse(activeVitals, lens);
   }
 
-  try {
-    const systemPrompt =
-      lens === "liquid" ? SYSTEM_PROMPT_LIQUID : SYSTEM_PROMPT_ALL;
+  const systemPrompt =
+    lens === "liquid" ? SYSTEM_PROMPT_LIQUID : SYSTEM_PROMPT_ALL;
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 80,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: `Active vitals (display currency: ${displayCurrency}):\n${JSON.stringify(activeVitals)}\n\nWrite one synthesis sentence.`,
-        },
-      ],
-    });
-
-    const raw = response.content
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
-      .trim()
-      .replace(/^["']|["']$/g, "");
-
-    if (!raw) return null;
-
-    const wordCount = raw
-      .replace(/\*[^*]+\*/g, (m) => m.slice(1, -1))
-      .split(/\s+/)
-      .filter(Boolean).length;
-    if (wordCount < 10 || wordCount > 35) return null;
-
-    // Safety net: if the gross top position is real estate and the generated
-    // sentence uses concentration language without referencing the investable
-    // book, the home-anchor framing failed — fall back to deterministic rather
-    // than serving a stale "concentration risk" sentence.
-    const concVal = activeVitals.find((v) => v.key === "concentration")?.value;
-    const topPositionIsRealEstate =
-      (concVal as Record<string, unknown> | null)?.topPositionIsRealEstate ===
-      true;
-    if (
-      topPositionIsRealEstate &&
-      /concentration|concentrated/i.test(raw) &&
-      !/investable/i.test(raw)
-    ) {
-      return buildThinPulse(activeVitals, lens);
+  // Retry the model call once on a transient error before giving up. A null
+  // return is not fatal: the route falls back to the last cached Pulse, so the
+  // banner keeps the previous sentence rather than blanking.
+  let response: Anthropic.Messages.Message | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      response = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 80,
+        system: systemPrompt,
+        messages: [
+          {
+            role: "user",
+            content: `Active vitals (display currency: ${displayCurrency}):\n${JSON.stringify(activeVitals)}\n\nWrite one synthesis sentence.`,
+          },
+        ],
+      });
+      break;
+    } catch {
+      if (attempt === 1) return null;
     }
-
-    return raw;
-  } catch {
-    return null;
   }
+  if (!response) return null;
+
+  const raw = response.content
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+
+  if (!raw) return null;
+
+  const wordCount = raw
+    .replace(/\*[^*]+\*/g, (m) => m.slice(1, -1))
+    .split(/\s+/)
+    .filter(Boolean).length;
+  if (wordCount < 10 || wordCount > 35) return null;
+
+  // Safety net: if the gross top position is real estate and the generated
+  // sentence uses concentration language without referencing the investable
+  // book, the home-anchor framing failed — fall back to deterministic rather
+  // than serving a stale "concentration risk" sentence.
+  const concVal = activeVitals.find((v) => v.key === "concentration")?.value;
+  const topPositionIsRealEstate =
+    (concVal as Record<string, unknown> | null)?.topPositionIsRealEstate ===
+    true;
+  if (
+    topPositionIsRealEstate &&
+    /concentration|concentrated/i.test(raw) &&
+    !/investable/i.test(raw)
+  ) {
+    return buildThinPulse(activeVitals, lens);
+  }
+
+  return raw;
 }
