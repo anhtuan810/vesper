@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
+import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { getUsdRate } from "@/lib/money";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
@@ -158,6 +159,7 @@ export function NetWorthChart(props: Props) {
   // so the chart doesn't redraw as netTotal steps through intermediate states.
   const displaySeries = valuesSettled ? series : series.slice(0, -1);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const haptic = useChartHaptic();
   const { currency: displayCurrency } = useDisplayCurrencyState();
   const [chartWidth, setChartWidth] = useState(280);
   const svgContainerRef = useRef<HTMLDivElement>(null);
@@ -233,16 +235,22 @@ export function NetWorthChart(props: Props) {
   const chartHandlers = interactive
     ? {
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-          setSelectedIndex(calcIndex(e.clientX, e.currentTarget.getBoundingClientRect()));
+          const idx = calcIndex(e.clientX, e.currentTarget.getBoundingClientRect());
+          setSelectedIndex(idx);
+          haptic(idx);
         },
-        onMouseLeave() { setSelectedIndex(null); },
+        onMouseLeave() { setSelectedIndex(null); haptic(null); },
         onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
-          setSelectedIndex(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
+          const idx = calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
+          setSelectedIndex(idx);
+          haptic(idx);
         },
         onTouchMove(e: React.TouchEvent<HTMLDivElement>) {
-          setSelectedIndex(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
+          const idx = calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
+          setSelectedIndex(idx);
+          haptic(idx);
         },
-        onTouchEnd() { setSelectedIndex(null); },
+        onTouchEnd() { setSelectedIndex(null); haptic(null); },
       }
     : {};
 

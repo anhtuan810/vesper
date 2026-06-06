@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { usePriceHistory } from "@/lib/hooks";
 import { useDisplayCurrencyState } from "@/lib/hooks";
+import { useChartHaptic } from "@/hooks/useChartHaptic";
 
 export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y"] as const;
 export type Range = (typeof RANGES)[number];
@@ -186,6 +187,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
   const interactive = !loading && closes.length >= 2;
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const haptic = useChartHaptic();
 
   useEffect(() => {
     setSelectedIndex(null); // eslint-disable-line react-hooks/set-state-in-effect
@@ -227,11 +229,13 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
         label: timestamps[index] ? fmtScrubLabel(timestamps[index], range) : "",
       });
     }
+    haptic(index);
   }
 
   function clearScrub() {
     setSelectedIndex(null);
     onScrub?.(null);
+    haptic(null);
   }
 
   const chartHandlers = interactive
