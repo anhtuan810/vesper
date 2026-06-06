@@ -1,6 +1,7 @@
 import type { Asset, UserProfile, Mutation } from "./supabase";
 import type { DisplayCurrency } from "./money";
 import { computeCurrentBalance } from "./mortgage";
+import { isIncomePension } from "./pension";
 import { ONBOARDING_OPENER } from "./copy";
 import { PRICE_KNOWLEDGE_BLOCK, IMAGE_IMPORT_BLOCK, OPTIONS_BLOCK, CHIPS_RULES_BLOCK, PENSION_INTAKE_BLOCK, clarifyBlock } from "./prompt-blocks";
 
@@ -606,13 +607,20 @@ export function buildDynamicContext(
     return rate ? amount / rate : amount;
   };
 
-  const total = assets.reduce((sum, a) => {
+  // Income pensions (pension_kind 'db'|'state') are off-balance future income with
+  // a NULL value — keep them out of the net-worth total, allocation, and holdings
+  // list (matching computeNetWorth and the vitals), and surface them in their own
+  // FUTURE INCOME block below. Capital pensions stay ordinary value holdings.
+  const incomePensions = assets.filter(isIncomePension);
+  const netWorthAssets = assets.filter((a) => !isIncomePension(a));
+
+  const total = netWorthAssets.reduce((sum, a) => {
     const cur = a.currency || "USD";
     const net = a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value;
     return sum + toUsd(net, cur);
   }, 0);
 
-  const byType = assets.reduce((acc, a) => {
+  const byType = netWorthAssets.reduce((acc, a) => {
     const cur = a.currency || "USD";
     // Real estate contributes equity (value − current mortgage), matching `total`
     // above and net worth everywhere else in the app — not gross property value.
@@ -623,9 +631,9 @@ export function buildDynamicContext(
 
   const countries = [...new Set(assets.map(a => a.country).filter(Boolean))];
 
-  const assetList = assets.map(a => {
+  const assetList = netWorthAssets.map(a => {
     const cur = a.currency || "USD";
-    const parts = [`${a.name} (${a.type}): ${cur}${a.value.toLocaleString()}`];
+    const parts = [`${a.name} (${a.type}): ${cur}${(a.value ?? 0).toLocaleString()}`];
     if (a.symbol) parts.push(`symbol:${a.symbol}`);
     if (a.units) parts.push(`units:${a.units}`);
     if (a.country) parts.push(`country:${a.country}`);
@@ -655,10 +663,22 @@ export function buildDynamicContext(
     ? `\nONBOARDING NEXT-STEP: The user has only ${presentLabel} so far. After your next substantive response (but only once, and only if the conversation is winding down or they say they're done), naturally mention that they might also want to track ${suggestCategories}. Keep it brief — one sentence, no pressure.`
     : "";
 
+  // Off-balance future income (income pensions). Surfaced separately so the model
+  // can explain it without ever treating it as net worth or a held value.
+  const incomePensionBlock = incomePensions.length > 0
+    ? "FUTURE INCOME (NOT part of net worth — future pension income the user will receive, not a holding they own today):\n" +
+      incomePensions.map((a) => {
+        const cur = a.currency || "USD";
+        const p = a as { pension_kind?: string | null; annual_income?: number | null; access_age?: number | null };
+        const kind = p.pension_kind === "state" ? "state" : "defined benefit";
+        return `- ${a.name} (pension, ${kind}): ${cur}${(p.annual_income ?? 0).toLocaleString()}/year from age ${p.access_age ?? "—"}`;
+      }).join("\n")
+    : "";
+
   return [
     userName ? `User: ${userName}` : "",
     `Today's date: ${today}`,
-    `CURRENT PORTFOLIO (${assets.length} positions, net worth ~$${Math.round(total).toLocaleString()} USD-equivalent):`,
+    `CURRENT PORTFOLIO (${netWorthAssets.length} positions, net worth ~$${Math.round(total).toLocaleString()} USD-equivalent):`,
     "Note: each position value is shown in its native currency (see prefix). Render prose responses in " + displayCurrency + ".",
     assetList,
     "",
@@ -666,6 +686,7 @@ export function buildDynamicContext(
       ? `Allocation: ${Object.entries(byType).map(([t, v]) => `${t}: ${((v / total) * 100).toFixed(0)}%`).join(", ")}`
       : "Allocation: (all positions pending price data)",
     `Countries: ${countries.join(", ") || "not specified"}`,
+    incomePensionBlock,
     "",
     Object.keys(profile).length > 0 ? `USER PROFILE:\n${JSON.stringify(profile, null, 2)}` : "",
     recentMutations.length > 0
