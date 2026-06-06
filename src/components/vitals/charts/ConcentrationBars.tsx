@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AssetLogo } from "@/components/AssetLogo";
 
 const ASSET_COLOR: Record<string, string> = {
   real_estate: '#7A9C7F',
@@ -114,20 +115,33 @@ export function ConcentrationBars({ positions }: Props) {
                 zIndex: 1,
               }}
             >
-              {/* Label column */}
+              {/* Label column — small leading asset icon (the same AssetLogo used
+                  in holdings rows and detail headers) + name. Top-aligned so a
+                  two-line name keeps the icon beside its first line. The bar start
+                  (LABEL_W) is unchanged. */}
               <div
                 style={{
                   flexShrink: 0,
                   width: LABEL_W,
                   paddingRight: 10,
-                  fontSize: 11,
-                  lineHeight: 1.3,
-                  color: "var(--text-dim)",
-                  overflowWrap: "break-word",
-                  wordBreak: "normal",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
                 }}
               >
-                {label}
+                <AssetLogo type={pos.type} symbol={pos.symbol ?? null} name={pos.name} size={18} />
+                <div
+                  style={{
+                    minWidth: 0,
+                    fontSize: 11,
+                    lineHeight: 1.3,
+                    color: "var(--text-dim)",
+                    overflowWrap: "break-word",
+                    wordBreak: "normal",
+                  }}
+                >
+                  {label}
+                </div>
               </div>
 
               {/* Bar + % label */}
