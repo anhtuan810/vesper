@@ -245,11 +245,11 @@ export function PortfolioTab({
             <div className="flex items-baseline justify-between" style={{ marginBottom: 4 }}>
               <div
                 className="font-serif"
-                style={{ fontSize: 20, fontWeight: 500, letterSpacing: "-0.01em", color: "var(--text)", fontVariationSettings: "'opsz' 22" }}
+                style={{ fontSize: 26, fontWeight: 500, letterSpacing: "-0.01em", color: "var(--text)", fontVariationSettings: "'opsz' 24" }}
               >
                 Future income
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+              <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
                 {formatMoney(
                   incomePensions.reduce((s, a) => s + toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), 0),
                   "USD",
@@ -260,26 +260,30 @@ export function PortfolioTab({
             <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.45 }}>
               Not part of net worth — future income you&apos;ll receive, not a holding you own today.
             </div>
-            <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-              {incomePensions.map((a, idx) => (
-                <button
-                  key={a.id}
-                  onClick={() => router.push(`/asset/${a.id}`)}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    width: "100%", textAlign: "left", padding: "12px 16px", gap: 14,
-                    background: "none", border: "none",
-                    borderBottom: idx < incomePensions.length - 1 ? "0.5px solid var(--border)" : "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {a.name}
-                  </span>
-                  <span style={{ fontFamily: "var(--font-serif)", fontSize: 15, fontWeight: 500, color: "var(--hero)", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 16", flexShrink: 0 }}>
-                    {formatMoney(toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), "USD", displayCurrency)} / year
-                  </span>
-                </button>
+            {/* Flat rows mirroring a Holdings group row (HoldingsGroup): same hairline
+                divider, label, and right-aligned value treatment — only without the
+                allocation bar (a flex spacer takes its place) and with a "/ year"
+                value. No card surface. */}
+            <div>
+              {incomePensions.map((a) => (
+                <div key={a.id} style={{ borderBottom: "0.5px solid var(--border-strong)" }}>
+                  <button
+                    onClick={() => router.push(`/asset/${a.id}`)}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center", gap: 14,
+                      padding: "24px 0 12px", background: "none", border: "none",
+                      cursor: "pointer", WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <span style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--text)", flexShrink: 0, minWidth: 140, textAlign: "left" }}>
+                      {a.name}
+                    </span>
+                    <div style={{ flex: 1 }} />
+                    <span style={{ fontSize: 15, fontWeight: 500, fontVariantNumeric: "tabular-nums", color: "var(--text)", flexShrink: 0 }}>
+                      {formatMoney(toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), "USD", displayCurrency)} / year
+                    </span>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
