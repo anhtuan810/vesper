@@ -25,11 +25,16 @@
   - `/api/fx`
   - `/api/geocode`
   - `/api/diary-summary`
-  - `/api/snapshots`, `/api/cron/snapshot`
+  - `/api/snapshots`, `/api/cron/snapshot`, `/api/cron/market-highlights`
   - `/api/insight` — AI insight band (new in the migration)
   - `/api/dashboard-init` — batched GET returning `{ insight, snapshots (1M), mutations }` in one auth round-trip; used by the Portfolio page on mount
+  - `/api/vitals`, `/api/vitals/pulse` — deterministic Vitals body + the Haiku Pulse sentence (cached in `highlights`)
+  - `/api/scenarios` (+ `/api/scenarios/[id]`, `/compute`, `/counterfactual`, `/project`) — scenario engine (GET list/POST save + compute endpoints)
+  - `/api/property-estimate` — indicative NL property value (CBS PBK)
+  - `/api/assets` — POST only, undo-restore of a just-deleted asset (logs a "Restored after delete" mutation)
+  - `/api/mutations` — GET the user's recent mutations
   - `/api/users/me` — GET user preferences (`name, avatar_url, display_currency, theme, fingerprint, profile`); PATCH to update preferences (theme, display_currency, profile)
-  - `DELETE /api/users/me` — permanent account deletion; explicit per-table delete loop over the user-scoped tables (`messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots`, all keyed by `user_id`), then the `users` row, then the auth user. `rate_limits` relies on its `ON DELETE CASCADE`; `fx_rates` is global and untouched
+  - `DELETE /api/users/me` — permanent account deletion; explicit per-table delete loop over the user-scoped tables (`messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots, scenarios`, all keyed by `user_id`), then the `users` row, then the auth user. `rate_limits` relies on its `ON DELETE CASCADE`; `fx_rates` is global and untouched
   - `/api/logo` — server-side logo proxy
   - `/api/backfill` — per-user, session-authenticated (`getAuthUser`) price backfill plus a `rename-tickers` job; rate-limited to once per 30 days per user. Client-invoked, not cron.
 - **Routes removed in the migration**: `PATCH /api/assets/[id]` and `DELETE /api/assets/[id]` (Decision 8, PR 4); `PATCH /api/mutations/[id]` (Decision 1, PR 5). All asset and diary modifications now flow through `/api/chat`.
