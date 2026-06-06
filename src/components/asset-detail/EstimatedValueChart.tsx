@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDisplayCurrency } from "@/lib/hooks";
+import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset } from "@/lib/supabase";
 
@@ -38,6 +39,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   const displayCurrency = useDisplayCurrency();
   const [data, setData] = useState<EstimateResponse | null>(null);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
+  const haptic = useChartHaptic();
 
   const eligible = isNL(asset.country) && !!asset.address;
 
@@ -110,6 +112,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
       if (d < bestD) { bestD = d; best = i; }
     }
     setScrubIdx(best);
+    haptic(best);
   };
 
   return (
@@ -141,10 +144,10 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
         <div
           style={{ touchAction: "none" }}
           onMouseMove={(e) => handleScrub(e.clientX, e.currentTarget.getBoundingClientRect())}
-          onMouseLeave={() => setScrubIdx(null)}
+          onMouseLeave={() => { setScrubIdx(null); haptic(null); }}
           onTouchStart={(e) => handleScrub(e.touches[0].clientX, e.currentTarget.getBoundingClientRect())}
           onTouchMove={(e) => handleScrub(e.touches[0].clientX, e.currentTarget.getBoundingClientRect())}
-          onTouchEnd={() => setScrubIdx(null)}
+          onTouchEnd={() => { setScrubIdx(null); haptic(null); }}
         >
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block" }}>
             <defs>
