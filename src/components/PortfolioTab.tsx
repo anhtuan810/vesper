@@ -53,6 +53,15 @@ const CATEGORY_COLOR: Record<string, string> = {
 
 const ALL_CATEGORIES = ["property", "markets", "reserves", "crypto"] as const;
 
+// Fixed display order for the holdings groups — Crypto sits above Reserves
+// (a deliberate semantic order, not value-ranked).
+const CATEGORY_ORDER: Record<string, number> = {
+  property: 0,
+  markets:  1,
+  crypto:   2,
+  reserves: 3,
+};
+
 interface PortfolioTabProps {
   assets: LiveAsset[];
   grossTotal: number;
@@ -121,7 +130,8 @@ export function PortfolioTab({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, netTotal, initialSnapshots]);
 
-  // Group by semantic category, sort groups by total value desc, rows within group by value desc
+  // Group by semantic category, ordered by the fixed CATEGORY_ORDER (Crypto above
+  // Reserves); rows within a group still sort by value desc.
   const groups = useMemo(() => {
     const byCategory: Record<string, LiveAsset[]> = {};
     for (const a of netWorthAssets) {
@@ -138,7 +148,7 @@ export function PortfolioTab({
           return s + toUsdClient(equity, a.currency || "USD");
         }, 0),
       }))
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99));
   }, [netWorthAssets]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -161,6 +171,22 @@ export function PortfolioTab({
         sessionStorage.setItem("volnar.holdings.collapsed", JSON.stringify(collapsed));
       } catch {}
       return next;
+    });
+  };
+
+  // Tapping the "Holdings" header collapses or expands every group at once: if
+  // all currently-shown groups are expanded, collapse all; otherwise expand all.
+  const allExpanded = groups.length > 0 && groups.every((g) => isExpanded(g.category));
+  const toggleAll = () => {
+    const next = !allExpanded;
+    setExpanded((prev) => {
+      const updated: Record<string, boolean> = { ...prev };
+      for (const c of ALL_CATEGORIES) updated[c] = next;
+      try {
+        const collapsed = Object.entries(updated).filter(([, v]) => !v).map(([k]) => k);
+        sessionStorage.setItem("volnar.holdings.collapsed", JSON.stringify(collapsed));
+      } catch {}
+      return updated;
     });
   };
 
@@ -203,7 +229,16 @@ export function PortfolioTab({
           the group headers and rows sit flush at the same left/right column as
           the hero and the full-bleed market band. Desktop keeps the 16px inset. */}
       <div className="-mx-4 md:-mx-8 md:px-4">
-        <div className="flex items-baseline justify-between mb-3">
+        <div
+          className="flex items-baseline justify-between mb-3"
+          onClick={toggleAll}
+          role="button"
+          tabIndex={0}
+          aria-expanded={allExpanded}
+          aria-label={allExpanded ? "Collapse all holdings" : "Expand all holdings"}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleAll(); } }}
+          style={{ cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+        >
           <div
             className="font-serif"
             style={{
