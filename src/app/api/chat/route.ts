@@ -1065,13 +1065,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Synchronously drop the stale pulse before the response returns (NOT in
-    // after()), so a subsequent forced /api/vitals refetch always regenerates a
-    // fresh pulse rather than racing a background delete and briefly serving the
-    // pre-mutation "no property yet" text on the persistent desktop Vitals rail.
+    // Mark the cached Pulse STALE (do not delete) so a subsequent forced
+    // /api/vitals refetch regenerates against the new portfolio — while the last
+    // good sentence survives as a fallback if that regeneration fails. The banner
+    // then keeps showing the previous Pulse instead of an empty / forever-skeleton
+    // slot, and is replaced only once a fresh Pulse is successfully generated.
     if (portfolioChanged) {
       try {
-        await supabase.from("highlights").delete().eq("user_id", userId).in("type", ["pulse", "pulse_liquid"]);
+        await supabase
+          .from("highlights")
+          .update({ expires_at: new Date(0).toISOString() })
+          .eq("user_id", userId)
+          .in("type", ["pulse", "pulse_liquid"]);
       } catch (err) {
         Sentry.captureException(err, { tags: { background: "pulse-cache-invalidation" } });
       }

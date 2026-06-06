@@ -79,14 +79,20 @@ export async function GET(request: NextRequest) {
         const jitterMs = Math.random() * 6 * 60 * 60 * 1000;
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000 + jitterMs).toISOString();
         const storedDetail = PULSE_VER + generated;
-        await supabase.from("highlights").insert({
+        const ins = await supabase.from("highlights").insert({
           user_id: user.id,
           type: "pulse",
           title: storedDetail,  // highlights.title is NOT NULL
           detail: storedDetail,
           expires_at: expiresAt,
           seen: false,
-        });
+        }).select("id").single();
+        // Prune superseded rows now that a fresh Pulse is stored — only AFTER the
+        // insert, so a fallback row always survives if a later generation fails.
+        if (ins.data?.id) {
+          await supabase.from("highlights").delete()
+            .eq("user_id", user.id).eq("type", "pulse").neq("id", ins.data.id);
+        }
         pulse = generated;
       } else {
         // Haiku failed — serve the most-recent prior sentence (stale beats blank).
@@ -131,14 +137,19 @@ export async function GET(request: NextRequest) {
           const jitterMs = Math.random() * 6 * 60 * 60 * 1000;
           const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000 + jitterMs).toISOString();
           const storedDetail = PULSE_LIQUID_VER + generated;
-          await supabase.from("highlights").insert({
+          const ins = await supabase.from("highlights").insert({
             user_id: user.id,
             type: "pulse_liquid",
             title: storedDetail,  // highlights.title is NOT NULL
             detail: storedDetail,
             expires_at: expiresAt,
             seen: false,
-          });
+          }).select("id").single();
+          // Prune superseded rows only AFTER the insert (fallback always survives).
+          if (ins.data?.id) {
+            await supabase.from("highlights").delete()
+              .eq("user_id", user.id).eq("type", "pulse_liquid").neq("id", ins.data.id);
+          }
           pulseLiquid = generated;
         } else {
           // Haiku failed — serve the most-recent prior liquid sentence.
