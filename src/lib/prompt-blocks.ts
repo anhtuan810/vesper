@@ -95,7 +95,28 @@ If there are no held rows, ask nothing.
 7. RECEIPT. After the <changes> block, write one short prose summary of what
 was recorded and what was skipped, e.g. "Recorded 14 positions: 20 TSLA,
 30 MSFT, 100 ServiceNow, and 11 more. Skipped 5 options positions and the
-account total." Two sentences max. Do not enumerate every row.`;
+account total." Two sentences max. Do not enumerate every row.
+
+8. BATCH ACQUISITION DATE — ask ONCE, applies to the whole import. A
+screenshot rarely states when each position was bought, and asking per
+row would be exhausting.
+- FIRST PASS: read the screenshot for any row-specific date the user has
+  also stated in their message ("the NVDA ones from March 2021") and set
+  THAT row's buy_date to that phrase, verbatim.
+- Commit the batch (per the rules above).
+- THEN ask exactly one question for the rest of the batch, in the same
+  follow-up as the receipt (or right after, if there are held rows):
+  "When did you start holding most of these? A rough month for the batch
+  is fine, or say 'just track from now'." A rough answer ("around 2019",
+  "early last year") is enough.
+- On the user's reply, you'll be revising the SAME batch: re-emit
+  <changes> with action "edit" for every row that didn't already get its
+  own date, setting buy_date to the user's phrase VERBATIM on each (rows
+  that already carry their own date are left alone — their date wins).
+  "Just track from now" / no usable answer → leave the batch without
+  acquisition dates; they stay tracked from today.
+- Pass every date phrase through verbatim. Deterministic code resolves
+  it to a stored month — the model never computes or guesses a date.`;
 
 export const OPTIONS_BLOCK = `OPTIONS AND DERIVATIVES — NOT TRACKED:
 
@@ -290,9 +311,23 @@ export function clarifyBlock(isOnboarding = false): string {
      currency symbol.
      <clarify>{"question":"What currency are these balances in?","options":["EUR","USD","GBP"]}</clarify>
 
-  5. Inferred buy_date that wasn't stated:
-     User: "I bought 10 NVDA at $400"  (no date)
-     <clarify>{"question":"When did you buy these 10 NVDA shares?","options":["Today","Yesterday","Earlier — I'll type the date"]}</clarify>
+  5. Acquisition date wasn't stated when adding a position:
+     User: "I bought 10 NVDA at $400"  (no date, no "track from now")
+     Ask exactly ONE follow-up — do not chain a second question after
+     the answer comes back, and do not ask again on a later add for the
+     same conversation's batch:
+     <clarify>{"question":"When did you start holding this? A rough month is fine, or say 'just track from now'.","options":["Today","Earlier — I'll type the date","Skip — track from today"]}</clarify>
+     - A rough answer ("around March 2021", "early 2015", "sometime in
+       2019") is enough — pass the user's phrase through as buy_date
+       VERBATIM. Deterministic code resolves it to a stored month; the
+       model never computes or guesses a date itself.
+     - "Skip — track from today" / "Today" / no usable answer → omit
+       buy_date entirely. Deterministic code then stores no acquisition
+       date, and the position is tracked from today onward.
+     - Setting or correcting the date on an EXISTING position ("I
+       actually bought NVDA in March 2021") needs no <clarify> — treat
+       it as a direct edit and pass the stated phrase through as
+       buy_date the same way.
 
   6. Symbol not matching a known ticker from a screenshot:
      User screenshot shows "TL0" as a position.

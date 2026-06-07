@@ -6,6 +6,7 @@ import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
 import { isCostBasisOnlyEdit, applyCostBasisOnly } from "./cost-basis";
+import { parseAcquisitionMonth } from "./acquisition-date";
 import { estimatePropertyValue } from "./property-estimate-resolve";
 import {
   validatePensionChange,
@@ -90,6 +91,15 @@ export class ValueModeError extends Error {
 // year ("2030"), or natural language ("March 2029"); a bare year/month is anchored
 // to the first day so the insert never fails on a partial date. Unparseable input
 // returns null (omit it) rather than breaking the whole add.
+// Turns whatever date phrase the model passed through verbatim ("around March
+// 2021", "2021-03-15", "track from now") into a stored ISO date or null.
+// Unparseable text is stored as null rather than risk a garbage `date` write —
+// deterministic code owns this decision, never the model.
+function resolveAcquisitionDate(raw: string | null | undefined): string | null {
+  const parsed = parseAcquisitionMonth(raw);
+  return parsed ?? null;
+}
+
 function normalizeMaturityDate(raw: string | undefined): string | null {
   if (!raw) return null;
   const s = raw.trim();
@@ -203,6 +213,15 @@ export async function applyPortfolioChanges({
     const { action, name } = change;
 
     if (!name?.trim()) continue;
+
+    // Normalize whatever date phrase the model passed through verbatim ("around
+    // March 2021", "early 2015", "2021-03-15") into a stored ISO date up front,
+    // so every downstream use (asset write, mutation, historical-price lookup,
+    // cost-basis fetch) sees the same resolved value. Unparseable text becomes
+    // null — deterministic code owns this decision, never the model.
+    if (change.buy_date !== undefined) {
+      change.buy_date = resolveAcquisitionDate(change.buy_date) ?? undefined;
+    }
 
     try {
     if (action === "add") {
@@ -549,7 +568,7 @@ export async function applyPortfolioChanges({
         if (change.symbol !== undefined) updateData.symbol = change.symbol;
         if (change.units !== undefined) updateData.units = change.units;
         if (change.buy_price !== undefined) updateData.buy_price = change.buy_price;
-        if (change.buy_date !== undefined) updateData.buy_date = change.buy_date;
+        if (change.buy_date !== undefined) updateData.buy_date = change.buy_date || null;
         if (change.mortgage_balance !== undefined) {
           updateData.mortgage_balance = change.mortgage_balance;
           updateData.mortgage_balance_recorded_at = new Date().toISOString();

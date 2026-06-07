@@ -5,6 +5,7 @@ import { normalizeCryptoSymbol } from "./symbol-aliases";
 import { getUsdRates } from "./fx";
 import { estimatePropertyValue } from "./property-estimate-resolve";
 import { validatePensionChange, buildPensionEcho } from "./pension-intake";
+import { parseAcquisitionMonth } from "./acquisition-date";
 
 export type ProposalChange = {
   action: "add" | "edit" | "remove";
@@ -89,10 +90,17 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
     if (!existing?.symbol) {
       throw new ValueModeError(`No symbol on file for ${name} — couldn't look up the historical price.`);
     }
-    const historical = await fetchHistoricalPrice(existing.symbol, proposal.buy_date);
+    // The model passes the date phrase through verbatim ("around March 2021");
+    // deterministic code resolves it to a real date before any lookup or write.
+    const resolvedBuyDate = parseAcquisitionMonth(proposal.buy_date);
+    if (!resolvedBuyDate) {
+      throw new ValueModeError(`Couldn't make out a date from "${proposal.buy_date}" — try a month and year.`);
+    }
+    proposal.buy_date = resolvedBuyDate;
+    const historical = await fetchHistoricalPrice(existing.symbol, resolvedBuyDate);
     if (!historical) {
       throw new ValueModeError(
-        `Couldn't fetch the price for ${existing.symbol} on ${proposal.buy_date} — try a different date or state the unit count directly.`
+        `Couldn't fetch the price for ${existing.symbol} on ${resolvedBuyDate} — try a different date or state the unit count directly.`
       );
     }
     const p = normalizePrice(historical.price, historical.currency);
