@@ -9,7 +9,10 @@ import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import type { Mutation } from "@/lib/supabase";
 import { AssetLogo } from "@/components/AssetLogo";
 import { DiaryRowContent } from "@/components/diary/DiaryRowContent";
+import { DiaryMarketRow } from "@/components/DiaryMarketRow";
 import { PeriodHighlight } from "@/components/diary/PeriodHighlight";
+import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
+import type { DiaryMarketMove } from "@/lib/diary-market-moves";
 import {
   TRADEABLE_TYPES, STARTING_POSITION_CTX,
   type DiaryItem, type PeriodKey,
@@ -90,6 +93,7 @@ interface DiaryTabProps {
 
 export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
   const displayCurrency = useDisplayCurrency();
+  const { moves } = useDiaryMarketMoves();
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [period, setPeriod] = useState<PeriodKey>("all");
@@ -130,6 +134,20 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       );
     });
 
+  // Deterministic market-move highlights — read-only context rows anchored
+  // around mutation dates. Same period filter as mutations; hidden under search.
+  const periodMoves = moves.filter((mv) =>
+    isInPeriod({ occurred_at: mv.date, recorded_at: mv.date } as Mutation, period, customFrom, customTo)
+  );
+  const activeMoves = trimmedQuery ? [] : periodMoves;
+
+  const groupedMoves = activeMoves.reduce((acc, mv) => {
+    const key = getMonthKey(mv.date);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(mv);
+    return acc;
+  }, {} as Record<string, DiaryMarketMove[]>);
+
   function jumpToEntry(m: Mutation) {
     const inTimeline = filteredMutations.some((fm) => fm.id === m.id);
     if (!inTimeline) {
@@ -151,7 +169,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
     return acc;
   }, {} as Record<string, Mutation[]>);
 
-  const monthKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+  const monthKeys = [...new Set([...Object.keys(grouped), ...Object.keys(groupedMoves)])]
+    .sort((a, b) => b.localeCompare(a));
 
   for (const key of monthKeys) {
     grouped[key].sort((a, b) => {
@@ -396,7 +415,28 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
 
       {/* Timeline — month-bucketed entry list */}
       {monthKeys.map((monthKey) => {
-        const monthItems = buildDisplayItems(grouped[monthKey], !!trimmedQuery);
+        const monthMutations = grouped[monthKey] ?? [];
+        const monthItems = buildDisplayItems(monthMutations, !!trimmedQuery);
+        const monthMoves = groupedMoves[monthKey] ?? [];
+
+        const itemDate = (item: DiaryItem): string =>
+          item.kind === "singleton"
+            ? (item.mutation.occurred_at || item.mutation.recorded_at)
+            : (item.anchor.occurred_at || item.anchor.recorded_at);
+
+        type RenderEntry =
+          | { kind: "item"; date: string; item: DiaryItem }
+          | { kind: "move"; date: string; move: DiaryMarketMove };
+
+        const renderEntries: RenderEntry[] = [
+          ...monthItems.map((item): RenderEntry => ({ kind: "item", date: itemDate(item), item })),
+          ...monthMoves.map((mv): RenderEntry => ({ kind: "move", date: mv.date, move: mv })),
+        ].sort((a, b) => {
+          if (a.date !== b.date) return b.date.localeCompare(a.date);
+          if (a.kind === b.kind) return 0;
+          return a.kind === "move" ? 1 : -1; // moves sort after mutations on the same date
+        });
+
         return (
           <div key={monthKey}>
             {/* Month header */}
@@ -416,13 +456,18 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 {getMonthLabel(monthKey)}
               </div>
               <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
-                {grouped[monthKey].length} {grouped[monthKey].length === 1 ? "entry" : "entries"}
+                {monthMutations.length} {monthMutations.length === 1 ? "entry" : "entries"}
               </div>
             </div>
 
             {/* Entry rows */}
             <div>
-              {monthItems.map((item) => {
+              {renderEntries.map((entry) => {
+                if (entry.kind === "move") {
+                  return <DiaryMarketRow key={`move-${entry.move.index_symbol}-${entry.move.date}`} move={entry.move} />;
+                }
+
+                const item = entry.item;
                 if (item.kind === "singleton") {
                   const m = item.mutation;
                   const date = m.occurred_at || m.recorded_at;

@@ -65,3 +65,14 @@ export const chatHistoryCacheKey  = (userId: string) => `${CHAT_HISTORY_PREFIX}$
 
 // ── Misc UI keys ──────────────────────────────────────────────────────────────
 export const CURRENCY_TOAST_KEY = "volnar.currency.toastSeen";
+
+// ── Diary market-move highlights (deterministic, no LLM) ──────────────────────
+export const MARKET_MOVE_THRESHOLD_PCT = 2.0;
+export const MARKET_MOVE_WINDOW_TRADING_DAYS = 2;
+export const MARKET_MOVE_LOOKBACK_DAYS = 365;
+
+export const DIARY_MARKET_INDICES: { symbol: string; label: string }[] = [
+  { symbol: "^IXIC", label: "Nasdaq" },
+  { symbol: "^GSPC", label: "S&P 500" },
+  { symbol: "^AEX",  label: "AEX" },
+];
