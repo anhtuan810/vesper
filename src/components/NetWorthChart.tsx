@@ -41,6 +41,12 @@ interface Props {
   realPointCount?: number;
   // Earliest real snapshot date, for the "Tracking since {date}" caption.
   trackingSinceDate?: string | null;
+  // Deterministically reconstructed (never-persisted) monthly USD points that
+  // precede the first live snapshot — see /api/net-worth-history. Renders as a
+  // visually distinct dashed segment with a "held since" caption when the
+  // selected range reaches back that far. Empty when no asset has a stated
+  // acquisition date (the chart then keeps the existing marker fallback).
+  modeledSeries?: SnapshotPoint[];
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -161,6 +167,34 @@ function buildPath(
   return { line, projectY };
 }
 
+// Two segments sharing ONE coordinate scale (so the seam lines up visually and
+// the modeled segment's slope is comparable to the live one): the modeled
+// prefix occupies indices [0, modeledValues.length), the live suffix the rest.
+// Drawn as separate <path>s so they can carry distinct stroke styles.
+function buildStitchedPaths(
+  modeledValues: number[],
+  liveValues: number[],
+  drawW: number,
+  projectY: (v: number) => number,
+): { modeledLine: string; liveLine: string } {
+  const total = modeledValues.length + liveValues.length;
+  const toX = (i: number) => (total <= 1 ? 0 : (i / (total - 1)) * drawW);
+  const buildSeg = (values: number[], offset: number) => {
+    if (values.length === 0) return "";
+    let d = "";
+    values.forEach((v, j) => {
+      const x = toX(offset + j);
+      const y = projectY(v);
+      d += j === 0 ? `M ${x.toFixed(2)} ${y.toFixed(2)}` : ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    });
+    return d;
+  };
+  return {
+    modeledLine: buildSeg(modeledValues, 0),
+    liveLine: buildSeg(liveValues, modeledValues.length),
+  };
+}
+
 function makeProjectY(H: number, yMin: number, yMax: number): (v: number) => number {
   const yRange = Math.max(yMax - yMin, 1);
   const drawH = H - CHART_PAD_TOP - CHART_PAD_BOTTOM;
@@ -220,22 +254,54 @@ export function NetWorthChart(props: Props) {
   const values = converted.map((p) => p.total_value);
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
+  const modeledColor = "var(--accent)";
 
-  // Y domain: always floor at 0; cap at niceCeil(dataMax * 1.08) so the line sits in the upper third.
-  const rawMax = values.length >= 2 ? Math.max(...values) : 1;
+  const realCount = realPointCount ?? displaySeries.length;
+  // The selected timeframe reaches further back than the earliest real data we
+  // have — stretching a sparse handful of points across that width would draw a
+  // line that doesn't represent real history. The modeled segment (when it
+  // covers the gap) replaces that stretch with an honest reconstruction.
+  const rangeStart = rangeStartDate(range);
+  const rangePredatesHistory =
+    trackingSinceDate != null && rangeStart != null && rangeStart < trackingSinceDate;
+
+  const modeledInRange = (props.modeledSeries ?? []).filter(
+    (p) =>
+      trackingSinceDate != null &&
+      p.date < trackingSinceDate &&
+      (rangeStart == null || p.date >= rangeStart)
+  );
+  const modeledConverted = modeledInRange.map((p) => p.total_value * displayRate);
+  const showStitched = !loading && rangePredatesHistory && modeledConverted.length > 0 && values.length >= 2;
+
+  const showSingleMarker = !loading && (realCount < 2 || (rangePredatesHistory && !showStitched));
+  const showLabels = !showSingleMarker && !loading && displaySeries.length >= 2;
+  const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
+  const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
+
+  // Y domain: always floor at 0; cap at niceCeil(dataMax * 1.08) so the line sits
+  // in the upper third. Spans BOTH segments when stitched, so the modeled
+  // trajectory's real drawdowns/slope are visually comparable to the live one.
+  const domainValues = showStitched ? [...modeledConverted, ...values] : values;
+  const rawMax = domainValues.length >= 2 ? Math.max(...domainValues) : 1;
   const niceMin = 0;
   const niceMax = niceCeil(rawMax * 1.08);
   const yLabels = computeNiceLabels(niceMax);
 
   const drawW = W - CHART_PAD_RIGHT;
-  const { line, projectY } = buildPath(values, W, H, niceMin, niceMax, drawW);
+  const projectY = makeProjectY(H, niceMin, niceMax);
+  const { line } = buildPath(values, W, H, niceMin, niceMax, drawW);
+  const { modeledLine, liveLine } = buildStitchedPaths(modeledConverted, values, drawW, projectY);
 
   const lastY = values.length >= 2 ? projectY(values[values.length - 1]) : H / 2;
 
-  // Scrub marker — same projection as buildPath / lastY
+  // Scrub marker — shares the stitched scale so the guide lines up with the
+  // live point it represents (scrubbing only ever selects a live point; the
+  // modeled segment is an estimate, not a recorded value to inspect).
+  const totalCount = (showStitched ? modeledConverted.length : 0) + displaySeries.length;
   const selectedX =
     selectedIndex !== null && displaySeries.length >= 2
-      ? (selectedIndex / (displaySeries.length - 1)) * drawW
+      ? ((totalCount - displaySeries.length + selectedIndex) / (totalCount - 1)) * drawW
       : null;
   const selectedY =
     selectedIndex !== null && values.length >= 2
@@ -244,21 +310,11 @@ export function NetWorthChart(props: Props) {
 
   const showEndMarker = selectedIndex === null || selectedIndex === displaySeries.length - 1;
 
-  const realCount = realPointCount ?? displaySeries.length;
-  // The selected timeframe reaches further back than the earliest real data we
-  // have — stretching a sparse handful of points across that width would draw a
-  // line that doesn't represent real history. Fall back to the marker state.
-  const rangeStart = rangeStartDate(range);
-  const rangePredatesHistory =
-    trackingSinceDate != null && rangeStart != null && rangeStart < trackingSinceDate;
-  const showSingleMarker = !loading && (realCount < 2 || rangePredatesHistory);
-  const showLabels = !showSingleMarker && !loading && displaySeries.length >= 2;
-  const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
-  const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
-
   function calcIndex(clientX: number, rect: DOMRect): number {
     const relX = (clientX - rect.left) / rect.width;
-    return Math.min(Math.max(Math.round(relX * (displaySeries.length - 1)), 0), displaySeries.length - 1);
+    const rawIdx = Math.round(relX * (totalCount - 1));
+    const liveIdx = rawIdx - (totalCount - displaySeries.length);
+    return Math.min(Math.max(liveIdx, 0), displaySeries.length - 1);
   }
 
   const chartHandlers = interactive
@@ -326,8 +382,20 @@ export function NetWorthChart(props: Props) {
               height={H}
               style={{ display: "block" }}
             >
+              {showStitched && (
+                <path
+                  d={modeledLine}
+                  fill="none"
+                  stroke={modeledColor}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={0.7}
+                />
+              )}
               <path
-                d={line}
+                d={showStitched ? liveLine : line}
                 fill="none"
                 stroke={strokeColor}
                 strokeWidth={1.5}
@@ -381,6 +449,15 @@ export function NetWorthChart(props: Props) {
           </div>
         )}
       </div>
+
+      {/* Persistent caption stating the modeled segment's assumption — the
+          dashed line is an estimate, not a recorded value, and must always
+          carry this label so it's never mistaken for tracked history. */}
+      {showStitched && trackingSinceDate != null && (
+        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>
+          Modeled — assumes holdings held since {formatDate(modeledInRange[0]?.date ?? trackingSinceDate)}
+        </div>
+      )}
 
       {/* Range pills */}
       <div
