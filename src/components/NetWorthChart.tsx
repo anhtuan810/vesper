@@ -9,6 +9,21 @@ import { formatDate } from "@/lib/utils";
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
 
+// Mirrors the snapshots route's RANGE_DAYS — used to tell whether a timeframe's
+// start predates the earliest real data we have (in which case stretching a
+// handful of points across that whole width would misrepresent the history).
+const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
+  "1W": 7, "1M": 30, "3M": 90, "1Y": 365, "3Y": 1095, "All": null,
+};
+
+function rangeStartDate(r: Range): string | null {
+  const days = RANGE_WINDOW_DAYS[r];
+  if (days == null) return null;
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 export interface SnapshotPoint {
   date: string;
   total_value: number;
@@ -230,7 +245,13 @@ export function NetWorthChart(props: Props) {
   const showEndMarker = selectedIndex === null || selectedIndex === displaySeries.length - 1;
 
   const realCount = realPointCount ?? displaySeries.length;
-  const showSingleMarker = !loading && realCount < 2;
+  // The selected timeframe reaches further back than the earliest real data we
+  // have — stretching a sparse handful of points across that width would draw a
+  // line that doesn't represent real history. Fall back to the marker state.
+  const rangeStart = rangeStartDate(range);
+  const rangePredatesHistory =
+    trackingSinceDate != null && rangeStart != null && rangeStart < trackingSinceDate;
+  const showSingleMarker = !loading && (realCount < 2 || rangePredatesHistory);
   const showLabels = !showSingleMarker && !loading && displaySeries.length >= 2;
   const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
   const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
@@ -366,27 +387,33 @@ export function NetWorthChart(props: Props) {
         className="flex gap-1 mt-2"
         style={{ padding: 3, borderRadius: 8, marginRight: 40 }}
       >
-        {RANGES.map((r) => (
+        {RANGES.map((r) => {
+          const start = rangeStartDate(r);
+          const disabled = trackingSinceDate != null && start != null && start < trackingSinceDate;
+          return (
           <button
             key={r}
-            onClick={() => onRangeChange(r)}
+            disabled={disabled}
+            onClick={() => { if (!disabled) onRangeChange(r); }}
             className="flex-1 text-center"
             style={{
               padding: "5px 0",
               fontSize: 12,
               fontWeight: 500,
               borderRadius: 6,
-              color: range === r ? "var(--text)" : "var(--text-dim)",
+              color: disabled ? "var(--text-faint)" : range === r ? "var(--text)" : "var(--text-dim)",
               background: range === r ? "var(--surface-elev)" : "transparent",
               boxShadow: range === r ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               border: "none",
-              cursor: "pointer",
+              cursor: disabled ? "default" : "pointer",
+              opacity: disabled ? 0.45 : 1,
               transition: "all 0.15s",
             }}
           >
             {r}
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
