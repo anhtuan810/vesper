@@ -66,14 +66,18 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   const sufficientHistory =
     series != null && series.length >= 2 && windowStartDate != null && hasSufficientHistory(series, windowStartDate);
 
-  // If the user added or removed a holding within the compared window, the delta
-  // is partly data entry, not return — never present that as a percentage.
+  // Any mutation that actually changed a holding's recorded value or unit count —
+  // an add, a remove, a quantity top-up, or a cost-basis correction — is a flow
+  // or a data-entry edit, not a market return. If one falls in the compared
+  // window, the delta is partly data entry — never present that as a percentage.
   const todayStr = new Date().toISOString().slice(0, 10);
   const compareEnd = selectedPoint?.date ?? todayStr;
   const includesHoldingsChange =
     seriesStart != null &&
     (mutations ?? []).some((m) => {
-      if (m.action !== "add" && m.action !== "remove") return false;
+      const valueChanged = m.before_value !== m.after_value;
+      const unitsChanged = m.before_units !== m.after_units;
+      if (!valueChanged && !unitsChanged) return false;
       const day = (m.occurred_at || m.recorded_at).slice(0, 10);
       return day >= seriesStart.date && day <= compareEnd;
     });
