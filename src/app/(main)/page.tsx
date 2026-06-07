@@ -209,6 +209,7 @@ export default function Dashboard() {
         netTotal={netTotal}
         initialSnapshots={initialSnapshots}
         valuesSettled={valuesSettled}
+        mutations={mutations}
       />
     );
   }
@@ -275,6 +276,7 @@ export default function Dashboard() {
             netTotal={netTotal}
             initialSnapshots={initialSnapshots}
             valuesSettled={valuesSettled}
+            mutations={mutations}
           />
         )}
       </div>

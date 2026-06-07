@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { getUsdRate } from "@/lib/money";
+import { formatDate } from "@/lib/utils";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -20,6 +21,11 @@ interface Props {
   loading: boolean;
   onSelectPoint?: (point: SnapshotPoint | null) => void;
   valuesSettled?: boolean;
+  // Count of real (DB-backed) snapshot rows on distinct days, before `buildSeries`
+  // synthesizes today's live tip — distinguishes "day one" from "real history".
+  realPointCount?: number;
+  // Earliest real snapshot date, for the "Tracking since {date}" caption.
+  trackingSinceDate?: string | null;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -154,7 +160,7 @@ export function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotP
 }
 
 export function NetWorthChart(props: Props) {
-  const { range, onRangeChange, series, loading, valuesSettled } = props;
+  const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate } = props;
   // Strip the live tip (last point = today's netTotal) until values are fully settled,
   // so the chart doesn't redraw as netTotal steps through intermediate states.
   const displaySeries = valuesSettled ? series : series.slice(0, -1);
@@ -223,9 +229,11 @@ export function NetWorthChart(props: Props) {
 
   const showEndMarker = selectedIndex === null || selectedIndex === displaySeries.length - 1;
 
-  const showEmpty = !loading && displaySeries.length < 2;
-  const showLabels = !showEmpty && !loading && displaySeries.length >= 2;
-  const interactive = !loading && displaySeries.length >= 2;
+  const realCount = realPointCount ?? displaySeries.length;
+  const showSingleMarker = !loading && realCount < 2;
+  const showLabels = !showSingleMarker && !loading && displaySeries.length >= 2;
+  const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
+  const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
 
   function calcIndex(clientX: number, rect: DOMRect): number {
     const relX = (clientX - rect.left) / rect.width;
@@ -265,18 +273,26 @@ export function NetWorthChart(props: Props) {
           style={{ flex: 1, position: "relative", touchAction: interactive ? "none" : undefined }}
           {...chartHandlers}
         >
-          {showEmpty ? (
+          {showSingleMarker ? (
             <div
               style={{
                 height: H,
                 display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center",
-                gap: 6,
+                gap: 8,
               }}
             >
-              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Day one</div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
-                Volnar logs your net worth daily. Your trajectory will plot here as snapshots accumulate.
+              <svg viewBox={`0 0 40 40`} width={20} height={20} aria-hidden>
+                <circle cx={20} cy={20} r={9} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
+                <circle cx={20} cy={20} r={4} fill={strokeColor} />
+              </svg>
+              {currentValue != null && (
+                <div style={{ fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+                  {fmtYLabel(currentValue, displayCurrency)}
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                Tracking since {formatDate(trackingSinceDate ?? new Date().toISOString().slice(0, 10))}
               </div>
             </div>
           ) : loading ? (

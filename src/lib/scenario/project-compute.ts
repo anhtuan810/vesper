@@ -2,6 +2,7 @@
 import { computeReadout, compareScenarios, type ScenarioAsset, type UsdRates, type Comparison } from "@/lib/scenario/engine";
 import {
   deriveGrowthRate,
+  assumedGrowthRate,
   projectTrajectory,
   solveContribution,
   applyShockAssets,
@@ -69,9 +70,11 @@ export function computeProjection(
   }
 
   const startUsd = computeReadout(assets, usdRates, now).netWorthUsd;
-  const growth = deriveGrowthRate(snapshots, { asOf: now });
 
   if (mode === "trajectory") {
+    // Never fit a growth rate from a few weeks of the user's own snapshots —
+    // drive the long-range trajectory off an explicit, labelled assumption.
+    const growth = assumedGrowthRate();
     const contribution = asContribution(body.contribution);
     const horizonYears =
       typeof body.horizonYears === "number" && body.horizonYears > 0
@@ -106,6 +109,7 @@ export function computeProjection(
   const horizonYears = (Date.parse(dateStr) - now.getTime()) / MS_PER_YEAR;
   if (horizonYears <= 0) return { error: "target date must be in the future" };
   const frequency = asFrequency(body.frequency);
+  const growth = deriveGrowthRate(snapshots, { asOf: now });
   const solved = solveContribution(startUsd, targetUsd, horizonYears, growth.rate, frequency);
   return { mode, startUsd, targetUsd, date: dateStr, prefilledFromGoal, rate: growth.rate, solve: solved, assumptions: [...growth.assumptions, ...solved.assumptions] };
 }

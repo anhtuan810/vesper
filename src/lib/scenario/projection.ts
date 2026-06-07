@@ -106,6 +106,26 @@ export function deriveGrowthRate(
   };
 }
 
+// ── 1b. Assumed growth rate — explicit constant, never fit from history ────────
+//
+// Trajectory projections must not imply we've measured the user's returns from
+// a few weeks of snapshots. Instead we drive them off a labelled assumption.
+
+export const ASSUMED_ANNUAL_REAL_RETURN = 0.05;
+
+export function assumedGrowthRate(rate: number = ASSUMED_ANNUAL_REAL_RETURN): DerivedGrowthRate {
+  const basis = `assumed ~${fmtRate(rate)}/yr long-run real return — not derived from your history`;
+  return {
+    rate,
+    basis,
+    clamped: false,
+    assumptions: [
+      `Growth rate: assuming ~${fmtRate(rate)}/yr — ${basis}.`,
+      "Real (inflation-adjusted) assumption, not a measurement of your portfolio.",
+    ],
+  };
+}
+
 // ── 2. Trajectory projection (returned as a band) ──────────────────────────────
 
 export interface Trajectory {

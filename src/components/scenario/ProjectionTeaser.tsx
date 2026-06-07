@@ -4,21 +4,21 @@ import { useState, useEffect } from "react";
 import { getUsdRate } from "@/lib/money";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
+import type { SnapshotPoint } from "@/components/NetWorthChart";
+import { hasSufficientHistory } from "@/lib/networth-history";
 
 // Ambient, tappable projection line under the net-worth chart. Quiet and
 // editorial — the sentence itself is the affordance (the old "What if?" pill is
-// gone). The midpoint and the annualized growth rate both come from
-// POST /api/scenarios/project (trajectory, 10y, no contribution); nothing is
-// projected or branched client-side beyond reading that response.
+// gone). The midpoint comes from POST /api/scenarios/project (trajectory, 10y,
+// no contribution), which now drives the rate off an explicit, labelled
+// assumption rather than fitting one to the user's own (often-thin) history.
 //
-// Thin-history guard: when the route falls back to its default growth rate
-// (flagged in `assumptions`), we never show a fabricated figure or a trajectory
-// verdict — we show an onboarding nudge instead.
+// We hide the projection entirely — not just soften the copy — when the
+// account is too young to make a 10-year-out figure feel earned: fewer than
+// two snapshots, or younger than a week.
 
 const HORIZON_YEARS = 10;
 const SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
-// An annualized move smaller than this reads as "holding steady".
-const FLAT_BAND = 0.02;
 
 interface ProjResp {
   startUsd: number;
@@ -27,15 +27,20 @@ interface ProjResp {
   assumptions: string[];
 }
 
-// A default/insufficient rate is flagged in the route's growth assumptions.
-function isThinHistory(r: ProjResp): boolean {
-  return r.assumptions.some((a) => /default/i.test(a) && /nominal/i.test(a));
+interface ProjectionTeaserProps {
+  onExplore: () => void;
+  snapshots: SnapshotPoint[];
 }
 
-export function ProjectionTeaser({ onExplore }: { onExplore: () => void }) {
+export function ProjectionTeaser({ onExplore, snapshots }: ProjectionTeaserProps) {
   const displayCurrency = useDisplayCurrency();
   const [resp, setResp] = useState<ProjResp | null>(null);
   const [shown, setShown] = useState(false);
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
+  const hideProjection = snapshots.length < 2 || !hasSufficientHistory(snapshots, sevenDaysAgoStr);
 
   // Bare fetch — state is only set in the async callback, never synchronously in
   // the effect body (keeps clear of react-hooks/set-state-in-effect).
@@ -60,11 +65,11 @@ export function ProjectionTeaser({ onExplore }: { onExplore: () => void }) {
     return () => cancelAnimationFrame(id);
   }, [resp]);
 
-  if (!resp) return null;
+  if (hideProjection || !resp) return null;
 
-  const thin = isThinHistory(resp) || resp.startUsd < 1000;
   const sym = SYMBOL[displayCurrency] ?? "€";
   const year = new Date().getFullYear() + HORIZON_YEARS;
+  const ratePct = `${Math.round(resp.rate * 100)}%`;
 
   const compact = (usd: number) => {
     const n = Math.abs(usd * getUsdRate(displayCurrency));
@@ -73,36 +78,19 @@ export function ProjectionTeaser({ onExplore }: { onExplore: () => void }) {
     return `${sym}${Math.round(n)}`;
   };
 
-  // Trajectory verdict drives the copy. The statement is ink; the trailing clause
-  // and arrow are the accent-green affordance. Branch deterministically off the
-  // same annualized rate the projection band is built from — flat/declining
-  // portfolios never see "keep this pace".
-  let statement: React.ReactNode = null;
-  let clause: string;
-  let aria: string;
-  if (thin) {
-    clause = "Add a little more and I’ll show where you’re heading";
-    aria = "Explore your portfolio projection";
-  } else if (resp.rate >= FLAT_BAND) {
-    const projected = compact(resp.trajectory.mid);
-    statement = (
-      <>
-        Keep this pace and you reach about{" "}
-        <span style={{ fontStyle: "normal", fontWeight: 600 }}>{projected}</span>{" "}
-        by {year}.{" "}
-      </>
-    );
-    clause = "See what moves it";
-    aria = `Keep this pace and you reach about ${projected} by ${year}. Explore what moves your projection.`;
-  } else if (resp.rate <= -FLAT_BAND) {
-    statement = <>Down lately.{" "}</>;
-    clause = "See what turns it around";
-    aria = "Your portfolio is down lately. Explore what could turn it around.";
-  } else {
-    statement = <>Holding steady.{" "}</>;
-    clause = "See what could bend the curve";
-    aria = "Your portfolio is holding steady. Explore what could bend the curve.";
-  }
+  // The figure is explicitly framed as an assumption (the route's rate is a
+  // labelled constant, not something fitted to the user's own history) — never
+  // implied to be "your pace".
+  const projected = compact(resp.trajectory.mid);
+  const statement = (
+    <>
+      Assuming ~{ratePct}/yr, you could reach about{" "}
+      <span style={{ fontStyle: "normal", fontWeight: 600 }}>{projected}</span>{" "}
+      by {year}.{" "}
+    </>
+  );
+  const clause = "See what moves it";
+  const aria = `Assuming ~${ratePct} per year, you could reach about ${projected} by ${year}. Explore what moves your projection.`;
 
   return (
     <ScenarioCueLine

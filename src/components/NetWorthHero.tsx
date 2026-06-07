@@ -3,6 +3,8 @@
 import { formatMoney } from "@/lib/money";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import type { SnapshotPoint, Range } from "@/components/NetWorthChart";
+import type { Mutation } from "@/lib/supabase";
+import { firstSnapshotDate, hasSufficientHistory } from "@/lib/networth-history";
 
 const RANGE_LABEL: Record<Range, string> = {
   "1W": "past week",
@@ -13,12 +15,24 @@ const RANGE_LABEL: Record<Range, string> = {
   "All": "since inception",
 };
 
+// Mirrors the snapshots route's RANGE_DAYS — used to derive the window start
+// for the "is there real history at the start of this window?" check.
+const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
+  "1W": 7,
+  "1M": 30,
+  "3M": 90,
+  "1Y": 365,
+  "3Y": 1095,
+  "All": null,
+};
+
 interface NetWorthHeroProps {
   netTotal: number;
   range: Range;
   selectedPoint?: SnapshotPoint | null;
   series?: SnapshotPoint[];
   valuesSettled: boolean;
+  mutations?: Mutation[];
 }
 
 function fmtSelectedDate(dateStr: string): string {
@@ -35,10 +49,34 @@ function fmtPct(n: number): string {
   }).format(n);
 }
 
-export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled }: NetWorthHeroProps) {
+export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled, mutations }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
 
   const seriesStart = series?.[0];
+
+  // Window start for this range — mirrors the snapshots route's cutoff. For "All"
+  // there is no fixed cutoff, so the series' own first point is the window start.
+  const windowDays = RANGE_WINDOW_DAYS[range];
+  const windowStartDate = windowDays != null
+    ? (() => { const d = new Date(); d.setDate(d.getDate() - windowDays); return d.toISOString().slice(0, 10); })()
+    : (seriesStart?.date ?? null);
+
+  // True only when a real snapshot already existed at/before the window start —
+  // i.e. this comparison reflects market history, not the moment data entry began.
+  const sufficientHistory =
+    series != null && series.length >= 2 && windowStartDate != null && hasSufficientHistory(series, windowStartDate);
+
+  // If the user added or removed a holding within the compared window, the delta
+  // is partly data entry, not return — never present that as a percentage.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const compareEnd = selectedPoint?.date ?? todayStr;
+  const includesHoldingsChange =
+    seriesStart != null &&
+    (mutations ?? []).some((m) => {
+      if (m.action !== "add" && m.action !== "remove") return false;
+      const day = (m.occurred_at || m.recorded_at).slice(0, 10);
+      return day >= seriesStart.date && day <= compareEnd;
+    });
 
   // Scrub change — series[0] to selectedPoint
   const selAbs =
@@ -62,17 +100,23 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       ? (rangeAbs / baseValue) * 100
       : null;
 
-  // Suppress percentage when the base is too small to produce a meaningful rate
-  const showPct = (seriesStart?.total_value ?? 1000) >= 1000;
+  // Suppress the percentage when the base is too small to be meaningful, when
+  // there isn't enough real history to anchor it, or when holdings changed —
+  // never present data entry as a return.
+  const showPct = (seriesStart?.total_value ?? 1000) >= 1000 && sufficientHistory && !includesHoldingsChange;
 
   const activeAbs = showSelected ? selAbs! : rangeAbs;
   const activePct = showSelected ? selPct! : rangePct;
   const isPositive = activeAbs != null ? activeAbs >= 0 : true;
   const displayValue = selectedPoint != null ? selectedPoint.total_value : netTotal;
 
+  const earliestDate = series ? firstSnapshotDate(series) : null;
   const label = selectedPoint != null
     ? fmtSelectedDate(selectedPoint.date)
-    : RANGE_LABEL[range];
+    : !sufficientHistory && earliestDate != null
+      ? `since ${fmtSelectedDate(earliestDate)}`
+      : RANGE_LABEL[range];
+  const annotation = !showSelected && !showPct && includesHoldingsChange ? " · includes added holdings" : "";
 
   if (!currencyLoaded || !valuesSettled) {
     return (
@@ -126,6 +170,9 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
           <span style={{ color: "var(--text)", marginLeft: 6 }}>
             {label}
           </span>
+          {annotation && (
+            <span style={{ color: "var(--text-faint)" }}>{annotation}</span>
+          )}
         </div>
       )}
     </div>

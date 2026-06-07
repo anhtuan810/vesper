@@ -21,7 +21,8 @@ import { toUsdClient, formatMoney } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import { requestExplore } from "@/lib/scenario/explore";
-import type { LiveAsset } from "@/lib/supabase";
+import type { LiveAsset, Mutation } from "@/lib/supabase";
+import { firstSnapshotDate } from "@/lib/networth-history";
 
 // Semantic category mapping — 4 groups, regardless of how many asset types exist
 const CATEGORY_MAP: Record<string, string> = {
@@ -68,10 +69,11 @@ interface PortfolioTabProps {
   netTotal: number;
   initialSnapshots?: SnapshotPoint[];
   valuesSettled: boolean;
+  mutations: Mutation[];
 }
 
 export function PortfolioTab({
-  assets, grossTotal, netTotal, initialSnapshots, valuesSettled,
+  assets, grossTotal, netTotal, initialSnapshots, valuesSettled, mutations,
 }: PortfolioTabProps) {
   const router = useRouter();
   const isDesktop = useIsDesktop();
@@ -97,6 +99,10 @@ export function PortfolioTab({
   const sparklines = useSparklines(symbols, "1W");
 
   const [range, setRange] = useState<Range>("1M");
+  // Raw, DB-backed snapshot rows — kept separate from `series` (which always has
+  // `buildSeries` append a synthesized "today" tip) so callers can tell "day one"
+  // from "real history" by counting actual rows on distinct days.
+  const [rawSnapshots, setRawSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [series, setSeries] = useState<SnapshotPoint[]>(
     initialSnapshots ? buildSeries(initialSnapshots, netTotal) : []
   );
@@ -108,6 +114,7 @@ export function PortfolioTab({
     if (range === "1M") {
       // Use initialSnapshots when available; stay in loading state until they arrive.
       if (initialSnapshots) {
+        setRawSnapshots(initialSnapshots);
         setSeries(buildSeries(initialSnapshots, netTotal));
         setLoading(false);
       }
@@ -118,7 +125,9 @@ export function PortfolioTab({
     fetch(`/api/snapshots?range=${range}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((body) => {
-        setSeries(buildSeries(body.data ?? [], netTotal));
+        const raw = body.data ?? [];
+        setRawSnapshots(raw);
+        setSeries(buildSeries(raw, netTotal));
         setLoading(false);
       })
       .catch((err) => {
@@ -129,6 +138,8 @@ export function PortfolioTab({
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, netTotal, initialSnapshots]);
+
+  const trackingSinceDate = firstSnapshotDate(rawSnapshots);
 
   // Group by semantic category, ordered by the fixed CATEGORY_ORDER (Crypto above
   // Reserves); rows within a group still sort by value desc.
@@ -197,7 +208,7 @@ export function PortfolioTab({
           chart and range pills sit flush with the full-bleed market/insight band edges. */}
       <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} valuesSettled={valuesSettled} />
+          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} valuesSettled={valuesSettled} mutations={mutations} />
         </div>
 
         {netTotal > 0 && (
@@ -209,13 +220,15 @@ export function PortfolioTab({
               loading={loading}
               onSelectPoint={setSelectedPoint}
               valuesSettled={valuesSettled}
+              realPointCount={rawSnapshots.length}
+              trackingSinceDate={trackingSinceDate}
             />
             {/* Ambient projection teaser — the single scenario entry: a quiet,
                 left-aligned, trajectory-aware line under the chart. The sentence
                 IS the affordance; tapping opens scenario explore (seeded with the
                 deterministic portfolio scenario chips). */}
             <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
-              <ProjectionTeaser onExplore={handleExplore} />
+              <ProjectionTeaser onExplore={handleExplore} snapshots={rawSnapshots} />
             </div>
           </div>
         )}
