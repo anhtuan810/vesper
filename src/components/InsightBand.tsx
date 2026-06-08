@@ -112,7 +112,7 @@ export function InsightBand() {
 
       {/* ── MARKETS — up to 3 market news cards ── */}
       {hasMarket && (
-        <Band label="Markets" last>
+        <Band last>
           {market.map((item) => {
             const id = item.id ?? item.title;
             const isOpen = expanded.has(id);
