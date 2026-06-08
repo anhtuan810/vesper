@@ -203,6 +203,16 @@ export async function backfillSnapshots(userId: string): Promise<void> {
     const todayStr = new Date().toISOString().slice(0, 10);
     if (earliest >= todayStr) return;
 
+    // Per-asset acquisition date — the "add" mutation's occurred_at (= buy_date
+    // when stated). This is the basis non-tradeable types backfill flat from;
+    // tradeables already key off the real unit timeline below. Falls back to
+    // created_at (no fabricated acquisition date for assets that lack one).
+    const acquisitionByAsset = new Map<string, string>();
+    for (const m of mutations ?? []) {
+      if (!m.asset_id || m.action !== "add" || !m.occurred_at) continue;
+      acquisitionByAsset.set(m.asset_id as string, (m.occurred_at as string).slice(0, 10));
+    }
+
     // Build per-asset unit timeline.
     // Mutations with null occurred_at (starting positions) are placed at earliest.
     const mutsByAsset = new Map<string, Array<{ date: string; units: number }>>();
@@ -248,7 +258,7 @@ export async function backfillSnapshots(userId: string): Promise<void> {
 
       for (const asset of assets) {
         const type = asset.type as string;
-        const inception = (asset.created_at as string).slice(0, 10);
+        const inception = acquisitionByAsset.get(asset.id as string) ?? (asset.created_at as string).slice(0, 10);
         let contribution = 0;
 
         if (TRADEABLE.has(type) && asset.symbol) {
@@ -271,7 +281,9 @@ export async function backfillSnapshots(userId: string): Promise<void> {
           const equity = (asset.value as number) - computeCurrentBalance(asset, asOf);
           contribution = cur === "USD" ? equity : (fx[cur] ? equity / fx[cur] : 0);
         } else {
-          // Cash / bonds / pension / other: use current value from inception date onward
+          // Cash / bonds / pension / other: held flat at current value from
+          // acquisition (the add mutation's occurred_at = stated buy_date) —
+          // not from when the row was created in the DB.
           if (date >= inception) {
             const cur = (asset.currency as string | null) || "USD";
             const val = asset.value as number;
