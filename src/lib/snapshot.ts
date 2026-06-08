@@ -4,6 +4,9 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
 import { getUsdRates } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
+import { resolveRegion } from "@/lib/property-region";
+import { getRegionIndex } from "@/lib/cbs-pbk";
+import { parseBuyYear, clampBuyYear, normalizeIndex, type IndexPoint } from "@/lib/property-estimate";
 
 // TODO: live-price snapshots — tradeable asset values here are DB-stored, not real-time.
 // Consider fetching live prices for each tradeable asset before writing the snapshot.
@@ -114,6 +117,27 @@ function priceAtOrBefore(
   return result;
 }
 
+function isNL(country: string | null | undefined): boolean {
+  const c = (country || "").trim().toUpperCase();
+  return c === "NL" || c === "NLD" || c === "NETHERLANDS" || c === "THE NETHERLANDS";
+}
+
+// Nearest CBS index point to `year` — mirrors property-estimate's own
+// nearest-year matching so the backfill agrees with the live estimate.
+function indexAtYear(points: IndexPoint[], year: number): number | null {
+  if (points.length === 0) return null;
+  let best = points[0];
+  let bestDiff = Math.abs(points[0].year - year);
+  for (const p of points) {
+    const d = Math.abs(p.year - year);
+    if (d < bestDiff) {
+      best = p;
+      bestDiff = d;
+    }
+  }
+  return best.index > 0 ? best.index : null;
+}
+
 // Returns units held as of `date` by walking a sorted-ascending mutation timeline.
 // Returns 0 if no mutation precedes the date.
 function unitsAtDate(
@@ -178,7 +202,7 @@ export async function backfillSnapshots(userId: string): Promise<void> {
     // Load all assets
     const { data: assets, error: aErr } = await supabase
       .from("assets")
-      .select("id, type, value, currency, symbol, created_at, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
+      .select("id, type, value, currency, symbol, created_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
       .eq("user_id", userId);
     if (aErr) throw aErr;
     if (!assets || assets.length === 0) return;
@@ -212,6 +236,34 @@ export async function backfillSnapshots(userId: string): Promise<void> {
       if (!m.asset_id || m.action !== "add" || !m.occurred_at) continue;
       acquisitionByAsset.set(m.asset_id as string, (m.occurred_at as string).slice(0, 10));
     }
+
+    // NL real estate with a logged purchase + resolvable region: precompute the
+    // CBS-index ratio reconstruction — buy_price scaled by index_year/index_buyYear
+    // — the same basis modeled-history's reconstructRealEstate (and the live
+    // estimateValue) use. Equity is index-scaled gross value minus the live
+    // amortisation model's balance at each date. Anything else (no NL address,
+    // no buy_price, unresolvable region/index) falls back to flat current-value
+    // equity below — the prior behavior.
+    const realEstateIndexes = new Map<string, { points: IndexPoint[]; indexAtBuy: number }>();
+    await Promise.all(
+      assets
+        .filter((a) => a.type === "real_estate")
+        .map(async (a) => {
+          const buyPrice = a.buy_price as number | null;
+          if (!isNL(a.country as string | null) || !buyPrice || buyPrice <= 0 || !a.address) return;
+          const buyYear = parseBuyYear(a.buy_date as string | null);
+          if (buyYear == null) return;
+          const region = await resolveRegion(a.address as string);
+          if (!region) return;
+          const idx = await getRegionIndex(region.gemeente, region.province);
+          if (!idx || idx.points.length === 0) return;
+          const points = normalizeIndex(idx.points);
+          const startYear = Math.max(clampBuyYear(buyYear).year, points[0].year);
+          const indexAtBuy = indexAtYear(points, startYear);
+          if (indexAtBuy == null || indexAtBuy <= 0) return;
+          realEstateIndexes.set(a.id as string, { points, indexAtBuy });
+        }),
+    );
 
     // Build per-asset unit timeline.
     // Mutations with null occurred_at (starting positions) are placed at earliest.
@@ -278,7 +330,11 @@ export async function backfillSnapshots(userId: string): Promise<void> {
           }
         } else if (type === "real_estate") {
           const cur = (asset.currency as string | null) || "USD";
-          const equity = (asset.value as number) - computeCurrentBalance(asset, asOf);
+          const reIndex = realEstateIndexes.get(asset.id as string);
+          const grossValue = reIndex
+            ? (asset.buy_price as number) * ((indexAtYear(reIndex.points, Number(date.slice(0, 4))) ?? reIndex.indexAtBuy) / reIndex.indexAtBuy)
+            : (asset.value as number);
+          const equity = grossValue - computeCurrentBalance(asset, asOf);
           contribution = cur === "USD" ? equity : (fx[cur] ? equity / fx[cur] : 0);
         } else {
           // Cash / bonds / pension / other: held flat at current value from
