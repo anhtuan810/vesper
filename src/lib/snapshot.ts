@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
-import { getUsdRates } from "@/lib/fx";
+import { getUsdRates, getHistoricalUsdRates, type FxSeries } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
@@ -115,6 +115,27 @@ function priceAtOrBefore(
     result = { price: entry.price, currency: entry.currency };
   }
   return result;
+}
+
+// Most recent real historical USD rate at or before `date` for `currency`,
+// walking the Frankfurter time-series (which has gaps on weekends/holidays).
+// Falls back to the current-day rate when the series has no entry at/before
+// the date or doesn't cover the currency at all.
+function historicalFxRate(
+  series: FxSeries,
+  sortedDates: string[],
+  date: string,
+  currency: string,
+  currentFx: Record<string, number>,
+): number | null {
+  if (currency === "USD") return 1;
+  let result: number | null = null;
+  for (const d of sortedDates) {
+    if (d > date) break;
+    const rate = series[d]?.[currency];
+    if (rate != null) result = rate;
+  }
+  return result ?? currentFx[currency] ?? null;
 }
 
 function isNL(country: string | null | undefined): boolean {
@@ -301,6 +322,17 @@ export async function backfillSnapshots(userId: string): Promise<void> {
     const dates = targetSnapshotDates(earliest, todayStr);
     if (dates.length === 0) return;
 
+    // Real per-date USD rates for the whole backfill span — every contribution
+    // (tradeable, real estate, flat-held alike) converts at the REAL historical
+    // rate for ITS OWN date, not today's. A native-currency value still moves in
+    // USD terms as real exchange rates move; freezing it at today's rate would
+    // erase that movement and break reconciliation with the live snapshot path
+    // (which always converts at the rate for the date it's valuing).
+    const fxSeries = await getHistoricalUsdRates(earliest, todayStr);
+    const fxSeriesDates = Object.keys(fxSeries).sort();
+    const rateAt = (date: string, currency: string) =>
+      historicalFxRate(fxSeries, fxSeriesDates, date, currency, fx);
+
     const rows: Array<{ user_id: string; date: string; total_value: number; breakdown: Record<string, number> }> = [];
 
     for (const date of dates) {
@@ -324,7 +356,8 @@ export async function backfillSnapshots(userId: string): Promise<void> {
                 const raw = normalizePrice(priceEntry.price, priceEntry.currency);
                 const cur = priceEntry.currency === "GBp" ? "GBP" : priceEntry.currency;
                 const native = raw * units;
-                contribution = cur === "USD" ? native : (fx[cur] ? native / fx[cur] : 0);
+                const rate = rateAt(date, cur);
+                contribution = cur === "USD" ? native : (rate ? native / rate : 0);
               }
             }
           }
@@ -335,7 +368,8 @@ export async function backfillSnapshots(userId: string): Promise<void> {
             ? (asset.buy_price as number) * ((indexAtYear(reIndex.points, Number(date.slice(0, 4))) ?? reIndex.indexAtBuy) / reIndex.indexAtBuy)
             : (asset.value as number);
           const equity = grossValue - computeCurrentBalance(asset, asOf);
-          contribution = cur === "USD" ? equity : (fx[cur] ? equity / fx[cur] : 0);
+          const reRate = rateAt(date, cur);
+          contribution = cur === "USD" ? equity : (reRate ? equity / reRate : 0);
         } else {
           // Cash / bonds / pension / other: held flat at current value from
           // acquisition (the add mutation's occurred_at = stated buy_date) —
@@ -343,7 +377,8 @@ export async function backfillSnapshots(userId: string): Promise<void> {
           if (date >= inception) {
             const cur = (asset.currency as string | null) || "USD";
             const val = asset.value as number;
-            contribution = cur === "USD" ? val : (fx[cur] ? val / fx[cur] : 0);
+            const flatRate = rateAt(date, cur);
+            contribution = cur === "USD" ? val : (flatRate ? val / flatRate : 0);
           }
         }
 
