@@ -9,6 +9,7 @@ import {
   type SnapshotPoint,
   type Range,
   buildSeries,
+  rangeStartDate,
 } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
@@ -63,6 +64,24 @@ const CATEGORY_ORDER: Record<string, number> = {
   reserves: 3,
 };
 
+// Clips the FULL snapshot history to a range's display window: every real row
+// at or after `windowStart`, plus the single most recent row strictly BEFORE
+// it as a left anchor — so the line always starts at the window edge and a
+// bounded range never collapses to fewer than 2 points whenever the full
+// history actually spans it (sparse monthly-cadence history still draws a
+// continuous clipped line). "All" has no window start — pass the full series.
+function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
+  const windowStart = rangeStartDate(range);
+  if (windowStart == null) return full;
+  let anchor: SnapshotPoint | null = null;
+  const within: SnapshotPoint[] = [];
+  for (const p of full) {
+    if (p.date < windowStart) anchor = p;
+    else within.push(p);
+  }
+  return anchor ? [anchor, ...within] : within;
+}
+
 interface PortfolioTabProps {
   assets: LiveAsset[];
   grossTotal: number;
@@ -99,35 +118,21 @@ export function PortfolioTab({
   const sparklines = useSparklines(symbols, "1W");
 
   const [range, setRange] = useState<Range>("1M");
-  // Raw, DB-backed snapshot rows — kept separate from `series` (which always has
-  // `buildSeries` append a synthesized "today" tip) so callers can tell "day one"
-  // from "real history" by counting actual rows on distinct days.
-  const [rawSnapshots, setRawSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
-  const [series, setSeries] = useState<SnapshotPoint[]>(
-    initialSnapshots ? buildSeries(initialSnapshots, netTotal) : []
-  );
+  // The FULL DB-backed snapshot history (range=All) — fetched once and kept as
+  // the single authority for data extent. Coverage (`trackingSinceDate`), the
+  // marker decision, and pill-disable all derive from this, never from a
+  // range-clipped slice — otherwise a bounded window's own narrowness gets
+  // mistaken for "this account has no real history before this point".
+  const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
   const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
 
   useEffect(() => {
-    setSelectedPoint(null);
-    if (range === "1M") {
-      // Use initialSnapshots when available; stay in loading state until they arrive.
-      if (initialSnapshots) {
-        setRawSnapshots(initialSnapshots);
-        setSeries(buildSeries(initialSnapshots, netTotal));
-        setLoading(false);
-      }
-      return;
-    }
-    setLoading(true);
     const controller = new AbortController();
-    fetch(`/api/snapshots?range=${range}`, { signal: controller.signal })
+    fetch(`/api/snapshots?range=All`, { signal: controller.signal })
       .then((r) => r.json())
       .then((body) => {
-        const raw = body.data ?? [];
-        setRawSnapshots(raw);
-        setSeries(buildSeries(raw, netTotal));
+        setFullSnapshots(body.data ?? []);
         setLoading(false);
       })
       .catch((err) => {
@@ -136,10 +141,21 @@ export function PortfolioTab({
         setLoading(false);
       });
     return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, netTotal, initialSnapshots]);
+  }, []);
 
-  const trackingSinceDate = firstSnapshotDate(rawSnapshots);
+  useEffect(() => {
+    setSelectedPoint(null);
+  }, [range]);
+
+  // Display series — the full history clipped to the selected range's window
+  // (plus a left anchor so the line never collapses below 2 points), with
+  // `buildSeries` appending the synthesized "today" tip.
+  const series = useMemo(
+    () => buildSeries(clipToRange(fullSnapshots, range), netTotal),
+    [fullSnapshots, range, netTotal]
+  );
+
+  const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
   // Group by semantic category, ordered by the fixed CATEGORY_ORDER (Crypto above
   // Reserves); rows within a group still sort by value desc.
@@ -220,7 +236,7 @@ export function PortfolioTab({
               loading={loading}
               onSelectPoint={setSelectedPoint}
               valuesSettled={valuesSettled}
-              realPointCount={rawSnapshots.length}
+              realPointCount={fullSnapshots.length}
               trackingSinceDate={trackingSinceDate}
             />
             {/* Ambient projection teaser — the single scenario entry: a quiet,
@@ -228,7 +244,7 @@ export function PortfolioTab({
                 IS the affordance; tapping opens scenario explore (seeded with the
                 deterministic portfolio scenario chips). */}
             <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
-              <ProjectionTeaser onExplore={handleExplore} snapshots={rawSnapshots} />
+              <ProjectionTeaser onExplore={handleExplore} snapshots={fullSnapshots} />
             </div>
           </div>
         )}

@@ -16,7 +16,7 @@ const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
   "1W": 7, "1M": 30, "3M": 90, "1Y": 365, "3Y": 1095, "All": null,
 };
 
-function rangeStartDate(r: Range): string | null {
+export function rangeStartDate(r: Range): string | null {
   const days = RANGE_WINDOW_DAYS[r];
   if (days == null) return null;
   const d = new Date();
@@ -221,14 +221,12 @@ export function NetWorthChart(props: Props) {
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
 
+  // `realPointCount`/`trackingSinceDate` are derived from the FULL snapshot
+  // history (not the range-clipped display series) — so the marker reflects a
+  // genuine track-from-today cold start, never "this bounded window happens to
+  // be narrower than the data it's clipped from".
   const realCount = realPointCount ?? displaySeries.length;
-  // The selected timeframe reaches further back than the earliest real data we
-  // have — stretching a sparse handful of points across that width would draw a
-  // line that doesn't represent real history. Fall back to the marker state.
-  const rangeStart = rangeStartDate(range);
-  const rangePredatesHistory =
-    trackingSinceDate != null && rangeStart != null && rangeStart < trackingSinceDate;
-  const showSingleMarker = !loading && (realCount < 2 || rangePredatesHistory);
+  const showSingleMarker = !loading && realCount < 2;
   const showLabels = !showSingleMarker && !loading && displaySeries.length >= 2;
   const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
   const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
