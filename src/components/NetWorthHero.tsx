@@ -80,7 +80,13 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       const valueChanged = m.before_value !== m.after_value;
       const unitsChanged = m.before_units !== m.after_units;
       if (!valueChanged && !unitsChanged) return false;
-      const day = (m.occurred_at || m.recorded_at).slice(0, 10);
+      // Window membership is decided by WHEN THE HOLDING CHANGE HAPPENED
+      // (occurred_at = buy_date), never by when the row was recorded — a
+      // historically-acquired position imported today must register as a
+      // flow into the window containing its acquisition date, not into
+      // whatever recent window happens to contain the import.
+      const day = m.occurred_at?.slice(0, 10);
+      if (!day) return false;
       return day >= seriesStart.date && day <= compareEnd;
     });
 
