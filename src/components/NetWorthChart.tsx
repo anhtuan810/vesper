@@ -58,41 +58,6 @@ function fmtYLabel(value: number, currency: string): string {
   return `${sign}${sym}${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
 }
 
-// Round value up to the next clean increment based on magnitude.
-function niceCeil(value: number): number {
-  if (value <= 0) return 0;
-  const step =
-    value < 10_000     ? 1_000 :
-    value < 100_000    ? 5_000 :
-    value < 1_000_000  ? 25_000 :
-    value < 10_000_000 ? 100_000 : 1_000_000;
-  return Math.ceil(value / step) * step;
-}
-
-// Generate Y-axis labels confined to [0, max] with a clean step.
-// Prefers 3–6 labels; always includes 0 and max.
-function computeNiceLabels(max: number): number[] {
-  if (max <= 0) return [0];
-  const rawBase = Math.pow(10, Math.floor(Math.log10(max)));
-  // Try coarser steps first so we get fewer, cleaner labels
-  for (const m of [2.5, 2, 1.5, 1, 0.5, 0.25, 0.2, 0.15, 0.1]) {
-    const step = rawBase * m;
-    const count = max / step;
-    if (Number.isInteger(count) && count >= 3 && count <= 6) {
-      return Array.from({ length: count + 1 }, (_, i) => step * i);
-    }
-  }
-  // Fallback: allow up to 8 labels
-  for (const m of [0.5, 0.25, 0.2, 0.1]) {
-    const step = rawBase * m;
-    const count = max / step;
-    if (Number.isInteger(count) && count >= 3 && count <= 8) {
-      return Array.from({ length: count + 1 }, (_, i) => step * i);
-    }
-  }
-  return [0, max / 2, max];
-}
-
 interface NiceLevels {
   niceMin: number;
   niceMax: number;
@@ -138,6 +103,23 @@ function computeNiceLevels(dataMin: number, dataMax: number): NiceLevels {
 
   const mid = (dataMin + dataMax) / 2;
   return { niceMin: dataMin, niceMax: dataMax, labels: [dataMin, mid, dataMax] };
+}
+
+// Fits the y-axis to the visible (range-clipped) series rather than always
+// spanning 0..max — so 1W zooms tight to that week's band and All spans the
+// full history. Pads ~8% of the data span above and below so the line never
+// sits flush against an edge, then nice-rounds the bounds to clean values.
+// Near-flat windows (min ≈ max) get a minimum span centered on the value so
+// the line reads as a calm flat band, not as exaggerated noise blown up from
+// a near-zero data range.
+function computeYAxisDomain(dataMin: number, dataMax: number): NiceLevels {
+  const mid = (dataMin + dataMax) / 2;
+  const span = dataMax - dataMin;
+  const minSpan = Math.max(Math.abs(mid) * 0.04, 1);
+  const effMin = span < minSpan ? mid - minSpan / 2 : dataMin;
+  const effMax = span < minSpan ? mid + minSpan / 2 : dataMax;
+  const pad = (effMax - effMin) * 0.08;
+  return computeNiceLevels(effMin - pad, effMax + pad);
 }
 
 const CHART_PAD_TOP = 6;
@@ -231,12 +213,12 @@ export function NetWorthChart(props: Props) {
   const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
   const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
 
-  // Y domain: always floor at 0; cap at niceCeil(dataMax * 1.08) so the line sits
-  // in the upper third.
-  const rawMax = values.length >= 2 ? Math.max(...values) : 1;
-  const niceMin = 0;
-  const niceMax = niceCeil(rawMax * 1.08);
-  const yLabels = computeNiceLabels(niceMax);
+  // Y domain fits the visible (range-clipped) series — recomputed on every
+  // range switch, so 1W zooms tight to that week's band and All spans the
+  // full history, rather than always stretching from 0 to the all-time max.
+  const dataMin = values.length >= 2 ? Math.min(...values) : 0;
+  const dataMax = values.length >= 2 ? Math.max(...values) : 1;
+  const { niceMin, niceMax, labels: yLabels } = computeYAxisDomain(dataMin, dataMax);
 
   const drawW = W - CHART_PAD_RIGHT;
   const projectY = makeProjectY(H, niceMin, niceMax);
