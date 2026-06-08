@@ -670,6 +670,23 @@ export async function applyPortfolioChanges({
           if (editedMutation?.id && !onlyNameChanged) {
             mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
           }
+
+          // Image-import workflow: the batch is committed (action "add",
+          // occurred_at = today, since the acquisition date isn't known yet)
+          // BEFORE the model asks "when did you start holding most of these?"
+          // — the answer then arrives as an "edit" carrying buy_date. That's
+          // the position's REAL acquisition date, so retroactively stamp the
+          // asset's original "add" mutation with it — exactly the basis the
+          // single-add path uses up front (line ~442) — so the period delta
+          // and backfill key off when the holding was actually acquired, not
+          // when the row happened to be imported.
+          if (change.buy_date) {
+            await supabase.from("mutations")
+              .update({ occurred_at: change.buy_date })
+              .eq("user_id", userId)
+              .eq("asset_id", existing.id)
+              .eq("action", "add");
+          }
         }
       } else {
         // The named asset isn't in the portfolio — surface a clear error instead
