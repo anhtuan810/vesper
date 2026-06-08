@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
-import { getUsdRate } from "@/lib/money";
+import { getUsdRate, type DisplayCurrency } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
@@ -27,6 +27,12 @@ export function rangeStartDate(r: Range): string | null {
 export interface SnapshotPoint {
   date: string;
   total_value: number;
+  // Historical USD→{display currency} rates for THIS row's own date — the same
+  // basis `total_value` was stored with (see /api/snapshots). Converting with
+  // these (rather than today's rate) is what makes a same-currency asset cancel
+  // back to its native value across its whole history. Absent on synthesized
+  // points (e.g. today's live tip), which fall back to the current rate.
+  fx?: Partial<Record<DisplayCurrency, number>>;
 }
 
 interface Props {
@@ -195,9 +201,18 @@ export function NetWorthChart(props: Props) {
   const H = 140;
 
   // Convert all series values to display currency so the axis and curve are in
-  // the same unit as the hero number above the chart.
+  // the same unit as the hero number above the chart. Each row was stored in
+  // USD at ITS OWN date's historical FX rate — converting back with that same
+  // per-date rate (`p.fx`) is what makes a same-currency asset cancel exactly
+  // to its native value across its whole history. Using today's rate for every
+  // point would inject FX drift as fake jaggedness. The synthesized "today" tip
+  // has no stored `fx` (it's live, not a historical row) — it correctly falls
+  // back to the current rate, the same basis the headline uses.
   const displayRate = getUsdRate(displayCurrency);
-  const converted = displaySeries.map((p) => ({ ...p, total_value: p.total_value * displayRate }));
+  const converted = displaySeries.map((p) => {
+    const rate = displayCurrency === "USD" ? 1 : (p.fx?.[displayCurrency] ?? displayRate);
+    return { ...p, total_value: p.total_value * rate };
+  });
 
   const values = converted.map((p) => p.total_value);
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;

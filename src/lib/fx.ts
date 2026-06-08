@@ -128,7 +128,30 @@ export async function getHistoricalUsdRates(from: string, to: string): Promise<F
   }
 }
 
-// Converts a native-currency amount to USD.
+// Most recent real historical USD rate at or before `date` for `currency`,
+// walking the Frankfurter time-series (which has gaps on weekends/holidays).
+// Falls back to the current-day rate when the series has no entry at/before
+// the date or doesn't cover the currency at all. Shared by the snapshot
+// backfill (storage basis) and the snapshots API (so the client can convert
+// each historical row at the SAME per-date rate it was stored with).
+export function historicalFxRate(
+  series: FxSeries,
+  sortedDates: string[],
+  date: string,
+  currency: string,
+  currentFx: Record<string, number>,
+): number | null {
+  if (currency === "USD") return 1;
+  let result: number | null = null;
+  for (const d of sortedDates) {
+    if (d > date) break;
+    const rate = series[d]?.[currency];
+    if (rate != null) result = rate;
+  }
+  return result ?? currentFx[currency] ?? null;
+}
+
+
 // Returns null only when the FX table is empty AND the API is down.
 export async function toUsd(amount: number, nativeCurrency: string): Promise<number | null> {
   // USD → USD is a no-op

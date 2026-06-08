@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
-import { getUsdRates, getHistoricalUsdRates, type FxSeries } from "@/lib/fx";
+import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
@@ -115,27 +115,6 @@ function priceAtOrBefore(
     result = { price: entry.price, currency: entry.currency };
   }
   return result;
-}
-
-// Most recent real historical USD rate at or before `date` for `currency`,
-// walking the Frankfurter time-series (which has gaps on weekends/holidays).
-// Falls back to the current-day rate when the series has no entry at/before
-// the date or doesn't cover the currency at all.
-function historicalFxRate(
-  series: FxSeries,
-  sortedDates: string[],
-  date: string,
-  currency: string,
-  currentFx: Record<string, number>,
-): number | null {
-  if (currency === "USD") return 1;
-  let result: number | null = null;
-  for (const d of sortedDates) {
-    if (d > date) break;
-    const rate = series[d]?.[currency];
-    if (rate != null) result = rate;
-  }
-  return result ?? currentFx[currency] ?? null;
 }
 
 function isNL(country: string | null | undefined): boolean {
@@ -376,9 +355,24 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         } else if (type === "real_estate") {
           const cur = (asset.currency as string | null) || "USD";
           const reIndex = realEstateIndexes.get(asset.id as string);
-          const grossValue = reIndex
-            ? (asset.buy_price as number) * ((indexAtYear(reIndex.points, Number(date.slice(0, 4))) ?? reIndex.indexAtBuy) / reIndex.indexAtBuy)
-            : (asset.value as number);
+          let grossValue: number;
+          if (reIndex) {
+            const buyPrice = asset.buy_price as number;
+            const currentValue = asset.value as number;
+            // Anchor the CBS-shaped curve at BOTH ends — buy_price at buy_date,
+            // the user's stated current value at today — so the reconstruction
+            // lands exactly on the live figure with no step at the live tip.
+            // The CBS index still drives the SHAPE: `t` is the fraction of the
+            // index's total cumulative growth (buy → today) reached by `date`,
+            // and that fraction is applied to the buy→current price gap.
+            const ratioAtDate = (indexAtYear(reIndex.points, Number(date.slice(0, 4))) ?? reIndex.indexAtBuy) / reIndex.indexAtBuy;
+            const ratioToday = (indexAtYear(reIndex.points, Number(todayStr.slice(0, 4))) ?? reIndex.indexAtBuy) / reIndex.indexAtBuy;
+            const totalGrowth = ratioToday - 1;
+            const t = Math.abs(totalGrowth) > 1e-9 ? (ratioAtDate - 1) / totalGrowth : 1;
+            grossValue = buyPrice + t * (currentValue - buyPrice);
+          } else {
+            grossValue = asset.value as number;
+          }
           const equity = grossValue - computeCurrentBalance(asset, asOf);
           const reRate = rateAt(date, cur);
           contribution = cur === "USD" ? equity : (reRate ? equity / reRate : 0);
