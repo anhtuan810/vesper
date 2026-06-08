@@ -883,6 +883,11 @@ export async function POST(req: NextRequest) {
     let needsBackfill = false;
     let hasAdds = false;
     let analyticsEvent: string | null = null;
+    // Earliest acquisition date among this turn's adds/removes — every snapshot
+    // row from this date forward must be rebuilt (not upsert-skipped) to
+    // actually include/exclude the asset. See agent-tools.ts's commitMutationTool
+    // for the canonical computation this mirrors.
+    let rebuildFrom: string | null = null;
 
     // --- Apply portfolio changes ---
     if (changesRaw) {
@@ -964,6 +969,27 @@ export async function POST(req: NextRequest) {
             proposalTimestamp,
           });
           portfolioChanged = changed;
+
+          {
+            const considerRebuildDate = (d: string | null | undefined) => {
+              if (!d) return;
+              if (rebuildFrom === null || d < rebuildFrom) rebuildFrom = d;
+            };
+            for (const c of changes) {
+              if (c.action === "add") {
+                considerRebuildDate(c.buy_date ?? null);
+              } else if (c.action === "remove") {
+                const matching = currentAssets.filter(
+                  (a) => a.name.toLowerCase() === c.name?.toLowerCase() ||
+                         (a.symbol && a.symbol.toLowerCase() === c.name?.toLowerCase())
+                );
+                for (const existing of matching) {
+                  considerRebuildDate(existing.buy_date ?? existing.created_at?.slice(0, 10) ?? null);
+                }
+              }
+            }
+          }
+
           if (mutationMetas.length > 0) {
             after(async () => {
               try {
@@ -1139,7 +1165,7 @@ export async function POST(req: NextRequest) {
       if (needsBackfill) {
         after(async () => {
           try {
-            await backfillSnapshots(userId);
+            await backfillSnapshots(userId, rebuildFrom);
           } catch (err) {
             Sentry.captureException(err, { tags: { background: "backfill-snapshots" } });
           }

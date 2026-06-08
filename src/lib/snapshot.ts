@@ -215,8 +215,16 @@ function targetSnapshotDates(earliest: string, todayStr: string): string[] {
 }
 
 // Backfills historical net-worth snapshots using actual units held at each date.
-// Only writes rows that don't already exist (ignoreDuplicates: true).
-export async function backfillSnapshots(userId: string): Promise<void> {
+// Normally only writes rows that don't already exist (ignoreDuplicates: true) —
+// recomputing every existing row on every call would be wasteful and would
+// fight the live cron's "today" row. But adding or removing a dated asset
+// changes what EVERY historical row from that asset's acquisition date forward
+// should contain, and upsert-skip would leave those rows stale (missing the
+// asset entirely). When `rebuildFrom` is given, every snapshot row — backfilled
+// or daily-cron alike — with `date >= rebuildFrom` (today's row excluded; the
+// live cron owns it) is deleted and recomputed from the current asset set, so
+// the corrected total actually lands instead of being discarded as a duplicate.
+export async function backfillSnapshots(userId: string, rebuildFrom?: string | null): Promise<void> {
   try {
     const supabase = createServerSupabase();
 
@@ -333,9 +341,13 @@ export async function backfillSnapshots(userId: string): Promise<void> {
     const rateAt = (date: string, currency: string) =>
       historicalFxRate(fxSeries, fxSeriesDates, date, currency, fx);
 
-    const rows: Array<{ user_id: string; date: string; total_value: number; breakdown: Record<string, number> }> = [];
+    type SnapshotRow = { user_id: string; date: string; total_value: number; breakdown: Record<string, number> };
 
-    for (const date of dates) {
+    // Computes a single date's row from the CURRENT asset set — the same logic
+    // used for the standard backfill pass, factored out so a rebuild can also
+    // recompute arbitrary pre-existing (e.g. daily-cron) dates that fall
+    // outside the standard sparse `dates` set.
+    const computeRow = (date: string): SnapshotRow | null => {
       const asOf = new Date(date + "T12:00:00Z");
       let total = 0;
       const breakdown: Record<string, number> = {};
@@ -389,8 +401,67 @@ export async function backfillSnapshots(userId: string): Promise<void> {
       }
 
       if (total > 0) {
-        rows.push({ user_id: userId, date, total_value: Math.round(total), breakdown });
+        return { user_id: userId, date, total_value: Math.round(total), breakdown };
       }
+      return null;
+    };
+
+    const rows: SnapshotRow[] = [];
+    for (const date of dates) {
+      const row = computeRow(date);
+      if (row) rows.push(row);
+    }
+
+    if (rebuildFrom) {
+      // Rebuild range is [rebuildFrom, todayStr) — today's row belongs to the
+      // live cron (writeSnapshot), never touched here.
+      const rebuildStart = rebuildFrom < earliest ? earliest : rebuildFrom;
+
+      // Pre-existing rows in the rebuild range may include dates the standard
+      // sparse `dates` set doesn't cover (e.g. older daily-cron rows) — those
+      // need recomputing too, or they'd survive the delete... no, they'd be
+      // deleted and never reinserted, silently losing granularity.
+      const { data: existingSnaps, error: existErr } = await supabase
+        .from("snapshots")
+        .select("date")
+        .eq("user_id", userId)
+        .gte("date", rebuildStart)
+        .lt("date", todayStr);
+      if (existErr) throw existErr;
+
+      const targetSet = new Set(dates);
+      const extraRows: SnapshotRow[] = [];
+      for (const s of existingSnaps ?? []) {
+        const d = s.date as string;
+        if (targetSet.has(d)) continue;
+        const row = computeRow(d);
+        if (row) extraRows.push(row);
+      }
+
+      const carryRows = rows.filter((r) => r.date < rebuildStart);
+      const rebuildRows = [...rows.filter((r) => r.date >= rebuildStart), ...extraRows];
+
+      if (carryRows.length > 0) {
+        const { error } = await supabase.from("snapshots").upsert(carryRows, {
+          onConflict: "user_id,date",
+          ignoreDuplicates: true,
+        });
+        if (error) throw error;
+      }
+
+      const { error: delError } = await supabase
+        .from("snapshots")
+        .delete()
+        .eq("user_id", userId)
+        .gte("date", rebuildStart)
+        .lt("date", todayStr);
+      if (delError) throw delError;
+
+      if (rebuildRows.length > 0) {
+        const { error: insError } = await supabase.from("snapshots").insert(rebuildRows);
+        if (insError) throw insError;
+      }
+      return;
     }
 
     if (rows.length === 0) return;

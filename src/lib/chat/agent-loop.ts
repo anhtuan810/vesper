@@ -159,7 +159,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       });
     }
     after(async () => { try { await writeSnapshot(input.userId); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-snapshot" } }); } });
-    if (commit.needsBackfill) after(async () => { try { await backfillSnapshots(input.userId); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-backfill" } }); } });
+    if (commit.needsBackfill) after(async () => { try { await backfillSnapshots(input.userId, commit.rebuildFrom); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-backfill" } }); } });
     after(async () => {
       try {
         const sb = createServerSupabase();

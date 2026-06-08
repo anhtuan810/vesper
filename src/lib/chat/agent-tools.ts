@@ -42,6 +42,11 @@ export interface CommitOutcome {
   analyticsEvent: string | null;
   needsBackfill: boolean;
   hasAdds: boolean;
+  // Earliest acquisition date among this batch's adds/removes — every snapshot
+  // row from this date forward must be rebuilt to include/exclude the asset
+  // (upsert-skip would otherwise leave stale rows behind it). Null when no
+  // change in the batch actually altered the historical asset set.
+  rebuildFrom: string | null;
 }
 
 export interface ToolOutcome {
@@ -532,8 +537,41 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   });
 
   const notes = [...duplicateWarnings, ...fxWarnings, ...failures.map((f) => `Couldn't record ${f.name}.`)];
+
+  // Adding or removing a dated asset changes what every historical snapshot
+  // row from its acquisition date forward should contain — those rows must be
+  // rebuilt (not upsert-skipped) to actually include/exclude it. Take the
+  // EARLIEST such date across the batch: a single rebuild pass covers them all.
+  // `applyPortfolioChanges` resolves `change.buy_date` to an ISO string IN
+  // PLACE (apply-changes.ts), so the post-call value reflects the real
+  // acquisition date for adds/edits. Removes have no resolved date on the
+  // change itself — fall back to the matched existing asset's own buy_date /
+  // created_at (the date its history began).
+  let rebuildFrom: string | null = null;
+  const considerDate = (d: string | null | undefined) => {
+    if (!d) return;
+    if (rebuildFrom === null || d < rebuildFrom) rebuildFrom = d;
+  };
+  for (const c of changes as Array<{ action?: string; name?: string; buy_date?: string }>) {
+    if (c.action === "add") {
+      considerDate(c.buy_date ?? null);
+    } else if (c.action === "remove" && c.name) {
+      const name = c.name.toLowerCase();
+      const matching = ctx.currentAssets.filter((a) => {
+        const aName = String(a.name ?? "").toLowerCase();
+        const aSymbol = a.symbol ? String(a.symbol).toLowerCase() : null;
+        return aName === name || aSymbol === name;
+      });
+      for (const existing of matching) {
+        const buyDate = (existing.buy_date as string | null | undefined) ?? null;
+        const createdAt = (existing.created_at as string | null | undefined) ?? null;
+        considerDate(buyDate ?? createdAt?.slice(0, 10) ?? null);
+      }
+    }
+  }
+
   return {
     forModel: { committed: changed, ...(notes.length ? { notes } : {}) },
-    commit: { changed, mutationMetas, analyticsEvent: hasAdds ? "first_asset_added" : null, needsBackfill, hasAdds },
+    commit: { changed, mutationMetas, analyticsEvent: hasAdds ? "first_asset_added" : null, needsBackfill, hasAdds, rebuildFrom },
   };
 }
