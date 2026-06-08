@@ -109,22 +109,6 @@ export function PortfolioTab({
   const [loading, setLoading] = useState(!initialSnapshots);
   const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
 
-  // Modeled (reconstructed, never-persisted) segment that precedes the first
-  // live snapshot — fetched once; the chart decides per-range whether the
-  // selected window reaches back far enough to show it.
-  const [modeledSeries, setModeledSeries] = useState<SnapshotPoint[]>([]);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/net-worth-history", { signal: controller.signal })
-      .then((r) => r.json())
-      .then((body) => setModeledSeries(body.modeled ?? []))
-      .catch((err) => {
-        if (err.name === "AbortError") return;
-        console.error("Modeled history fetch failed:", err);
-      });
-    return () => controller.abort();
-  }, []);
-
   useEffect(() => {
     setSelectedPoint(null);
     if (range === "1M") {
@@ -224,7 +208,7 @@ export function PortfolioTab({
           chart and range pills sit flush with the full-bleed market/insight band edges. */}
       <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} valuesSettled={valuesSettled} mutations={mutations} modeledSeries={modeledSeries} />
+          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} valuesSettled={valuesSettled} mutations={mutations} />
         </div>
 
         {netTotal > 0 && (
@@ -238,7 +222,6 @@ export function PortfolioTab({
               valuesSettled={valuesSettled}
               realPointCount={rawSnapshots.length}
               trackingSinceDate={trackingSinceDate}
-              modeledSeries={modeledSeries}
             />
             {/* Ambient projection teaser — the single scenario entry: a quiet,
                 left-aligned, trajectory-aware line under the chart. The sentence

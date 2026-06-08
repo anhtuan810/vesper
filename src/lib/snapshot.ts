@@ -239,8 +239,8 @@ export async function backfillSnapshots(userId: string): Promise<void> {
 
     // NL real estate with a logged purchase + resolvable region: precompute the
     // CBS-index ratio reconstruction — buy_price scaled by index_year/index_buyYear
-    // — the same basis modeled-history's reconstructRealEstate (and the live
-    // estimateValue) use. Equity is index-scaled gross value minus the live
+    // — the same basis the live estimateValue uses for the current figure.
+    // Equity is index-scaled gross value minus the live
     // amortisation model's balance at each date. Anything else (no NL address,
     // no buy_price, unresolvable region/index) falls back to flat current-value
     // equity below — the prior behavior.
