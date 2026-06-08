@@ -25,7 +25,6 @@ import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
 import { parseBuyYear, clampBuyYear, normalizeIndex, type IndexPoint } from "@/lib/property-estimate";
-import { getUsdRates } from "@/lib/fx";
 import { getMonthlyCloseSeries, getMonthlyFxRates } from "@/lib/historical-cache";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
@@ -100,9 +99,6 @@ interface MonthlyContribution {
   // months → native-currency amount, plus the currency to convert from
   amounts: Map<string, number>;
   currency: string;
-  // true → convert each month at the REAL historical USD rate for that month;
-  // false → convert once at the current rate (flat values carry no FX slope)
-  useHistoricalFx: boolean;
 }
 
 async function reconstructTradeable(
@@ -123,7 +119,7 @@ async function reconstructTradeable(
     amounts.set(month, close.price * (asset.units as number));
   }
   if (amounts.size === 0) return null;
-  return { amounts, currency, useHistoricalFx: true };
+  return { amounts, currency };
 }
 
 async function reconstructRealEstate(
@@ -155,14 +151,14 @@ async function reconstructRealEstate(
     amounts.set(month, equity);
   }
   if (amounts.size === 0) return null;
-  return { amounts, currency: asset.currency || "USD", useHistoricalFx: false };
+  return { amounts, currency: asset.currency || "USD" };
 }
 
 function reconstructFlat(asset: ModeledAssetInput, months: string[]): MonthlyContribution | null {
   const amounts = new Map<string, number>();
   for (const month of months) amounts.set(month, asset.value);
   if (amounts.size === 0) return null;
-  return { amounts, currency: asset.currency || "USD", useHistoricalFx: false };
+  return { amounts, currency: asset.currency || "USD" };
 }
 
 // Builds a monthly modeled net-worth series (USD) spanning from the earliest
@@ -187,8 +183,7 @@ export async function buildModeledHistory(
   if (allMonths.length === 0) return EMPTY;
 
   const contributions: MonthlyContribution[] = [];
-  const neededCurrencies = new Set<string>();
-  const neededHistoricalMonths = new Set<string>();
+  const neededMonthsByCurrency = new Map<string, Set<string>>();
 
   for (const { asset, acquiredMonth } of dated) {
     const months = allMonths.filter((m) => m >= acquiredMonth);
@@ -206,25 +201,25 @@ export async function buildModeledHistory(
     contributions.push(contribution);
     const cur = contribution.currency === "GBp" ? "GBP" : contribution.currency;
     if (cur !== "USD") {
-      neededCurrencies.add(cur);
-      if (contribution.useHistoricalFx) {
-        for (const m of contribution.amounts.keys()) neededHistoricalMonths.add(m);
-      }
+      if (!neededMonthsByCurrency.has(cur)) neededMonthsByCurrency.set(cur, new Set());
+      const set = neededMonthsByCurrency.get(cur)!;
+      for (const m of contribution.amounts.keys()) set.add(m);
     }
   }
   if (contributions.length === 0) return EMPTY;
 
-  // Real historical FX for currencies that slope month-to-month (tradeables);
-  // a single current-rate snapshot for currencies whose contributions are flat
-  // (no slope to convert — converting at today's rate doesn't fabricate one).
-  const historicalMonths = [...neededHistoricalMonths].sort();
+  // Every non-USD contribution — including flat-held cash/manual/real-estate
+  // values — converts at the REAL historical USD rate for ITS month. A flat
+  // native-currency value still moves in USD terms as real exchange rates
+  // move; freezing it at today's rate would erase that real movement (and a
+  // single fixed rate would also break reconciliation with the live snapshot,
+  // which sums each asset's native value at ITS date's real FX rate).
   const historicalFx = new Map<string, Map<string, number>>();
   await Promise.all(
-    [...neededCurrencies].map(async (cur) => {
-      historicalFx.set(cur, await getMonthlyFxRates(cur, historicalMonths));
+    [...neededMonthsByCurrency.entries()].map(async ([cur, months]) => {
+      historicalFx.set(cur, await getMonthlyFxRates(cur, [...months].sort()));
     }),
   );
-  const currentFx = await getUsdRates();
 
   const totals = new Map<string, number>();
   for (const c of contributions) {
@@ -233,13 +228,9 @@ export async function buildModeledHistory(
       let usd: number;
       if (cur === "USD") {
         usd = amount;
-      } else if (c.useHistoricalFx) {
+      } else {
         const rate = historicalFx.get(cur)?.get(month);
         if (rate == null || rate <= 0) continue;
-        usd = amount / rate;
-      } else {
-        const rate = currentFx[cur];
-        if (!rate || rate <= 0) continue;
         usd = amount / rate;
       }
       totals.set(month, (totals.get(month) ?? 0) + usd);
