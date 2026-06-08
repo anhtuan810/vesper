@@ -4,7 +4,7 @@ import { formatMoney } from "@/lib/money";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import type { SnapshotPoint, Range } from "@/components/NetWorthChart";
 import type { Mutation } from "@/lib/supabase";
-import { firstSnapshotDate, hasSufficientHistory } from "@/lib/networth-history";
+import { firstSnapshotDate, hasSufficientHistory, dataFloorDate, valueAtOrBefore } from "@/lib/networth-history";
 
 const RANGE_LABEL: Record<Range, string> = {
   "1W": "past week",
@@ -33,6 +33,10 @@ interface NetWorthHeroProps {
   series?: SnapshotPoint[];
   valuesSettled: boolean;
   mutations?: Mutation[];
+  // Deterministically reconstructed (never-persisted) points preceding the
+  // first live snapshot — see /api/net-worth-history. Lets the period anchor
+  // reach back past live tracking start when the modeled segment covers it.
+  modeledSeries?: SnapshotPoint[];
 }
 
 function fmtSelectedDate(dateStr: string): string {
@@ -49,7 +53,7 @@ function fmtPct(n: number): string {
   }).format(n);
 }
 
-export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled, mutations }: NetWorthHeroProps) {
+export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled, mutations, modeledSeries }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
 
   const seriesStart = series?.[0];
@@ -63,8 +67,20 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
 
   // True only when a real snapshot already existed at/before the window start —
   // i.e. this comparison reflects market history, not the moment data entry began.
-  const sufficientHistory =
+  const liveSufficient =
     series != null && series.length >= 2 && windowStartDate != null && hasSufficientHistory(series, windowStartDate);
+
+  // When live tracking doesn't reach back to the window start, but the modeled
+  // (reconstructed) segment does, anchor the comparison on the modeled value at
+  // that date instead — the same trajectory the chart draws, just sampled at
+  // the window edge — rather than silently falling back to "since {live start}".
+  const modeled = modeledSeries ?? [];
+  const floorDate = dataFloorDate(series ? firstSnapshotDate(series) : null, modeled[0]?.date ?? null);
+  const modeledCoversWindowStart =
+    !liveSufficient && windowStartDate != null && floorDate != null && floorDate <= windowStartDate && modeled.length > 0;
+  const modeledBaseValue = modeledCoversWindowStart ? valueAtOrBefore(modeled, windowStartDate as string) : null;
+
+  const sufficientHistory = liveSufficient || modeledBaseValue != null;
 
   // Any mutation that actually changed a holding's recorded value or unit count —
   // an add, a remove, a quantity top-up, or a cost-basis correction — is a flow
@@ -93,8 +109,10 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       : null;
   const showSelected = selectedPoint != null && selAbs != null && selPct != null;
 
-  // Range change — series[0] to netTotal (inherits whichever range the chart is on)
-  const baseValue = seriesStart?.total_value;
+  // Range change — anchored on the modeled value at the window start when live
+  // tracking doesn't reach back that far (and the modeled segment does);
+  // otherwise series[0] (inherits whichever range the chart is on).
+  const baseValue = modeledBaseValue ?? seriesStart?.total_value;
   const rangeAbs =
     baseValue != null && baseValue > 0 && series && series.length >= 2
       ? netTotal - baseValue

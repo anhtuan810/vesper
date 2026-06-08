@@ -5,6 +5,7 @@ import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { getUsdRate } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
+import { dataFloorDate } from "@/lib/networth-history";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -257,7 +258,7 @@ export function NetWorthChart(props: Props) {
   const modeledColor = "var(--accent)";
 
   const realCount = realPointCount ?? displaySeries.length;
-  // The selected timeframe reaches further back than the earliest real data we
+  // The selected timeframe reaches further back than the earliest LIVE data we
   // have — stretching a sparse handful of points across that width would draw a
   // line that doesn't represent real history. The modeled segment (when it
   // covers the gap) replaces that stretch with an honest reconstruction.
@@ -274,7 +275,16 @@ export function NetWorthChart(props: Props) {
   const modeledConverted = modeledInRange.map((p) => p.total_value * displayRate);
   const showStitched = !loading && rangePredatesHistory && modeledConverted.length > 0 && values.length >= 2;
 
-  const showSingleMarker = !loading && (realCount < 2 || (rangePredatesHistory && !showStitched));
+  // The data floor — earliest point across modeled ∪ live — is what actually
+  // bounds "is there anything honest to draw here", not the live tracking start
+  // alone (which ignores the reconstructed segment entirely). A sparse live
+  // history (realCount < 2) only forces the empty marker when stitching can't
+  // fill the gap; once `showStitched` can draw a full line, the marker must not
+  // override it.
+  const modeledStart = (props.modeledSeries ?? [])[0]?.date ?? null;
+  const dataFloor = dataFloorDate(trackingSinceDate ?? null, modeledStart);
+
+  const showSingleMarker = !loading && !showStitched && (realCount < 2 || rangePredatesHistory);
   const showLabels = !showSingleMarker && !loading && displaySeries.length >= 2;
   const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
   const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
@@ -466,7 +476,7 @@ export function NetWorthChart(props: Props) {
       >
         {RANGES.map((r) => {
           const start = rangeStartDate(r);
-          const disabled = trackingSinceDate != null && start != null && start < trackingSinceDate;
+          const disabled = dataFloor != null && start != null && start < dataFloor;
           return (
           <button
             key={r}

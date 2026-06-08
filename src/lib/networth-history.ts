@@ -23,3 +23,24 @@ export function hasSufficientHistory(snapshots: SnapshotLike[], windowStart: str
   const first = firstSnapshotDate(snapshots);
   return first != null && first <= windowStart;
 }
+
+// The true earliest point we can draw an honest line from — modeled segment
+// included. `firstSnapshotDate` alone only sees live (DB-backed) history, which
+// understates coverage whenever a reconstructed modeled segment precedes it.
+export function dataFloorDate(liveFirst: string | null, modeledFirst: string | null): string | null {
+  if (liveFirst == null) return modeledFirst;
+  if (modeledFirst == null) return liveFirst;
+  return modeledFirst < liveFirst ? modeledFirst : liveFirst;
+}
+
+// Latest point at or before `target` in an ascending-sorted series; falls back
+// to the series' first point when `target` predates the series itself (still
+// valid to call here only when `target >= dataFloorDate(...)`).
+export function valueAtOrBefore(series: SnapshotLike[], target: string): number | null {
+  let result: number | null = null;
+  for (const p of series) {
+    if (p.date <= target) result = p.total_value;
+    else break;
+  }
+  return result ?? (series[0]?.total_value ?? null);
+}
