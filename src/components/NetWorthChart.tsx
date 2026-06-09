@@ -125,7 +125,9 @@ function computeYAxisDomain(dataMin: number, dataMax: number): NiceLevels {
   const effMin = span < minSpan ? mid - minSpan / 2 : dataMin;
   const effMax = span < minSpan ? mid + minSpan / 2 : dataMax;
   const pad = (effMax - effMin) * 0.08;
-  return computeNiceLevels(effMin - pad, effMax + pad);
+  // Never let the y-axis dip below zero when all data is non-negative.
+  const rawMin = effMin - pad;
+  return computeNiceLevels(dataMin >= 0 ? Math.max(0, rawMin) : rawMin, effMax + pad);
 }
 
 const CHART_PAD_TOP = 6;
