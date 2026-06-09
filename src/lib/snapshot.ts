@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
-import { computeCurrentBalance } from "@/lib/mortgage";
+import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
 import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
@@ -255,7 +255,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // Load all assets
     const { data: assets, error: aErr } = await supabase
       .from("assets")
-      .select("id, type, value, currency, symbol, created_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
+      .select("id, type, value, currency, symbol, created_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
       .eq("user_id", userId);
     if (aErr) throw aErr;
     if (!assets || assets.length === 0) return;
@@ -329,6 +329,42 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
           realEstateT.set(a.id as string, shapeT ?? linearT);
         }),
     );
+
+    // Per real-estate asset: build a historical balance sampler from projectMortgage.
+    // Uses the same schedule the MortgageBlock card uses so the today value matches.
+    // Falls back to computeCurrentBalance in computeRow when no usable schedule.
+    const realEstateBalanceAt = new Map<string, (date: string) => number>();
+    const todayDate = new Date(todayStr + "T12:00:00Z");
+    for (const a of assets.filter((x) => x.type === "real_estate")) {
+      const currentBalance = computeCurrentBalance(a, todayDate);
+      if (currentBalance <= 0) continue;
+      const rate = a.mortgage_rate as number | null;
+      const type = (a.mortgage_type as string | null) ?? "annuity";
+      const startStr = (a.mortgage_start_date as string | null) ?? (a.buy_date as string | null);
+      const endStr = a.mortgage_end_date as string | null;
+      if (!startStr || rate == null) continue;
+      let pmt = a.monthly_payment as number | null;
+      const startDate = new Date(startStr);
+      const endDate = endStr ? new Date(endStr) : undefined;
+      if (pmt == null && type !== "interest_only" && endDate) {
+        const rem = monthsBetween(todayDate, endDate);
+        if (rem > 0) pmt = annuityPayment(currentBalance, rate, rem);
+      }
+      if (pmt == null && type !== "interest_only") continue;
+      const proj = projectMortgage(currentBalance, rate, pmt ?? 0, type as "annuity" | "linear" | "interest_only", startDate, todayDate, endDate);
+      if (proj.status !== "ok" || proj.balanceCurve.length < 2) continue;
+      const curve = proj.balanceCurve;
+      const startFy = fractionalYear(startStr.slice(0, 10));
+      const balAt = (date: string): number => {
+        const k = (fractionalYear(date) - startFy) * 12;
+        if (k <= 0) return curve[0].balance;
+        const i = Math.floor(k);
+        if (i >= curve.length - 1) return curve[curve.length - 1].balance;
+        const frac = k - i;
+        return curve[i].balance + frac * (curve[i + 1].balance - curve[i].balance);
+      };
+      realEstateBalanceAt.set(a.id as string, balAt);
+    }
 
     // Build per-asset unit timeline.
     // Mutations with null occurred_at (starting positions) are placed at earliest.
@@ -426,7 +462,10 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
             } else {
               grossValue = currentValue;
             }
-            const equity = grossValue - computeCurrentBalance(asset, asOf);
+            const balFn = realEstateBalanceAt.get(asset.id as string);
+            let balance = balFn ? balFn(date) : computeCurrentBalance(asset, asOf);
+            balance = Math.max(0, Math.min(balance, grossValue));
+            const equity = grossValue - balance;
             const reRate = rateAt(date, cur);
             contribution = cur === "USD" ? equity : (reRate ? equity / reRate : 0);
           }

@@ -524,7 +524,19 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   if (validationError) return { forModel: { error: validationError } };
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
-  const needsBackfill = changes.length > 1 || changes.some((c) => c.buy_date && String(c.buy_date) < thirtyDaysAgo);
+  const touchesRealEstateHistory = (changes as Array<{ action?: string; name?: string }>).some((c) => {
+    if (c.action !== "edit" && c.action !== "remove") return false;
+    if (!c.name) return false;
+    const nm = c.name.toLowerCase();
+    const m = ctx.currentAssets.find((a) =>
+      String(a.name ?? "").toLowerCase() === nm ||
+      (a.symbol && String(a.symbol).toLowerCase() === nm)
+    );
+    return !!m && m.type === "real_estate";
+  });
+  const needsBackfill = changes.length > 1
+    || changes.some((c) => c.buy_date && String(c.buy_date) < thirtyDaysAgo)
+    || touchesRealEstateHistory;
   const hasAdds = changes.some((c) => c.action === "add");
 
   const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures } = await applyPortfolioChanges({
@@ -566,6 +578,15 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
         const buyDate = (existing.buy_date as string | null | undefined) ?? null;
         const createdAt = (existing.created_at as string | null | undefined) ?? null;
         considerDate(buyDate ?? createdAt?.slice(0, 10) ?? null);
+      }
+    } else if (c.action === "edit" && c.name) {
+      const nm = c.name.toLowerCase();
+      const m = ctx.currentAssets.find((a) =>
+        String(a.name ?? "").toLowerCase() === nm ||
+        (a.symbol && String(a.symbol).toLowerCase() === nm)
+      );
+      if (m && m.type === "real_estate") {
+        considerDate((m.buy_date as string | null) ?? (m.created_at ? String(m.created_at).slice(0, 10) : null));
       }
     }
   }
