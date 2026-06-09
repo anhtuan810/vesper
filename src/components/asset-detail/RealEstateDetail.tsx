@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PropertyMap } from "@/components/PropertyMap";
@@ -86,11 +86,6 @@ export function RealEstateDetail({ asset }: Props) {
     ? ((Date.now() - acquisitionDate.getTime()) / (365.25 * 24 * 3600 * 1000)).toFixed(1).replace(/\.0$/, "")
     : null;
 
-  const propertyRows = [
-    { label: "Value", value: formatMoney(asset.value, asset.currency || "USD", displayCurrency), meta: null },
-    asset.size_sqm ? { label: "Size", value: `${asset.size_sqm} m²`, meta: null } : null,
-    { label: "Owned since", value: ownedSinceLabel ?? "Not set", meta: ownedSinceLabel && yearsOwned != null ? `${yearsOwned} years` : null },
-  ].filter(Boolean) as { label: string; value: string; meta: string | null }[];
 
   return (
     <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
@@ -153,9 +148,18 @@ export function RealEstateDetail({ asset }: Props) {
             color: "var(--hero)",
             lineHeight: 1,
             fontVariationSettings: "'opsz' 60",
-            marginBottom: 10,
+            marginBottom: 6,
           }}>
             <HeroPrice amount={equity} fromCurrency={asset.currency || "USD"} displayCurrency={displayCurrency} />
+          </div>
+          {/* Compact metadata line: value · size · owned since · years */}
+          <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 10, lineHeight: 1.4 }}>
+            {[
+              <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500 }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
+              asset.size_sqm ? <span key="size">{asset.size_sqm} m²</span> : null,
+              ownedSinceLabel ? <span key="since">owned since {ownedSinceLabel}</span> : null,
+              yearsOwned ? <span key="yrs">{yearsOwned} yrs</span> : null,
+            ].filter(Boolean).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep${i}`} style={{ color: "var(--text-faint)" }}> · </span>, el], [])}
           </div>
           {purchaseYear != null && valueGain != null && (
             <div style={{
@@ -186,39 +190,6 @@ export function RealEstateDetail({ asset }: Props) {
           <div style={{ marginBottom: 16 }}>
             <ValueComposition propertyValue={asset.value} mortgageBalance={currentBalance} />
           </div>
-        )}
-
-        {/* Property section */}
-        {propertyRows.length > 0 && (
-          <>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
-              Property
-            </div>
-            <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 26 }}>
-              {propertyRows.map((row, idx) => (
-                <div key={row.label} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "10px 16px",
-                  borderBottom: idx < propertyRows.length - 1 ? "0.5px solid var(--border)" : "none",
-                  gap: 14,
-                }}>
-                  <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                    <span style={{ fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18", lineHeight: 1.1 }}>
-                      {row.value}
-                    </span>
-                    {row.meta && (
-                      <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em" }}>
-                        {row.meta}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
         )}
 
         {/* Mortgage section */}
