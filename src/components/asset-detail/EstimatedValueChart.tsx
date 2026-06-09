@@ -194,10 +194,6 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
             <path d={area} fill={`url(#${gradId})`} />
             <path d={line} fill="none" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
 
-            {/* Derived points */}
-            {pts.slice(1).map((p, i) => (
-              <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={2} fill={stroke} />
-            ))}
             {/* Purchase point — the real anchor, marked distinctly (hollow ring) */}
             <circle cx={pts[0].x.toFixed(1)} cy={pts[0].y.toFixed(1)} r={4} fill="var(--surface)" stroke={stroke} strokeWidth={1.8} />
 
