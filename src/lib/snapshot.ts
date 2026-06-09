@@ -6,7 +6,7 @@ import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
-import { parseBuyYear, clampBuyYear, normalizeIndex, type IndexPoint } from "@/lib/property-estimate";
+import { parseBuyYear, normalizeIndex } from "@/lib/property-estimate";
 
 // TODO: live-price snapshots — tradeable asset values here are DB-stored, not real-time.
 // Consider fetching live prices for each tradeable asset before writing the snapshot.
@@ -122,20 +122,65 @@ function isNL(country: string | null | undefined): boolean {
   return c === "NL" || c === "NLD" || c === "NETHERLANDS" || c === "THE NETHERLANDS";
 }
 
-// Nearest CBS index point to `year` — mirrors property-estimate's own
-// nearest-year matching so the backfill agrees with the live estimate.
-function indexAtYear(points: IndexPoint[], year: number): number | null {
-  if (points.length === 0) return null;
-  let best = points[0];
-  let bestDiff = Math.abs(points[0].year - year);
-  for (const p of points) {
-    const d = Math.abs(p.year - year);
-    if (d < bestDiff) {
-      best = p;
-      bestDiff = d;
+// Date string -> fractional year at month precision. "2024-07-02" -> ~2024.50.
+function fractionalYear(date: string): number {
+  const d = new Date(date + "T12:00:00Z");
+  const y = d.getUTCFullYear();
+  const start = Date.UTC(y, 0, 1);
+  const end = Date.UTC(y + 1, 0, 1);
+  return y + (d.getTime() - start) / (end - start);
+}
+
+// buy_date may be a full date, year-month, or bare year.
+function normalizeBuyDate(buyDate: string | null): string | null {
+  if (!buyDate) return null;
+  const s = String(buyDate).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-15`;
+  if (/^\d{4}$/.test(s)) return `${s}-07-01`;
+  const y = parseBuyYear(s);
+  return y == null ? null : `${y}-07-01`;
+}
+
+type XY = { x: number; y: number };
+
+// Fritsch-Carlson monotone cubic interpolant. Smooth (C1), no overshoot.
+// Outside [x0, xn] extends linearly along the boundary tangent.
+function monotoneCubic(points: XY[]): (x: number) => number {
+  const n = points.length;
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const d: number[] = [];
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+  const m: number[] = new Array(n);
+  m[0] = d[0];
+  m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i];
+    const b = m[i + 1] / d[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const tau = 3 / Math.sqrt(s);
+      m[i] = tau * a * d[i];
+      m[i + 1] = tau * b * d[i];
     }
   }
-  return best.index > 0 ? best.index : null;
+  return (x: number): number => {
+    if (x <= xs[0]) return ys[0] + m[0] * (x - xs[0]);
+    if (x >= xs[n - 1]) return ys[n - 1] + m[n - 1] * (x - xs[n - 1]);
+    let i = 0;
+    while (i < n - 1 && x > xs[i + 1]) i++;
+    const h = xs[i + 1] - xs[i];
+    const t = (x - xs[i]) / h;
+    const t2 = t * t, t3 = t2 * t;
+    const h00 = 2 * t3 - 3 * t2 + 1;
+    const h10 = t3 - 2 * t2 + t;
+    const h01 = -2 * t3 + 3 * t2;
+    const h11 = t3 - t2;
+    return h00 * ys[i] + h10 * h * m[i] + h01 * ys[i + 1] + h11 * h * m[i + 1];
+  };
 }
 
 // Returns units held as of `date` by walking a sorted-ascending mutation timeline.
@@ -245,31 +290,43 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       acquisitionByAsset.set(m.asset_id as string, (m.occurred_at as string).slice(0, 10));
     }
 
-    // NL real estate with a logged purchase + resolvable region: precompute the
-    // CBS-index ratio reconstruction — buy_price scaled by index_year/index_buyYear
-    // — the same basis the live estimateValue uses for the current figure.
-    // Equity is index-scaled gross value minus the live
-    // amortisation model's balance at each date. Anything else (no NL address,
-    // no buy_price, unresolvable region/index) falls back to flat current-value
-    // equity below — the prior behavior.
-    const realEstateIndexes = new Map<string, { points: IndexPoint[]; indexAtBuy: number }>();
+    // Per real-estate asset: build a progress sampler tAt(date) -> fraction of
+    // the buy->current move reached by that date. CBS supplies shape only; the
+    // two anchors (buy_price at buy_date, current value at today) are honored by
+    // construction. Falls back to linear-in-time when CBS is unavailable/flat.
+    const realEstateT = new Map<string, (date: string) => number>();
+    const todayFy = fractionalYear(todayStr);
     await Promise.all(
       assets
         .filter((a) => a.type === "real_estate")
         .map(async (a) => {
           const buyPrice = a.buy_price as number | null;
-          if (!isNL(a.country as string | null) || !buyPrice || buyPrice <= 0 || !a.address) return;
-          const buyYear = parseBuyYear(a.buy_date as string | null);
-          if (buyYear == null) return;
-          const region = await resolveRegion(a.address as string);
-          if (!region) return;
-          const idx = await getRegionIndex(region.gemeente, region.province);
-          if (!idx || idx.points.length === 0) return;
-          const points = normalizeIndex(idx.points);
-          const startYear = Math.max(clampBuyYear(buyYear).year, points[0].year);
-          const indexAtBuy = indexAtYear(points, startYear);
-          if (indexAtBuy == null || indexAtBuy <= 0) return;
-          realEstateIndexes.set(a.id as string, { points, indexAtBuy });
+          const buyDateNorm = normalizeBuyDate(a.buy_date as string | null);
+          if (!buyPrice || buyPrice <= 0 || !buyDateNorm) return;
+          const buyFy = fractionalYear(buyDateNorm);
+          if (todayFy <= buyFy) return;
+
+          const linearT = (date: string) => (fractionalYear(date) - buyFy) / (todayFy - buyFy);
+
+          let shapeT: ((date: string) => number) | null = null;
+          if (isNL(a.country as string | null) && a.address) {
+            const region = await resolveRegion(a.address as string);
+            if (region) {
+              const idx = await getRegionIndex(region.gemeente, region.province);
+              if (idx && idx.points.length >= 2) {
+                const cps: XY[] = normalizeIndex(idx.points).map((p) => ({ x: p.year + 0.5, y: p.index }));
+                if (cps.length >= 2) {
+                  const S = monotoneCubic(cps);
+                  const sBuy = S(buyFy);
+                  const denom = S(todayFy) - sBuy;
+                  if (Math.abs(denom) > 1e-9) {
+                    shapeT = (date: string) => (S(fractionalYear(date)) - sBuy) / denom;
+                  }
+                }
+              }
+            }
+          }
+          realEstateT.set(a.id as string, shapeT ?? linearT);
         }),
     );
 
@@ -353,29 +410,22 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
             }
           }
         } else if (type === "real_estate") {
-          const cur = (asset.currency as string | null) || "USD";
-          const reIndex = realEstateIndexes.get(asset.id as string);
-          let grossValue: number;
-          if (reIndex) {
-            const buyPrice = asset.buy_price as number;
+          if (date >= inception) {
+            const cur = (asset.currency as string | null) || "USD";
+            const buyPrice = asset.buy_price as number | null;
             const currentValue = asset.value as number;
-            // Anchor the CBS-shaped curve at BOTH ends — buy_price at buy_date,
-            // the user's stated current value at today — so the reconstruction
-            // lands exactly on the live figure with no step at the live tip.
-            // The CBS index still drives the SHAPE: `t` is the fraction of the
-            // index's total cumulative growth (buy → today) reached by `date`,
-            // and that fraction is applied to the buy→current price gap.
-            const ratioAtDate = (indexAtYear(reIndex.points, Number(date.slice(0, 4))) ?? reIndex.indexAtBuy) / reIndex.indexAtBuy;
-            const ratioToday = (indexAtYear(reIndex.points, Number(todayStr.slice(0, 4))) ?? reIndex.indexAtBuy) / reIndex.indexAtBuy;
-            const totalGrowth = ratioToday - 1;
-            const t = Math.abs(totalGrowth) > 1e-9 ? (ratioAtDate - 1) / totalGrowth : 1;
-            grossValue = buyPrice + t * (currentValue - buyPrice);
-          } else {
-            grossValue = asset.value as number;
+            const tFn = realEstateT.get(asset.id as string);
+            let grossValue: number;
+            if (tFn && buyPrice && buyPrice > 0) {
+              const t = tFn(date);
+              grossValue = buyPrice + t * (currentValue - buyPrice);
+            } else {
+              grossValue = currentValue;
+            }
+            const equity = grossValue - computeCurrentBalance(asset, asOf);
+            const reRate = rateAt(date, cur);
+            contribution = cur === "USD" ? equity : (reRate ? equity / reRate : 0);
           }
-          const equity = grossValue - computeCurrentBalance(asset, asOf);
-          const reRate = rateAt(date, cur);
-          contribution = cur === "USD" ? equity : (reRate ? equity / reRate : 0);
         } else {
           // Cash / bonds / pension / other: held flat at current value from
           // acquisition (the add mutation's occurred_at = stated buy_date) —
