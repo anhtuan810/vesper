@@ -8,7 +8,6 @@ import { MortgageBlock } from "@/components/MortgageBlock";
 import { ValueComposition } from "@/components/ValueComposition";
 import { MortgageProjectionLine } from "@/components/scenario/MortgageProjectionLine";
 import { EstimatedValueChart } from "@/components/asset-detail/EstimatedValueChart";
-import { EquityTimelineChart } from "@/components/asset-detail/EquityTimelineChart";
 import { formatDate } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
@@ -181,9 +180,6 @@ export function RealEstateDetail({ asset }: Props) {
             </div>
           )}
         </div>
-
-        {/* Equity timeline chart — value / mortgage / equity stacked area */}
-        <EquityTimelineChart asset={asset} />
 
         {/* Value composition bar */}
         {hasMortgage && (
