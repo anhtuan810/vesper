@@ -35,6 +35,41 @@ const PAD_BOTTOM = 14;
 // indicative point by more than this — the gap is the signal, not noise.
 const DIVERGENCE = 0.05;
 
+// Fritsch-Carlson monotone cubic path through SVG-coordinate points.
+// Returns an SVG path string starting with M, using C commands between points.
+function smoothLinePath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) {
+    return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  }
+  const n = pts.length;
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  const d: number[] = [];
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+  const m: number[] = new Array(n);
+  m[0] = d[0];
+  m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const tau = 3 / Math.sqrt(s);
+      m[i] = tau * a * d[i];
+      m[i + 1] = tau * b * d[i];
+    }
+  }
+  let path = `M ${xs[0].toFixed(1)} ${ys[0].toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const dx = (xs[i + 1] - xs[i]) / 3;
+    const cp1x = xs[i] + dx, cp1y = ys[i] + dx * m[i];
+    const cp2x = xs[i + 1] - dx, cp2y = ys[i + 1] - dx * m[i + 1];
+    path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${xs[i + 1].toFixed(1)} ${ys[i + 1].toFixed(1)}`;
+  }
+  return path;
+}
+
 export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   const displayCurrency = useDisplayCurrency();
   const [data, setData] = useState<EstimateResponse | null>(null);
@@ -88,7 +123,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   const toY = (v: number) => H - PAD_BOTTOM - ((v - yLo) / (yHi - yLo || 1)) * (H - PAD_TOP - PAD_BOTTOM);
 
   const pts = series.map((p) => ({ x: toX(p.year), y: toY(p.value) }));
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const line = smoothLinePath(pts);
   const area = `${line} L ${pts[pts.length - 1].x.toFixed(1)} ${H - PAD_BOTTOM} L ${pts[0].x.toFixed(1)} ${H - PAD_BOTTOM} Z`;
 
   const stroke = "var(--accent)";
