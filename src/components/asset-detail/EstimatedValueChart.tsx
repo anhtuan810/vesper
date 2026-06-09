@@ -31,9 +31,6 @@ const H = 120;
 const PAD_X = 6;
 const PAD_TOP = 12;
 const PAD_BOTTOM = 14;
-// Mark the stated current value separately only when it diverges from the latest
-// indicative point by more than this — the gap is the signal, not noise.
-const DIVERGENCE = 0.05;
 
 // Fritsch-Carlson monotone cubic path through SVG-coordinate points.
 // Returns an SVG path string starting with M, using C commands between points.
@@ -95,24 +92,28 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   const series = data.series;
   const cur = asset.currency || "EUR";
   const money = (n: number) => formatMoney(n, cur, displayCurrency);
-
-  const purchase = series[0];
-  const latest = series[series.length - 1];
   const region = data.regionName ?? data.regionCode ?? "regional";
 
-  // Stated current value, marked separately when it diverges from the indicative
-  // line. Not reconciled — the divergence is intentional signal.
-  const statedValue = typeof asset.value === "number" && asset.value > 0 ? asset.value : null;
-  const currentYear = new Date().getFullYear();
-  const markStated =
-    statedValue != null &&
-    latest.value > 0 &&
-    Math.abs(statedValue - latest.value) / latest.value > DIVERGENCE;
+  // Remap CBS series to be anchored at buy_price → asset.value (stated current),
+  // identical to the realEstateT logic in snapshot.ts. CBS drives shape only;
+  // the endpoints are hard-anchored so this chart is consistent with the
+  // portfolio net-worth reconstruction.
+  const cbsStart = series[0].value;
+  const cbsEnd = series[series.length - 1].value;
+  const targetEnd = typeof asset.value === "number" && asset.value > 0 ? asset.value : cbsEnd;
+  const cbsRange = cbsEnd - cbsStart;
+  const anchoredSeries = series.map((p, i) => {
+    const t = Math.abs(cbsRange) > 1e-6
+      ? (p.value - cbsStart) / cbsRange
+      : series.length > 1 ? i / (series.length - 1) : 1;
+    return { year: p.year, value: cbsStart + t * (targetEnd - cbsStart) };
+  });
 
-  // Domains — include the stated marker so it stays on-canvas.
+  const purchase = anchoredSeries[0];
+  const latest = anchoredSeries[anchoredSeries.length - 1];
   const xMin = purchase.year;
-  const xMax = markStated ? Math.max(latest.year, currentYear) : latest.year;
-  const yVals = [...series.map((p) => p.value), ...(markStated ? [statedValue as number] : [])];
+  const xMax = latest.year;
+  const yVals = anchoredSeries.map((p) => p.value);
   const vMin = Math.min(...yVals);
   const vMax = Math.max(...yVals);
   const vPad = Math.max((vMax - vMin) * 0.08, 1);
@@ -122,18 +123,14 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   const toX = (year: number) => PAD_X + ((year - xMin) / (xMax - xMin || 1)) * (W - 2 * PAD_X);
   const toY = (v: number) => H - PAD_BOTTOM - ((v - yLo) / (yHi - yLo || 1)) * (H - PAD_TOP - PAD_BOTTOM);
 
-  const pts = series.map((p) => ({ x: toX(p.year), y: toY(p.value) }));
+  const pts = anchoredSeries.map((p) => ({ x: toX(p.year), y: toY(p.value) }));
   const line = smoothLinePath(pts);
   const area = `${line} L ${pts[pts.length - 1].x.toFixed(1)} ${H - PAD_BOTTOM} L ${pts[0].x.toFixed(1)} ${H - PAD_BOTTOM} Z`;
 
   const stroke = "var(--accent)";
   const gradId = `est_${asset.id}`;
 
-  const statedX = markStated ? toX(currentYear) : null;
-  const statedY = markStated && statedValue != null ? toY(statedValue) : null;
-
-  // Scrub — snap to the nearest year point (matches the amortization-curve scrub).
-  const scrub = scrubIdx != null ? series[Math.min(scrubIdx, series.length - 1)] : null;
+  const scrub = scrubIdx != null ? anchoredSeries[Math.min(scrubIdx, anchoredSeries.length - 1)] : null;
   const scrubX = scrub ? toX(scrub.year) : null;
   const scrubY = scrub ? toY(scrub.value) : null;
   const handleScrub = (clientX: number, rect: DOMRect) => {
@@ -141,8 +138,8 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
     const relX = (clientX - rect.left) / rect.width;
     let best = 0;
     let bestD = Infinity;
-    for (let i = 0; i < series.length; i++) {
-      const frac = (series[i].year - xMin) / (xMax - xMin || 1);
+    for (let i = 0; i < anchoredSeries.length; i++) {
+      const frac = (anchoredSeries[i].year - xMin) / (xMax - xMin || 1);
       const d = Math.abs(frac - relX);
       if (d < bestD) { bestD = d; best = i; }
     }
@@ -168,11 +165,6 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
               {scrub ? scrub.year : latest.year}
             </span>
           </div>
-          {markStated && statedValue != null && !scrub && (
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
-              stated {money(statedValue)}
-            </div>
-          )}
         </div>
 
         {/* Interaction target: touch/pointer scrubbing along the per-year series */}
@@ -194,16 +186,12 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
             <path d={area} fill={`url(#${gradId})`} />
             <path d={line} fill="none" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
 
-            {/* Purchase point — the real anchor, marked distinctly (hollow ring) */}
+            {/* Intermediate year dots */}
+            {pts.slice(1).map((p, i) => (
+              <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={2} fill={stroke} />
+            ))}
+            {/* Purchase point — hollow ring anchor */}
             <circle cx={pts[0].x.toFixed(1)} cy={pts[0].y.toFixed(1)} r={4} fill="var(--surface)" stroke={stroke} strokeWidth={1.8} />
-
-            {/* Stated current value, when it diverges — a separate point */}
-            {statedX != null && statedY != null && (
-              <>
-                <line x1={statedX} y1={0} x2={statedX} y2={H} stroke="var(--text)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.25} />
-                <rect x={(statedX - 3).toFixed(1)} y={(statedY - 3).toFixed(1)} width={6} height={6} fill="var(--hero)" />
-              </>
-            )}
 
             {/* Scrub marker */}
             {scrubX != null && scrubY != null && (
@@ -227,12 +215,6 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
             <span style={{ width: 9, height: 9, borderRadius: "50%", border: `1.8px solid ${stroke}`, background: "var(--surface)" }} />
             Purchase {money(purchase.value)}
           </span>
-          {markStated && statedValue != null && (
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
-              <span style={{ width: 8, height: 8, background: "var(--hero)" }} />
-              Stated {money(statedValue)}
-            </span>
-          )}
         </div>
 
         {/* Honest label: indicative, region, reference period, baseline note. */}
