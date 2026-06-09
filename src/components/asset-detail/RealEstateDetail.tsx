@@ -13,25 +13,13 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { buildPropertyWhatIfSeed, requestWhatIf } from "@/lib/scenario/whatif";
-import { formatMoney, formatMoneyParts } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
   asset: RealEstateAsset;
 }
 
-function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; fromCurrency: string; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
-  const parts = formatMoneyParts(amount, fromCurrency, displayCurrency);
-  return (
-    <span style={{ display: "inline-flex", alignItems: "flex-start", columnGap: "0.1em" }}>
-      {parts.sign && <span style={{ lineHeight: "inherit" }}>{parts.sign}</span>}
-      <span style={{ fontSize: "0.52em", lineHeight: 1, paddingTop: "0.08em", color: "var(--text-faint)", fontWeight: 500 }}>
-        {parts.symbol}
-      </span>
-      <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
-    </span>
-  );
-}
 
 export function RealEstateDetail({ asset }: Props) {
   const router = useRouter();
@@ -150,7 +138,7 @@ export function RealEstateDetail({ asset }: Props) {
             fontVariationSettings: "'opsz' 60",
             marginBottom: 6,
           }}>
-            <HeroPrice amount={equity} fromCurrency={asset.currency || "USD"} displayCurrency={displayCurrency} />
+            <span>{formatMoney(equity, asset.currency || "USD", displayCurrency)}</span>
           </div>
           {/* Compact metadata line: value · size · owned since · years */}
           <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 10, lineHeight: 1.4 }}>
