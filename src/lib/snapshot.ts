@@ -451,22 +451,25 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
           const buyDateNorm = normalizeBuyDate(asset.buy_date as string | null);
           const reInception = buyDateNorm ?? inception;
           if (date >= reInception) {
+            // Freeze property value per calendar month: past months anchor to
+            // the 1st; the current month anchors to today so the latest row
+            // matches the live figure. Never anchor before acquisition.
+            const sameMonthAsToday = date.slice(0, 7) === todayStr.slice(0, 7);
+            let anchor = sameMonthAsToday ? todayStr : date.slice(0, 7) + "-01";
+            if (anchor < reInception) anchor = reInception;
+
             const cur = (asset.currency as string | null) || "USD";
             const buyPrice = asset.buy_price as number | null;
             const currentValue = asset.value as number;
             const tFn = realEstateT.get(asset.id as string);
-            let grossValue: number;
-            if (tFn && buyPrice && buyPrice > 0) {
-              const t = tFn(date);
-              grossValue = buyPrice + t * (currentValue - buyPrice);
-            } else {
-              grossValue = currentValue;
-            }
+            let grossValue = (tFn && buyPrice && buyPrice > 0)
+              ? buyPrice + tFn(anchor) * (currentValue - buyPrice)
+              : currentValue;
             const balFn = realEstateBalanceAt.get(asset.id as string);
-            let balance = balFn ? balFn(date) : computeCurrentBalance(asset, asOf);
+            let balance = balFn ? balFn(anchor) : computeCurrentBalance(asset, new Date(anchor + "T12:00:00Z"));
             balance = Math.max(0, Math.min(balance, grossValue));
             const equity = grossValue - balance;
-            const reRate = rateAt(date, cur);
+            const reRate = rateAt(anchor, cur);
             contribution = cur === "USD" ? equity : (reRate ? equity / reRate : 0);
           }
         } else {
