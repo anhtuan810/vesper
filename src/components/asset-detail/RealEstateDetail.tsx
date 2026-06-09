@@ -10,7 +10,7 @@ import { MortgageProjectionLine } from "@/components/scenario/MortgageProjection
 import { EstimatedValueChart } from "@/components/asset-detail/EstimatedValueChart";
 import { formatDate } from "@/lib/utils";
 import { computeCurrentBalance } from "@/lib/mortgage";
-import { useDisplayCurrency } from "@/lib/hooks";
+import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { buildPropertyWhatIfSeed, requestWhatIf } from "@/lib/scenario/whatif";
 import { formatMoney } from "@/lib/money";
@@ -38,7 +38,7 @@ export function RealEstateDetail({ asset }: Props) {
 
   useEffect(() => { fetchMutations(); }, [fetchMutations]);
 
-  const displayCurrency = useDisplayCurrency();
+  const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
   const isDesktop = useIsDesktop();
   const currentBalance = computeCurrentBalance(asset);
   const equity = asset.value - currentBalance;
@@ -134,16 +134,18 @@ export function RealEstateDetail({ asset }: Props) {
             fontVariationSettings: "'opsz' 60",
             marginBottom: 6,
           }}>
-            <span>{formatMoney(equity, asset.currency || "USD", displayCurrency)}</span>
+            {currencyLoaded
+              ? <span>{formatMoney(equity, asset.currency || "USD", displayCurrency)}</span>
+              : <span style={{ visibility: "hidden" }}>—</span>}
           </div>
           {/* Compact metadata line: value · size · owned since · years */}
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
-            {[
+            {currencyLoaded ? [
               <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500 }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
               asset.size_sqm ? <span key="size">{asset.size_sqm} m²</span> : null,
               ownedSinceLabel ? <span key="since">owned since {ownedSinceLabel}</span> : null,
               yearsOwned ? <span key="yrs">{yearsOwned} yrs</span> : null,
-            ].filter(Boolean).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep${i}`} style={{ color: "var(--text-faint)" }}> · </span>, el], [])}
+            ].filter(Boolean).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep${i}`} style={{ color: "var(--text-faint)" }}> · </span>, el], []) : null}
           </div>
         </div>
 
