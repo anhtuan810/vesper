@@ -410,7 +410,11 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
             }
           }
         } else if (type === "real_estate") {
-          if (date >= inception) {
+          // Use buy_date as the real-estate inception so a freshly-added asset
+          // (created_at = today) still produces historical rows back to purchase.
+          const buyDateNorm = normalizeBuyDate(asset.buy_date as string | null);
+          const reInception = buyDateNorm ?? inception;
+          if (date >= reInception) {
             const cur = (asset.currency as string | null) || "USD";
             const buyPrice = asset.buy_price as number | null;
             const currentValue = asset.value as number;
