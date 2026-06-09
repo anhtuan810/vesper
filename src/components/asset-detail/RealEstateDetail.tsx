@@ -57,10 +57,6 @@ export function RealEstateDetail({ asset }: Props) {
   // price (both structured fields on the asset). Equity-at-purchase would need the
   // original mortgage, which isn't stored (only the current balance is), so the
   // badge tracks value appreciation. The "since YEAR" label uses the structured
-  // buy_date — never a record-creation timestamp or a mutation occurred_at.
-  const purchasePrice = typeof asset.buy_price === "number" && asset.buy_price > 0 ? asset.buy_price : null;
-  const purchaseYear = asset.buy_date ? new Date(asset.buy_date).getFullYear() : null;
-  const valueGain = purchasePrice != null ? asset.value - purchasePrice : null;
 
   // "Owned since" uses a REAL acquisition date from structured fields (the stated
   // acquisition/buy date, or the mortgage start date) — never the record-creation
@@ -117,14 +113,14 @@ export function RealEstateDetail({ asset }: Props) {
         </div>
 
         {/* Equity hero */}
-        <div style={{ marginBottom: 10 }}>
+        <div style={{ marginBottom: hasMortgage ? 12 : 28 }}>
           <div style={{
             fontSize: 10,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
             color: "var(--text-faint)",
-            marginBottom: 4,
+            marginBottom: 6,
           }}>
             Equity
           </div>
@@ -141,7 +137,7 @@ export function RealEstateDetail({ asset }: Props) {
             <span>{formatMoney(equity, asset.currency || "USD", displayCurrency)}</span>
           </div>
           {/* Compact metadata line: value · size · owned since · years */}
-          <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 10, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
             {[
               <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500 }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
               asset.size_sqm ? <span key="size">{asset.size_sqm} m²</span> : null,
@@ -149,40 +145,18 @@ export function RealEstateDetail({ asset }: Props) {
               yearsOwned ? <span key="yrs">{yearsOwned} yrs</span> : null,
             ].filter(Boolean).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep${i}`} style={{ color: "var(--text-faint)" }}> · </span>, el], [])}
           </div>
-          {purchaseYear != null && valueGain != null && (
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "4px 10px",
-              borderRadius: 999,
-              fontSize: 13,
-              fontWeight: 500,
-              fontFeatureSettings: '"tnum" 1',
-              background: valueGain >= 0 ? "var(--positive-soft)" : "var(--negative-soft)",
-              color: valueGain >= 0 ? "var(--positive-text)" : "var(--negative-text)",
-            }}>
-              <svg width="11" height="11" viewBox="0 0 256 256" fill="currentColor">
-                {valueGain >= 0
-                  ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" />
-                  : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />
-                }
-              </svg>
-              {valueGain >= 0 ? "+" : "−"}{formatMoney(Math.abs(valueGain), asset.currency || "USD", displayCurrency)} since {purchaseYear}
-            </div>
-          )}
         </div>
 
         {/* Value composition bar */}
         {hasMortgage && (
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 28 }}>
             <ValueComposition propertyValue={asset.value} mortgageBalance={currentBalance} />
           </div>
         )}
 
         {/* Mortgage section */}
         {hasMortgage && (
-          <div style={{ marginBottom: 26 }}>
+          <div style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Mortgage
             </div>
@@ -200,7 +174,7 @@ export function RealEstateDetail({ asset }: Props) {
 
         {/* Activity */}
         {mutations.length > 0 && (
-          <div style={{ marginTop: 26 }}>
+          <div style={{ marginTop: 28 }}>
             <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Activity
             </div>
