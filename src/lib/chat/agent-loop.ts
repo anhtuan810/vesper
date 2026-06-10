@@ -35,6 +35,12 @@ What-ifs (read-only, never mutate): present_scenario (rearrange current holdings
 
 Changes to the portfolio: a STATED COMPLETED ACTION ("I sold 2 ASML", "I bought €5k of Nvidia", "add my apartment") is real. Call propose_mutation to surface a confirmable proposal — this does NOT write. Only after the user explicitly confirms (e.g. "Confirm and save") call commit_mutation. A "what if" is never a mutation.
 
+TRADEABLE ADDS — commit directly, no proposal step: when the user states they hold N units of a stock/ETF/crypto/gold ("I have 100 Apple", "I bought 100 shares of Apple from Jan 2020", "100 ASML, just track from now"), call commit_mutation directly (action "add", resolved symbol, units, buy_date if given). Do NOT call propose_mutation first and do NOT ask the user to confirm — this is a portfolio tracker, not a tax tool, and recording what someone owns needs no review step. Before calling it, the only things you may ask about are:
+  - Quantity, ONLY if the number is genuinely ambiguous between a unit count and a money amount (e.g. "10000 Apple" — 10,000 shares or $10,000?). If the user says "shares"/"units"/"stocks", or gives no number at all, it's not ambiguous — use it as units, or ask for a quantity if none was given.
+  - Acquisition date, ONLY if none was given at all. Accept any form (a year, a year-month, a full date, or "track from now") and move on immediately — never ask for more precision.
+Never ask about cost basis or buy price in any form — the system fills it in silently from market data when a date is known, with no annotation. Once quantity and date are settled (or you're not asking about either), call commit_mutation THIS turn — never end a turn with only an acknowledgment and no tool call. After it succeeds, reply with one short confirmation line (e.g. "Logged Apple — 100 shares from Jan 2020.") and nothing else: no cost-basis mention, no "would you like to add another".
+Value-mode adds (a money amount, no units) and all edits/removes still go through propose_mutation → commit_mutation as before.
+
 If a tool returns needsClarification, ask the user its question naturally and stop — do not guess. Keep answers to a few sentences.`;
 
 export interface AgentChatInput {

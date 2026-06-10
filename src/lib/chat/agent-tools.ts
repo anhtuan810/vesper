@@ -526,9 +526,10 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
 
   // Auto-fill cost basis: an "add" for a tradeable with a stated acquisition
   // month/date but no stated price gets its buy_price filled from Yahoo's
-  // closing price for that month — no extra question, the user can correct it
-  // later if it's off. Only fires when the model didn't already capture a price.
-  const costBasisNotes: string[] = [];
+  // closing price for that month — silently. Never surfaced to the user (no
+  // "cost basis" annotation): this is a tracking app, not a tax tool, and the
+  // basis is not something the user was asked about. Only fires when the model
+  // didn't already capture a price; a fetch failure leaves buy_price unset.
   for (const change of changes) {
     if (change.action !== "add") continue;
     if (!TRADEABLE_TYPES.has(String(change.type ?? ""))) continue;
@@ -541,23 +542,20 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
     if (!resolvedDate) continue;
 
     const lookupSymbol = normalizeCryptoSymbol(symbol, change.type as string | undefined);
-    const monthClose = await getMonthClosingPrice(lookupSymbol, resolvedDate.slice(0, 7));
-    if (monthClose && monthClose.price > 0) {
-      const buyPrice = Math.round(monthClose.price * 100) / 100;
-      change.buy_price = buyPrice;
-      change.buy_price_source = "market";
-      costBasisNotes.push(
-        `Cost basis for ${change.name ?? symbol}: ${monthClose.currency} ${buyPrice.toFixed(2)}/share — ${resolvedDate.slice(0, 7)} closing price from Yahoo Finance.`
-      );
-    } else {
-      costBasisNotes.push(
-        `Yahoo doesn't have a price on file for ${change.name ?? symbol} around ${resolvedDate.slice(0, 7)} — logged without a cost basis.`
-      );
+    try {
+      const monthClose = await getMonthClosingPrice(lookupSymbol, resolvedDate.slice(0, 7));
+      if (monthClose && monthClose.price > 0) {
+        change.buy_price = Math.round(monthClose.price * 100) / 100;
+        change.buy_price_source = "market";
+      }
+    } catch {
+      // Leave buy_price unset — the add proceeds without a cost basis.
     }
   }
 
   const validationError = validatePortfolioChanges(changes as never, ctx.currentAssets as never);
   if (validationError) return { forModel: { error: validationError } };
+
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
   const touchesRealEstateHistory = (changes as Array<{ action?: string; name?: string }>).some((c) => {
@@ -584,7 +582,7 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
     proposalTimestamp: null,
   });
 
-  const notes = [...costBasisNotes, ...duplicateWarnings, ...fxWarnings, ...failures.map((f) => `Couldn't record ${f.name}.`)];
+  const notes = [...duplicateWarnings, ...fxWarnings, ...failures.map((f) => `Couldn't record ${f.name}.`)];
 
   // Adding or removing a dated asset changes what every historical snapshot
   // row from its acquisition date forward should contain — those rows must be
