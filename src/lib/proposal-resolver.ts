@@ -168,7 +168,9 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
       const address = typeof proposal.address === "string" ? proposal.address : null;
       if (address) parts.push(`at ${address}`);
 
-      const base = parts.length > 0 ? `Add ${name} — ${parts.join(", ")}` : `Add ${name}`;
+      const base = parts.length > 0
+        ? `Add ${name}\n${parts.map((p) => `- ${p}`).join("\n")}`
+        : `Add ${name}`;
 
       // Indicative current value: a logged purchase (price + date) but no stated
       // value. The figure is computed by the deterministic estimate engine — the
@@ -179,7 +181,7 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
         const est = await estimatePropertyValue({ address, country, buyPrice, buyDate: proposal.buy_date });
         if (est.available && est.currentEstimate != null) {
           const since = est.clamped ? "1995" : String(proposal.buy_date).slice(0, 4);
-          return `${base}. Current value: about ${money(est.currentEstimate)} — indicative, based on ${est.regionName} price trends since ${since}, not an appraisal. Confirm, or give your own figure.`;
+          return `${base}\n\nCurrent value: about ${money(est.currentEstimate)} — indicative, based on ${est.regionName} price trends since ${since}, not an appraisal. Confirm, or give your own figure.`;
         }
       }
 
