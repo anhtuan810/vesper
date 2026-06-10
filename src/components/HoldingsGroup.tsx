@@ -77,7 +77,7 @@ export function HoldingsGroup({
           color: "var(--text)",
           flexShrink: 0,
         }}>
-          {formatMoney(total, "USD", displayCurrency)}
+          {formatMoney(total, displayCurrency, displayCurrency)}
         </span>
       </button>
 

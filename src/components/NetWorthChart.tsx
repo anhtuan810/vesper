@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { getUsdRate, type DisplayCurrency } from "@/lib/money";
+import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
@@ -27,12 +28,47 @@ export function rangeStartDate(r: Range): string | null {
 export interface SnapshotPoint {
   date: string;
   total_value: number;
+  // Per-currency native sums for THIS row (see snapshot.ts native_breakdown).
+  // Preferred conversion path: each currency converts directly to the display
+  // currency (identity for the home-currency bucket — no FX, no drift). Absent
+  // on rows written before this field existed, and on synthesized points.
+  native_breakdown?: Record<string, number> | null;
   // Historical USD→{display currency} rates for THIS row's own date — the same
   // basis `total_value` was stored with (see /api/snapshots). Converting with
   // these (rather than today's rate) is what makes a same-currency asset cancel
   // back to its native value across its whole history. Absent on synthesized
   // points (e.g. today's live tip), which fall back to the current rate.
   fx?: Partial<Record<DisplayCurrency, number>>;
+}
+
+// Converts a single stored point's total_value to the display currency.
+// Prefers native_breakdown (direct native→display cross-rate per currency,
+// identity for the home-currency bucket); falls back to total_value × the
+// row's historical fx rate (or the current rate) when native_breakdown is
+// absent or a needed cross-rate is missing. The live "today" tip carries
+// neither field — its total_value is the live net worth already converted to
+// the display currency by useNetWorth, so it's returned unchanged.
+export function convertPointToDisplay(
+  p: SnapshotPoint,
+  displayCurrency: DisplayCurrency,
+  displayRate: number,
+): number {
+  const today = new Date().toISOString().slice(0, 10);
+  if (p.date === today) return p.total_value;
+
+  if (p.native_breakdown) {
+    let total = 0;
+    let ok = true;
+    for (const [cur, amt] of Object.entries(p.native_breakdown)) {
+      const converted = convertCurrency(amt, cur, displayCurrency, p.fx ?? {});
+      if (converted == null) { ok = false; break; }
+      total += converted;
+    }
+    if (ok) return total;
+  }
+
+  const rate = displayCurrency === "USD" ? 1 : (p.fx?.[displayCurrency] ?? displayRate);
+  return p.total_value * rate;
 }
 
 interface Props {
@@ -191,11 +227,17 @@ export function NetWorthChart(props: Props) {
     setSelectedIndex(null); // eslint-disable-line react-hooks/set-state-in-effect
   }, [series]);
 
-  // Propagate selection to parent whenever index changes
+  // Propagate selection to parent whenever index changes — emit the point
+  // already converted to the display currency, so the hero (which renders
+  // this with an identity formatMoney) matches the chart exactly.
   useEffect(() => {
-    props.onSelectPoint?.(
-      selectedIndex !== null ? (displaySeries[selectedIndex] ?? null) : null
-    );
+    const raw = selectedIndex !== null ? (displaySeries[selectedIndex] ?? null) : null;
+    if (!raw) {
+      props.onSelectPoint?.(null);
+      return;
+    }
+    const displayRate = getUsdRate(displayCurrency);
+    props.onSelectPoint?.({ ...raw, total_value: convertPointToDisplay(raw, displayCurrency, displayRate) });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
 
@@ -203,18 +245,17 @@ export function NetWorthChart(props: Props) {
   const H = 140;
 
   // Convert all series values to display currency so the axis and curve are in
-  // the same unit as the hero number above the chart. Each row was stored in
-  // USD at ITS OWN date's historical FX rate — converting back with that same
-  // per-date rate (`p.fx`) is what makes a same-currency asset cancel exactly
-  // to its native value across its whole history. Using today's rate for every
-  // point would inject FX drift as fake jaggedness. The synthesized "today" tip
-  // has no stored `fx` (it's live, not a historical row) — it correctly falls
-  // back to the current rate, the same basis the headline uses.
+  // the same unit as the hero number above the chart. Each row's native_breakdown
+  // converts directly per currency (identity for the home-currency bucket — no
+  // FX, no drift); rows without it fall back to total_value × the row's own
+  // historical fx rate, which still cancels back to native for a same-currency
+  // asset. The synthesized "today" tip is the live net worth already converted
+  // to the display currency by useNetWorth — returned unchanged.
   const displayRate = getUsdRate(displayCurrency);
-  const converted = displaySeries.map((p) => {
-    const rate = displayCurrency === "USD" ? 1 : (p.fx?.[displayCurrency] ?? displayRate);
-    return { ...p, total_value: p.total_value * rate };
-  });
+  const converted = displaySeries.map((p) => ({
+    ...p,
+    total_value: convertPointToDisplay(p, displayCurrency, displayRate),
+  }));
 
   const values = converted.map((p) => p.total_value);
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;

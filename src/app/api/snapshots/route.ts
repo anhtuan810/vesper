@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServerSupabase();
   let query = supabase
     .from("snapshots")
-    .select("date, total_value")
+    .select("date, total_value, native_breakdown")
     .eq("user_id", user.id)
     .gt("total_value", 0)
     .order("date", { ascending: true });
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   // with no longer cancels). Resolve and attach each row's historical
   // USD→{display currency} rates so the client can convert on the same basis
   // it was stored with, not today's.
-  let withFx: Array<{ date: string; total_value: number; fx?: Partial<Record<DisplayCurrency, number>> }> = rows;
+  let withFx: Array<{ date: string; total_value: number; native_breakdown?: Record<string, number> | null; fx?: Partial<Record<DisplayCurrency, number>> }> = rows;
   if (rows.length > 0) {
     const earliest = rows[0].date as string;
     const latest = rows[rows.length - 1].date as string;

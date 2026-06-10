@@ -145,7 +145,10 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   }
 
   const sign = isPositive ? "" : "−";
-  const formattedAbs = activeAbs != null ? formatMoney(Math.abs(activeAbs), "USD", displayCurrency) : null;
+  // activeAbs and displayValue both already arrive in the display currency
+  // (the chart series and live netTotal are converted natively, never via
+  // USD), so format with from === to (identity, no rate lookup).
+  const formattedAbs = activeAbs != null ? formatMoney(Math.abs(activeAbs), displayCurrency, displayCurrency) : null;
   const formattedPct = activePct != null ? fmtPct(Math.abs(activePct)) : null;
 
   return (
@@ -165,7 +168,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
           fontVariationSettings: "'opsz' 60",
         }}
       >
-        <span>{formatMoney(displayValue, "USD", displayCurrency)}</span>
+        <span>{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
       </div>
 
       {/* Change line — IBKR-style plain text, no pill */}

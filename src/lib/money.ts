@@ -118,9 +118,21 @@ export function formatMoney(
   displayCurrency: DisplayCurrency,
   decimals: number = 0
 ): string {
-  const usdAmount = toUsdClient(amount, fromCurrency);
-  const rate = getUsdRate(displayCurrency);
-  const displayValue = usdAmount * rate;
+  let displayValue: number;
+  if (fromCurrency === displayCurrency) {
+    // Identity — no rate lookup, renders correctly even before rates load.
+    displayValue = amount;
+  } else {
+    const rates: Record<string, number> = {};
+    for (const c of SUPPORTED_CURRENCIES) {
+      if (c === "USD") continue;
+      rates[c] = getUsdRate(c);
+    }
+    const converted = convertCurrency(amount, fromCurrency, displayCurrency, rates);
+    // Missing cross-rate (e.g. an unsupported native currency) — fall back to
+    // treating the native amount as USD-equivalent rather than producing NaN.
+    displayValue = converted != null ? converted : amount * getUsdRate(displayCurrency);
+  }
   const absValue = Math.abs(displayValue);
   const sign = displayValue < 0 ? "-" : "";
   const { symbol, locale } = CURRENCY_META[displayCurrency];

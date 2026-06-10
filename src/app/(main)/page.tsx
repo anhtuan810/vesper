@@ -10,7 +10,7 @@ import { PortfolioEmptyState } from "@/components/PortfolioEmptyState";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { computeCurrentBalance } from "@/lib/mortgage";
-import { toUsdClient } from "@/lib/money";
+import { toUsdClient, toDisplay } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 
@@ -23,7 +23,7 @@ export default function Dashboard() {
     assets, loading: assetsLoading, error: assetsError, refreshing,
     refreshPrices, refetchAssets, lastUpdated, priceHealth, pricesLoaded,
   } = useAssets(user?.id);
-  const { loaded: currencyLoaded } = useDisplayCurrencyState();
+  const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
   const valuesSettled = pricesLoaded && currencyLoaded;
   const [chatOpen, setChatOpen] = useState(false);
   const [hasNew, setHasNew] = useState(false);
@@ -127,17 +127,21 @@ export default function Dashboard() {
   const {
     netTotal, grossTotal, liveCount, totalSymbols,
   } = useMemo(() => {
+    // Sum each asset's NATIVE equity, converting directly to the display
+    // currency (identity for home-currency assets — no FX, no drift).
     const netTotal = assets.reduce((sum, a) => {
       const cur = a.currency || "USD";
-      const valueUsd = toUsdClient(a.value, cur);
-      const mortUsd = a.type === "real_estate" ? toUsdClient(computeCurrentBalance(a), cur) : 0;
-      return sum + valueUsd - mortUsd;
+      const native = a.type === "real_estate"
+        ? Math.max(0, a.value - computeCurrentBalance(a))
+        : a.value;
+      const inDisplay = toDisplay(native, cur, displayCurrency);
+      return inDisplay != null ? sum + inDisplay : sum;
     }, 0);
     const grossTotal = assets.reduce((sum, a) => sum + toUsdClient(a.value, a.currency || "USD"), 0);
     const liveCount = assets.filter((a) => a.livePrice).length;
     const totalSymbols = assets.filter((a) => a.symbol).length;
     return { netTotal, grossTotal, liveCount, totalSymbols };
-  }, [assets]);
+  }, [assets, displayCurrency]);
 
   // Client-only desktop detection: render a neutral background until known to
   // avoid a hydration mismatch and a layout flash.

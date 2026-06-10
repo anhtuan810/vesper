@@ -10,6 +10,7 @@ import {
   type Range,
   buildSeries,
   rangeStartDate,
+  convertPointToDisplay,
 } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
@@ -18,7 +19,7 @@ import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
-import { toUsdClient, formatMoney } from "@/lib/money";
+import { toDisplay, getUsdRate, formatMoney } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import { requestExplore } from "@/lib/scenario/explore";
@@ -155,6 +156,14 @@ export function PortfolioTab({
     [fullSnapshots, range, netTotal]
   );
 
+  // Hero/baseline series — converted to the display currency the same way the
+  // chart converts its plotted points (native_breakdown direct, fx fallback),
+  // so the hero number and chart agree exactly.
+  const heroSeries = useMemo(() => {
+    const displayRate = getUsdRate(displayCurrency);
+    return series.map((p) => ({ ...p, total_value: convertPointToDisplay(p, displayCurrency, displayRate) }));
+  }, [series, displayCurrency]);
+
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
   // Group by semantic category, ordered by the fixed CATEGORY_ORDER (Crypto above
@@ -172,11 +181,12 @@ export function PortfolioTab({
         items: [...items].sort((a, b) => b.value - a.value),
         total: items.reduce((s, a) => {
           const equity = a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value;
-          return s + toUsdClient(equity, a.currency || "USD");
+          const inDisplay = toDisplay(equity, a.currency || "USD", displayCurrency);
+          return s + (inDisplay ?? 0);
         }, 0),
       }))
       .sort((a, b) => (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99));
-  }, [netWorthAssets]);
+  }, [netWorthAssets, displayCurrency]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     try {
@@ -224,7 +234,7 @@ export function PortfolioTab({
           chart and range pills sit flush with the full-bleed market/insight band edges. */}
       <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={series} valuesSettled={valuesSettled} mutations={mutations} />
+          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={heroSeries} valuesSettled={valuesSettled} mutations={mutations} />
         </div>
 
         {netTotal > 0 && (
@@ -317,8 +327,11 @@ export function PortfolioTab({
               </div>
               <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
                 {formatMoney(
-                  incomePensions.reduce((s, a) => s + toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), 0),
-                  "USD",
+                  incomePensions.reduce((s, a) => {
+                    const native = (a as { annual_income?: number | null }).annual_income ?? 0;
+                    return s + (toDisplay(native, a.currency || "USD", displayCurrency) ?? 0);
+                  }, 0),
+                  displayCurrency,
                   displayCurrency,
                 )} / year
               </div>
@@ -346,7 +359,7 @@ export function PortfolioTab({
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-fg" style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}>
-                        {formatMoney(toUsdClient((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD"), "USD", displayCurrency)} / year
+                        {formatMoney((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD", displayCurrency)} / year
                       </div>
                     </div>
                   </div>
