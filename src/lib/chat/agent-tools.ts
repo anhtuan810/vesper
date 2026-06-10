@@ -12,8 +12,10 @@ import { assemblePresent } from "@/lib/scenario/present-assemble";
 import { assembleProject } from "@/lib/scenario/project-assemble";
 import { assembleCounterfactual } from "@/lib/scenario/counterfactual-assemble";
 import { hypotheticalBuyGrowth, buyPriceUsd } from "@/lib/scenario/hypothetical";
-import { fetchHistoricalSeries } from "@/lib/prices";
+import { fetchHistoricalSeries, getMonthClosingPrice } from "@/lib/prices";
 import { getHistoricalUsdRates } from "@/lib/fx";
+import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
+import { parseAcquisitionMonth } from "@/lib/acquisition-date";
 import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
 import { validateScenarioIntent, resolveBuyDate } from "@/lib/scenario/validate-intent";
@@ -25,6 +27,8 @@ import type { PricePoint } from "@/lib/scenario/counterfactual";
 import type { ScenarioResult } from "@/lib/scenario/result";
 
 type SupabaseClient = ReturnType<typeof createServerSupabase>;
+
+const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 
 export interface ToolContext {
   supabase: SupabaseClient;
@@ -520,6 +524,38 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
   const changes = geo.changes;
 
+  // Auto-fill cost basis: an "add" for a tradeable with a stated acquisition
+  // month/date but no stated price gets its buy_price filled from Yahoo's
+  // closing price for that month — no extra question, the user can correct it
+  // later if it's off. Only fires when the model didn't already capture a price.
+  const costBasisNotes: string[] = [];
+  for (const change of changes) {
+    if (change.action !== "add") continue;
+    if (!TRADEABLE_TYPES.has(String(change.type ?? ""))) continue;
+    const symbol = typeof change.symbol === "string" ? change.symbol : null;
+    if (!symbol) continue;
+    if (typeof change.buy_price === "number" && change.buy_price > 0) continue;
+    const buyDateRaw = typeof change.buy_date === "string" ? change.buy_date : null;
+    if (!buyDateRaw) continue;
+    const resolvedDate = parseAcquisitionMonth(buyDateRaw);
+    if (!resolvedDate) continue;
+
+    const lookupSymbol = normalizeCryptoSymbol(symbol, change.type as string | undefined);
+    const monthClose = await getMonthClosingPrice(lookupSymbol, resolvedDate.slice(0, 7));
+    if (monthClose && monthClose.price > 0) {
+      const buyPrice = Math.round(monthClose.price * 100) / 100;
+      change.buy_price = buyPrice;
+      change.buy_price_source = "market";
+      costBasisNotes.push(
+        `Cost basis for ${change.name ?? symbol}: ${monthClose.currency} ${buyPrice.toFixed(2)}/share — ${resolvedDate.slice(0, 7)} closing price from Yahoo Finance.`
+      );
+    } else {
+      costBasisNotes.push(
+        `Yahoo doesn't have a price on file for ${change.name ?? symbol} around ${resolvedDate.slice(0, 7)} — logged without a cost basis.`
+      );
+    }
+  }
+
   const validationError = validatePortfolioChanges(changes as never, ctx.currentAssets as never);
   if (validationError) return { forModel: { error: validationError } };
 
@@ -548,7 +584,7 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
     proposalTimestamp: null,
   });
 
-  const notes = [...duplicateWarnings, ...fxWarnings, ...failures.map((f) => `Couldn't record ${f.name}.`)];
+  const notes = [...costBasisNotes, ...duplicateWarnings, ...fxWarnings, ...failures.map((f) => `Couldn't record ${f.name}.`)];
 
   // Adding or removing a dated asset changes what every historical snapshot
   // row from its acquisition date forward should contain — those rows must be

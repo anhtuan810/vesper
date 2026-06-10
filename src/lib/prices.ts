@@ -92,6 +92,30 @@ export async function fetchHistoricalSeries(
   }
 }
 
+// Closing price on the last trading day of the given YYYY-MM month, or null
+// when Yahoo has no data for that symbol/month (delisted, not yet listed,
+// etc.). Used to auto-fill a cost basis when the user states an acquisition
+// month but not a price — month-end is close enough to how people remember
+// what they paid, and avoids a second "what price?" question.
+export async function getMonthClosingPrice(
+  symbol: string,
+  yearMonth: string
+): Promise<{ price: number; currency: string } | null> {
+  const [year, month] = yearMonth.split("-").map(Number);
+  if (!year || !month) return null;
+  const from = `${yearMonth}-01`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const to = `${yearMonth}-${String(lastDay).padStart(2, "0")}`;
+
+  const series = await fetchHistoricalSeries(symbol, from, to);
+  if (!series || series.length === 0) return null;
+
+  const last = series[series.length - 1];
+  const price = normalizePrice(last.price, last.currency);
+  const currency = last.currency === "GBp" ? "GBP" : last.currency;
+  return { price, currency };
+}
+
 export function normalizePrice(price: number, currency: string): number {
   return currency === "GBp" ? price / 100 : price;
 }
