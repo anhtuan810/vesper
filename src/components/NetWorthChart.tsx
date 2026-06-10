@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
-import { getUsdRate, SUPPORTED_CURRENCIES, type DisplayCurrency } from "@/lib/money";
+import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } from "@/lib/money";
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
+import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL, STACK_ORDER, type Category } from "@/lib/categories";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -33,6 +34,10 @@ export interface SnapshotPoint {
   // currency (identity for the home-currency bucket — no FX, no drift). Absent
   // on rows written before this field existed, and on synthesized points.
   native_breakdown?: Record<string, number> | null;
+  // Per-asset-type USD breakdown for THIS row (see snapshot.ts breakdown).
+  // Real estate is equity-net, so this sums to total_value. Absent on
+  // synthesized points (e.g. the live "today" tip).
+  breakdown?: Record<string, number> | null;
 }
 
 // Live USD-based rate map (see money.ts) — used for cross-rate conversion.
@@ -198,6 +203,45 @@ function makeProjectY(H: number, yMin: number, yMax: number): (v: number) => num
   return (v) => CHART_PAD_TOP + drawH - ((v - yMin) / yRange) * drawH;
 }
 
+// Per-point category proportions (fractions of the displayed total, summing
+// to 1) derived from each point's USD asset-type breakdown. A point without a
+// usable breakdown (e.g. the synthesized live "today" tip) inherits the
+// nearest preceding point's proportions, so the right edge of the stack never
+// collapses.
+function computeCategoryProportions(points: SnapshotPoint[]): Record<Category, number>[] {
+  const result: Record<Category, number>[] = [];
+  let last: Record<Category, number> | null = null;
+  for (const p of points) {
+    const cat = categoryBreakdown(p.breakdown);
+    const sum = STACK_ORDER.reduce((s, c) => s + cat[c], 0);
+    let props: Record<Category, number>;
+    if (sum > 0) {
+      props = { property: 0, markets: 0, crypto: 0, reserves: 0 };
+      for (const c of STACK_ORDER) props[c] = cat[c] / sum;
+      last = props;
+    } else {
+      props = last ?? { property: 0, markets: 0, crypto: 0, reserves: 1 };
+    }
+    result.push(props);
+  }
+  return result;
+}
+
+// Builds a filled band between a category's cumulative-lower and
+// cumulative-upper boundaries across all points — straight (L) segments,
+// matching the net-worth line's lack of smoothing.
+function buildAreaPath(
+  lower: number[], upper: number[], projectY: (v: number) => number, drawW: number
+): string {
+  const n = upper.length;
+  if (n < 2) return "";
+  const toX = (i: number) => (i / (n - 1)) * drawW;
+  let d = `M ${toX(0).toFixed(2)} ${projectY(upper[0]).toFixed(2)}`;
+  for (let i = 1; i < n; i++) d += ` L ${toX(i).toFixed(2)} ${projectY(upper[i]).toFixed(2)}`;
+  for (let i = n - 1; i >= 0; i--) d += ` L ${toX(i).toFixed(2)} ${projectY(lower[i]).toFixed(2)}`;
+  return d + " Z";
+}
+
 export function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotPoint[] {
   const today = new Date().toISOString().slice(0, 10);
   const filtered = raw.filter((p) => p.date !== today);
@@ -286,6 +330,20 @@ export function NetWorthChart(props: Props) {
   const projectY = makeProjectY(H, niceMin, niceMax);
   const { line } = buildPath(values, W, H, niceMin, niceMax, drawW);
 
+  // Per-category stacked bands — each point's segments sum exactly to
+  // `values[i]` (the displayed total), so the top of the stack equals the
+  // net-worth line at every point in any display currency.
+  const categoryProportions = computeCategoryProportions(converted);
+  const stackBounds = {} as Record<Category, { lower: number[]; upper: number[] }>;
+  {
+    const cumulative = new Array(values.length).fill(0);
+    for (const c of STACK_ORDER) {
+      const lower = cumulative.slice();
+      for (let i = 0; i < values.length; i++) cumulative[i] += values[i] * categoryProportions[i][c];
+      stackBounds[c] = { lower, upper: cumulative.slice() };
+    }
+  }
+
   const lastY = values.length >= 2 ? projectY(values[values.length - 1]) : H / 2;
 
   const selectedX =
@@ -326,6 +384,19 @@ export function NetWorthChart(props: Props) {
         onTouchEnd() { setSelectedIndex(null); haptic(null); },
       }
     : {};
+
+  // Per-class hover card — top-down order (reserves, crypto, markets,
+  // property), mirroring the stack read top-down. Flips to the left of the
+  // cursor near the chart's right edge so it never overflows.
+  const TOOLTIP_WIDTH = 168;
+  const tooltipPoint = selectedIndex !== null ? displaySeries[selectedIndex] : null;
+  const tooltipTotal = selectedIndex !== null ? values[selectedIndex] : null;
+  const tooltipSegments = selectedIndex !== null
+    ? [...STACK_ORDER].reverse()
+        .map((c) => ({ category: c, value: values[selectedIndex] * categoryProportions[selectedIndex][c] }))
+        .filter((s) => Math.abs(s.value) >= 0.5)
+    : [];
+  const flipTooltipLeft = selectedX !== null && selectedX + TOOLTIP_WIDTH + 16 > W;
 
   return (
     <div>
@@ -370,6 +441,16 @@ export function NetWorthChart(props: Props) {
               height={H}
               style={{ display: "block" }}
             >
+              {/* Stacked asset-class bands — bottom (property) to top (reserves),
+                  painted under the net-worth line so the trajectory reads identically. */}
+              {STACK_ORDER.map((c) => (
+                <path
+                  key={c}
+                  d={buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, drawW)}
+                  fill={CATEGORY_COLOR[c]}
+                  fillOpacity={0.85}
+                />
+              ))}
               <path
                 d={line}
                 fill="none"
@@ -398,6 +479,51 @@ export function NetWorthChart(props: Props) {
                 </>
               )}
             </svg>
+          )}
+
+          {/* Per-class hover card — date, one row per non-zero category, then total */}
+          {selectedIndex !== null && selectedX !== null && tooltipPoint && tooltipTotal !== null && (
+            <div
+              style={{
+                position: "absolute",
+                top: 4,
+                ...(flipTooltipLeft ? { right: W - selectedX + 8 } : { left: selectedX + 8 }),
+                width: TOOLTIP_WIDTH,
+                background: "var(--surface)",
+                border: "0.5px solid var(--border)",
+                borderRadius: 8,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+                padding: "8px 10px",
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+            >
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "var(--text-dim)", marginBottom: 6 }}>
+                {formatDate(tooltipPoint.date)}
+              </div>
+              {tooltipSegments.map(({ category, value }) => (
+                <div key={category} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: CATEGORY_COLOR[category], flexShrink: 0, display: "inline-block" }} />
+                    <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "var(--text-dim)" }}>
+                      {CATEGORY_LABEL[category]}
+                    </span>
+                  </div>
+                  <span style={{ fontFamily: "var(--font-serif)", fontSize: 12, color: "var(--text)", fontFeatureSettings: '"tnum" 1', marginLeft: 8 }}>
+                    {formatMoney(value, displayCurrency, displayCurrency)}
+                  </span>
+                </div>
+              ))}
+              <div style={{ borderTop: "0.5px solid var(--border)", margin: "6px 0" }} />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600, color: "var(--text)" }}>
+                  Total
+                </span>
+                <span style={{ fontFamily: "var(--font-serif)", fontSize: 13, fontWeight: 600, color: "var(--text)", fontFeatureSettings: '"tnum" 1' }}>
+                  {formatMoney(tooltipTotal, displayCurrency, displayCurrency)}
+                </span>
+              </div>
+            </div>
           )}
         </div>
 

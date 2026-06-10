@@ -26,45 +26,9 @@ import { isIncomePension } from "@/lib/pension";
 import { requestExplore } from "@/lib/scenario/explore";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { firstSnapshotDate } from "@/lib/networth-history";
-
-// Semantic category mapping — 4 groups, regardless of how many asset types exist
-const CATEGORY_MAP: Record<string, string> = {
-  real_estate: "property",
-  stocks:      "markets",
-  etf:         "markets",
-  crypto:      "crypto",
-  cash:        "reserves",
-  pension:     "reserves",
-  bonds:       "reserves",
-  gold:        "reserves",
-  other:       "reserves",
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  property: "Property",
-  markets:  "Public markets",
-  reserves: "Reserves",
-  crypto:   "Crypto",
-};
-
-// CSS variable references — resolved at paint time, respects light/dark theme
-const CATEGORY_COLOR: Record<string, string> = {
-  property: "var(--category-property)",
-  markets:  "var(--category-public-markets)",
-  reserves: "var(--category-reserves)",
-  crypto:   "var(--category-crypto)",
-};
-
-const ALL_CATEGORIES = ["property", "markets", "reserves", "crypto"] as const;
-
-// Fixed display order for the holdings groups — Crypto sits above Reserves
-// (a deliberate semantic order, not value-ranked).
-const CATEGORY_ORDER: Record<string, number> = {
-  property: 0,
-  markets:  1,
-  crypto:   2,
-  reserves: 3,
-};
+import {
+  CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_COLOR, CATEGORY_ORDER, ALL_CATEGORIES,
+} from "@/lib/categories";
 
 // Clips the FULL snapshot history to a range's display window: every real row
 // at or after `windowStart`, plus the single most recent row strictly BEFORE
