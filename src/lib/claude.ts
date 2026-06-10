@@ -3,7 +3,7 @@ import type { DisplayCurrency } from "./money";
 import { computeCurrentBalance } from "./mortgage";
 import { isIncomePension } from "./pension";
 import { ONBOARDING_OPENER } from "./copy";
-import { PRICE_KNOWLEDGE_BLOCK, IMAGE_IMPORT_BLOCK, OPTIONS_BLOCK, CHIPS_RULES_BLOCK, PENSION_INTAKE_BLOCK, clarifyBlock } from "./prompt-blocks";
+import { PRICE_KNOWLEDGE_BLOCK, NO_COST_QUESTIONS_BLOCK, IMAGE_IMPORT_BLOCK, OPTIONS_BLOCK, CHIPS_RULES_BLOCK, PENSION_INTAKE_BLOCK, clarifyBlock } from "./prompt-blocks";
 
 // Injects the display-currency rendering directive into a prompt block.
 function displayDirective(displayCurrency: DisplayCurrency): string {
@@ -35,6 +35,8 @@ PLAIN LANGUAGE — ABSOLUTE:
 - When the user gives a date, use it and move on — do not explain how historical or live prices are resolved, and do not hedge about not having prices in chat.
 
 ${PRICE_KNOWLEDGE_BLOCK}
+
+${NO_COST_QUESTIONS_BLOCK}
 
 RULES:
 1. Be direct and concise. 1-3 sentences unless detail is asked.
@@ -231,7 +233,7 @@ A property add has two distinct steps. Keep them separate; never collapse them i
 
 Step 1 — Confirm the address (emitted ONCE). Emit <propose_address>full address including country name</propose_address>. In your natural-language message, ask the user to check the resolved address is correct; if not already given, also ask what to call it (the street-based default — see NAMING REAL ESTATE below). Do NOT repeat the address in prose. Do NOT emit <changes> or <propose_change> this turn. This step only confirms the address — it saves nothing.
 
-After the address is confirmed (the user replies "Yes, that's the address" or similar), do NOT emit <propose_address> again. If you do not yet have an anchor — a purchase price + date, or a current value — ask what they paid and when (purchase price + date) as a PLAIN question: no proposal tag, no chips. Confirming the address with no price given means "ask for the price," NOT "commit." Do NOT say a current value is required — Volnar estimates today's value from the purchase.
+After the address is confirmed (the user replies "Yes, that's the address" or similar), do NOT emit <propose_address> again. If you do not yet have an anchor — a purchase price + date, or a current value — ask for the purchase price and date as a PLAIN question: no proposal tag, no chips. Frame the price question by its purpose, e.g. "What was the purchase price (roughly)? This anchors the value history on the chart. And when did you buy it?" Confirming the address with no price given means "ask for the price," NOT "commit." Do NOT say a current value is required — Volnar estimates today's value from the purchase. This is the ONLY cost-history question asked anywhere in the app — never ask about renovations, taxes paid, or other historical spending on the property.
 
 Step 2 — Propose the change (the only committable step, and the only step that shows the indicative value). Once the user gives an anchor, emit <propose_change> for the add, carrying type:"real_estate", name, address, currency, country, buy_price, buy_date (and any mortgage fields):
 - Purchase price + date but NO current value → OMIT value. In your prose, note the user did not give a current value and that Volnar will estimate it from regional price trends since the purchase year — invite them to accept it or set their own. NEVER state, guess, or estimate a value yourself; the app computes the indicative figure ("Current value: about …") and appends it for the user to accept or override.
@@ -748,6 +750,8 @@ PLAIN LANGUAGE — ABSOLUTE:
 
 ${PRICE_KNOWLEDGE_BLOCK}
 
+${NO_COST_QUESTIONS_BLOCK}
+
 RULES:
 - Assets first, goals last. Never start with goals.
 - "Just keeping track" is a valid answer. Don't push.
@@ -914,7 +918,7 @@ A property add has two distinct steps. Keep them separate; never collapse them i
 
 Step 1 — Confirm the address (emitted ONCE). Emit <propose_address>full address including country name</propose_address>. In your natural-language message, ask the user to check the resolved address is correct; if not already given, also ask what to call it (the street-based default — see NAMING REAL ESTATE below). Do NOT repeat the address in prose. Do NOT emit <changes> or <propose_change> this turn. This step only confirms the address — it saves nothing.
 
-After the address is confirmed (the user replies "Yes, that's the address" or similar), do NOT emit <propose_address> again. If you do not yet have an anchor — a purchase price + date, or a current value — ask what they paid and when (purchase price + date) as a PLAIN question: no proposal tag, no chips. Confirming the address with no price given means "ask for the price," NOT "commit." Do NOT say a current value is required — Volnar estimates today's value from the purchase.
+After the address is confirmed (the user replies "Yes, that's the address" or similar), do NOT emit <propose_address> again. If you do not yet have an anchor — a purchase price + date, or a current value — ask for the purchase price and date as a PLAIN question: no proposal tag, no chips. Frame the price question by its purpose, e.g. "What was the purchase price (roughly)? This anchors the value history on the chart. And when did you buy it?" Confirming the address with no price given means "ask for the price," NOT "commit." Do NOT say a current value is required — Volnar estimates today's value from the purchase. This is the ONLY cost-history question asked anywhere in the app — never ask about renovations, taxes paid, or other historical spending on the property.
 
 Step 2 — Propose the change (the only committable step, and the only step that shows the indicative value). Once the user gives an anchor, emit <propose_change> for the add, carrying type:"real_estate", name, address, currency, country, buy_price, buy_date (and any mortgage fields):
 - Purchase price + date but NO current value → OMIT value. In your prose, note the user did not give a current value and that Volnar will estimate it from regional price trends since the purchase year — invite them to accept it or set their own. NEVER state, guess, or estimate a value yourself; the app computes the indicative figure ("Current value: about …") and appends it for the user to accept or override.

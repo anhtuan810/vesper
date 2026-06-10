@@ -11,6 +11,7 @@ import { estimatePropertyValue } from "./property-estimate-resolve";
 import {
   validatePensionChange,
   pensionShapeOfKind,
+  DEFAULT_PENSION_ACCESS_AGE,
   type PensionKind,
   type PensionChangeInput,
 } from "./pension-intake";
@@ -387,6 +388,7 @@ export async function applyPortfolioChanges({
           pensionAnnualIncome = change.annual_income ?? null;
           pensionMonthlyContribution = null;
           pensionGrowthRate = null;   // income has no growth assumption
+          pensionAccessAge = pensionAccessAge ?? DEFAULT_PENSION_ACCESS_AGE; // optional start age
           insertValue = null;          // off-balance: no owned pot
           resolvedValue = 0;           // running-total metadata contribution is 0
         } else {
@@ -618,6 +620,7 @@ export async function applyPortfolioChanges({
             updateData.annual_income = merged.annual_income ?? null;
             updateData.monthly_contribution = null;
             updateData.mortgage_rate = null;
+            updateData.access_age = merged.access_age ?? DEFAULT_PENSION_ACCESS_AGE;
             pensionEditIncomeAmount = merged.annual_income ?? 0;
           } else {
             updateData.value = merged.value ?? null;

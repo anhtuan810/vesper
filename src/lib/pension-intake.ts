@@ -24,24 +24,13 @@ export const PENSION_TYPE_CHIPS = [
   "Not sure",
 ] as const;
 
-export const PENSION_PROVIDER_CHIPS = [
-  "ABN AMRO",
-  "ASR",
-  "Nationale-Nederlanden",
-  "Aegon",
-  "Other — type it",
-] as const;
-
-export const PENSION_CONTRIB_CHIPS = [
-  "Not contributing (€0)",
-  "€250",
-  "€500",
-  "Other — type it",
-] as const;
-
 export const PENSION_GROWTH_CHIPS = ["3%", "4%", "5%", "Type it"] as const;
 
 export const PENSION_AGE_CHIPS = ["65", "67", "68", "Other"] as const;
+
+// Income pensions: start age is optional — "Skip" means omit access_age
+// entirely and let the server apply DEFAULT_PENSION_ACCESS_AGE.
+export const PENSION_INCOME_AGE_CHIPS = ["65", "67", "68", "Skip"] as const;
 
 // Confirmation-echo chips. "Looks right, add it" is a commit chip (mirror it in
 // CONFIRMATION_CHIPS so the commit turn skips the proposal step).
@@ -51,10 +40,9 @@ export const PENSION_ECHO_CHIPS = ["Looks right, add it", "Change something"] as
 // server's chip sanitizer never silently drops an intake chip.
 export const ALL_PENSION_CHIPS: readonly string[] = [
   ...PENSION_TYPE_CHIPS,
-  ...PENSION_PROVIDER_CHIPS,
-  ...PENSION_CONTRIB_CHIPS,
   ...PENSION_GROWTH_CHIPS,
   ...PENSION_AGE_CHIPS,
+  ...PENSION_INCOME_AGE_CHIPS,
   ...PENSION_ECHO_CHIPS,
 ];
 
@@ -93,13 +81,8 @@ export function kindLabel(kind: PensionKind): string {
 const isPositiveNumber = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v) && v > 0;
 
-const isNonNegativeNumber = (v: unknown): v is number =>
-  typeof v === "number" && Number.isFinite(v) && v >= 0;
-
 const isPositiveInt = (v: unknown): v is number =>
   typeof v === "number" && Number.isInteger(v) && v > 0;
-
-const hasProvider = (v: unknown): boolean => typeof v === "string" && v.trim().length > 0;
 
 // ── The gate ────────────────────────────────────────────────────────────────────
 // Returns { ok: true } only when EVERY required field for the shape is present
@@ -120,15 +103,6 @@ export function validatePensionChange(c: PensionChangeInput): PensionGateResult 
     if (!isPositiveNumber(c.value)) {
       return { ok: false, question: "What's the current value of the pot?" };
     }
-    if (!hasProvider(c.pension_provider)) {
-      return { ok: false, question: "Who is the provider?" };
-    }
-    if (!isNonNegativeNumber(c.monthly_contribution)) {
-      return {
-        ok: false,
-        question: "How much do you contribute each month? (€0 is fine if you're not contributing.)",
-      };
-    }
     if (!isPositiveNumber(c.mortgage_rate)) {
       return { ok: false, question: "What annual growth assumption should I use?" };
     }
@@ -142,14 +116,13 @@ export function validatePensionChange(c: PensionChangeInput): PensionGateResult 
   if (!isPositiveNumber(c.annual_income)) {
     return { ok: false, question: "What annual income will it pay?" };
   }
-  if (!hasProvider(c.pension_provider)) {
-    return { ok: false, question: "Which provider or scheme is this?" };
-  }
-  if (!isPositiveInt(c.access_age)) {
-    return { ok: false, question: "At what age does it start paying?" };
-  }
   return { ok: true };
 }
+
+// Default start age for income pensions when the user doesn't give one —
+// "optional start age" per the no-cost-questions intake; standard NL state
+// pension age is a reasonable stand-in.
+export const DEFAULT_PENSION_ACCESS_AGE = 67;
 
 // ── Confirmation echo ────────────────────────────────────────────────────────────
 // Enumerates EVERY captured field for the shape, for the user to confirm before
@@ -165,18 +138,16 @@ export function buildPensionEcho(c: PensionChangeInput, name: string): string {
 
   if (shape === "capital") {
     lines.push(`Current value: ${money(c.value as number)}`);
-    lines.push(`Provider: ${(c.pension_provider ?? "").trim()}`);
-    lines.push(
-      `Monthly contribution: ${
-        (c.monthly_contribution as number) > 0 ? money(c.monthly_contribution as number) : "none (€0)"
-      }`,
-    );
+    if ((c.pension_provider ?? "").trim()) lines.push(`Provider: ${(c.pension_provider as string).trim()}`);
+    if (typeof c.monthly_contribution === "number" && c.monthly_contribution > 0) {
+      lines.push(`Monthly contribution: ${money(c.monthly_contribution)}`);
+    }
     lines.push(`Growth assumption: ${c.mortgage_rate}%`);
     lines.push(`Access age: ${c.access_age}`);
   } else {
     lines.push(`Annual income: ${money(c.annual_income as number)} / year`);
-    lines.push(`Provider/scheme: ${(c.pension_provider ?? "").trim()}`);
-    lines.push(`Start age: ${c.access_age}`);
+    if ((c.pension_provider ?? "").trim()) lines.push(`Provider/scheme: ${(c.pension_provider as string).trim()}`);
+    lines.push(`Start age: ${c.access_age ?? DEFAULT_PENSION_ACCESS_AGE}`);
   }
 
   return lines.join("\n");
