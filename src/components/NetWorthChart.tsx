@@ -387,10 +387,9 @@ export function NetWorthChart(props: Props) {
 
   // Per-class hover card — top-down order (reserves, crypto, markets,
   // property), mirroring the stack read top-down. Flips to the left of the
-  // cursor near the chart's right edge so it never overflows.
+  // cursor near the chart's right edge so it never overflows. Breakdown-only
+  // annotation — the hero already surfaces the date and total on hover.
   const TOOLTIP_WIDTH = 168;
-  const tooltipPoint = selectedIndex !== null ? displaySeries[selectedIndex] : null;
-  const tooltipTotal = selectedIndex !== null ? values[selectedIndex] : null;
   const tooltipSegments = selectedIndex !== null
     ? [...STACK_ORDER].reverse()
         .map((c) => ({ category: c, value: values[selectedIndex] * categoryProportions[selectedIndex][c] }))
@@ -481,8 +480,10 @@ export function NetWorthChart(props: Props) {
             </svg>
           )}
 
-          {/* Per-class hover card — date, one row per non-zero category, then total */}
-          {selectedIndex !== null && selectedX !== null && tooltipPoint && tooltipTotal !== null && (
+          {/* Per-class breakdown card — one row per non-zero category. The hero
+              already surfaces the date and total on hover, so this is an
+              annotation only: no header, no divider, no total. */}
+          {selectedIndex !== null && selectedX !== null && tooltipSegments.length > 0 && (
             <div
               style={{
                 position: "absolute",
@@ -498,9 +499,6 @@ export function NetWorthChart(props: Props) {
                 zIndex: 2,
               }}
             >
-              <div style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "var(--text-dim)", marginBottom: 6 }}>
-                {formatDate(tooltipPoint.date)}
-              </div>
               {tooltipSegments.map(({ category, value }) => (
                 <div key={category} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -514,15 +512,6 @@ export function NetWorthChart(props: Props) {
                   </span>
                 </div>
               ))}
-              <div style={{ borderTop: "0.5px solid var(--border)", margin: "6px 0" }} />
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600, color: "var(--text)" }}>
-                  Total
-                </span>
-                <span style={{ fontFamily: "var(--font-serif)", fontSize: 13, fontWeight: 600, color: "var(--text)", fontFeatureSettings: '"tnum" 1' }}>
-                  {formatMoney(tooltipTotal, displayCurrency, displayCurrency)}
-                </span>
-              </div>
             </div>
           )}
         </div>
