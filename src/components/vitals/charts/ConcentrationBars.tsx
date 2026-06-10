@@ -36,6 +36,7 @@ interface Props {
 }
 
 const LABEL_W = 88;
+const VALUE_W = 46;
 const BAR_H = 9;
 const ROW_GAP = 7;
 const HEADER_H = 18;
@@ -57,8 +58,10 @@ export function ConcentrationBars({ positions }: Props) {
   const axisMax = Math.max(50, Math.ceil((top1Pct + 10) / 10) * 10);
   // Threshold fraction of the track width (0–1)
   const threshFrac = 35 / axisMax;
-  // CSS calc expression: left edge of threshold line from the container left
-  const threshLeft = `calc(${LABEL_W}px + ${threshFrac.toFixed(6)} * (100% - ${LABEL_W}px))`;
+  // CSS calc expression: left edge of threshold line from the container left.
+  // The bar track excludes both the leading label column (LABEL_W) and the
+  // trailing % value column (VALUE_W).
+  const threshLeft = `calc(${LABEL_W}px + ${threshFrac.toFixed(6)} * (100% - ${LABEL_W}px - ${VALUE_W}px))`;
 
   const restCount = rest.length;
   const restSum = rest.reduce((s, p) => s + p.pct, 0);
@@ -144,27 +147,32 @@ export function ConcentrationBars({ positions }: Props) {
                 </div>
               </div>
 
-              {/* Bar + % label */}
-              <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
-                <div
-                  style={{
-                    height: BAR_H,
-                    borderRadius: 2,
-                    background: colorFor(pos.type),
-                    width: animated ? `${barWidthPct}%` : "0%",
-                    transition: animated
-                      ? `width 0.45s cubic-bezier(0.25, 0.1, 0.25, 1) ${i * 65}ms`
-                      : "none",
-                    flexShrink: 0,
-                  }}
-                />
+              {/* Bar + % label — the value column has a fixed width so the bar
+                  track (flex:1, minWidth:0) never extends under it; a 100%
+                  bar therefore stays inside the card. */}
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      height: BAR_H,
+                      borderRadius: 2,
+                      background: colorFor(pos.type),
+                      width: animated ? `${barWidthPct}%` : "0%",
+                      transition: animated
+                        ? `width 0.45s cubic-bezier(0.25, 0.1, 0.25, 1) ${i * 65}ms`
+                        : "none",
+                      flexShrink: 0,
+                    }}
+                  />
+                </div>
                 <span
                   style={{
-                    marginLeft: 6,
+                    width: VALUE_W,
+                    flexShrink: 0,
+                    textAlign: "left",
                     fontSize: 10.5,
                     color: "var(--text-dim)",
                     fontFeatureSettings: "'tnum'",
-                    flexShrink: 0,
                     lineHeight: 1,
                   }}
                 >
