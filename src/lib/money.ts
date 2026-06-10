@@ -1,4 +1,5 @@
 import { USD_FALLBACK_RATES, FX_STALE_AFTER_MS } from "@/lib/constants";
+import { convertCurrency } from "@/lib/currency-convert";
 
 export type DisplayCurrency = "EUR" | "USD" | "GBP";
 
@@ -80,6 +81,22 @@ export function convertToUsd(displayValue: number, displayCurrency: DisplayCurre
   if (displayCurrency === "USD") return displayValue;
   const rate = getUsdRate(displayCurrency);
   return displayValue / rate;
+}
+
+/**
+ * Cross-rate conversion using the client-side rate cache. Identity
+ * short-circuit for from === to — returns the input unchanged even before
+ * rates have loaded, avoiding a load flash for home-currency amounts.
+ * Returns null only if a needed rate is missing.
+ */
+export function toDisplay(amount: number, from: string, to: string): number | null {
+  if (from === to) return amount;
+  const rates: Record<string, number> = {};
+  for (const c of SUPPORTED_CURRENCIES) {
+    if (c === "USD") continue;
+    rates[c] = getUsdRate(c);
+  }
+  return convertCurrency(amount, from, to, rates);
 }
 
 export interface MoneyParts {

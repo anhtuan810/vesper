@@ -410,8 +410,21 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // (which always converts at the rate for the date it's valuing).
     const fxSeries = await getHistoricalUsdRates(earliest, todayStr);
     const fxSeriesDates = Object.keys(fxSeries).sort();
-    const rateAt = (date: string, currency: string) =>
-      historicalFxRate(fxSeries, fxSeriesDates, date, currency, fx);
+    // Gap-fill on top of historicalFxRate's prior-date carry-forward + live
+    // fallback: if a date falls before the first available historical entry
+    // (and there's no live rate either), fall forward to the nearest LATER
+    // date in the series. Only an entirely-empty series (and no live rate)
+    // yields null.
+    const rateAt = (date: string, currency: string): number | null => {
+      const r = historicalFxRate(fxSeries, fxSeriesDates, date, currency, fx);
+      if (r != null) return r;
+      for (const d of fxSeriesDates) {
+        if (d < date) continue;
+        const rate = fxSeries[d]?.[currency];
+        if (rate != null) return rate;
+      }
+      return null;
+    };
 
     type SnapshotRow = { user_id: string; date: string; total_value: number; breakdown: Record<string, number> };
 

@@ -7,6 +7,7 @@ import {
   FX_MEM_CACHE_TTL_MS,
   USD_FALLBACK_RATES,
 } from "@/lib/constants";
+import { convertCurrency } from "@/lib/currency-convert";
 
 export interface FxRates {
   [quote: string]: number; // rate: 1 USD = N quote
@@ -151,6 +152,15 @@ export function historicalFxRate(
   return result ?? currentFx[currency] ?? null;
 }
 
+
+// Cross-rate conversion using the live USD-based rates table. Identity
+// short-circuit for from === to (no fetch needed). Returns null only if a
+// needed rate is missing from the table.
+export async function toDisplay(amount: number, from: string, to: string): Promise<number | null> {
+  if (from === to) return amount;
+  const rates = await getUsdRates();
+  return convertCurrency(amount, from, to, rates);
+}
 
 // Returns null only when the FX table is empty AND the API is down.
 export async function toUsd(amount: number, nativeCurrency: string): Promise<number | null> {
