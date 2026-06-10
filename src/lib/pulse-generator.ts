@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic();
 
+type ActiveVital = { key: string; value: unknown; band: string };
+
 const VITAL_KEY_LABELS: Record<string, string> = {
   concentration: "equities",
   realAssetWeight: "property",
@@ -26,7 +28,7 @@ const ABSENT_PRIORITY_LIQUID: Array<{ key: string; label: string }> = [
 ];
 
 function buildThinPulse(
-  activeVitals: Array<{ key: string; value: unknown; band: string }>,
+  activeVitals: ActiveVital[],
   lens: "all" | "liquid",
 ): string {
   const keySet = new Set(activeVitals.map((v) => v.key));
@@ -53,13 +55,47 @@ const SYSTEM_PROMPT_ALL = `Emit ONE synthesis sentence, 15–25 words, describin
 
 const SYSTEM_PROMPT_LIQUID = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active investable portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. STRICT exclusion: the user has removed property from this lens. You MUST NOT mention the home, property, real estate, real-asset weight, mortgage, or leverage in any form whatsoever.`;
 
+// Defends the deterministic-calculates / LLM-explains contract: strips fields
+// the model must never reference. (1) A realGrowth vital with no real value/band
+// — dormant vitals are already excluded upstream via `applies`, but this is a
+// belt-and-braces check so a stale or malformed entry can't surface a stray
+// figure. (2) Whichever concentration "top position" basis the Concentration
+// card ISN'T showing for this lens — liquid lens, and an "all" lens whose
+// gross top position is the home, both display the investable basis, so the
+// gross topPositionPct/topPositionName/top3Pct are removed before the model
+// ever sees them and can't quote a second, mismatched number.
+function sanitizeVitalsForPulse(
+  activeVitals: ActiveVital[],
+  lens: "all" | "liquid",
+): ActiveVital[] {
+  return activeVitals
+    .filter((v) => v.key !== "realGrowth" || (v.value != null && v.band != null))
+    .map((v) => {
+      if (v.key !== "concentration" || v.value == null || typeof v.value !== "object") {
+        return v;
+      }
+      const conc = v.value as Record<string, unknown>;
+      const topPositionIsRealEstate = conc.topPositionIsRealEstate === true;
+      if (lens === "liquid" || topPositionIsRealEstate) {
+        const sanitized = { ...conc };
+        delete sanitized.topPositionPct;
+        delete sanitized.topPositionName;
+        delete sanitized.top3Pct;
+        return { ...v, value: sanitized };
+      }
+      return v;
+    });
+}
+
 export async function generatePulse(
-  activeVitals: Array<{ key: string; value: unknown; band: string }>,
+  activeVitals: ActiveVital[],
   displayCurrency: string,
   lens: "all" | "liquid" = "all",
 ): Promise<string | null> {
-  if (activeVitals.length <= 3) {
-    return buildThinPulse(activeVitals, lens);
+  const sanitized = sanitizeVitalsForPulse(activeVitals, lens);
+
+  if (sanitized.length <= 3) {
+    return buildThinPulse(sanitized, lens);
   }
 
   const systemPrompt =
@@ -78,7 +114,7 @@ export async function generatePulse(
         messages: [
           {
             role: "user",
-            content: `Active vitals (display currency: ${displayCurrency}):\n${JSON.stringify(activeVitals)}\n\nWrite one synthesis sentence.`,
+            content: `Active vitals (display currency: ${displayCurrency}):\n${JSON.stringify(sanitized)}\n\nWrite one synthesis sentence.`,
           },
         ],
       });
@@ -107,7 +143,7 @@ export async function generatePulse(
   // sentence uses concentration language without referencing the investable
   // book, the home-anchor framing failed — fall back to deterministic rather
   // than serving a stale "concentration risk" sentence.
-  const concVal = activeVitals.find((v) => v.key === "concentration")?.value;
+  const concVal = sanitized.find((v) => v.key === "concentration")?.value;
   const topPositionIsRealEstate =
     (concVal as Record<string, unknown> | null)?.topPositionIsRealEstate ===
     true;
@@ -116,7 +152,7 @@ export async function generatePulse(
     /concentration|concentrated/i.test(raw) &&
     !/investable/i.test(raw)
   ) {
-    return buildThinPulse(activeVitals, lens);
+    return buildThinPulse(sanitized, lens);
   }
 
   return raw;
