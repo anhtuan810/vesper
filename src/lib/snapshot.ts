@@ -210,35 +210,48 @@ function unitsAtDate(
 //   - weekly:  every 7 days from D-30 back to D-365
 //   - monthly: 1st of each month from D-365 back to `earliest`
 // Returns dates sorted ascending that are >= earliest and < todayStr.
-function targetSnapshotDates(earliest: string, todayStr: string): string[] {
+function targetSnapshotDates(earliest: string, todayStr: string, hasTradeables: boolean): string[] {
   const set = new Set<string>();
   const today = new Date(todayStr + "T12:00:00Z");
 
-  // Daily
-  for (let i = 1; i <= 30; i++) {
-    const d = new Date(today);
-    d.setUTCDate(d.getUTCDate() - i);
-    set.add(d.toISOString().slice(0, 10));
-  }
+  if (hasTradeables) {
+    // Daily
+    for (let i = 1; i <= 30; i++) {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() - i);
+      set.add(d.toISOString().slice(0, 10));
+    }
 
-  // Weekly: D-30 back to D-365
-  const weeklyEnd = new Date(today);
-  weeklyEnd.setUTCDate(weeklyEnd.getUTCDate() - 30);
-  const monthlyStart = new Date(today);
-  monthlyStart.setUTCFullYear(monthlyStart.getUTCFullYear() - 1);
-  let w = new Date(weeklyEnd);
-  while (w > monthlyStart) {
-    set.add(w.toISOString().slice(0, 10));
-    w.setUTCDate(w.getUTCDate() - 7);
-  }
+    // Weekly: D-30 back to D-365
+    const weeklyEnd = new Date(today);
+    weeklyEnd.setUTCDate(weeklyEnd.getUTCDate() - 30);
+    const monthlyStart = new Date(today);
+    monthlyStart.setUTCFullYear(monthlyStart.getUTCFullYear() - 1);
+    let w = new Date(weeklyEnd);
+    while (w > monthlyStart) {
+      set.add(w.toISOString().slice(0, 10));
+      w.setUTCDate(w.getUTCDate() - 7);
+    }
 
-  // Monthly: 1st of each month from 1 year ago back to earliest
-  const earliestDate = new Date(earliest + "T12:00:00Z");
-  let m = new Date(monthlyStart);
-  m.setUTCDate(1);
-  while (m >= earliestDate) {
-    set.add(m.toISOString().slice(0, 10));
-    m.setUTCMonth(m.getUTCMonth() - 1);
+    // Monthly: 1st of each month from 1 year ago back to earliest
+    const earliestDate = new Date(earliest + "T12:00:00Z");
+    let m = new Date(monthlyStart);
+    m.setUTCDate(1);
+    while (m >= earliestDate) {
+      set.add(m.toISOString().slice(0, 10));
+      m.setUTCMonth(m.getUTCMonth() - 1);
+    }
+  } else {
+    // Property/cash/pension-only portfolio: monthly cadence end-to-end —
+    // first of each month from today back to earliest. No daily/weekly
+    // samples, since these holdings don't change value within a month.
+    const m = new Date(today);
+    m.setUTCDate(1);
+    const earliestDate = new Date(earliest + "T12:00:00Z");
+    while (m >= earliestDate) {
+      set.add(m.toISOString().slice(0, 10));
+      m.setUTCMonth(m.getUTCMonth() - 1);
+    }
   }
 
   return [...set]
@@ -407,7 +420,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     );
 
     const fx = await getUsdRates();
-    const dates = targetSnapshotDates(earliest, todayStr);
+    const hasTradeables = assets.some((a) => TRADEABLE.has(a.type as string));
+    const dates = targetSnapshotDates(earliest, todayStr, hasTradeables);
     if (dates.length === 0) return;
 
     // Real per-date USD rates for the whole backfill span — every contribution
