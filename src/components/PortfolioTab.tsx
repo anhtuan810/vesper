@@ -219,7 +219,7 @@ export function PortfolioTab({
                 IS the affordance; tapping opens scenario explore (seeded with the
                 deterministic portfolio scenario chips). */}
             <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
-              <ProjectionTeaser onExplore={handleExplore} snapshots={fullSnapshots} />
+              <ProjectionTeaser onExplore={handleExplore} snapshots={fullSnapshots} netTotal={netTotal} />
             </div>
           </div>
         )}

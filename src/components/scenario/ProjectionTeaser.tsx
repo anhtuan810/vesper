@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getUsdRate } from "@/lib/money";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
@@ -30,9 +29,15 @@ interface ProjResp {
 interface ProjectionTeaserProps {
   onExplore: () => void;
   snapshots: SnapshotPoint[];
+  /** Today's net worth in the display currency — same figure as the Portfolio
+   *  hero (page.tsx's `netTotal`). The projection is anchored to this value
+   *  directly so the two surfaces always agree to the unit, with no FX
+   *  conversion of the projected figure (the route's `startUsd`/`trajectory`
+   *  are USD-bridge values used only to derive a currency-free growth factor). */
+  netTotal: number;
 }
 
-export function ProjectionTeaser({ onExplore, snapshots }: ProjectionTeaserProps) {
+export function ProjectionTeaser({ onExplore, snapshots, netTotal }: ProjectionTeaserProps) {
   const displayCurrency = useDisplayCurrency();
   const [resp, setResp] = useState<ProjResp | null>(null);
   const [shown, setShown] = useState(false);
@@ -71,17 +76,24 @@ export function ProjectionTeaser({ onExplore, snapshots }: ProjectionTeaserProps
   const year = new Date().getFullYear() + HORIZON_YEARS;
   const ratePct = `${Math.round(resp.rate * 100)}%`;
 
-  const compact = (usd: number) => {
-    const n = Math.abs(usd * getUsdRate(displayCurrency));
-    if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(n < 10_000_000 ? 1 : 0)}M`;
-    if (n >= 1_000) return `${sym}${Math.round(n / 1_000)}K`;
-    return `${sym}${Math.round(n)}`;
+  const compact = (n: number) => {
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000) return `${sym}${(abs / 1_000_000).toFixed(abs < 10_000_000 ? 1 : 0)}M`;
+    if (abs >= 1_000) return `${sym}${Math.round(abs / 1_000)}K`;
+    return `${sym}${Math.round(abs)}`;
   };
+
+  // The route's startUsd/trajectory are USD-bridge figures; rather than convert
+  // the projected USD figure back to the display currency (a second FX leg that
+  // can drift from the hero's conversion), derive a currency-free growth factor
+  // and apply it to today's already-correct display-currency net worth — the
+  // exact figure the Portfolio hero shows.
+  const growthFactor = resp.startUsd !== 0 ? resp.trajectory.mid / resp.startUsd : 1;
 
   // The figure is explicitly framed as an assumption (the route's rate is a
   // labelled constant, not something fitted to the user's own history) — never
   // implied to be "your pace".
-  const projected = compact(resp.trajectory.mid);
+  const projected = compact(netTotal * growthFactor);
   const statement = (
     <>
       Assuming ~{ratePct}/yr, you could reach about{" "}
