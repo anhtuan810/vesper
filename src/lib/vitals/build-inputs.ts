@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { getUsdRates } from "@/lib/fx";
+import { convertCurrency } from "@/lib/currency-convert";
 import { computeNetWorth } from "@/lib/utils";
 import { isIncomePension } from "@/lib/pension";
 import type { Asset } from "@/lib/supabase";
@@ -59,8 +60,14 @@ export async function buildVitalsInputs(
   // computeCurrentBalance amortizes the balance using the payment, so both must be
   // in the same currency as value, or a non-EUR property yields a wrong equity
   // (EUR value − native-currency balance). The rate is a percentage — no conversion.
-  // For an all-EUR account this is an identity transform.
-  const toEur = (amount: number, currency: string): number => toUsdSync(amount, currency) * eurRate;
+  // For an all-EUR account this is an identity transform — convertCurrency
+  // returns the amount unchanged when currency === "EUR" (no rate touched, no
+  // drift). The native→USD→EUR double bridge survives only as the fallback
+  // for a missing rate.
+  const toEur = (amount: number, currency: string): number => {
+    const v = convertCurrency(amount, currency || "USD", "EUR", fxRates);
+    return v != null ? v : toUsdSync(amount, currency) * eurRate;
+  };
   const normalizedAssets: Asset[] = assets.map((a) => {
     const cur = a.currency || "USD";
     // Income pensions (db/state) carry a null value — there's nothing to EUR-normalize,
