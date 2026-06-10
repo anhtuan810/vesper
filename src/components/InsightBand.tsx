@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useInsight } from "@/lib/hooks";
 import type { ReactNode } from "react";
@@ -55,7 +55,7 @@ function Band({ label, last, children }: { label?: string; last?: boolean; child
   );
 }
 
-export function InsightBand({ variant }: { variant?: "card" } = {}) {
+export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; onVisibleChange?: (visible: boolean) => void } = {}) {
   const { detail, portfolio, market, loading } = useInsight();
   const router = useRouter();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -74,6 +74,13 @@ export function InsightBand({ variant }: { variant?: "card" } = {}) {
     : null;
 
   const hasTopBand = portfolioCards.length > 0 || !!insightSentence;
+
+  // Card variant reports whether the insight line actually rendered, so the
+  // summary card can place its hairline dividers only between visible slots
+  // (no stray divider when this row is absent). No-op for the default variant.
+  useEffect(() => {
+    onVisibleChange?.(!loading && hasTopBand);
+  }, [loading, hasTopBand, onVisibleChange]);
 
   // "card" variant: PortfolioSummaryCard's comment row — the same insight
   // sentence as an unboxed italic-serif line (no green box), tap-to-/chat
