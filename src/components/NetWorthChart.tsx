@@ -6,7 +6,7 @@ import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } from "@/lib/money";
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
-import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL, STACK_ORDER, type Category } from "@/lib/categories";
+import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -512,8 +512,8 @@ export function NetWorthChart(props: Props) {
                 <div key={category} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                     <span style={{ width: 8, height: 8, borderRadius: 2, background: CATEGORY_COLOR[category], flexShrink: 0, display: "inline-block" }} />
-                    <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "var(--text-dim)" }}>
-                      {CATEGORY_LABEL[category]}
+                    <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                      {CATEGORY_LABEL_SHORT[category]}
                     </span>
                   </div>
                   <span style={{ fontFamily: "var(--font-serif)", fontSize: 12, color: "var(--text)", fontFeatureSettings: '"tnum" 1', marginLeft: 8 }}>

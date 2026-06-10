@@ -21,6 +21,14 @@ export const CATEGORY_LABEL: Record<string, string> = {
   crypto:   "Crypto",
 };
 
+// Compact variant for tight spaces (e.g. the net-worth chart's hover
+// breakdown) — "Public markets" is the only label long enough to wrap at
+// that width, so it alone gets a shorter form.
+export const CATEGORY_LABEL_SHORT: Record<string, string> = {
+  ...CATEGORY_LABEL,
+  markets: "Markets",
+};
+
 // CSS variable references — resolved at paint time, respects light/dark theme
 export const CATEGORY_COLOR: Record<string, string> = {
   property: "var(--category-property)",
