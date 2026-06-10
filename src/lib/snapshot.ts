@@ -16,7 +16,7 @@ export async function writeSnapshot(userId: string): Promise<void> {
 
     const { data: assets, error } = await supabase
       .from("assets")
-      .select("type, value, currency, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
+      .select("type, value, currency, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, buy_date, created_at")
       .eq("user_id", userId);
 
     if (error) throw error;
@@ -30,27 +30,32 @@ export async function writeSnapshot(userId: string): Promise<void> {
     };
 
     const now = new Date();
-    const netTotal = assets.reduce((sum, a) => {
-      const cur = (a.currency as string | null) || "USD";
-      const equity = a.type === "real_estate"
-        ? (a.value as number) - computeCurrentBalance(a, now)
-        : (a.value as number);
-      return sum + toUsd(equity, cur);
-    }, 0);
+    const today = now.toISOString().slice(0, 10);
+    const monthStart = today.slice(0, 7) + "-01";
 
+    // Real-estate equity is anchored to the same first-of-month date computeRow
+    // uses (clamped to acquisition), so the live row matches the backfilled
+    // history for the current month exactly — no curve, no `now`.
+    const equityOf = (a: (typeof assets)[number]): number => {
+      if (a.type !== "real_estate") return a.value as number;
+      const buyDateNorm = normalizeBuyDate(a.buy_date as string | null);
+      const inception = (buyDateNorm ?? (a.created_at as string)).slice(0, 10);
+      const anchor = monthStart < inception ? inception : monthStart;
+      const anchorDate = new Date(anchor + "T12:00:00Z");
+      return Math.max(0, (a.value as number) - computeCurrentBalance(a, anchorDate));
+    };
+
+    let netTotal = 0;
     const breakdown: Record<string, number> = {};
     const nativeByCur: Record<string, number> = {};
     for (const a of assets) {
       const cur = (a.currency as string | null) || "USD";
-      const equity = a.type === "real_estate"
-        ? (a.value as number) - computeCurrentBalance(a, now)
-        : (a.value as number);
+      const equity = equityOf(a);
+      netTotal += toUsd(equity, cur);
       breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + toUsd(equity, cur);
       nativeByCur[cur] = (nativeByCur[cur] ?? 0) + equity;
     }
     const native_breakdown = Object.fromEntries(Object.entries(nativeByCur).map(([c, v]) => [c, Math.round(v)]));
-
-    const today = new Date().toISOString().slice(0, 10);
 
     const { error: upsertError } = await supabase.from("snapshots").upsert(
       { user_id: userId, total_value: netTotal, breakdown, native_breakdown, date: today },
@@ -472,12 +477,12 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
           const buyDateNorm = normalizeBuyDate(asset.buy_date as string | null);
           const reInception = buyDateNorm ?? inception;
           if (date >= reInception) {
-            // Freeze property value per calendar month: past months anchor to
-            // the 1st; the current month anchors to today so the latest row
-            // matches the live figure. Never anchor before acquisition.
-            const sameMonthAsToday = date.slice(0, 7) === todayStr.slice(0, 7);
-            let anchor = sameMonthAsToday ? todayStr : date.slice(0, 7) + "-01";
-            if (anchor < reInception) anchor = reInception;
+            // Freeze property value per calendar month: every date anchors to
+            // the 1st of its calendar month (clamped forward to acquisition),
+            // including the current month — so a daily write within a month
+            // always reproduces the same equity, byte-identical to writeSnapshot.
+            const monthStart = date.slice(0, 7) + "-01";
+            const anchor = monthStart < reInception ? reInception : monthStart;
 
             const cur = (asset.currency as string | null) || "USD";
             const buyPrice = asset.buy_price as number | null;
