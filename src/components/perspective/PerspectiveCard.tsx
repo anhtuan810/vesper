@@ -24,6 +24,13 @@ function youMarkerX(netWorthEur: number): number {
   return Math.max(15, Math.min(325, x));
 }
 
+// interpolatePercentile caps every branch at 99.9 — never round a 99.x figure
+// up to the impossible "100th"/"100%". Below 99, show a whole number; at or
+// above 99, keep one decimal (e.g. "99.9th").
+function formatPercentile(pct: number): string {
+  return pct >= 99 ? pct.toFixed(1) : String(Math.round(pct));
+}
+
 export function PerspectiveCard({
   data,
   displayCurrency,
@@ -33,8 +40,8 @@ export function PerspectiveCard({
 }) {
   const euRow = data.rows.find((r) => r.region === "EU");
   const worldRow = data.rows.find((r) => r.region === "WORLD");
-  const euPct = euRow ? Math.round(euRow.percentile) : 0;
-  const worldPct = worldRow ? Math.round(worldRow.percentile * 10) / 10 : 0;
+  const euPct = euRow ? formatPercentile(euRow.percentile) : "0";
+  const worldPct = worldRow ? formatPercentile(worldRow.percentile) : "0";
 
   const markerX = youMarkerX(data.netWorthEur);
   const nwShort = formatCurrency(data.netWorthEur, displayCurrency);
@@ -270,9 +277,9 @@ export function PerspectiveCard({
                   fontFeatureSettings: "'tnum'",
                 }}
               >
-                {Math.round(row.percentile)}
+                {formatPercentile(row.percentile)}
                 <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                  {ordinalSuffix(Math.round(row.percentile))}
+                  {ordinalSuffix(row.percentile)}
                 </span>
               </div>
               <div
@@ -338,7 +345,7 @@ export function PerspectiveCard({
                 <>
                   {direction === "up" ? "Up" : "Down"}{" "}
                   <strong style={{ fontWeight: 600 }}>
-                    {magnitude} percentile points
+                    {magnitude} percentile {magnitude === 1 ? "point" : "points"}
                   </strong>{" "}
                   in {data.trajectory.region} this year
                 </>

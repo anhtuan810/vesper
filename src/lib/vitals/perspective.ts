@@ -26,11 +26,15 @@ function interpolatePercentile(table: PercentileTable, valueEur: number): number
     .map(([k, v]) => ({ pct: Number(k), eur: v }))
     .sort((a, b) => a.pct - b.pct);
 
+  // Never return an impossible 100th percentile — applied to every branch
+  // below, not just the above-last-bracket extrapolation.
+  const cap = (pct: number) => Math.round(Math.min(99.9, pct) * 10) / 10;
+
   // Below the lowest bracket → interpolate toward 0, clamp to [0, entries[0].pct]
   if (valueEur <= entries[0].eur) {
     if (entries[0].eur <= 0) return 0;
     const ratio = Math.max(0, valueEur / entries[0].eur);
-    return Math.round(ratio * entries[0].pct * 10) / 10;
+    return cap(ratio * entries[0].pct);
   }
 
   // Above the 99th bracket → extrapolate but do not exceed 99.9
@@ -39,7 +43,7 @@ function interpolatePercentile(table: PercentileTable, valueEur: number): number
     const prev = entries[entries.length - 2];
     const ratio = (valueEur - prev.eur) / (last.eur - prev.eur);
     const pct = prev.pct + ratio * (last.pct - prev.pct);
-    return Math.round(Math.min(99.9, pct) * 10) / 10;
+    return cap(pct);
   }
 
   // Linear interpolation between bracketing thresholds
@@ -48,7 +52,7 @@ function interpolatePercentile(table: PercentileTable, valueEur: number): number
     const hi = entries[i + 1];
     if (valueEur >= lo.eur && valueEur < hi.eur) {
       const ratio = (valueEur - lo.eur) / (hi.eur - lo.eur);
-      return Math.round((lo.pct + ratio * (hi.pct - lo.pct)) * 10) / 10;
+      return cap(lo.pct + ratio * (hi.pct - lo.pct));
     }
   }
 
