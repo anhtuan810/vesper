@@ -11,6 +11,7 @@ import {
   buildSeries,
   rangeStartDate,
   convertPointToDisplay,
+  buildLiveRates,
 } from "@/components/NetWorthChart";
 import { InsightBand } from "@/components/InsightBand";
 import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
@@ -19,7 +20,7 @@ import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
-import { toDisplay, getUsdRate, formatMoney } from "@/lib/money";
+import { toDisplay, formatMoney } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import { requestExplore } from "@/lib/scenario/explore";
@@ -157,11 +158,11 @@ export function PortfolioTab({
   );
 
   // Hero/baseline series — converted to the display currency the same way the
-  // chart converts its plotted points (native_breakdown direct, fx fallback),
-  // so the hero number and chart agree exactly.
+  // chart converts its plotted points (native_breakdown direct, live-rate
+  // fallback), so the hero number and chart agree exactly.
   const heroSeries = useMemo(() => {
-    const displayRate = getUsdRate(displayCurrency);
-    return series.map((p) => ({ ...p, total_value: convertPointToDisplay(p, displayCurrency, displayRate) }));
+    const liveRates = buildLiveRates();
+    return series.map((p) => ({ ...p, total_value: convertPointToDisplay(p, displayCurrency, liveRates) }));
   }, [series, displayCurrency]);
 
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);

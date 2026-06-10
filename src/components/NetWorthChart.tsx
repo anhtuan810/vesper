@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
-import { getUsdRate, type DisplayCurrency } from "@/lib/money";
+import { getUsdRate, SUPPORTED_CURRENCIES, type DisplayCurrency } from "@/lib/money";
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 
@@ -33,42 +33,47 @@ export interface SnapshotPoint {
   // currency (identity for the home-currency bucket — no FX, no drift). Absent
   // on rows written before this field existed, and on synthesized points.
   native_breakdown?: Record<string, number> | null;
-  // Historical USD→{display currency} rates for THIS row's own date — the same
-  // basis `total_value` was stored with (see /api/snapshots). Converting with
-  // these (rather than today's rate) is what makes a same-currency asset cancel
-  // back to its native value across its whole history. Absent on synthesized
-  // points (e.g. today's live tip), which fall back to the current rate.
-  fx?: Partial<Record<DisplayCurrency, number>>;
+}
+
+// Live USD-based rate map (see money.ts) — used for cross-rate conversion.
+export function buildLiveRates(): Record<string, number> {
+  const rates: Record<string, number> = {};
+  for (const c of SUPPORTED_CURRENCIES) {
+    if (c === "USD") continue;
+    rates[c] = getUsdRate(c);
+  }
+  return rates;
 }
 
 // Converts a single stored point's total_value to the display currency.
 // Prefers native_breakdown (direct native→display cross-rate per currency,
-// identity for the home-currency bucket); falls back to total_value × the
-// row's historical fx rate (or the current rate) when native_breakdown is
-// absent or a needed cross-rate is missing. The live "today" tip carries
-// neither field — its total_value is the live net worth already converted to
-// the display currency by useNetWorth, so it's returned unchanged.
+// identity for the home-currency bucket — no FX, no drift); falls back to
+// total_value converted at the live display rate when native_breakdown is
+// absent/empty or a needed cross-rate is missing. The live "today" tip
+// carries neither field — its total_value is the live net worth already
+// converted to the display currency by useNetWorth, so it's returned
+// unchanged.
 export function convertPointToDisplay(
   p: SnapshotPoint,
   displayCurrency: DisplayCurrency,
-  displayRate: number,
+  liveRates: Record<string, number>,
 ): number {
   const today = new Date().toISOString().slice(0, 10);
   if (p.date === today) return p.total_value;
 
-  if (p.native_breakdown) {
+  if (p.native_breakdown && Object.keys(p.native_breakdown).length > 0) {
     let total = 0;
     let ok = true;
     for (const [cur, amt] of Object.entries(p.native_breakdown)) {
-      const converted = convertCurrency(amt, cur, displayCurrency, p.fx ?? {});
+      const converted = convertCurrency(amt, cur, displayCurrency, liveRates);
       if (converted == null) { ok = false; break; }
       total += converted;
     }
     if (ok) return total;
   }
 
-  const rate = displayCurrency === "USD" ? 1 : (p.fx?.[displayCurrency] ?? displayRate);
-  return p.total_value * rate;
+  const converted = convertCurrency(p.total_value, "USD", displayCurrency, liveRates);
+  return converted ?? p.total_value * (liveRates[displayCurrency] ?? 1);
 }
 
 interface Props {
@@ -236,8 +241,8 @@ export function NetWorthChart(props: Props) {
       props.onSelectPoint?.(null);
       return;
     }
-    const displayRate = getUsdRate(displayCurrency);
-    props.onSelectPoint?.({ ...raw, total_value: convertPointToDisplay(raw, displayCurrency, displayRate) });
+    const liveRates = buildLiveRates();
+    props.onSelectPoint?.({ ...raw, total_value: convertPointToDisplay(raw, displayCurrency, liveRates) });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
 
@@ -247,14 +252,13 @@ export function NetWorthChart(props: Props) {
   // Convert all series values to display currency so the axis and curve are in
   // the same unit as the hero number above the chart. Each row's native_breakdown
   // converts directly per currency (identity for the home-currency bucket — no
-  // FX, no drift); rows without it fall back to total_value × the row's own
-  // historical fx rate, which still cancels back to native for a same-currency
-  // asset. The synthesized "today" tip is the live net worth already converted
+  // FX, no drift); rows without it fall back to total_value at the live display
+  // rate. The synthesized "today" tip is the live net worth already converted
   // to the display currency by useNetWorth — returned unchanged.
-  const displayRate = getUsdRate(displayCurrency);
+  const liveRates = buildLiveRates();
   const converted = displaySeries.map((p) => ({
     ...p,
-    total_value: convertPointToDisplay(p, displayCurrency, displayRate),
+    total_value: convertPointToDisplay(p, displayCurrency, liveRates),
   }));
 
   const values = converted.map((p) => p.total_value);
