@@ -210,6 +210,14 @@
 .insight-band p { margin: 0; }
 .insight-band p + p { margin-top: 0.6em; }
 
+/* "Worth knowing" callout (PortfolioSummaryCard): emphasized phrase renders
+   upright + sage-bold instead of italic. */
+.worth-knowing em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--accent-deep);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes logo-pulse {
     0%, 100% { filter: saturate(1); }

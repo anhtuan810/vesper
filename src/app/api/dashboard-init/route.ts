@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
     portfolio,
     insight: insightRes.data?.detail ?? null,
     market,
+    marketHighlights: market,
     snapshots,
     mutations: mutationsRes.data ?? [],
   }, {

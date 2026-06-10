@@ -13,6 +13,7 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 import { toUsdClient, toDisplay } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
+import type { MarketHighlight } from "@/lib/market-highlights";
 
 
 export default function Dashboard() {
@@ -29,6 +30,7 @@ export default function Dashboard() {
   const [hasNew, setHasNew] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [initialSnapshots, setInitialSnapshots] = useState<SnapshotPoint[] | undefined>();
+  const [marketHighlights, setMarketHighlights] = useState<MarketHighlight[]>([]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("welcome")) {
@@ -50,11 +52,12 @@ export default function Dashboard() {
     if (!user?.id) return;
     const res = await fetch("/api/dashboard-init");
     if (!res.ok) return;
-    const { insight, portfolio, market, snapshots, mutations } = await res.json();
+    const { insight, portfolio, market, marketHighlights, snapshots, mutations } = await res.json();
     // Chart + diary badge come from dashboard-init's fast, deterministic data —
     // paint them immediately, never behind the insight Haiku.
     setInitialSnapshots(snapshots ?? []);
     setMutations(mutations ?? []);
+    setMarketHighlights(marketHighlights ?? []);
 
     const cards: string[] = portfolio ?? [];
     if (insight != null || cards.length > 0) {
@@ -214,6 +217,7 @@ export default function Dashboard() {
         initialSnapshots={initialSnapshots}
         valuesSettled={valuesSettled}
         mutations={mutations}
+        marketHighlights={marketHighlights}
       />
     );
   }
@@ -281,6 +285,7 @@ export default function Dashboard() {
             initialSnapshots={initialSnapshots}
             valuesSettled={valuesSettled}
             mutations={mutations}
+            marketHighlights={marketHighlights}
           />
         )}
       </div>

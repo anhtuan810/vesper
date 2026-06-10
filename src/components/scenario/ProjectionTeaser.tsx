@@ -20,6 +20,15 @@ import { hasSufficientHistory } from "@/lib/networth-history";
 const HORIZON_YEARS = 10;
 const SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
 
+// Vitals' uppercase tracked section-label style (VitalCard eyebrow).
+const SECTION_LABEL: React.CSSProperties = {
+  fontSize: "9.5px",
+  fontWeight: 500,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  color: "var(--text-faint)",
+};
+
 interface ProjResp {
   startUsd: number;
   rate: number;
@@ -146,28 +155,30 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           display: "block",
           background: "none",
           border: "none",
-          padding: "17px 18px",
+          padding: "14px 18px 12px",
           cursor: "pointer",
           opacity: shown ? 1 : 0,
           transform: shown ? "translateY(0)" : "translateY(3px)",
           transition: "opacity 0.7s ease, transform 0.7s ease",
         }}
       >
+        <div style={SECTION_LABEL}>Projection</div>
         <div
           className="font-serif"
           style={{
+            marginTop: 6,
             fontStyle: "italic",
-            fontSize: 16,
+            fontSize: 15.5,
             lineHeight: 1.5,
             color: "var(--text)",
             letterSpacing: "0.005em",
           }}
         >
           Assuming ~{ratePct}/yr, you could reach about{" "}
-          <span style={{ fontStyle: "normal", fontWeight: 600, fontSize: 18 }}>{projected}</span>
-          {" "}by {year}.
+          <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
+          by <span style={{ fontWeight: 600 }}>{year}</span>.
         </div>
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 8 }}>
           <span className="font-serif" style={{ fontStyle: "italic", fontSize: 14, color: "var(--accent-text)" }}>
             {clause}{" "}
             <span

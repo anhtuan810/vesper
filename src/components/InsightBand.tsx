@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useInsight } from "@/lib/hooks";
+import { BulbIcon } from "@/components/vitals/SuggestionStrip";
 import type { ReactNode } from "react";
 
 function renderWithEmphasis(text: string): ReactNode {
@@ -82,8 +83,8 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
     onVisibleChange?.(!loading && hasTopBand);
   }, [loading, hasTopBand, onVisibleChange]);
 
-  // "card" variant: PortfolioSummaryCard's comment row — the same insight
-  // sentence as an unboxed italic-serif line (no green box), tap-to-/chat
+  // "card" variant: PortfolioSummaryCard's "worth knowing" callout — the same
+  // insight sentence as a sage Vitals SuggestionStrip-style box, tap-to-/chat
   // preserved. Same data path (useInsight, detector selection); presentation
   // only.
   if (variant === "card") {
@@ -99,30 +100,59 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
 
     const sentence = portfolioCards.length > 0 ? portfolioCards[0] : insightSentence!;
 
+    // Sage "worth knowing" callout — Vitals SuggestionStrip "context" tokens
+    // (var(--accent-soft) / var(--accent-deep)). A future `severity` prop
+    // could swap these for the "alert" tokens (var(--negative-soft) /
+    // var(--negative-deep)) for the red warning treatment — not wired here.
+    const calloutBg = "var(--accent-soft)";
+    const calloutColor = "var(--accent-deep)";
+
     return (
-      <button
-        type="button"
-        onClick={() => {
-          sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${sentence}`);
-          router.push("/chat?seed=insight&key=current");
-        }}
-        className="font-serif"
-        style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "14px 18px",
-          fontStyle: "italic",
-          fontSize: 16,
-          lineHeight: 1.5,
-          color: "var(--text)",
-        }}
-      >
-        {renderWithEmphasis(sentence)}
-      </button>
+      <div style={{ padding: "14px 18px" }}>
+        <button
+          type="button"
+          onClick={() => {
+            sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${sentence}`);
+            router.push("/chat?seed=insight&key=current");
+          }}
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "flex-start",
+            width: "100%",
+            textAlign: "left",
+            background: calloutBg,
+            border: "none",
+            borderRadius: 9,
+            padding: "10px 12px",
+            cursor: "pointer",
+          }}
+        >
+          <BulbIcon color={calloutColor} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: "8.5px",
+                fontWeight: 600,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                opacity: 0.82,
+                marginBottom: 3,
+                lineHeight: 1,
+                color: calloutColor,
+              }}
+            >
+              Worth knowing
+            </div>
+            <div
+              className="font-serif worth-knowing"
+              style={{ fontSize: 14.5, fontStyle: "italic", lineHeight: 1.5, color: "var(--text)" }}
+            >
+              {renderWithEmphasis(sentence)}
+            </div>
+          </div>
+        </button>
+      </div>
     );
   }
 

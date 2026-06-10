@@ -32,7 +32,7 @@ function InfoCircleIcon({ color }: { color: string }) {
   );
 }
 
-function BulbIcon({ color }: { color: string }) {
+export function BulbIcon({ color }: { color: string }) {
   return (
     <svg
       viewBox="0 0 24 24"

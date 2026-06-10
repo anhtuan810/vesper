@@ -24,6 +24,7 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import { requestExplore } from "@/lib/scenario/explore";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
+import type { MarketHighlight } from "@/lib/market-highlights";
 import { firstSnapshotDate } from "@/lib/networth-history";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_COLOR, CATEGORY_ORDER, ALL_CATEGORIES,
@@ -54,10 +55,11 @@ interface PortfolioTabProps {
   initialSnapshots?: SnapshotPoint[];
   valuesSettled: boolean;
   mutations: Mutation[];
+  marketHighlights: MarketHighlight[];
 }
 
 export function PortfolioTab({
-  assets, grossTotal, netTotal, initialSnapshots, valuesSettled, mutations,
+  assets, grossTotal, netTotal, initialSnapshots, valuesSettled, mutations, marketHighlights,
 }: PortfolioTabProps) {
   const router = useRouter();
   const isDesktop = useIsDesktop();
@@ -226,6 +228,7 @@ export function PortfolioTab({
           <PortfolioSummaryCard
             netTotal={netTotal}
             snapshots={fullSnapshots}
+            marketHighlights={marketHighlights}
             onExplore={handleExplore}
           />
         </div>

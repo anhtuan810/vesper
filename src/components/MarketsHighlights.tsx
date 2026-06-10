@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useInsight } from "@/lib/hooks";
+import type { MarketHighlight } from "@/lib/market-highlights";
 
 // Collapsed "Markets" slot for the portfolio summary card — revives the
 // type='market' highlights the cron writes (deserialized server-side via
-// parseMarketDetail and delivered through the same useInsight() path the
-// insight line uses). Read-only: collapsed by default, taps only toggle the
-// list open. When there are no current market highlights it renders nothing,
-// so the card shows no empty Markets slot.
+// parseMarketDetail and delivered through dashboard-init's `marketHighlights`).
+// Read-only: collapsed by default, taps only toggle the list open. When there
+// are no current market highlights it renders nothing, so the card shows no
+// empty Markets slot.
 
-const eyebrowStyle: React.CSSProperties = {
-  fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
-  textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
+// Vitals' uppercase tracked section-label style (VitalCard eyebrow).
+const SECTION_LABEL: React.CSSProperties = {
+  fontSize: "9.5px", fontWeight: 500, letterSpacing: "0.18em",
+  textTransform: "uppercase", color: "var(--text-faint)",
 };
 
 const CHEVRON_SVG = {
@@ -26,16 +27,16 @@ function formatImpact(value: number): string {
 }
 
 interface MarketsHighlightsProps {
+  marketHighlights: MarketHighlight[];
   /** Reports whether the slot rendered anything, so the card can sync the
    *  hairline divider above it to the same "only between visible slots" rule. */
   onVisibleChange?: (visible: boolean) => void;
 }
 
-export function MarketsHighlights({ onVisibleChange }: MarketsHighlightsProps) {
-  const { market } = useInsight();
+export function MarketsHighlights({ marketHighlights, onVisibleChange }: MarketsHighlightsProps) {
   const [open, setOpen] = useState(false);
 
-  const hasMarket = market.length > 0;
+  const hasMarket = marketHighlights.length > 0;
 
   useEffect(() => {
     onVisibleChange?.(hasMarket);
@@ -43,10 +44,15 @@ export function MarketsHighlights({ onVisibleChange }: MarketsHighlightsProps) {
 
   if (!hasMarket) return null;
 
-  const top = market[0];
+  const top = marketHighlights[0];
+  const restCount = marketHighlights.length - 1;
+  const topImpact = top.impact_eur != null ? ` ${formatImpact(top.impact_eur)}` : "";
+  const summary = restCount > 0
+    ? `${top.title}${topImpact} · ${restCount} more ${restCount === 1 ? "move" : "moves"}`
+    : `${top.title}${topImpact}`;
 
   return (
-    <div style={{ padding: "14px 18px" }}>
+    <div style={{ padding: "14px 18px 12px" }}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -57,7 +63,7 @@ export function MarketsHighlights({ onVisibleChange }: MarketsHighlightsProps) {
           background: "none", border: "none", cursor: "pointer", padding: 0,
         }}
       >
-        <span style={{ ...eyebrowStyle, flexShrink: 0 }}>Markets</span>
+        <span style={{ ...SECTION_LABEL, flexShrink: 0 }}>Markets</span>
         {!open && (
           <span
             className="font-serif"
@@ -67,7 +73,7 @@ export function MarketsHighlights({ onVisibleChange }: MarketsHighlightsProps) {
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}
           >
-            {top.title}
+            {summary}
           </span>
         )}
         <svg
@@ -84,7 +90,7 @@ export function MarketsHighlights({ onVisibleChange }: MarketsHighlightsProps) {
 
       {open && (
         <div style={{ marginTop: 12 }}>
-          {market.map((m, i) => (
+          {marketHighlights.map((m, i) => (
             <div key={m.id ?? m.title} style={{ marginTop: i > 0 ? 12 : 0 }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                 <span
