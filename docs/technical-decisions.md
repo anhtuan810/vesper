@@ -94,15 +94,17 @@ Financial diary. Every portfolio change (other than pure renames) creates a row.
 - `occurred_at`, `recorded_at`
 
 ### fx_rates
-FX rate cache. One row per currency pair. **USD is the base** — values are "1 USD = N quote currency" (e.g. `EUR: 0.89`). 24h TTL, refreshed lazily from frankfurter.app (`?base=USD`). In-process memo cache with 1-minute TTL. `toUsd(amount, currency)` = `amount / rate[currency]`.
+FX rate cache. One row per currency pair. **USD is the internal basis** — values are "1 USD = N quote currency" (e.g. `EUR: 0.89`). 24h TTL, refreshed lazily from frankfurter.app (`?base=USD`). In-process memo cache with 1-minute TTL. `toUsd(amount, currency)` = `amount / rate[currency]`. Display and aggregation no longer double-bridge through USD for cross-currency conversion — `convertCurrency(amount, from, to, rates)` (`src/lib/currency-convert.ts`) computes a single direct cross-rate from this USD-based map, with an identity short-circuit when `from === to`. USD remains the rate table's storage basis, not a forced intermediate hop in display math.
+
+**`rateAt` gap-fill** (`src/lib/snapshot.ts`, used during backfill): wraps `historicalFxRate` (which carries forward from the most recent prior date, falling back to the live rate) with an additional forward-fill from later dates in the series. The result is `null` only when the rate series is entirely empty and no live rate is available — never `NaN` or `undefined`.
 
 ### snapshots
 Daily net worth records.
-- `id`, `user_id`, `total_value` (numeric, **USD** — net worth, not gross; assets converted via `getUsdRates()` at write time), `breakdown` (jsonb keyed by asset type, gross value per type), `date` (date)
+- `id`, `user_id`, `total_value` (numeric, **USD** — net worth, not gross; assets converted via `getUsdRates()` at write time, kept as a fallback basis), `native_breakdown` (jsonb, per-currency net-worth sums in their **native currencies**, e.g. `{"EUR": 362000, "USD": 12000}` — the storage-of-record for display/chart conversion), `breakdown` (jsonb keyed by asset type, gross value per type, USD), `date` (date)
 - Unique index on `(user_id, date)` enforces one row per user per day
 - Written by daily Vercel cron at midnight UTC + fire-and-forget after every successful mutation in `/api/chat`
-- Shared writer: `src/lib/snapshot.ts` `writeSnapshot(userId)`
-- Served by `GET /api/snapshots?range=<range>`. Supported ranges: `1W` (7d), `1M` (30d), `3M` (90d), `1Y` (365d), `3Y` (1095d), `All` (no cutoff). The `1D` range is not used by the net worth chart (it remains only in the `PriceChart` for tradeable assets).
+- Shared writer: `src/lib/snapshot.ts` `writeSnapshot(userId)`; `native_breakdown` is populated by both `writeSnapshot` (live) and `computeRow` (backfill/rebuild)
+- Served by `GET /api/snapshots?range=<range>`, including `native_breakdown`. Supported ranges: `1W` (7d), `1M` (30d), `3M` (90d), `1Y` (365d), `3Y` (1095d), `All` (no cutoff). The `1D` range is not used by the net worth chart (it remains only in the `PriceChart` for tradeable assets).
 - Net worth chart uses straight-line segments (`L` path commands) connecting each snapshot point exactly. No smoothing.
 
 ### goals
@@ -195,6 +197,19 @@ System prompt tells Claude to refuse off-topic requests with a fixed redirect me
 
 **Files:** `src/lib/cbs-pbk.ts`, `src/lib/property-estimate.ts`, `src/lib/property-region.ts`, `src/lib/property-estimate-resolve.ts`, `src/app/api/property-estimate/route.ts`, `src/components/asset-detail/EstimatedValueChart.tsx`.
 
+## Property Reconstruction (Snapshot History)
+
+**Decision:** historical net worth snapshots reconstruct each property's value with a **two-anchor, shape-from-CBS** approach rather than a flat or linear assumption.
+
+- **Anchors**: the curve passes exactly through `buy_price` at `buy_date` and the asset's current `value` at today. These two points are fixed; nothing else can move them.
+- **Shape**: between the anchors, the curve follows the **shape** of the CBS regional price index (PBK), fit at fractional-year (month) precision via **monotone-cubic (Fritsch-Carlson / PCHIP) interpolation** — smooth, no overshoot. CBS supplies shape only; the fit is rescaled so both anchors hold exactly.
+- **Fallback**: if the CBS region can't be resolved or fewer than 2 index points exist, the value is interpolated **linearly in time** between the two anchors instead.
+- **Acquisition guard**: a property contributes nothing to snapshots dated before its `buy_date`.
+- **Mortgage balance**: a smooth historical balance curve is built via `projectMortgage` (the same projection `MortgageBlock` uses), sampled at fractional-month resolution from `mortgage_start_date` (or `buy_date`) to today, clamped to `[0, grossValue]`. Falls back to `computeCurrentBalance` when `projectMortgage` can't build a schedule.
+- **Rebuild trigger**: editing a property's mortgage or value triggers a snapshot rebuild from that property's acquisition date forward, keeping historical equity consistent with the latest inputs.
+
+**Files:** `src/lib/snapshot.ts` (`monotoneCubic`, `realEstateT`, `realEstateBalanceAt`), `src/lib/mortgage.ts`, `src/lib/cbs-pbk.ts`, `src/lib/property-region.ts`, `src/lib/property-estimate.ts`.
+
 ## Portfolio Calculation Rules
 
 - **Gross total** = sum of `toUsdClient(asset.value, asset.currency)` for all assets
@@ -210,7 +225,7 @@ One asset class (`type='pension'`), two economic shapes selected by `pension_kin
 
 - **Shape mapping** (`src/lib/pension.ts` `pensionShape`): `dc → capital`; `db | state → income`; `null → capital` (defensive, for legacy rows). `isCapitalPension` / `isIncomePension` are the call-site guards. Capital counts toward net worth; income is off-balance (see Portfolio Calculation Rules).
 - **Capital projection is deterministic** (`projectPension`): monthly-compounded future value of pot + contributions — `fvPot = potValue·(1+r)^years`, `fvContrib = i>0 ? monthly·((1+i)^m − 1)/i : monthly·m`, with `r = growthRatePct/100`, `i = r/12`, `m = round(years·12)`. All outputs `Math.round`ed integers; guards return the pot value when `yearsToAccess ≤ 0` and the linear sum when `i = 0` (no NaN/Infinity). **The LLM never computes it.** Inputs include the user's current age derived from `users.birth_year` (`currentYear − birth_year`) via `yearsToAccess(access_age, currentAge)`; the projection card hides entirely if any input is missing or `yearsToAccess ≤ 0`.
-- **Intake gate is deterministic** (`validatePensionChange` in `src/lib/pension-intake.ts`): required, chips-first, type-first; no skips and no silent defaults (growth and access age must be chosen by the user). A mandatory confirmation echo gates the commit; the gate is enforced in both the echo (`proposal-resolver.ts`) and the write path (`apply-changes.ts`), so an incomplete pension can never be saved. Every confirmed add and edit writes a `mutations` row; the pension activity verb is "Added"/"Recorded" (income amounts "€X / year"), never "Bought".
+- **Intake gate is deterministic** (`validatePensionChange` in `src/lib/pension-intake.ts`): chips-first, type-first. For capital pensions, `value`, `mortgage_rate` (growth), and `access_age` are required with no silent defaults. For income pensions, only `annual_income` is required; `access_age` is optional and defaults to `DEFAULT_PENSION_ACCESS_AGE` (67) when omitted (`apply-changes.ts` applies the default on both add and edit). `pension_provider` and `monthly_contribution` are never required for either shape — recorded only if volunteered. A mandatory confirmation echo gates the commit; the gate is enforced in both the echo (`proposal-resolver.ts`) and the write path (`apply-changes.ts`), so an incomplete pension can never be saved. Every confirmed add and edit writes a `mutations` row; the pension activity verb is "Added"/"Recorded" (income amounts "€X / year"), never "Bought".
 - **Deferred by design**: indexation is not captured (income page shows "Not captured"); no in-payment transition; a DB entitlement is never capitalized into net worth.
 
 ## Mortgage Auto-Amortization
@@ -226,19 +241,22 @@ Added in PR 8 per Decision 10. The user enters mortgage values once. After that,
 ## Currency Rules
 
 - **Storage**: `assets.value` is stored in the asset's **native currency** (Yahoo-reported for tradeables; country-derived for real estate). No conversion at write.
-- **FX bridge**: USD. `fx_rates` stores "1 USD = N quote" (e.g. `EUR: 0.89`). `toUsd(amount, currency)` = `amount / rate[currency]`. `toUsdClient(amount, currency)` is the synchronous client-side equivalent (precise for EUR and GBP; other currencies fall back to 1:1).
-- **Aggregation**: `snapshots.total_value` and `mutations.portfolio_total` are stored in USD. Net-worth math goes `native → USD` via `getUsdRates()`.
-- **Display**: per-user via `users.display_currency` (EUR / USD / GBP). `formatMoney(nativeValue, nativeCurrency, displayCurrency)` = `toUsdClient(amount, from) / getUsdRate(displayCurrency)`.
+- **FX bridge**: USD remains the internal basis for `fx_rates` (`toUsd`, `getUsdRates`), but display and chart conversion go through `convertCurrency(amount, from, to, rates)` (`src/lib/currency-convert.ts`) — a single direct cross-rate with an identity short-circuit when `from === to`. `toUsdClient(amount, currency)` remains the synchronous client-side USD helper (precise for EUR and GBP; other currencies fall back to 1:1) and is still used where a USD figure is genuinely needed.
+- **Aggregation**: `snapshots.total_value` (USD) and `mutations.portfolio_total` (USD) are kept as a fallback basis. `snapshots.native_breakdown` (per-currency native sums) is the storage-of-record for the net worth chart; `useNetWorth` sums the EUR-fixed total via a direct cross-rate (not a USD double-bridge).
+- **Display**: per-user via `users.display_currency` (EUR / USD / GBP). `formatMoney(nativeValue, nativeCurrency, displayCurrency)` converts native → display directly via `convertCurrency` (identity for same-currency), both server-side and via a client `toDisplay()` wrapper.
 - **Number formatting is forced to `nl-NL` locale** for all currencies regardless of user locale — `€616.086`, `$616.086`, `£616.086` (dot thousand separator, comma decimal). Deliberate brand-consistency override.
 - **Inputs**: chat is the only modification surface. Chat prompts are parameterized with `displayCurrency`; goal targets are converted from display currency to USD via FX rates before INSERT.
 - **Real estate native currency**: captured at add time via `countryToCurrency()` in `src/lib/country-currency.ts` (NL/DE/FR/ES/IT→EUR, US→USD, UK→GBP, other→EUR).
-- **Math**: never in display currency. USD for aggregation; native for per-asset arithmetic.
+- **Math**: never in display currency. Native currency for per-asset arithmetic and chart storage; USD remains the `fx_rates` basis and a fallback for legacy aggregation paths. `build-inputs.ts`'s `toEur` uses `convertCurrency` directly, falling back to the old USD double-bridge only when a direct rate is missing.
 
 ## Snapshot Calculation Rules
 
-- `total_value` = net worth in **USD** (real estate contributes equity via `computeCurrentBalance`; each asset value converted from native via `getUsdRates()`)
+- `total_value` = net worth in **USD** (real estate contributes equity via `computeCurrentBalance`; each asset value converted from native via `getUsdRates()`), kept as a fallback basis
+- `native_breakdown` = jsonb of per-currency net-worth sums in native currencies — the storage-of-record for chart display, populated by both `writeSnapshot` and `computeRow`
 - `breakdown` = jsonb keyed by asset type, summing gross `value` per type (USD)
 - Computed in `src/lib/snapshot.ts` from current asset state at write time
+- **Cadence is portfolio-aware** (`targetSnapshotDates(earliest, today, hasTradeables)`): portfolios holding any tradeable asset (stocks/ETF/crypto/gold) get daily granularity for the last 30 days, weekly from 30 days to 1 year, monthly beyond that. Portfolios with no tradeables (property-only, cash-only, etc.) get a **monthly-only** cadence end-to-end — the first of each month from the earliest holding to today. `writeSnapshot` always writes today's row regardless of cadence.
+- **Month-anchored property and FX**: for every snapshot date, a real estate asset's value, its mortgage balance, and the FX rate used to convert it are all evaluated at the first of that date's calendar month (`YYYY-MM-01`, clamped forward to the asset's `buy_date` if later) — including the current month, with no special-case for "today." Stocks, ETFs, cash, bonds, and pensions remain at exact-date granularity.
 
 ## Mutation / Diary Logging Rules
 
