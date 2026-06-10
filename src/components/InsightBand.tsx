@@ -55,7 +55,7 @@ function Band({ label, last, children }: { label?: string; last?: boolean; child
   );
 }
 
-export function InsightBand() {
+export function InsightBand({ variant }: { variant?: "card" } = {}) {
   const { detail, portfolio, market, loading } = useInsight();
   const router = useRouter();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -74,6 +74,50 @@ export function InsightBand() {
     : null;
 
   const hasTopBand = portfolioCards.length > 0 || !!insightSentence;
+
+  // "card" variant: PortfolioSummaryCard's comment row — the same insight
+  // sentence as an unboxed italic-serif line (no green box), tap-to-/chat
+  // preserved. Same data path (useInsight, detector selection); presentation
+  // only.
+  if (variant === "card") {
+    if (loading) {
+      return (
+        <div style={{ padding: "14px 18px" }}>
+          <div style={{ height: 13, width: "60%", borderRadius: 3, background: "var(--text-faint)", opacity: 0.15 }} />
+        </div>
+      );
+    }
+
+    if (!hasTopBand) return null;
+
+    const sentence = portfolioCards.length > 0 ? portfolioCards[0] : insightSentence!;
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${sentence}`);
+          router.push("/chat?seed=insight&key=current");
+        }}
+        className="font-serif"
+        style={{
+          display: "block",
+          width: "100%",
+          textAlign: "left",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "14px 18px",
+          fontStyle: "italic",
+          fontSize: 16,
+          lineHeight: 1.5,
+          color: "var(--text)",
+        }}
+      >
+        {renderWithEmphasis(sentence)}
+      </button>
+    );
+  }
 
   if (loading) {
     return (

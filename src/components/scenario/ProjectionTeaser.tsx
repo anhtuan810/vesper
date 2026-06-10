@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
+import { MiniSparkline } from "@/components/MiniSparkline";
+import { trackChipInteraction, trackChipImpression, markImpression } from "@/lib/chip-telemetry";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 import { hasSufficientHistory } from "@/lib/networth-history";
 
@@ -35,9 +37,19 @@ interface ProjectionTeaserProps {
    *  conversion of the projected figure (the route's `startUsd`/`trajectory`
    *  are USD-bridge values used only to derive a currency-free growth factor). */
   netTotal: number;
+  /** "card": PortfolioSummaryCard's hero band — larger serif sentence, a soft
+   *  sage CTA, and a mini sparkline, in place of the ambient ScenarioCueLine.
+   *  Same fetch/figure logic either way; presentation only. */
+  variant?: "card";
+  /** Net-worth series for the "card" variant's sparkline (display-currency,
+   *  same series the Portfolio hero/chart use). Unused by the default variant. */
+  series?: SnapshotPoint[];
+  /** "card" variant only: reports whether the teaser rendered something, so
+   *  the card can show/hide its divider above the comment row in sync. */
+  onVisibleChange?: (visible: boolean) => void;
 }
 
-export function ProjectionTeaser({ onExplore, snapshots, netTotal }: ProjectionTeaserProps) {
+export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, series, onVisibleChange }: ProjectionTeaserProps) {
   const displayCurrency = useDisplayCurrency();
   const [resp, setResp] = useState<ProjResp | null>(null);
   const [shown, setShown] = useState(false);
@@ -69,6 +81,24 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal }: ProjectionT
     const id = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(id);
   }, [resp]);
+
+  // Reports whether this teaser renders anything, so PortfolioSummaryCard can
+  // sync its divider above the comment row to the same hide-when-young rule.
+  useEffect(() => {
+    onVisibleChange?.(!hideProjection && !!resp);
+  }, [hideProjection, resp, onVisibleChange]);
+
+  // Card variant fires the same 'scenario_cue' impression telemetry as
+  // ScenarioCueLine (default variant), keyed identically — a no-op for the
+  // default variant, which gets its impression from ScenarioCueLine itself.
+  const cardImpressionFired = useRef(false);
+  useEffect(() => {
+    if (variant !== "card" || hideProjection || !resp || cardImpressionFired.current) return;
+    cardImpressionFired.current = true;
+    if (markImpression("scenario_cue:projection_teaser:")) {
+      trackChipImpression({ surface: "scenario_cue", chipType: "scenario", position: 0, labelTemplate: "projection_teaser" });
+    }
+  }, [variant, hideProjection, resp]);
 
   if (hideProjection || !resp) return null;
 
@@ -103,6 +133,64 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal }: ProjectionT
   );
   const clause = "See what moves it";
   const aria = `Assuming ~${ratePct} per year, you could reach about ${projected} by ${year}. Explore what moves your projection.`;
+
+  if (variant === "card") {
+    const prices = (series ?? [])
+      .map((p) => p.total_value)
+      .filter((v): v is number => Number.isFinite(v));
+
+    const handleCardActivate = () => {
+      trackChipInteraction({ surface: "scenario_cue", chipType: "scenario", position: 0, labelTemplate: "projection_teaser" });
+      onExplore();
+    };
+
+    return (
+      <button
+        type="button"
+        onClick={handleCardActivate}
+        aria-label={aria}
+        className="group text-left w-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        style={{
+          display: "block",
+          background: "rgba(74, 124, 94, 0.09)",
+          border: "none",
+          padding: "17px 18px",
+          cursor: "pointer",
+          opacity: shown ? 1 : 0,
+          transform: shown ? "translateY(0)" : "translateY(3px)",
+          transition: "opacity 0.7s ease, transform 0.7s ease",
+        }}
+      >
+        <div
+          className="font-serif"
+          style={{
+            fontStyle: "italic",
+            fontSize: 20,
+            lineHeight: 1.45,
+            color: "var(--text)",
+            letterSpacing: "0.005em",
+          }}
+        >
+          Assuming ~{ratePct}/yr, you could reach about{" "}
+          <span style={{ fontStyle: "normal", fontWeight: 600, fontSize: 23 }}>{projected}</span>
+          {" "}by {year}.
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10 }}>
+          <span className="font-serif" style={{ fontStyle: "italic", fontSize: 14, color: "var(--accent-text)" }}>
+            {clause}{" "}
+            <span
+              aria-hidden="true"
+              className="inline-block transition-transform duration-200 group-hover:translate-x-[2px] group-active:translate-x-[2px]"
+              style={{ fontStyle: "normal" }}
+            >
+              →
+            </span>
+          </span>
+          <MiniSparkline prices={prices} width={74} height={34} />
+        </div>
+      </button>
+    );
+  }
 
   return (
     <ScenarioCueLine

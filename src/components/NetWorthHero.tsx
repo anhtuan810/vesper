@@ -182,11 +182,11 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
           >
             {sign}{formattedAbs}{showPct && formattedPct != null ? ` (${formattedPct}%)` : ""}
           </span>
-          <span style={{ color: "var(--text)", marginLeft: 6 }}>
+          <span style={{ color: "var(--text)", marginLeft: 6, fontSize: 13 }}>
             {label}
           </span>
           {annotation && (
-            <span style={{ color: "var(--text-faint)" }}>{annotation}</span>
+            <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{annotation}</span>
           )}
         </div>
       )}

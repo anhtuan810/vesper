@@ -13,8 +13,7 @@ import {
   convertPointToDisplay,
   buildLiveRates,
 } from "@/components/NetWorthChart";
-import { InsightBand } from "@/components/InsightBand";
-import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
+import { PortfolioSummaryCard } from "@/components/PortfolioSummaryCard";
 import { PositionRow } from "@/components/PositionRow";
 import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
@@ -214,19 +213,21 @@ export function PortfolioTab({
               realPointCount={fullSnapshots.length}
               trackingSinceDate={trackingSinceDate}
             />
-            {/* Ambient projection teaser — the single scenario entry: a quiet,
-                left-aligned, trajectory-aware line under the chart. The sentence
-                IS the affordance; tapping opens scenario explore (seeded with the
-                deterministic portfolio scenario chips). */}
-            <div style={{ marginTop: 10, paddingLeft: 4, paddingRight: 4 }}>
-              <ProjectionTeaser onExplore={handleExplore} snapshots={fullSnapshots} netTotal={netTotal} />
-            </div>
           </div>
         )}
       </div>
 
-      {/* AI insight band — replaces milestone bar */}
-      {assets.length > 0 && <InsightBand />}
+      {/* Portfolio summary card — projection teaser hero band + insight comment row */}
+      {assets.length > 0 && (
+        <div className="mb-6">
+          <PortfolioSummaryCard
+            netTotal={netTotal}
+            snapshots={fullSnapshots}
+            series={heroSeries}
+            onExplore={handleExplore}
+          />
+        </div>
+      )}
 
       {/* Holdings list — 4 semantic categories.
           Mobile: bleed to the band edge with no inner padding (md:px-4 only) so
