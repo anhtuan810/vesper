@@ -157,14 +157,14 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           className="font-serif"
           style={{
             fontStyle: "italic",
-            fontSize: 20,
-            lineHeight: 1.45,
+            fontSize: 16,
+            lineHeight: 1.5,
             color: "var(--text)",
             letterSpacing: "0.005em",
           }}
         >
           Assuming ~{ratePct}/yr, you could reach about{" "}
-          <span style={{ fontStyle: "normal", fontWeight: 600, fontSize: 23 }}>{projected}</span>
+          <span style={{ fontStyle: "normal", fontWeight: 600, fontSize: 18 }}>{projected}</span>
           {" "}by {year}.
         </div>
         <div style={{ marginTop: 10 }}>
