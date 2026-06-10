@@ -8,7 +8,6 @@ import type { SnapshotPoint } from "@/components/NetWorthChart";
 interface PortfolioSummaryCardProps {
   netTotal: number;
   snapshots: SnapshotPoint[];
-  series: SnapshotPoint[];
   onExplore: () => void;
 }
 
@@ -18,7 +17,7 @@ interface PortfolioSummaryCardProps {
 // section is left for a later prompt: when added, it should follow the same
 // "divider only if the slot above rendered something" pattern as the hero
 // band's divider below.
-export function PortfolioSummaryCard({ netTotal, snapshots, series, onExplore }: PortfolioSummaryCardProps) {
+export function PortfolioSummaryCard({ netTotal, snapshots, onExplore }: PortfolioSummaryCardProps) {
   const [showProjection, setShowProjection] = useState(false);
 
   return (
@@ -27,7 +26,7 @@ export function PortfolioSummaryCard({ netTotal, snapshots, series, onExplore }:
         border: "0.5px solid var(--border)",
         borderRadius: 14,
         overflow: "hidden",
-        background: "var(--surface)",
+        background: "var(--surface-center)",
       }}
     >
       <ProjectionTeaser
@@ -35,7 +34,6 @@ export function PortfolioSummaryCard({ netTotal, snapshots, series, onExplore }:
         onExplore={onExplore}
         snapshots={snapshots}
         netTotal={netTotal}
-        series={series}
         onVisibleChange={setShowProjection}
       />
       {showProjection && <div style={{ borderTop: "0.5px solid var(--border)" }} />}

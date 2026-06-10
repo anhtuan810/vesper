@@ -223,7 +223,6 @@ export function PortfolioTab({
           <PortfolioSummaryCard
             netTotal={netTotal}
             snapshots={fullSnapshots}
-            series={heroSeries}
             onExplore={handleExplore}
           />
         </div>

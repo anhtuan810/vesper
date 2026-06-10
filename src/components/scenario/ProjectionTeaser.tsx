@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
-import { MiniSparkline } from "@/components/MiniSparkline";
 import { trackChipInteraction, trackChipImpression, markImpression } from "@/lib/chip-telemetry";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 import { hasSufficientHistory } from "@/lib/networth-history";
@@ -37,19 +36,16 @@ interface ProjectionTeaserProps {
    *  conversion of the projected figure (the route's `startUsd`/`trajectory`
    *  are USD-bridge values used only to derive a currency-free growth factor). */
   netTotal: number;
-  /** "card": PortfolioSummaryCard's hero band — larger serif sentence, a soft
-   *  sage CTA, and a mini sparkline, in place of the ambient ScenarioCueLine.
-   *  Same fetch/figure logic either way; presentation only. */
+  /** "card": PortfolioSummaryCard's hero band — larger serif sentence, an
+   *  emphasized figure, and a soft sage CTA, in place of the ambient
+   *  ScenarioCueLine. Same fetch/figure logic either way; presentation only. */
   variant?: "card";
-  /** Net-worth series for the "card" variant's sparkline (display-currency,
-   *  same series the Portfolio hero/chart use). Unused by the default variant. */
-  series?: SnapshotPoint[];
   /** "card" variant only: reports whether the teaser rendered something, so
    *  the card can show/hide its divider above the comment row in sync. */
   onVisibleChange?: (visible: boolean) => void;
 }
 
-export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, series, onVisibleChange }: ProjectionTeaserProps) {
+export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVisibleChange }: ProjectionTeaserProps) {
   const displayCurrency = useDisplayCurrency();
   const [resp, setResp] = useState<ProjResp | null>(null);
   const [shown, setShown] = useState(false);
@@ -135,10 +131,6 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, seri
   const aria = `Assuming ~${ratePct} per year, you could reach about ${projected} by ${year}. Explore what moves your projection.`;
 
   if (variant === "card") {
-    const prices = (series ?? [])
-      .map((p) => p.total_value)
-      .filter((v): v is number => Number.isFinite(v));
-
     const handleCardActivate = () => {
       trackChipInteraction({ surface: "scenario_cue", chipType: "scenario", position: 0, labelTemplate: "projection_teaser" });
       onExplore();
@@ -152,7 +144,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, seri
         className="group text-left w-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         style={{
           display: "block",
-          background: "rgba(74, 124, 94, 0.09)",
+          background: "none",
           border: "none",
           padding: "17px 18px",
           cursor: "pointer",
@@ -175,7 +167,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, seri
           <span style={{ fontStyle: "normal", fontWeight: 600, fontSize: 23 }}>{projected}</span>
           {" "}by {year}.
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10 }}>
+        <div style={{ marginTop: 10 }}>
           <span className="font-serif" style={{ fontStyle: "italic", fontSize: 14, color: "var(--accent-text)" }}>
             {clause}{" "}
             <span
@@ -186,7 +178,6 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, seri
               →
             </span>
           </span>
-          <MiniSparkline prices={prices} width={74} height={34} />
         </div>
       </button>
     );
