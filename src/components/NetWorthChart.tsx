@@ -203,6 +203,15 @@ function makeProjectY(H: number, yMin: number, yMax: number): (v: number) => num
   return (v) => CHART_PAD_TOP + drawH - ((v - yMin) / yRange) * drawH;
 }
 
+// Soft-fill tokens for the stacked area bands — quiet washes, distinct from
+// CATEGORY_COLOR (full-saturation, used for the tooltip swatches).
+const CATEGORY_FILL: Record<Category, string> = {
+  property: "var(--cat-property-soft)",
+  markets:  "var(--cat-markets-soft)",
+  reserves: "var(--cat-reserves-soft)",
+  crypto:   "var(--cat-crypto-soft)",
+};
+
 // Per-point category proportions (fractions of the displayed total, summing
 // to 1) derived from each point's USD asset-type breakdown. A point without a
 // usable breakdown (e.g. the synthesized live "today" tip) inherits the
@@ -446,8 +455,8 @@ export function NetWorthChart(props: Props) {
                 <path
                   key={c}
                   d={buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, drawW)}
-                  fill={CATEGORY_COLOR[c]}
-                  fillOpacity={0.85}
+                  fill={CATEGORY_FILL[c]}
+                  fillOpacity={1}
                 />
               ))}
               <path
