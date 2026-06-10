@@ -61,6 +61,19 @@
   --cat-crypto-soft:   #F4DDD9;
   --cat-tangible:      #8C7B5E;
   --cat-tangible-soft: #E8E1D2;
+  /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
+     chart — distinct from the -soft wash tokens (which stay reserved for
+     chips/pills and must not change). */
+  --cat-property-band:  #7FA890;
+  --cat-property-edge:  #3F6354;
+  --cat-markets-band:   #8FB3C9;
+  --cat-markets-edge:   #4A6E86;
+  --cat-reserves-band:  #D9BE84;
+  --cat-reserves-edge:  #A07F49;
+  --cat-crypto-band:    #D88E80;
+  --cat-crypto-edge:    #A8473C;
+  --cat-tangible-band:  #BCAE94;
+  --cat-tangible-edge:  #7E6F54;
   /* PerspectiveCard translucent surfaces — light values */
   --perspective-card-grad-start: var(--accent-soft);
   --perspective-card-grad-end:   rgba(220, 229, 210, 0.42);
@@ -113,6 +126,19 @@
   --cat-crypto-soft:   rgba(232, 144, 134, 0.14);
   --cat-tangible:      #B5A48A;
   --cat-tangible-soft: rgba(181, 164, 138, 0.14);
+  /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
+     chart — distinct from the -soft wash tokens (which stay reserved for
+     chips/pills and must not change). */
+  --cat-property-band: rgba(111, 173, 138, 0.30);
+  --cat-property-edge: #6FAD8A;
+  --cat-markets-band:  rgba(122, 175, 212, 0.30);
+  --cat-markets-edge:  #7AAFD4;
+  --cat-reserves-band: rgba(201, 168, 122, 0.30);
+  --cat-reserves-edge: #C9A87A;
+  --cat-crypto-band:   rgba(232, 144, 134, 0.30);
+  --cat-crypto-edge:   #E89086;
+  --cat-tangible-band: rgba(181, 164, 138, 0.30);
+  --cat-tangible-edge: #B5A48A;
   /* PerspectiveCard translucent surfaces — dark values */
   --perspective-card-grad-start: rgba(111, 173, 138, 0.22);
   --perspective-card-grad-end:   rgba(111, 173, 138, 0.07);
@@ -154,6 +180,16 @@
   --color-cat-crypto-soft:   var(--cat-crypto-soft);
   --color-cat-tangible:      var(--cat-tangible);
   --color-cat-tangible-soft: var(--cat-tangible-soft);
+  --color-cat-property-band: var(--cat-property-band);
+  --color-cat-property-edge: var(--cat-property-edge);
+  --color-cat-markets-band:  var(--cat-markets-band);
+  --color-cat-markets-edge:  var(--cat-markets-edge);
+  --color-cat-reserves-band: var(--cat-reserves-band);
+  --color-cat-reserves-edge: var(--cat-reserves-edge);
+  --color-cat-crypto-band:   var(--cat-crypto-band);
+  --color-cat-crypto-edge:   var(--cat-crypto-edge);
+  --color-cat-tangible-band: var(--cat-tangible-band);
+  --color-cat-tangible-edge: var(--cat-tangible-edge);
   --font-serif:              var(--serif);
   --font-sans:               var(--sans);
   --font-mono:               var(--mono);

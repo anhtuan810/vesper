@@ -203,13 +203,23 @@ function makeProjectY(H: number, yMin: number, yMax: number): (v: number) => num
   return (v) => CHART_PAD_TOP + drawH - ((v - yMin) / yRange) * drawH;
 }
 
-// Soft-fill tokens for the stacked area bands — quiet washes, distinct from
-// CATEGORY_COLOR (full-saturation, used for the tooltip swatches).
+// Saturated band-fill tokens for the stacked area bands — distinct from
+// CATEGORY_COLOR (full-saturation, used for the tooltip swatches) and from
+// the -soft wash tokens (reserved for chips/pills).
 const CATEGORY_FILL: Record<Category, string> = {
-  property: "var(--cat-property-soft)",
-  markets:  "var(--cat-markets-soft)",
-  reserves: "var(--cat-reserves-soft)",
-  crypto:   "var(--cat-crypto-soft)",
+  property: "var(--cat-property-band)",
+  markets:  "var(--cat-markets-band)",
+  reserves: "var(--cat-reserves-band)",
+  crypto:   "var(--cat-crypto-band)",
+};
+
+// Top-edge stroke tokens for each band — drawn along the cumulative-upper
+// boundary only, on top of the fill.
+const CATEGORY_EDGE: Record<Category, string> = {
+  property: "var(--cat-property-edge)",
+  markets:  "var(--cat-markets-edge)",
+  reserves: "var(--cat-reserves-edge)",
+  crypto:   "var(--cat-crypto-edge)",
 };
 
 // Per-point category proportions (fractions of the displayed total, summing
@@ -249,6 +259,20 @@ function buildAreaPath(
   for (let i = 1; i < n; i++) d += ` L ${toX(i).toFixed(2)} ${projectY(upper[i]).toFixed(2)}`;
   for (let i = n - 1; i >= 0; i--) d += ` L ${toX(i).toFixed(2)} ${projectY(lower[i]).toFixed(2)}`;
   return d + " Z";
+}
+
+// Builds an open polyline tracing a category's cumulative-upper boundary —
+// used to stroke the top edge of its band, distinguishing it from the band
+// stacked above.
+function buildEdgePath(
+  upper: number[], projectY: (v: number) => number, drawW: number
+): string {
+  const n = upper.length;
+  if (n < 2) return "";
+  const toX = (i: number) => (i / (n - 1)) * drawW;
+  let d = `M ${toX(0).toFixed(2)} ${projectY(upper[0]).toFixed(2)}`;
+  for (let i = 1; i < n; i++) d += ` L ${toX(i).toFixed(2)} ${projectY(upper[i]).toFixed(2)}`;
+  return d;
 }
 
 export function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotPoint[] {
@@ -452,12 +476,19 @@ export function NetWorthChart(props: Props) {
               {/* Stacked asset-class bands — bottom (property) to top (reserves),
                   painted under the net-worth line so the trajectory reads identically. */}
               {STACK_ORDER.map((c) => (
-                <path
-                  key={c}
-                  d={buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, drawW)}
-                  fill={CATEGORY_FILL[c]}
-                  fillOpacity={1}
-                />
+                <g key={c}>
+                  <path
+                    d={buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, drawW)}
+                    fill={CATEGORY_FILL[c]}
+                    fillOpacity={1}
+                  />
+                  <path
+                    d={buildEdgePath(stackBounds[c].upper, projectY, drawW)}
+                    fill="none"
+                    stroke={CATEGORY_EDGE[c]}
+                    strokeWidth={1}
+                  />
+                </g>
               ))}
               <path
                 d={line}
