@@ -39,18 +39,21 @@ export async function writeSnapshot(userId: string): Promise<void> {
     }, 0);
 
     const breakdown: Record<string, number> = {};
+    const nativeByCur: Record<string, number> = {};
     for (const a of assets) {
       const cur = (a.currency as string | null) || "USD";
       const equity = a.type === "real_estate"
         ? (a.value as number) - computeCurrentBalance(a, now)
         : (a.value as number);
       breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + toUsd(equity, cur);
+      nativeByCur[cur] = (nativeByCur[cur] ?? 0) + equity;
     }
+    const native_breakdown = Object.fromEntries(Object.entries(nativeByCur).map(([c, v]) => [c, Math.round(v)]));
 
     const today = new Date().toISOString().slice(0, 10);
 
     const { error: upsertError } = await supabase.from("snapshots").upsert(
-      { user_id: userId, total_value: netTotal, breakdown, date: today },
+      { user_id: userId, total_value: netTotal, breakdown, native_breakdown, date: today },
       { onConflict: "user_id,date" }
     );
 
@@ -426,7 +429,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       return null;
     };
 
-    type SnapshotRow = { user_id: string; date: string; total_value: number; breakdown: Record<string, number> };
+    type SnapshotRow = { user_id: string; date: string; total_value: number; breakdown: Record<string, number>; native_breakdown: Record<string, number> };
 
     // Computes a single date's row from the CURRENT asset set — the same logic
     // used for the standard backfill pass, factored out so a rebuild can also
@@ -436,11 +439,14 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       const asOf = new Date(date + "T12:00:00Z");
       let total = 0;
       const breakdown: Record<string, number> = {};
+      const nativeByCur: Record<string, number> = {};
 
       for (const asset of assets) {
         const type = asset.type as string;
         const inception = acquisitionByAsset.get(asset.id as string) ?? (asset.created_at as string).slice(0, 10);
         let contribution = 0;
+        let nativeContribution = 0;
+        let nativeCurrency = "USD";
 
         if (TRADEABLE.has(type) && asset.symbol) {
           const timeline = mutsByAsset.get(asset.id as string) ?? [];
@@ -455,6 +461,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
                 const native = raw * units;
                 const rate = rateAt(date, cur);
                 contribution = cur === "USD" ? native : (rate ? native / rate : 0);
+                nativeContribution = native;
+                nativeCurrency = cur;
               }
             }
           }
@@ -484,6 +492,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
             const equity = grossValue - balance;
             const reRate = rateAt(anchor, cur);
             contribution = cur === "USD" ? equity : (reRate ? equity / reRate : 0);
+            nativeContribution = equity;
+            nativeCurrency = cur;
           }
         } else {
           // Cash / bonds / pension / other: held flat at current value from
@@ -494,17 +504,26 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
             const val = asset.value as number;
             const flatRate = rateAt(date, cur);
             contribution = cur === "USD" ? val : (flatRate ? val / flatRate : 0);
+            nativeContribution = val;
+            nativeCurrency = cur;
           }
         }
 
         if (contribution > 0) {
           total += contribution;
           breakdown[type] = (breakdown[type] ?? 0) + contribution;
+          nativeByCur[nativeCurrency] = (nativeByCur[nativeCurrency] ?? 0) + nativeContribution;
         }
       }
 
       if (total > 0) {
-        return { user_id: userId, date, total_value: Math.round(total), breakdown };
+        return {
+          user_id: userId,
+          date,
+          total_value: Math.round(total),
+          breakdown,
+          native_breakdown: Object.fromEntries(Object.entries(nativeByCur).map(([c, v]) => [c, Math.round(v)])),
+        };
       }
       return null;
     };
