@@ -28,13 +28,6 @@ const titleStyle: React.CSSProperties = {
   overflow: "hidden", fontVariationSettings: "'opsz' 18",
 };
 
-// Vitals' uppercase tracked section-label style (VitalCard eyebrow), used by
-// the "card" variant's section header.
-const SECTION_LABEL: React.CSSProperties = {
-  fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.18em",
-  textTransform: "uppercase", color: "var(--text-faint)",
-};
-
 /** Shared outer shell for both bands. `last` controls bottom margin. */
 function Band({ label, last, children }: { label?: string; last?: boolean; children: ReactNode }) {
   return (
@@ -94,37 +87,38 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
     if (insights.length === 0) return null;
 
     return (
-      <div style={{ padding: "9px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <BulbIcon color="var(--text-faint)" />
-            <span style={SECTION_LABEL}>Worth knowing</span>
+      <div style={{ padding: "7px 0" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <BulbIcon color="var(--text-faint)" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <SwipeCarousel
+              items={insights}
+              activeIndex={safeActiveInsight}
+              onActiveIndexChange={setActiveInsight}
+              renderItem={(sentence) => (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${sentence}`);
+                    router.push("/chat?seed=insight&key=current");
+                  }}
+                  className="font-serif worth-knowing"
+                  style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    background: "none", border: "none", cursor: "pointer", padding: 0,
+                    fontStyle: "italic", fontSize: 13, lineHeight: 1.45, color: "var(--text)",
+                  }}
+                >
+                  {renderWithEmphasis(sentence)}
+                </button>
+              )}
+            />
           </div>
-          <CarouselDots count={insights.length} activeIndex={safeActiveInsight} onSelect={setActiveInsight} />
-        </div>
-        <div style={{ marginTop: 6 }}>
-          <SwipeCarousel
-            items={insights}
-            activeIndex={safeActiveInsight}
-            onActiveIndexChange={setActiveInsight}
-            renderItem={(sentence) => (
-              <button
-                type="button"
-                onClick={() => {
-                  sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${sentence}`);
-                  router.push("/chat?seed=insight&key=current");
-                }}
-                className="font-serif worth-knowing"
-                style={{
-                  display: "block", width: "100%", textAlign: "left",
-                  background: "none", border: "none", cursor: "pointer", padding: 0,
-                  fontStyle: "italic", fontSize: 13, lineHeight: 1.45, color: "var(--text)",
-                }}
-              >
-                {renderWithEmphasis(sentence)}
-              </button>
-            )}
-          />
+          {insights.length > 1 && (
+            <div style={{ marginTop: 6, flexShrink: 0 }}>
+              <CarouselDots count={insights.length} activeIndex={safeActiveInsight} onSelect={setActiveInsight} />
+            </div>
+          )}
         </div>
       </div>
     );

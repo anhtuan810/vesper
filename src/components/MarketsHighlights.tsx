@@ -11,12 +11,6 @@ import type { MarketHighlight } from "@/lib/market-highlights";
 // market highlights it renders nothing, so the section (and its divider)
 // doesn't show.
 
-// Vitals' uppercase tracked section-label style (VitalCard eyebrow).
-const SECTION_LABEL: React.CSSProperties = {
-  fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.18em",
-  textTransform: "uppercase", color: "var(--text-faint)",
-};
-
 const SVG_PROPS = {
   viewBox: "0 0 256 256", fill: "none", stroke: "currentColor",
   strokeWidth: 20, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
@@ -61,11 +55,7 @@ export function MarketsHighlights({ marketHighlights, onVisibleChange }: Markets
     });
 
   return (
-    <div style={{ padding: "9px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-        <ActivityIcon color="var(--text-faint)" />
-        <span style={SECTION_LABEL}>Markets</span>
-      </div>
+    <div style={{ padding: "7px 0" }}>
       {marketHighlights.map((m, i) => {
         const id = m.id ?? `${m.title}-${i}`;
         const isOpen = expanded.has(id);
@@ -81,6 +71,9 @@ export function MarketsHighlights({ marketHighlights, onVisibleChange }: Markets
             }}
           >
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+              {i === 0
+                ? <ActivityIcon size={13} color="var(--text-faint)" />
+                : <span style={{ width: 13, flexShrink: 0 }} />}
               <span
                 className="font-serif"
                 style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, fontStyle: "italic", lineHeight: 1.35, color: "var(--text)" }}
@@ -108,7 +101,7 @@ export function MarketsHighlights({ marketHighlights, onVisibleChange }: Markets
               </div>
             </div>
             {isOpen && m.detail && (
-              <div style={{ marginTop: 3, fontSize: 11.5, lineHeight: 1.4, color: "var(--text)", opacity: 0.6 }}>
+              <div style={{ marginTop: 3, marginLeft: 21, fontSize: 11.5, lineHeight: 1.4, color: "var(--text)", opacity: 0.6 }}>
                 {m.detail}
               </div>
             )}

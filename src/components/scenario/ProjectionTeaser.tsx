@@ -20,15 +20,6 @@ import { hasSufficientHistory } from "@/lib/networth-history";
 const HORIZON_YEARS = 10;
 const SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
 
-// Vitals' uppercase tracked section-label style (VitalCard eyebrow).
-const SECTION_LABEL: React.CSSProperties = {
-  fontSize: "10.5px",
-  fontWeight: 500,
-  letterSpacing: "0.18em",
-  textTransform: "uppercase",
-  color: "var(--text-faint)",
-};
-
 function TrendingUpIcon({ size = 12, color }: { size?: number; color: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size, flexShrink: 0 }}>
@@ -164,33 +155,33 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           display: "block",
           background: "none",
           border: "none",
-          padding: "9px 0",
+          padding: "7px 0",
           cursor: "pointer",
           opacity: shown ? 1 : 0,
           transform: shown ? "translateY(0)" : "translateY(3px)",
           transition: "opacity 0.7s ease, transform 0.7s ease",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <TrendingUpIcon color="var(--text-faint)" />
-          <span style={SECTION_LABEL}>Projection</span>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <TrendingUpIcon size={13} color="var(--text-faint)" />
+          <div
+            className="font-serif"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontStyle: "italic",
+              fontSize: 13,
+              lineHeight: 1.45,
+              color: "var(--text)",
+              letterSpacing: "0.005em",
+            }}
+          >
+            Assuming ~{ratePct}/yr, you could reach about{" "}
+            <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
+            by <span style={{ fontWeight: 600 }}>{year}</span>.
+          </div>
         </div>
-        <div
-          className="font-serif"
-          style={{
-            marginTop: 6,
-            fontStyle: "italic",
-            fontSize: 13,
-            lineHeight: 1.45,
-            color: "var(--text)",
-            letterSpacing: "0.005em",
-          }}
-        >
-          Assuming ~{ratePct}/yr, you could reach about{" "}
-          <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
-          by <span style={{ fontWeight: 600 }}>{year}</span>.
-        </div>
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 4, marginLeft: 21 }}>
           <span className="font-serif" style={{ fontStyle: "italic", fontSize: 12, color: "var(--accent-text)" }}>
             {clause}{" "}
             <span

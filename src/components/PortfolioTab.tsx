@@ -222,7 +222,7 @@ export function PortfolioTab({
         </div>
 
         {netTotal > 0 && (
-          <div className="mb-6">
+          <div className="mb-2">
             <NetWorthChart
               range={range}
               onRangeChange={setRange}
