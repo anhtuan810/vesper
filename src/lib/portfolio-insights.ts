@@ -265,9 +265,12 @@ async function wrapWithHaiku(
       // never diverge from the computed one.
       const insights: InsightCard[] = (parsed as { title: string; detail: string }[]).map((o, i) => {
         const detail = validateNarration(o.detail, formatted[i].figures) ? o.detail : fallbacks[i].detail;
-        const title = o.title.length > 0 && o.title.length <= MAX_TITLE_LEN && extractNumbers(o.title).length === 0
+        let title = o.title.length > 0 && o.title.length <= MAX_TITLE_LEN && extractNumbers(o.title).length === 0
           ? o.title
           : fallbacks[i].title;
+        // Title must not restate the detail — collapsed and expanded views
+        // would otherwise show the same text.
+        if (detail.toLowerCase().startsWith(title.toLowerCase())) title = fallbacks[i].title;
         return { title, detail };
       });
       return { insights, inputTokens, outputTokens };
