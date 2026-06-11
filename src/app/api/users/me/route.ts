@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
+import { hasConfirmation, validateDestructiveRequest } from "@/lib/request-guard";
 
 const PROFILE_FIELD_KEYS = new Set([
   "life_and_direction", "approach", "currently_exploring", "worth_raising",
@@ -147,6 +148,21 @@ async function purgeUserPropertyPhotos(
 export async function DELETE(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const guard = validateDestructiveRequest(request);
+  if (!guard.ok) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
+  }
+  if (!hasConfirmation(body, "DELETE")) {
+    return NextResponse.json({ error: "Confirmation required" }, { status: 400 });
+  }
 
   const userId = user.id;
   const supabase = createServerSupabase();

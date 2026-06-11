@@ -33,7 +33,7 @@ One session, all in-place; one new table (`price_index_cache`), `woz_cache` drop
 - **Cost-basis honesty (DONE).** Acquisition mutation records the purchase price (not the estimate); equity badge shows real appreciation from `buy_price`; "since YEAR" uses `buy_date`.
 - **Insight band (DONE).** Revision-driven regeneration; no longer references removed assets.
 - **Equity/net-worth basis consistency (DONE).** Concentration bar now equity-based; Vitals path EUR-normalizes `mortgage_balance`/`monthly_payment`; `computeNetWorth` uses the amortized balance so Vitals net worth matches the Portfolio hero by construction.
-- **Account deletion completeness (DONE).** Purges all user-keyed tables, the Supabase auth user, AND `property-photos` Storage; auth user deleted last; idempotent/re-runnable; clear error on partial failure.
+- **Account deletion completeness (DONE).** Purges all user-keyed tables, the Supabase auth user, AND `property-photos` Storage; auth user deleted last; idempotent/re-runnable; clear error on partial failure. The API now also requires a same-origin destructive-request guard and explicit `{ confirm: "DELETE" }` payload before deletion starts.
 - **UI polish (DONE).** Correct ordinal suffixes (41st/93rd); sign-aware percentile-change pill.
 
 ### Deferred / next

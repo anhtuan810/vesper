@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Status: deferred. Captured here for when it's time to invest. Currently Volnar has zero automated tests by design — manual smoke testing against acceptance criteria has been sufficient through the redesign and currency feature work.
+Status: activated at the starter layer. Volnar now has a small Node test harness covering the first pure calculation/validation seams; the broader plan below remains the roadmap for expanding confidence before public launch.
 
 ## What this document is
 
@@ -15,6 +15,11 @@ These are independent. Both have a place. Neither is a substitute for the other.
 
 ## Layered approach when ready
 
+### Active CI gate
+
+GitHub Actions now runs the starter release gate on every pull request and push to `main`: `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run test`, and a production `npm run build` with dummy environment values. The build uses dummy secrets only to exercise compilation/static generation; live API behaviour still requires real deployment secrets.
+
+
 ### Layer 0: Math layer unit tests (highest leverage, lowest cost)
 Pure-function tests for the calculation layer. No mocks, no I/O.
 
@@ -26,8 +31,8 @@ Files to test:
 - `src/lib/snapshot.ts` — snapshot calculation: net worth uses equity, breakdown uses gross
 - `src/lib/country-currency.ts` — country mapping, fallback to EUR
 
-Tooling: Vitest. One config file, one dependency, runs in milliseconds.
-Effort: half a day to set up + write ~50 tests.
+Tooling: Node's built-in test runner is currently used to avoid adding another dependency in the locked environment. Vitest remains a good later upgrade if richer fixtures/mocking become necessary.
+Effort: half a day to expand the current starter tests to ~50 tests.
 Maintenance: low. Pure functions don't drift.
 
 ### Layer 1: Playwright smoke tests (catastrophic regression floor)

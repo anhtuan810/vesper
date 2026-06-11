@@ -275,7 +275,7 @@ function LoginInner() {
                 fontSize: 12, lineHeight: 1.55,
               }}
             >
-              Check your email. We've sent you a link to continue. You can close this tab.
+              Check your email. We&apos;ve sent you a link to continue. You can close this tab.
             </div>
           )}
 

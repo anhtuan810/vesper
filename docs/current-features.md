@@ -6,13 +6,13 @@
 - **Google OAuth** via Supabase Auth
 - **Email magic link** as fallback
 - **Session management** via cookies
-- **Middleware route protection** redirects unauthenticated users to `/login`
+- **Proxy route protection** redirects unauthenticated users to `/login`
 - **Auto-creates user record** on first signup via Supabase trigger
-- Files: `src/middleware.ts`, `src/app/login/page.tsx`, `src/app/auth/callback/route.ts`
+- Files: `src/proxy.ts`, `src/app/login/page.tsx`, `src/app/auth/callback/route.ts`
 
 ### Account Deletion
 - Permanent, irreversible deletion from the Profile account area. A low-emphasis 'Delete account' affordance opens a confirmation requiring the user to type `DELETE`; the confirm button stays disabled until it matches.
-- On confirm: `DELETE /api/users/me` runs, then the client signs out and redirects to `/login`.
+- On confirm: `DELETE /api/users/me` runs with a same-origin destructive-request guard and explicit `{ confirm: "DELETE" }` payload, then the client signs out and redirects to `/login`.
 - `DELETE /api/users/me` resolves the user id from the session only (never the request body), returns 401 unauthenticated, then runs in order: (1) **purges the user's `property-photos` Storage objects** (lists the `{user_id}/` prefix and removes every object, paging until empty — tolerates a missing/empty folder); (2) an explicit per-table delete loop over the user-scoped tables `messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots, scenarios` (each keyed by `user_id`); (3) deletes the `users` row; (4) deletes the auth user via `auth.admin.deleteUser` **last**. `rate_limits` is left to its `ON DELETE CASCADE` on `users(id)`; `fx_rates` (global) and `price_index_cache` (region-keyed) are intentionally untouched. Every step is idempotent, so the operation is safely re-runnable while the session is still valid; any step failure is captured to Sentry and returns 500 with a clear message rather than a silent partial success.
 - Complete data erasure: every user-keyed table, the Supabase auth user, and user-owned Storage are removed.
 - Satisfies GDPR right-to-erasure and the Apple App Store in-app-deletion requirement.
@@ -328,7 +328,6 @@ Several optimisations reduce the time-to-interactive on the Portfolio page:
 - **CBS OData constants are the single live-verify point** — the indicative-value engine depends on the legacy CBS endpoint, the measure key (`PrijsindexVerkoopprijzen_1`), the stripped-title RegioS match (keys carry trailing spaces, e.g. `"PV30  "`), and the yearly `JJ` period format. If CBS renames the table/measure or changes the endpoint, estimates degrade to `{ available: false }` (never an error). Verify against the live service on device; `?debug=1` surfaces the first failing step. NL-only by design.
 - **Trend cards depend on a clean snapshot history** — Vitals trend/baseline cards (Real growth, the Perspective trajectory chip) read `snapshots`; a sparse or backfilled history can make them read oddly until a clean ≥330-day baseline accumulates. Not a correctness bug in the metric.
 - **Multiple lockfiles warning** in Next.js — cosmetic
-- **Middleware deprecation warning** in Next.js 16 — file convention is being renamed to `proxy`, currently functional
 - **Token usage grows with portfolio size** — at 50+ assets the system prompt gets large; no compression layer
 - **No retry on Yahoo Finance failures** — if Yahoo is down, prices show as offline (acceptable, not gracefully handled)
 - **Historical mutations have currency-implicit-EUR values** — rows logged before the native-storage migration have `before_value` and `after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency).
