@@ -16,16 +16,6 @@ function renderWithEmphasis(text: string): ReactNode {
   );
 }
 
-function formatImpact(value: number): string {
-  const abs = Math.abs(Math.round(value));
-  return (value >= 0 ? "+" : "−") + "€" + abs.toLocaleString();
-}
-
-const SVG_PROPS = {
-  viewBox: "0 0 256 256", fill: "none", stroke: "currentColor",
-  strokeWidth: 20, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
-};
-
 const eyebrowStyle: React.CSSProperties = {
   fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
   textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
@@ -37,8 +27,6 @@ const titleStyle: React.CSSProperties = {
   display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
   overflow: "hidden", fontVariationSettings: "'opsz' 18",
 };
-
-const DIVIDER = "1px solid color-mix(in srgb, var(--accent-text) 12%, transparent)";
 
 // Vitals' uppercase tracked section-label style (VitalCard eyebrow), used by
 // the "card" variant's section header.
@@ -65,17 +53,9 @@ function Band({ label, last, children }: { label?: string; last?: boolean; child
 }
 
 export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; onVisibleChange?: (visible: boolean) => void } = {}) {
-  const { detail, portfolio, market, insights, loading } = useInsight();
+  const { detail, portfolio, insights, loading } = useInsight();
   const router = useRouter();
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [activeInsight, setActiveInsight] = useState(0);
-
-  const toggle = (id: string) =>
-    setExpanded(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
 
   // Keep the carousel index in range as the insights list changes (e.g. after
   // a portfolio mutation regenerates the cards) — derived, not stored, so a
@@ -158,9 +138,7 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
     );
   }
 
-  if (!hasTopBand && market.length === 0) return null;
-
-  const hasMarket = market.length > 0;
+  if (!hasTopBand) return null;
 
   const allPortfolioSentences = portfolioCards.length > 0
     ? portfolioCards
@@ -170,7 +148,7 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
     <>
       {/* ── Portfolio cards — merged into one Band with paragraph spacing ── */}
       {allPortfolioSentences.length > 0 && (
-        <Band last={!hasMarket}>
+        <Band last>
           <div style={{ padding: "9px 16px" }}>
             {allPortfolioSentences.map((sentence, i) => (
               <div
@@ -182,67 +160,6 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
               </div>
             ))}
           </div>
-        </Band>
-      )}
-
-      {/* ── MARKETS — up to 3 market news cards ── */}
-      {hasMarket && (
-        <Band last>
-          {market.map((item) => {
-            const id = item.id ?? item.title;
-            const isOpen = expanded.has(id);
-            return (
-              <div key={id} style={{ borderTop: DIVIDER }}>
-                <button
-                  style={{
-                    display: "flex", alignItems: "flex-start", gap: 10,
-                    padding: "9px 16px", cursor: "pointer",
-                    background: "none", border: "none", width: "100%", textAlign: "left",
-                  }}
-                  onClick={() => toggle(id)}
-                >
-                  <div className="font-serif" style={{ ...titleStyle, flex: 1, minWidth: 0 }}>
-                    {item.title}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0, marginTop: 2 }}>
-                    {item.impact_eur !== null && (
-                      <span style={{
-                        fontSize: 11, fontWeight: 500, letterSpacing: "-0.01em",
-                        color: item.impact_eur >= 0 ? "var(--accent-text)" : "var(--text)",
-                        opacity: item.impact_eur >= 0 ? 1 : 0.6,
-                      }}>
-                        {formatImpact(item.impact_eur)}
-                      </span>
-                    )}
-                    <svg {...SVG_PROPS} style={{
-                      width: 11, height: 11, color: "var(--accent-text)", opacity: 0.45,
-                      flexShrink: 0, transition: "transform 0.15s",
-                      transform: isOpen ? "rotate(90deg)" : undefined,
-                    }}>
-                      <polyline points="96 48 176 128 96 208" />
-                    </svg>
-                  </div>
-                </button>
-
-                {isOpen && (
-                  <button
-                    style={{
-                      display: "block", padding: "0 16px 10px", cursor: "pointer",
-                      background: "none", border: "none", width: "100%", textAlign: "left",
-                    }}
-                    onClick={() => {
-                      sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${item.title}`);
-                      router.push("/chat?seed=insight&key=current");
-                    }}
-                  >
-                    <div style={{ fontSize: 12, lineHeight: 1.45, color: "var(--text)", opacity: 0.6 }}>
-                      {item.detail}
-                    </div>
-                  </button>
-                )}
-              </div>
-            );
-          })}
         </Band>
       )}
     </>
