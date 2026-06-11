@@ -114,12 +114,30 @@ export function PortfolioTab({
     setSelectedPoint(null);
   }, [range]);
 
+  // Live per-asset-type breakdown (display currency) for the synthesized
+  // "today" tip — same equity valuation as netTotal (page.tsx) and the
+  // Holdings groups below, just bucketed by asset type instead of summed into
+  // one number, so categoryBreakdown's CATEGORY_MAP folding reflects today's
+  // actual (post-add/remove) composition.
+  const todayBreakdown = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const a of netWorthAssets) {
+      const equity = a.type === "real_estate"
+        ? Math.max(0, a.value - computeCurrentBalance(a))
+        : a.value;
+      const inDisplay = toDisplay(equity, a.currency || "USD", displayCurrency);
+      if (inDisplay == null) continue;
+      result[a.type] = (result[a.type] ?? 0) + inDisplay;
+    }
+    return result;
+  }, [netWorthAssets, displayCurrency]);
+
   // Display series — the full history clipped to the selected range's window
   // (plus a left anchor so the line never collapses below 2 points), with
   // `buildSeries` appending the synthesized "today" tip.
   const series = useMemo(
-    () => buildSeries(clipToRange(fullSnapshots, range), netTotal),
-    [fullSnapshots, range, netTotal]
+    () => buildSeries(clipToRange(fullSnapshots, range), netTotal, todayBreakdown),
+    [fullSnapshots, range, netTotal, todayBreakdown]
   );
 
   // Hero/baseline series — converted to the display currency the same way the

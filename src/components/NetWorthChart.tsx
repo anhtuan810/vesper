@@ -34,9 +34,12 @@ export interface SnapshotPoint {
   // currency (identity for the home-currency bucket — no FX, no drift). Absent
   // on rows written before this field existed, and on synthesized points.
   native_breakdown?: Record<string, number> | null;
-  // Per-asset-type USD breakdown for THIS row (see snapshot.ts breakdown).
-  // Real estate is equity-net, so this sums to total_value. Absent on
-  // synthesized points (e.g. the live "today" tip).
+  // Per-asset-type breakdown for THIS row (see snapshot.ts breakdown, USD for
+  // DB rows). Real estate is equity-net, so this sums to total_value. The
+  // synthesized live "today" tip carries its own live breakdown (display
+  // currency, from the current asset set) so its category proportions reflect
+  // today's actual composition rather than inheriting the prior row's; absent
+  // only on rows written before this field existed.
   breakdown?: Record<string, number> | null;
 }
 
@@ -223,10 +226,11 @@ const CATEGORY_EDGE: Record<Category, string> = {
 };
 
 // Per-point category proportions (fractions of the displayed total, summing
-// to 1) derived from each point's USD asset-type breakdown. A point without a
-// usable breakdown (e.g. the synthesized live "today" tip) inherits the
-// nearest preceding point's proportions, so the right edge of the stack never
-// collapses.
+// to 1) derived from each point's asset-type breakdown. A point without a
+// usable breakdown (only DB rows written before the breakdown field existed —
+// the synthesized live "today" tip now carries its own live breakdown)
+// inherits the nearest preceding point's proportions, so the right edge of the
+// stack never collapses.
 function computeCategoryProportions(points: SnapshotPoint[]): Record<Category, number>[] {
   const result: Record<Category, number>[] = [];
   let last: Record<Category, number> | null = null;
@@ -275,10 +279,16 @@ function buildEdgePath(
   return d;
 }
 
-export function buildSeries(raw: SnapshotPoint[], currentNet: number): SnapshotPoint[] {
+// `todayBreakdown` is the live per-asset-type valuation (display currency,
+// same equity basis as netTotal/the Holdings groups) for the CURRENT asset
+// set — gives the synthesized "today" tip a real breakdown so its category
+// proportions reflect today's composition (e.g. zero for a just-removed
+// category) instead of inheriting the prior row's via computeCategoryProportions's
+// sum===0 fallback.
+export function buildSeries(raw: SnapshotPoint[], currentNet: number, todayBreakdown?: Record<string, number>): SnapshotPoint[] {
   const today = new Date().toISOString().slice(0, 10);
   const filtered = raw.filter((p) => p.date !== today);
-  filtered.push({ date: today, total_value: currentNet });
+  filtered.push({ date: today, total_value: currentNet, breakdown: todayBreakdown });
   return filtered;
 }
 
