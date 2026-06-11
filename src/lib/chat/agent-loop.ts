@@ -149,7 +149,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   let updatedAssets: unknown = null;
   let analyticsEvent: string | undefined;
   if (commit?.changed) {
-    const { data: refreshed } = await supabase.from("assets").select("*").eq("user_id", input.userId);
+    const { data: refreshed } = await supabase.from("assets").select("*").eq("user_id", input.userId).is("removed_at", null);
     updatedAssets = refreshed;
     if (commit.analyticsEvent) analyticsEvent = commit.analyticsEvent;
 

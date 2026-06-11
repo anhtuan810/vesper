@@ -22,7 +22,7 @@ export async function assemblePresent(
   userId: string,
   mods: Modification[],
 ): Promise<PresentResult> {
-  const { data: rows } = await supabase.from("assets").select(ASSET_COLUMNS).eq("user_id", userId);
+  const { data: rows } = await supabase.from("assets").select(ASSET_COLUMNS).eq("user_id", userId).is("removed_at", null);
   const current = (rows ?? []) as ScenarioAsset[];
   const usdRates = await getUsdRates();
   const comparison = computePresentComparison(current, mods, usdRates);

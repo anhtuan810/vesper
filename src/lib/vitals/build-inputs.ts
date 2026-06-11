@@ -32,7 +32,7 @@ export async function buildVitalsInputs(
       .select("display_currency, country, birth_year")
       .eq("id", userId)
       .single(),
-    supabase.from("assets").select("*").eq("user_id", userId),
+    supabase.from("assets").select("*").eq("user_id", userId).is("removed_at", null),
     supabase
       .from("snapshots")
       .select("date, total_value, breakdown")

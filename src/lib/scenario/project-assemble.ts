@@ -16,7 +16,8 @@ export async function assembleProject(
     supabase
       .from("assets")
       .select("id, name, type, value, currency, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type")
-      .eq("user_id", userId),
+      .eq("user_id", userId)
+      .is("removed_at", null),
     supabase.from("snapshots").select("date, total_value").eq("user_id", userId).order("date", { ascending: true }),
   ]);
   const assets = (assetRows ?? []) as ScenarioAsset[];

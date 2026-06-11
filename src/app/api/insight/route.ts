@@ -27,7 +27,7 @@ async function regenPortfolioHighlights(supabase: SupabaseClient, userId: string
   try {
     await supabase.from("highlights").delete().eq("user_id", userId).in("type", ["portfolio", "insight"]);
 
-    const { data: assets } = await supabase.from("assets").select("*").eq("user_id", userId);
+    const { data: assets } = await supabase.from("assets").select("*").eq("user_id", userId).is("removed_at", null);
     if (!assets || assets.length === 0) return;
 
     const cutoffDate = new Date(Date.now() - SNAPSHOT_LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
@@ -127,6 +127,7 @@ export async function GET(request: NextRequest) {
     .from("assets")
     .select("*")
     .eq("user_id", user.id)
+    .is("removed_at", null)
     .order("value", { ascending: false });
 
   if (!assets || assets.length === 0) {

@@ -59,7 +59,8 @@ export async function POST(req: NextRequest) {
     const { data: allAssets } = await supabase
       .from("assets")
       .select("type, value, currency, mortgage_balance")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .is("removed_at", null);
     const usdRates = await getUsdRates();
     const toUsdSync = (amount: number, currency: string) => {
       if (currency === "USD") return amount;

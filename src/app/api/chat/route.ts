@@ -532,7 +532,7 @@ export async function POST(req: NextRequest) {
       { data: userData },
       { data: recentMutations },
     ] = await Promise.all([
-      supabase.from("assets").select("*").eq("user_id", userId),
+      supabase.from("assets").select("*").eq("user_id", userId).is("removed_at", null),
       supabase
         .from("messages")
         .select("*")
@@ -1064,7 +1064,8 @@ export async function POST(req: NextRequest) {
       const { data: newAssets } = await supabase
         .from("assets")
         .select("*")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("removed_at", null);
       updatedAssets = newAssets;
     }
 

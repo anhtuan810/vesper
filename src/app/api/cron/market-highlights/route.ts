@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const now = new Date().toISOString();
 
   // Fetch ALL assets (portfolio detectors need non-tradeable types too)
-  const { data: allAssets } = await supabase.from("assets").select("*");
+  const { data: allAssets } = await supabase.from("assets").select("*").is("removed_at", null);
   if (!allAssets || allAssets.length === 0) {
     return NextResponse.json({ ok: true, users_processed: 0 });
   }

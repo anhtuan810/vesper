@@ -15,7 +15,8 @@ export async function writeSnapshot(userId: string): Promise<void> {
     const { data: assets, error } = await supabase
       .from("assets")
       .select("type, value, currency, symbol, units, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, buy_date, created_at")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .is("removed_at", null);
 
     if (error) throw error;
     if (!assets || assets.length === 0) return;

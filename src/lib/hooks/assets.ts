@@ -118,6 +118,7 @@ export function useAssets(userId: string | undefined) {
       .from("assets")
       .select("*")
       .eq("user_id", userId)
+      .is("removed_at", null)
       .order("value", { ascending: false });
     if (error) { setError(true); setLoading(false); return; }
     const next = data || [];

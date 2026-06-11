@@ -49,6 +49,9 @@ interface BaseAsset {
   buy_price_source?: "user" | "market";
   created_at: string;
   updated_at: string;
+  // Soft-delete marker — set, the asset is excluded from current-holdings
+  // reads but its row and history remain for snapshot reconstruction.
+  removed_at?: string | null;
 }
 
 export interface TradeableAsset extends BaseAsset {
