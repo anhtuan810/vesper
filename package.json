@@ -10,8 +10,7 @@
     "mobile:sync": "cap sync ios",
     "mobile:open": "cap open ios",
     "mobile:run": "cap run ios",
-    "mobile:assets": "capacitor-assets generate --ios",
-    "test": "node --test tests/**/*.test.mjs"
+    "mobile:assets": "capacitor-assets generate --ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
@@ -42,6 +41,5 @@
     "playwright": "^1.60.0",
     "tailwindcss": "^4",
     "typescript": "^5"
-  },
-  "type": "module"
+  }
 }

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Rewrite marketing domains to /marketing/* without changing the URL bar.
   const host = request.headers.get("host")?.toLowerCase().replace(/:\d+$/, "") ?? "";
   const isMarketingDomain = host === "volnar.nl" || host === "www.volnar.nl";

@@ -21,7 +21,7 @@ deletion is a later phase.
   - `appName`: `Volnar`
   - `webDir`: `public` (placeholder only; remote `server.url` is what actually loads)
   - `server.url`: `https://app.volnar.nl`, `cleartext: false`
-  - `ios.contentInset`: `never`
+  - `ios.contentInset`: `always`
   - `ios.backgroundColor`: `#FAF6EB` — native WebView background fallback so no
     white flashes behind the web content at the top edge.
 
@@ -30,10 +30,8 @@ deletion is a later phase.
 > `@capacitor/status-bar` is wired up in a later phase, at which point the
 > native background and status-bar style will follow the active theme.
 
-The web app now includes a basic web-app manifest and `/offline` fallback route for
-installability / failure-state polish. The native shell still loads the remote
-production URL; for App Store submission, validate the remote-host outage state on
-a real device before review.
+The web app (Next.js) is untouched — no changes to middleware, `/api` routes,
+server logic, page components, `next.config.ts`, or the database.
 
 ## Common tasks
 

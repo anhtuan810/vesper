@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Source_Serif_4, Albert_Sans, Geist_Mono } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -8,6 +9,26 @@ import { VitalsPrefetch } from "@/components/VitalsPrefetch";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
+
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  axes: ["opsz"],
+  variable: "--font-serif",
+  display: "swap",
+});
+
+const albertSans = Albert_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Volnar",
@@ -48,7 +69,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className="h-full antialiased"
+      className={`${sourceSerif.variable} ${albertSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
         <ThemeProvider initialTheme={theme}>

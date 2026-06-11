@@ -32,7 +32,7 @@ export function LeverageTrend({ data }: Props) {
 
   let pathD = '';
   let todayX = 240;
-  const todayY = ltvToY(ltvPct);
+  let todayY = ltvToY(ltvPct);
 
   if (hasTrend) {
     const minMs = Date.parse(trend[0].date);
