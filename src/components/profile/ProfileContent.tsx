@@ -175,7 +175,11 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
     setDeleting(true);
     setDeleteError(null);
     try {
-      const res = await fetch("/api/users/me", { method: "DELETE" });
+      const res = await fetch("/api/users/me", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      });
       if (!res.ok) {
         setDeleteError("We could not complete the deletion. Please try again in a moment.");
         setDeleting(false);
