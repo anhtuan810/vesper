@@ -109,13 +109,14 @@ export async function GET(request: NextRequest) {
 
   // If portfolio cards exist, return immediately — no need for legacy insight
   if (portfolio.length > 0) {
-    return NextResponse.json({ portfolio, insight: { detail: null }, market });
+    return NextResponse.json({ portfolio, insights: portfolio, insight: { detail: portfolio[0] ?? null }, market });
   }
 
   // Fall back to cached legacy insight
   if (insightRes.data?.detail) {
     return NextResponse.json({
       portfolio: [],
+      insights: [insightRes.data.detail],
       insight: { detail: insightRes.data.detail, expires_at: insightRes.data.expires_at },
       market,
     });
@@ -129,12 +130,12 @@ export async function GET(request: NextRequest) {
     .order("value", { ascending: false });
 
   if (!assets || assets.length === 0) {
-    return NextResponse.json({ portfolio: [], insight: { detail: null }, market });
+    return NextResponse.json({ portfolio: [], insights: [], insight: { detail: null }, market });
   }
 
   const detail = await generateInsight(assets);
   if (!detail) {
-    return NextResponse.json({ portfolio: [], insight: { detail: null }, market });
+    return NextResponse.json({ portfolio: [], insights: [], insight: { detail: null }, market });
   }
 
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -142,7 +143,7 @@ export async function GET(request: NextRequest) {
     .from("highlights")
     .insert({ user_id: user.id, type: "insight", detail, expires_at: expiresAt, seen: false });
 
-  return NextResponse.json({ portfolio: [], insight: { detail, expires_at: expiresAt }, market });
+  return NextResponse.json({ portfolio: [], insights: [detail], insight: { detail, expires_at: expiresAt }, market });
 }
 
 export async function DELETE(request: NextRequest) {

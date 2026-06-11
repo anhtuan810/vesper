@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useInsight } from "@/lib/hooks";
 import { BulbIcon } from "@/components/vitals/SuggestionStrip";
+import { SwipeCarousel, CarouselDots } from "@/components/SwipeCarousel";
 import type { ReactNode } from "react";
 
 function renderWithEmphasis(text: string): ReactNode {
@@ -39,6 +40,13 @@ const titleStyle: React.CSSProperties = {
 
 const DIVIDER = "1px solid color-mix(in srgb, var(--accent-text) 12%, transparent)";
 
+// Vitals' uppercase tracked section-label style (VitalCard eyebrow), used by
+// the "card" variant's section header.
+const SECTION_LABEL: React.CSSProperties = {
+  fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.18em",
+  textTransform: "uppercase", color: "var(--text-faint)",
+};
+
 /** Shared outer shell for both bands. `last` controls bottom margin. */
 function Band({ label, last, children }: { label?: string; last?: boolean; children: ReactNode }) {
   return (
@@ -57,9 +65,10 @@ function Band({ label, last, children }: { label?: string; last?: boolean; child
 }
 
 export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; onVisibleChange?: (visible: boolean) => void } = {}) {
-  const { detail, portfolio, market, loading } = useInsight();
+  const { detail, portfolio, market, insights, loading } = useInsight();
   const router = useRouter();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [activeInsight, setActiveInsight] = useState(0);
 
   const toggle = (id: string) =>
     setExpanded(prev => {
@@ -67,6 +76,11 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+
+  // Keep the carousel index in range as the insights list changes (e.g. after
+  // a portfolio mutation regenerates the cards) — derived, not stored, so a
+  // shrinking list never leaves a stale out-of-range index.
+  const safeActiveInsight = Math.min(activeInsight, Math.max(0, insights.length - 1));
 
   // portfolio cards (up to 3 from detectors); fall back to single legacy sentence
   const portfolioCards = portfolio.slice(0, 3);
@@ -80,8 +94,8 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
   // summary card can place its hairline dividers only between visible slots
   // (no stray divider when this row is absent). No-op for the default variant.
   useEffect(() => {
-    onVisibleChange?.(!loading && hasTopBand);
-  }, [loading, hasTopBand, onVisibleChange]);
+    onVisibleChange?.(!loading && insights.length > 0);
+  }, [loading, insights.length, onVisibleChange]);
 
   // "card" variant: PortfolioSummaryCard's "worth knowing" callout — the same
   // insight sentence as a sage Vitals SuggestionStrip-style box, tap-to-/chat
@@ -90,68 +104,48 @@ export function InsightBand({ variant, onVisibleChange }: { variant?: "card"; on
   if (variant === "card") {
     if (loading) {
       return (
-        <div style={{ padding: "14px 18px" }}>
-          <div style={{ height: 13, width: "60%", borderRadius: 3, background: "var(--text-faint)", opacity: 0.15 }} />
+        <div style={{ padding: "9px 0" }}>
+          <div style={{ height: 9, width: 90, borderRadius: 3, background: "var(--text-faint)", opacity: 0.15, marginBottom: 8 }} />
+          <div style={{ height: 13, width: "75%", borderRadius: 3, background: "var(--text-faint)", opacity: 0.15 }} />
         </div>
       );
     }
 
-    if (!hasTopBand) return null;
-
-    const sentence = portfolioCards.length > 0 ? portfolioCards[0] : insightSentence!;
-
-    // Sage "worth knowing" callout — Vitals SuggestionStrip "context" tokens
-    // (var(--accent-soft) / var(--accent-deep)). A future `severity` prop
-    // could swap these for the "alert" tokens (var(--negative-soft) /
-    // var(--negative-deep)) for the red warning treatment — not wired here.
-    const calloutBg = "var(--accent-soft)";
-    const calloutColor = "var(--accent-deep)";
+    if (insights.length === 0) return null;
 
     return (
-      <div style={{ padding: "14px 18px" }}>
-        <button
-          type="button"
-          onClick={() => {
-            sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${sentence}`);
-            router.push("/chat?seed=insight&key=current");
-          }}
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-start",
-            width: "100%",
-            textAlign: "left",
-            background: calloutBg,
-            border: "none",
-            borderRadius: 9,
-            padding: "10px 12px",
-            cursor: "pointer",
-          }}
-        >
-          <BulbIcon color={calloutColor} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: "8.5px",
-                fontWeight: 600,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                opacity: 0.82,
-                marginBottom: 3,
-                lineHeight: 1,
-                color: calloutColor,
-              }}
-            >
-              Worth knowing
-            </div>
-            <div
-              className="font-serif worth-knowing"
-              style={{ fontSize: 14.5, fontStyle: "italic", lineHeight: 1.5, color: "var(--text)" }}
-            >
-              {renderWithEmphasis(sentence)}
-            </div>
+      <div style={{ padding: "9px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <BulbIcon color="var(--text-faint)" />
+            <span style={SECTION_LABEL}>Worth knowing</span>
           </div>
-        </button>
+          <CarouselDots count={insights.length} activeIndex={safeActiveInsight} onSelect={setActiveInsight} />
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <SwipeCarousel
+            items={insights}
+            activeIndex={safeActiveInsight}
+            onActiveIndexChange={setActiveInsight}
+            renderItem={(sentence) => (
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${sentence}`);
+                  router.push("/chat?seed=insight&key=current");
+                }}
+                className="font-serif worth-knowing"
+                style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  background: "none", border: "none", cursor: "pointer", padding: 0,
+                  fontStyle: "italic", fontSize: 13, lineHeight: 1.45, color: "var(--text)",
+                }}
+              >
+                {renderWithEmphasis(sentence)}
+              </button>
+            )}
+          />
+        </div>
       </div>
     );
   }

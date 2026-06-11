@@ -280,11 +280,11 @@ export async function generatePortfolioInsights(
   const concentration = detectConcentration(assets);
   if (concentration.fired) firedCtxs.push(concentration.ctx);
 
-  const cashDrag = detectCashDrag(assets, snapshots);
-  if (cashDrag.fired) firedCtxs.push(cashDrag.ctx);
-
   const currencyMismatch = detectCurrencyMismatch(assets, displayCurrency);
   if (currencyMismatch.fired) firedCtxs.push(currencyMismatch.ctx);
+
+  const cashDrag = detectCashDrag(assets, snapshots);
+  if (cashDrag.fired) firedCtxs.push(cashDrag.ctx);
 
   if (firedCtxs.length === 0) {
     return { detectorsFired: [], sentences: [], inputTokens: 0, outputTokens: 0 };

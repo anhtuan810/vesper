@@ -219,10 +219,10 @@ export function PortfolioTab({
         )}
       </div>
 
-      {/* Portfolio summary card — projection teaser hero band + insight comment row.
-          Same horizontal bounds as the hero+chart block above (-mx-4 md:mx-0,
-          maxWidth 660) so the card's left/right edges line up with the net-worth
-          number and the Holdings header. */}
+      {/* Portfolio summary — three flat, hairline-separated sections (Projection,
+          Worth knowing, Markets), no card container. Same horizontal bounds as
+          the hero+chart block above (-mx-4 md:mx-0, maxWidth 660) so the section
+          edges line up with the net-worth number and the Holdings header. */}
       {assets.length > 0 && (
         <div className="-mx-4 md:mx-0 mb-6" style={{ maxWidth: 660 }}>
           <PortfolioSummaryCard

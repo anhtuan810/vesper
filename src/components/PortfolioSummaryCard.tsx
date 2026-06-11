@@ -16,28 +16,18 @@ interface PortfolioSummaryCardProps {
 
 const DIVIDER = <div style={{ borderTop: "0.5px solid var(--border)" }} />;
 
-// "Portfolio summary" card on the Portfolio tab, restyled to the Vitals theme —
-// one white surface holding the projection teaser, the "worth knowing" sage
-// callout, and the collapsed Markets section. Each slot self-reports whether it
-// rendered anything; a hairline divider is drawn only between the callout and
-// Markets, so a hidden projection, an absent insight, or empty markets never
-// leaves a stray line.
+// "Portfolio summary" — three flat, hairline-separated sections (Projection,
+// Worth knowing, Markets) sitting directly on the page, no card container. Each
+// slot self-reports whether it rendered anything; a divider is drawn only
+// between two visible sections, so a hidden projection, an absent insight, or
+// empty markets never leaves a stray hairline.
 export function PortfolioSummaryCard({ netTotal, snapshots, marketHighlights, onExplore }: PortfolioSummaryCardProps) {
   const [showProjection, setShowProjection] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
   const [showMarket, setShowMarket] = useState(false);
 
-  const aboveMarket = showProjection || showInsight;
-
   return (
-    <div
-      style={{
-        border: "0.5px solid var(--border)",
-        borderRadius: 14,
-        overflow: "hidden",
-        background: "var(--surface)",
-      }}
-    >
+    <div>
       <ProjectionTeaser
         variant="card"
         onExplore={onExplore}
@@ -45,8 +35,9 @@ export function PortfolioSummaryCard({ netTotal, snapshots, marketHighlights, on
         netTotal={netTotal}
         onVisibleChange={setShowProjection}
       />
+      {showProjection && showInsight && DIVIDER}
       <InsightBand variant="card" onVisibleChange={setShowInsight} />
-      {aboveMarket && showMarket && DIVIDER}
+      {(showProjection || showInsight) && showMarket && DIVIDER}
       <MarketsHighlights marketHighlights={marketHighlights} onVisibleChange={setShowMarket} />
     </div>
   );

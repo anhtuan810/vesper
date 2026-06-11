@@ -22,12 +22,21 @@ const SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
 
 // Vitals' uppercase tracked section-label style (VitalCard eyebrow).
 const SECTION_LABEL: React.CSSProperties = {
-  fontSize: "9.5px",
+  fontSize: "10.5px",
   fontWeight: 500,
   letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--text-faint)",
 };
+
+function TrendingUpIcon({ size = 12, color }: { size?: number; color: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size, flexShrink: 0 }}>
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </svg>
+  );
+}
 
 interface ProjResp {
   startUsd: number;
@@ -155,21 +164,24 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           display: "block",
           background: "none",
           border: "none",
-          padding: "14px 18px 12px",
+          padding: "9px 0",
           cursor: "pointer",
           opacity: shown ? 1 : 0,
           transform: shown ? "translateY(0)" : "translateY(3px)",
           transition: "opacity 0.7s ease, transform 0.7s ease",
         }}
       >
-        <div style={SECTION_LABEL}>Projection</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <TrendingUpIcon color="var(--text-faint)" />
+          <span style={SECTION_LABEL}>Projection</span>
+        </div>
         <div
           className="font-serif"
           style={{
             marginTop: 6,
             fontStyle: "italic",
-            fontSize: 15.5,
-            lineHeight: 1.5,
+            fontSize: 13,
+            lineHeight: 1.45,
             color: "var(--text)",
             letterSpacing: "0.005em",
           }}
@@ -178,8 +190,8 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
           by <span style={{ fontWeight: 600 }}>{year}</span>.
         </div>
-        <div style={{ marginTop: 8 }}>
-          <span className="font-serif" style={{ fontStyle: "italic", fontSize: 14, color: "var(--accent-text)" }}>
+        <div style={{ marginTop: 4 }}>
+          <span className="font-serif" style={{ fontStyle: "italic", fontSize: 12, color: "var(--accent-text)" }}>
             {clause}{" "}
             <span
               aria-hidden="true"

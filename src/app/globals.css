@@ -218,6 +218,16 @@
   color: var(--accent-deep);
 }
 
+/* Hide scrollbar for horizontal swipe carousels (SwipeCarousel) while
+   keeping native touch/scroll behavior. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes logo-pulse {
     0%, 100% { filter: saturate(1); }

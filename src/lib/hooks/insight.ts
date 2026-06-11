@@ -61,5 +61,9 @@ export function useInsight() {
     load(force);
   }, [revision, load]);
 
-  return { detail, portfolio, market, loading };
+  // Up to 3 ordered "worth knowing" sentences for the carousel: portfolio cards
+  // when present, else the single legacy insight as a one-item list.
+  const insights = portfolio.length > 0 ? portfolio.slice(0, 3) : (detail ? [detail] : []);
+
+  return { detail, portfolio, market, insights, loading };
 }
