@@ -95,7 +95,9 @@ src/
     NavBar.tsx                  Top nav: first name on right (suppressed on Profile tab), refresh + status dot; no avatar
     NetWorthHero.tsx            Big serif net worth + change pill
     NetWorthChart.tsx           Trajectory chart with range pills (1W/1M/3M/1Y/3Y/All), straight-line segments (no smoothing)
-    InsightBand.tsx             "Worth knowing" italic-serif AI insight, links to /chat
+    PortfolioSummaryCard.tsx    Flat Projection / Worth knowing / Markets summary, hairline dividers between visible sections only
+    InsightBand.tsx             "Worth knowing" swipeable carousel of italic-serif AI insights, links to /chat
+    MarketsHighlights.tsx       Markets section — borderless serif headline rows, tap to expand detail
     PortfolioTab.tsx            Portfolio page composition
     HoldingsGroup.tsx           Semantic groupings (Property / Public markets / Reserves) with proportional bars
     PositionRow.tsx             Position list row (uses AssetLogo)

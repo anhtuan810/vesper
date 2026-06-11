@@ -142,9 +142,9 @@ Let users explore "what if" questions visually, not just conversationally. Examp
 
 ## 2. Portfolio insight cards (replacement for removed stat cards)
 
-> **◑ PARTIALLY SHIPPED (2026-06).** Deterministic insight detectors now exist in `src/lib/portfolio-insights.ts` — `detectConcentration`, `detectCashDrag`, `detectCurrencyMismatch` — feeding the "Worth knowing" band via `/api/insight` and the `market-highlights` cron. They cover three candidates below (concentration depth, cash drag, currency exposure). Still unbuilt: a dedicated card surface and the remaining candidates.
+> **✅ SHIPPED (2026-06).** Deterministic insight detectors exist in `src/lib/portfolio-insights.ts` — `detectConcentration`, `detectCashDrag`, `detectCurrencyMismatch` — feeding the "Worth knowing" carousel via `/api/insight` and the "Markets" list via the `market-highlights` cron. Both surfaces live in `PortfolioSummaryCard` (Projection / Worth knowing / Markets), which is the dedicated card surface this section called for. They cover three candidates below (concentration depth, cash drag, currency exposure); the remaining candidates are still just ideas.
 
-The four stat cards (Positions / Countries / Asset classes / Largest) were removed because raw counts don't drive decisions. The space they occupied should eventually carry one or two genuine portfolio insights — the kind a private banker would surface during a quarterly review. The AI insight band shipped in PR 16 covers one slot of this idea; deterministic insight cards would complement it.
+The four stat cards (Positions / Countries / Asset classes / Largest) were removed because raw counts don't drive decisions. The space they occupied now carries `PortfolioSummaryCard` — Projection, Worth knowing (deterministic detector cards + Haiku phrasing), and Markets (cron-generated news), each independently hidden when empty.
 
 ### Candidates worth considering
 - Concentration depth ("your top 3 positions are 84% of the portfolio")

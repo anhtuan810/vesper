@@ -32,12 +32,12 @@
 - Net worth hero in serif (Source Serif 4) at 54px, monochrome currency. Asset-detail heroes use the editorial dimmed currency prefix at their smaller (44–48px) sizes. No gross/debt subtitle even when mortgages exist.
 - Change pill on the hero: percentage + EUR delta vs 1 month ago (or vs the first snapshot in the selected range), with explicit `+`/`−` signs and `accent-soft` / `negative-soft` background. Renders only when at least 2 historical snapshots exist.
 - Net worth chart between hero and Holdings — range pills `1W / 1M / 3M / 1Y / 3Y / All`, straight-line segments in accent green connecting each snapshot point exactly (no smoothing), end-point dot, scrub/hover marker, Y-axis price labels (IBKR-style, no gridlines), empty state until 2 snapshots exist.
-- WORTH KNOWING insight band (in the slot the milestone bar previously occupied) — Claude-generated single italic-serif sentence, accent-soft tinted band, chevron right, tap navigates to `/chat`. Renders nothing when the API returns `{ detail: null }`.
+- Below the chart, **PortfolioSummaryCard** — a flat, hairline-divided summary with up to three independently-hidden sections, each reporting whether it rendered so a divider only appears between two visible sections: a **Projection** sentence (10y trajectory + CTA), a **Worth knowing** swipeable carousel of italic-serif insight sentences, and a **Markets** list of borderless serif headline rows. See "Portfolio Summary Card" below.
 - Holdings list — grouped by semantic category (Property = `real_estate`; Public markets = `stocks`, `etf`; Reserves = `cash`, `pension`, `bonds`, `gold`, `other`; Crypto = `crypto`). Group order by total value descending. All collapsed by default, tap to expand, session-persisted. Each position inside renders via `PositionRow`. Capital (`dc`) pensions count in Reserves; **income (`db`/`state`) pensions are off-balance** — excluded from the four groups and shown in a separate "Future income" section below them (see Pensions (Two-Shape Model)).
 - No "Allocation" card (proportional bars in HoldingsGroup headers carry the same information).
 - No "Recent Activity" preview (mutations remain accessible via `/diary`).
 - No stat cards (Positions / Countries / Asset classes / Largest were removed — raw counts didn't drive decisions; see `next-build-plan.md` for the replacement plan).
-- Files: `src/app/page.tsx`, `src/components/PortfolioTab.tsx`, `src/components/NetWorthHero.tsx`, `src/components/NetWorthChart.tsx`, `src/components/HoldingsGroup.tsx`, `src/components/PositionRow.tsx`, `src/components/MiniSparkline.tsx`, `src/components/InsightBand.tsx`
+- Files: `src/app/page.tsx`, `src/components/PortfolioTab.tsx`, `src/components/NetWorthHero.tsx`, `src/components/NetWorthChart.tsx`, `src/components/HoldingsGroup.tsx`, `src/components/PositionRow.tsx`, `src/components/MiniSparkline.tsx`, `src/components/PortfolioSummaryCard.tsx`
 
 ### Daily Snapshots & Net Worth Trend
 - Vercel cron writes daily snapshots at midnight UTC, secured via `CRON_SECRET` header
@@ -48,16 +48,21 @@
 - Net worth chart on Portfolio tab consumes via `/api/snapshots?range=...`, with the live current value appended as today's endpoint. Supported ranges: `1W`, `1M`, `3M`, `1Y`, `3Y`, `All`.
 - Files: `src/app/api/cron/snapshot/route.ts`, `src/app/api/snapshots/route.ts`, `src/lib/snapshot.ts`, `vercel.json`
 
-### AI Insight Band
-- Single italic-serif sentence on Portfolio replacing the legacy milestone bar
-- **Thin-portfolio handling**: portfolios of 1–3 assets return deterministic copy without calling Haiku — names the held positions and highlights the most common absent categories (cash, pension, property). No LLM cost. Portfolios of 4+ assets call Claude Haiku for a two-sentence observation.
-- Generated per user, cached 24h in `highlights` table (`type='insight'`, `detail=<sentence>`, `expires_at = now() + 24h`). No new schema.
-- `/api/insight` GET returns cached row if non-expired; generates fresh, INSERTs, returns on miss. On failure returns `{ detail: null }` and does NOT INSERT.
-- **Revision-driven freshness**: `useInsight()` subscribes to the portfolio-revision store (like the holdings list and Vitals). On a portfolio change it force-refetches `/api/insight?fresh=1`, which regenerates the band's concentration card from the **current** assets before returning. The band can no longer name a removed asset — the deterministic figure is always recomputed from current assets; only the phrasing is cached.
-- LLM marks the key noun phrase with `*asterisks*`; the frontend wraps that span in `<em>` for italic styling
-- Cost: ~$0.0001–0.0003 per Haiku call (waived for thin portfolios)
-- Tap navigates to `/chat`
-- Files: `src/app/api/insight/route.ts`, `src/lib/insight-generator.ts`, `src/components/InsightBand.tsx`, `src/lib/hooks.ts` (`useInsight()`)
+### Portfolio Summary Card
+`PortfolioSummaryCard` sits below the net-worth chart as a flat block (no card border) with up to three sections, each self-reporting whether it rendered so a hairline divider appears only between two visible sections — a hidden Projection, an empty Worth knowing, or no Markets never leaves a stray divider.
+
+- **Projection** — `ProjectionTeaser` `variant="card"`: a serif sentence projecting net worth `HORIZON_YEARS` (10) out, anchored to the current `netTotal` via `POST /api/scenarios/project` (trajectory mode), with a soft sage CTA into the scenario flow. Hidden entirely (not just softened) when the account has fewer than 2 snapshots or is younger than a week.
+- **Worth knowing** — a swipeable carousel (`SwipeCarousel` + `CarouselDots`) of up to 3 italic-serif insight sentences:
+  - **Thin-portfolio handling**: portfolios of 1–3 assets return deterministic copy without calling Haiku — names the held positions and highlights the most common absent categories (cash, pension, property). No LLM cost. Portfolios of 4+ assets call Claude Haiku for a two-sentence observation.
+  - Deterministic detectors (`detectConcentration`, `detectCashDrag`, `detectCurrencyMismatch` in `src/lib/portfolio-insights.ts`) supply up to 3 "portfolio cards"; when none apply, the carousel falls back to a single legacy sentence derived from `/api/insight`'s `detail`.
+  - Generated per user, cached 24h in the `highlights` table (`type='insight'`, `detail=<sentence>`, `expires_at = now() + 24h`). No new schema.
+  - `/api/insight` GET returns the cached row if non-expired; generates fresh, INSERTs, returns on miss. On failure returns `{ detail: null }` and does NOT INSERT.
+  - **Revision-driven freshness**: `useInsight()` subscribes to the portfolio-revision store (like the holdings list and Vitals). On a portfolio change it force-refetches `/api/insight?fresh=1`, which regenerates the detector cards from the **current** assets before returning — the band can no longer name a removed asset; only the phrasing is cached.
+  - LLM marks the key noun phrase with `*asterisks*`; the frontend wraps that span in `<em>` for italic styling.
+  - Cost: ~$0.0001–0.0003 per Haiku call (waived for thin portfolios).
+  - Tap stores a seed in `sessionStorage` and navigates to `/chat?seed=insight&key=current`.
+- **Markets** — `MarketsHighlights`: up to 3 daily market-news items (cron-generated `type='market'` highlights, deserialized via `parseMarketDetail`), rendered as borderless serif-italic headline rows (matches Worth knowing's type) with a chevron and an optional `+€`/`−€` impact figure. Each row is collapsed by default; tap toggles that row's detail open. No per-item box, border, background, or inter-item divider. Renders nothing when there are no current market highlights.
+- Files: `src/components/PortfolioSummaryCard.tsx`, `src/components/scenario/ProjectionTeaser.tsx`, `src/components/InsightBand.tsx`, `src/components/MarketsHighlights.tsx`, `src/components/SwipeCarousel.tsx`, `src/app/api/insight/route.ts`, `src/lib/insight-generator.ts`, `src/lib/portfolio-insights.ts`, `src/lib/market-highlights.ts`, `src/app/api/cron/market-highlights/route.ts`, `src/lib/hooks/insight.ts` (`useInsight()`)
 
 ### Asset Detail Pages (Read-Only)
 - Four layout variants dispatched by asset type from `src/app/asset/[id]/page.tsx` (pension routes through the `PensionDetail` dispatcher to a capital or income layout)
