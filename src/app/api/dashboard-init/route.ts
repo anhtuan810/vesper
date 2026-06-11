@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   const [portfolioRes, insightRes, marketRes, snapshotsRes, mutationsRes] = await Promise.all([
     supabase
       .from("highlights")
-      .select("detail")
+      .select("title, detail")
       .eq("user_id", user.id)
       .eq("type", "portfolio")
       .gt("expires_at", now)
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     // from /api/insight separately. See src/app/(main)/page.tsx fetchDashboardInit.
     supabase
       .from("highlights")
-      .select("detail")
+      .select("title, detail")
       .eq("user_id", user.id)
       .eq("type", "insight")
       .gt("expires_at", now)
@@ -79,7 +79,17 @@ export async function GET(request: NextRequest) {
     snapshots = refetch.data ?? [];
   }
 
-  const portfolio = (portfolioRes.data ?? []).map((r) => r.detail ?? "").filter(Boolean);
+  const portfolioCards = (portfolioRes.data ?? [])
+    .map((r) => ({ title: r.title ?? "", detail: r.detail ?? "" }))
+    .filter((c) => c.detail);
+
+  // Same "portfolio cards, else single cached insight" precedence as
+  // /api/insight, so the band can be primed from this one round-trip.
+  const insights = portfolioCards.length > 0
+    ? portfolioCards
+    : insightRes.data?.detail
+      ? [{ title: insightRes.data.title ?? "", detail: insightRes.data.detail }]
+      : [];
 
   const market = (marketRes.data ?? []).map((row) => {
     const { text, impact_eur, symbol } = parseMarketDetail(row.detail ?? "");
@@ -87,7 +97,7 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json({
-    portfolio,
+    insights,
     insight: insightRes.data?.detail ?? null,
     market,
     marketHighlights: market,

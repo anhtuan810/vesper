@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { validateNarration } from "@/lib/narrate/guardrail";
+import { validateNarration, extractNumbers } from "@/lib/narrate/guardrail";
 import type { Asset } from "./supabase";
 import type { FxRates } from "./fx";
 
@@ -160,9 +160,15 @@ const nlNum = (n: number) => new Intl.NumberFormat("nl-NL").format(n);
 const eur = (n: number) => `€${nlNum(n)}`;
 const pctStr = (n: number) => `${n}%`;
 
+export interface InsightCard {
+  title: string;   // short headline, e.g. "Concentration in ASML"
+  detail: string;  // one-sentence explanation, figures pre-formatted
+}
+
 type FormattedCtx = {
   payload: Record<string, unknown>; // model input — figures only as pre-formatted strings
   figures: string[];                // allow-list of display figures
+  title: string;                    // deterministic fallback headline
   sentence: string;                 // deterministic fallback copy
 };
 
@@ -174,6 +180,7 @@ function formatCtx(ctx: AnyCtx): FormattedCtx {
       return {
         payload: { detector: "concentration", name: ctx.name, topShare: top, remainingShare: rest },
         figures: [top, rest],
+        title: `Concentration in ${ctx.name}`,
         sentence: `${ctx.name} represents ${top} of your net worth, leaving ${rest} across the rest to absorb volatility.`,
       };
     }
@@ -184,6 +191,7 @@ function formatCtx(ctx: AnyCtx): FormattedCtx {
       return {
         payload: { detector: "cash_drag", cashAmount: amount, cashShare: share, daysHeld: days },
         figures: [amount, share, days],
+        title: "Cash drag",
         sentence: `${amount} (${share}) has been sitting in cash for ${days} days — a drag on portfolio returns at current rates.`,
       };
     }
@@ -200,36 +208,37 @@ function formatCtx(ctx: AnyCtx): FormattedCtx {
           shiftAmount: shift,
         },
         figures: [share, "1%", shift],
+        title: `${ctx.dominantCurrency} exposure`,
         sentence: `${share} of your portfolio is in ${ctx.dominantCurrency}; a 1% move against ${ctx.displayCurrency} shifts net worth by roughly ${shift}.`,
       };
     }
   }
 }
 
-function templateSentence(ctx: AnyCtx): string {
-  return formatCtx(ctx).sentence;
-}
-
-
 // ── Haiku wrapper ─────────────────────────────────────────────────────────────
+
+const MAX_TITLE_LEN = 40;
 
 async function wrapWithHaiku(
   contexts: AnyCtx[],
-): Promise<{ sentences: string[]; inputTokens: number; outputTokens: number }> {
+): Promise<{ insights: InsightCard[]; inputTokens: number; outputTokens: number }> {
   const formatted = contexts.map(formatCtx);
-  const fallbacks = formatted.map((f) => f.sentence);
+  const fallbacks: InsightCard[] = formatted.map((f) => ({ title: f.title, detail: f.sentence }));
   try {
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 512,
       system:
-        "You write one-sentence portfolio observations for a private banking app. " +
-        "Each input object describes one observation; its figure fields are already formatted for display. " +
-        "Copy every figure VERBATIM, exactly as given — never recompute, round, reformat, abbreviate, or invent a number. " +
-        "Vary only the surrounding wording. Each sentence: under 110 chars, banker-quiet, no hedging, " +
-        "no exclamation marks, no emojis, completes a clear thought. " +
-        "Output a JSON array of strings, one per object, in input order. No prose, no code fences.",
-      messages: [{ role: "user", content: JSON.stringify(formatted.map((f) => f.payload)) }],
+        "You write short portfolio observations for a private banking app: a 2-4 word headline " +
+        "(title) and a one-sentence explanation (detail) for each input object. " +
+        "Each input object describes one observation and includes a suggested title; its other " +
+        "figure fields are already formatted for display. " +
+        "In `detail`, copy every figure VERBATIM, exactly as given — never recompute, round, reformat, abbreviate, or invent a number. " +
+        `\`title\`: a short noun phrase under ${MAX_TITLE_LEN} chars naming the topic — no numbers, no punctuation; ` +
+        "may match the suggested title or rephrase it. " +
+        "`detail`: under 110 chars, banker-quiet, no hedging, no exclamation marks, no emojis, completes a clear thought. " +
+        'Output a JSON array of objects {"title": string, "detail": string}, one per input object, in input order. No prose, no code fences.',
+      messages: [{ role: "user", content: JSON.stringify(formatted.map((f) => ({ title: f.title, ...f.payload }))) }],
     });
     const inputTokens = response.usage.input_tokens;
     const outputTokens = response.usage.output_tokens;
@@ -244,20 +253,29 @@ async function wrapWithHaiku(
     if (
       Array.isArray(parsed) &&
       parsed.length === contexts.length &&
-      parsed.every((s) => typeof s === "string" && s.length > 0)
+      parsed.every(
+        (o) => o && typeof o === "object" &&
+          typeof (o as Record<string, unknown>).title === "string" &&
+          typeof (o as Record<string, unknown>).detail === "string",
+      )
     ) {
-      // Numeric-integrity guard: any sentence whose numbers aren't all in the
-      // deterministic allow-list is replaced by its deterministic fallback, so
-      // a shown figure can never diverge from the computed one.
-      const sentences = parsed.map((s, i) =>
-        validateNarration(s as string, formatted[i].figures) ? (s as string) : fallbacks[i],
-      );
-      return { sentences, inputTokens, outputTokens };
+      // Numeric-integrity guard: a detail whose numbers aren't all in the
+      // deterministic allow-list, or a title that's empty/too long/contains a
+      // number, falls back to the deterministic copy — so a shown figure can
+      // never diverge from the computed one.
+      const insights: InsightCard[] = (parsed as { title: string; detail: string }[]).map((o, i) => {
+        const detail = validateNarration(o.detail, formatted[i].figures) ? o.detail : fallbacks[i].detail;
+        const title = o.title.length > 0 && o.title.length <= MAX_TITLE_LEN && extractNumbers(o.title).length === 0
+          ? o.title
+          : fallbacks[i].title;
+        return { title, detail };
+      });
+      return { insights, inputTokens, outputTokens };
     }
-    return { sentences: fallbacks, inputTokens, outputTokens };
+    return { insights: fallbacks, inputTokens, outputTokens };
   } catch (err) {
     console.warn("[portfolio-insights] wrapWithHaiku fallback:", err);
-    return { sentences: fallbacks, inputTokens: 0, outputTokens: 0 };
+    return { insights: fallbacks, inputTokens: 0, outputTokens: 0 };
   }
 }
 
@@ -265,7 +283,7 @@ async function wrapWithHaiku(
 
 export interface PortfolioInsightResult {
   detectorsFired: string[];  // e.g. ["concentration", "cash_drag"]
-  sentences: string[];
+  insights: InsightCard[];
   inputTokens: number;
   outputTokens: number;
 }
@@ -287,13 +305,13 @@ export async function generatePortfolioInsights(
   if (cashDrag.fired) firedCtxs.push(cashDrag.ctx);
 
   if (firedCtxs.length === 0) {
-    return { detectorsFired: [], sentences: [], inputTokens: 0, outputTokens: 0 };
+    return { detectorsFired: [], insights: [], inputTokens: 0, outputTokens: 0 };
   }
 
-  const { sentences, inputTokens, outputTokens } = await wrapWithHaiku(firedCtxs);
+  const { insights, inputTokens, outputTokens } = await wrapWithHaiku(firedCtxs);
   return {
     detectorsFired: firedCtxs.map((c) => c.type),
-    sentences: sentences.slice(0, 3),
+    insights: insights.slice(0, 3),
     inputTokens,
     outputTokens,
   };

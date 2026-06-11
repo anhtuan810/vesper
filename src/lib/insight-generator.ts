@@ -40,6 +40,16 @@ function buildPortfolioSummary(assets: Asset[]): string {
   ].join("\n");
 }
 
+// Splits a `*emphasis*`-marked sentence (or pair of sentences) into a short
+// headline (the emphasized noun phrase, or the first clause if none) and the
+// full text with the emphasis markers stripped.
+function splitTitleDetail(raw: string): { title: string; detail: string } {
+  const match = raw.match(/\*([^*]+)\*/);
+  const detail = raw.replace(/\*([^*]*)\*/g, "$1");
+  const title = match ? match[1] : (detail.match(/[^.!?]+/)?.[0]?.trim() ?? detail);
+  return { title, detail };
+}
+
 const COMMON_ABSENT_PRIORITY = ["cash", "pension", "real_estate", "crypto", "stocks"] as const;
 
 function buildThinPortfolioInsight(assets: Asset[]): string | null {
@@ -61,8 +71,11 @@ function buildThinPortfolioInsight(assets: Asset[]): string | null {
   return `Your portfolio is anchored in *${names}*. Common additions at this stage: ${gap} — worth tracking for a complete net worth view.`;
 }
 
-export async function generateInsight(assets: Asset[]): Promise<string | null> {
-  if (assets.length <= 3) return buildThinPortfolioInsight(assets);
+export async function generateInsight(assets: Asset[]): Promise<{ title: string; detail: string } | null> {
+  if (assets.length <= 3) {
+    const thin = buildThinPortfolioInsight(assets);
+    return thin ? splitTitleDetail(thin) : null;
+  }
 
   try {
     const summary = buildPortfolioSummary(assets);
@@ -120,7 +133,7 @@ Reject if the second sentence merely restates the first, or if the tone slides i
 
     if (/\byou should\b|\bconsider\b|\byou might\b|\byou could\b/i.test(raw)) return null;
 
-    return raw;
+    return splitTitleDetail(raw);
   } catch {
     return null;
   }

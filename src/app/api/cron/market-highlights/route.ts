@@ -68,26 +68,26 @@ export async function GET(req: NextRequest) {
         valueEur: valueToEur(a.value, a.currency ?? "USD", fxRates),
       }));
 
-      const { detectorsFired, sentences, inputTokens: haikuIn, outputTokens: haikuOut } =
+      const { detectorsFired, insights, inputTokens: haikuIn, outputTokens: haikuOut } =
         await generatePortfolioInsights(assetsWithEur, displayCurrency, snapshots);
 
       let portfolioRowsInserted = 0;
       let insightFallback = false;
 
-      if (sentences.length > 0) {
-        for (const sentence of sentences) {
+      if (insights.length > 0) {
+        for (const ins of insights) {
           const { data: existing } = await supabase
             .from("highlights")
             .select("id")
             .eq("user_id", userId)
             .eq("type", "portfolio")
-            .eq("title", sentence)
+            .eq("detail", ins.detail)
             .gt("expires_at", now)
             .maybeSingle();
           if (existing) continue;
           const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
           const { error } = await supabase.from("highlights").insert({
-            user_id: userId, type: "portfolio", title: sentence, detail: sentence,
+            user_id: userId, type: "portfolio", title: ins.title, detail: ins.detail,
             expires_at: expiresAt, seen: false,
           });
           if (!error) portfolioRowsInserted++;
@@ -101,11 +101,12 @@ export async function GET(req: NextRequest) {
           .gt("expires_at", now).maybeSingle();
         if (!existingInsight) {
           const tradeable = assets.filter((a) => TRADEABLE_TYPES.has(a.type));
-          const detail = await generateInsight(tradeable.length > 0 ? tradeable : assets);
-          if (detail) {
+          const result = await generateInsight(tradeable.length > 0 ? tradeable : assets);
+          if (result) {
             const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
             await supabase.from("highlights").insert({
-              user_id: userId, type: "insight", detail, expires_at: expiresAt, seen: false,
+              user_id: userId, type: "insight", title: result.title, detail: result.detail,
+              expires_at: expiresAt, seen: false,
             });
           }
         }

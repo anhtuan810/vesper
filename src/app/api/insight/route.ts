@@ -44,12 +44,12 @@ async function regenPortfolioHighlights(supabase: SupabaseClient, userId: string
       valueEur: valueToEur(a.value, a.currency ?? "USD", fxRates),
     }));
 
-    const { sentences } = await generatePortfolioInsights(assetsWithEur, displayCurrency, snapshots);
-    if (sentences.length === 0) return;
+    const { insights } = await generatePortfolioInsights(assetsWithEur, displayCurrency, snapshots);
+    if (insights.length === 0) return;
 
     const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
     await supabase.from("highlights").insert(
-      sentences.map((s) => ({ user_id: userId, type: "portfolio", title: s, detail: s, expires_at: expiresAt, seen: false })),
+      insights.map((ins) => ({ user_id: userId, type: "portfolio", title: ins.title, detail: ins.detail, expires_at: expiresAt, seen: false })),
     );
   } catch (err) {
     console.warn("[insight] regenPortfolioHighlights failed:", err);
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
   const [portfolioRes, insightRes, marketRes] = await Promise.all([
     supabase
       .from("highlights")
-      .select("detail")
+      .select("title, detail")
       .eq("user_id", user.id)
       .eq("type", "portfolio")
       .gt("expires_at", now)
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       .limit(3),
     supabase
       .from("highlights")
-      .select("detail, expires_at")
+      .select("title, detail, expires_at")
       .eq("user_id", user.id)
       .eq("type", "insight")
       .gt("expires_at", now)
@@ -100,7 +100,9 @@ export async function GET(request: NextRequest) {
       .limit(3),
   ]);
 
-  const portfolio = (portfolioRes.data ?? []).map((r) => r.detail ?? "").filter(Boolean);
+  const portfolioCards = (portfolioRes.data ?? [])
+    .map((r) => ({ title: r.title ?? "", detail: r.detail ?? "" }))
+    .filter((c) => c.detail);
 
   const market = (marketRes.data ?? []).map((row) => {
     const { text, impact_eur, symbol } = parseMarketDetail(row.detail ?? "");
@@ -108,15 +110,14 @@ export async function GET(request: NextRequest) {
   });
 
   // If portfolio cards exist, return immediately — no need for legacy insight
-  if (portfolio.length > 0) {
-    return NextResponse.json({ portfolio, insights: portfolio, insight: { detail: portfolio[0] ?? null }, market });
+  if (portfolioCards.length > 0) {
+    return NextResponse.json({ insights: portfolioCards, insight: { detail: portfolioCards[0].detail }, market });
   }
 
   // Fall back to cached legacy insight
   if (insightRes.data?.detail) {
     return NextResponse.json({
-      portfolio: [],
-      insights: [insightRes.data.detail],
+      insights: [{ title: insightRes.data.title ?? "", detail: insightRes.data.detail }],
       insight: { detail: insightRes.data.detail, expires_at: insightRes.data.expires_at },
       market,
     });
@@ -131,20 +132,20 @@ export async function GET(request: NextRequest) {
     .order("value", { ascending: false });
 
   if (!assets || assets.length === 0) {
-    return NextResponse.json({ portfolio: [], insights: [], insight: { detail: null }, market });
+    return NextResponse.json({ insights: [], insight: { detail: null }, market });
   }
 
-  const detail = await generateInsight(assets);
-  if (!detail) {
-    return NextResponse.json({ portfolio: [], insights: [], insight: { detail: null }, market });
+  const result = await generateInsight(assets);
+  if (!result) {
+    return NextResponse.json({ insights: [], insight: { detail: null }, market });
   }
 
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   await supabase
     .from("highlights")
-    .insert({ user_id: user.id, type: "insight", detail, expires_at: expiresAt, seen: false });
+    .insert({ user_id: user.id, type: "insight", title: result.title, detail: result.detail, expires_at: expiresAt, seen: false });
 
-  return NextResponse.json({ portfolio: [], insights: [detail], insight: { detail, expires_at: expiresAt }, market });
+  return NextResponse.json({ insights: [result], insight: { detail: result.detail, expires_at: expiresAt }, market });
 }
 
 export async function DELETE(request: NextRequest) {

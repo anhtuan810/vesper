@@ -36,7 +36,7 @@ export function PortfolioSummaryCard({ netTotal, snapshots, marketHighlights, on
         onVisibleChange={setShowProjection}
       />
       {showProjection && showInsight && DIVIDER}
-      <InsightBand variant="card" onVisibleChange={setShowInsight} />
+      <InsightBand onVisibleChange={setShowInsight} />
       {(showProjection || showInsight) && showMarket && DIVIDER}
       <MarketsHighlights marketHighlights={marketHighlights} onVisibleChange={setShowMarket} />
     </div>

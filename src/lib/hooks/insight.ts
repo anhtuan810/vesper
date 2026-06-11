@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { MarketHighlight } from "@/lib/market-highlights";
+import type { InsightCard } from "@/lib/portfolio-insights";
 import { INSIGHT_CACHE_TTL_MS } from "@/lib/constants";
 import { usePortfolioRevision } from "@/lib/portfolio-revision";
 
-let _insightCache: { detail: string | null; portfolio: string[]; market: MarketHighlight[]; fetchedAt: number } | null = null;
+let _insightCache: { detail: string | null; insights: InsightCard[]; market: MarketHighlight[]; fetchedAt: number } | null = null;
 
-export function primeInsightCache(detail: string | null, portfolio: string[] = [], market: MarketHighlight[] = []) {
-  _insightCache = { detail, portfolio, market, fetchedAt: Date.now() };
+export function primeInsightCache(detail: string | null, insights: InsightCard[] = [], market: MarketHighlight[] = []) {
+  _insightCache = { detail, insights, market, fetchedAt: Date.now() };
 }
 
 export function invalidateInsightCache() {
@@ -19,14 +20,14 @@ export function invalidateInsightCache() {
 export function useInsight() {
   const revision = usePortfolioRevision();
   const [detail, setDetail] = useState<string | null>(null);
-  const [portfolio, setPortfolio] = useState<string[]>([]);
+  const [insights, setInsights] = useState<InsightCard[]>([]);
   const [market, setMarket] = useState<MarketHighlight[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback((force: boolean) => {
     if (!force && _insightCache && Date.now() - _insightCache.fetchedAt < INSIGHT_CACHE_TTL_MS) {
       setDetail(_insightCache.detail);
-      setPortfolio(_insightCache.portfolio);
+      setInsights(_insightCache.insights);
       setMarket(_insightCache.market);
       setLoading(false);
       return;
@@ -39,16 +40,16 @@ export function useInsight() {
     const url = force ? `/api/insight?fresh=1&rev=${Date.now()}` : "/api/insight";
     fetch(url, { cache: "no-store" })
       .then((r) => r.json())
-      .then(({ insight, portfolio: p, market: m }: { insight: { detail: string | null }; portfolio: string[]; market: MarketHighlight[] }) => {
+      .then(({ insight, insights: ins, market: m }: { insight: { detail: string | null }; insights: InsightCard[]; market: MarketHighlight[] }) => {
         const d = insight?.detail ?? null;
-        const pt = Array.isArray(p) ? p : [];
+        const list = Array.isArray(ins) ? ins : [];
         const mk = Array.isArray(m) ? m : [];
-        _insightCache = { detail: d, portfolio: pt, market: mk, fetchedAt: Date.now() };
+        _insightCache = { detail: d, insights: list, market: mk, fetchedAt: Date.now() };
         setDetail(d);
-        setPortfolio(pt);
+        setInsights(list);
         setMarket(mk);
       })
-      .catch(() => { setDetail(null); setPortfolio([]); setMarket([]); })
+      .catch(() => { setDetail(null); setInsights([]); setMarket([]); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -61,9 +62,5 @@ export function useInsight() {
     load(force);
   }, [revision, load]);
 
-  // Up to 3 ordered "worth knowing" sentences for the carousel: portfolio cards
-  // when present, else the single legacy insight as a one-item list.
-  const insights = portfolio.length > 0 ? portfolio.slice(0, 3) : (detail ? [detail] : []);
-
-  return { detail, portfolio, market, insights, loading };
+  return { detail, market, insights, loading };
 }
