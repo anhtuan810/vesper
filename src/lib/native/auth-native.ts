@@ -1,4 +1,5 @@
 import { Browser } from "@capacitor/browser";
+import { SignInWithApple } from "@capacitor-community/apple-sign-in";
 import type { createBrowserSupabase } from "@/lib/supabase";
 
 type SupabaseClient = ReturnType<typeof createBrowserSupabase>;
@@ -21,6 +22,29 @@ export async function signInWithGoogleNative(
   if (data?.url) {
     await Browser.open({ url: data.url, presentationStyle: "popover" });
   }
+}
+
+// Native Apple sign-in: the OS presents the native "Sign in with Apple" sheet
+// directly — no system-browser round trip or deep link is involved. The
+// resulting identity token is handed straight to Supabase, which establishes
+// the session in place, so we navigate to nextPath ourselves on success.
+export async function signInWithAppleNative(
+  supabase: SupabaseClient,
+  nextPath = "/"
+) {
+  const { response } = await SignInWithApple.authorize({
+    clientId: "nl.volnar.app",
+    redirectURI: "https://app.volnar.nl/auth/callback",
+    scopes: "email name",
+  });
+
+  const { error } = await supabase.auth.signInWithIdToken({
+    provider: "apple",
+    token: response.identityToken,
+  });
+  if (error) throw error;
+
+  window.location.assign(nextPath);
 }
 
 // Native magic link: Supabase emails a link that deep-links back via
