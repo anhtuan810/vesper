@@ -177,20 +177,33 @@ export async function applyPortfolioChanges({
     })
   );
 
-  // Pre-resolve historical prices for add ops that need auto-fill, in parallel
+  // Pre-resolve prices for add ops that need auto-fill, in parallel. `value`
+  // (current market value) and `buy_price` (cost basis) come from separate
+  // lookups: buy_price is the price AT buy_date (or "now" if unstated), while
+  // value is units x the LATEST market price — never the buy_date price, which
+  // would set value to cost basis instead of market.
   const resolvedPrices = await Promise.all(
     changes.map(async (change, i) => {
       if (change.action === "add" && (change.value || 0) === 0 && change.symbol && change.units) {
         const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol;
-        const priceData = await fetchHistoricalPrice(effectiveSymbol, change.buy_date || null);
-        if (priceData) {
-          const p = normalizePrice(priceData.price, priceData.currency);
-          return {
-            value: Math.round(p * change.units!),
-            buyPrice: Math.round(p * 100) / 100,
-            yahooCurrency: priceData.currency === "GBp" ? "GBP" : priceData.currency,
-          };
-        }
+        const [histData, live] = await Promise.all([
+          fetchHistoricalPrice(effectiveSymbol, change.buy_date || null),
+          fetchYahooPrice(effectiveSymbol),
+        ]);
+        const buyPrice = histData ? normalizePrice(histData.price, histData.currency) : null;
+        const livePrice = !live.error && live.price > 0 ? live.price : null;
+        const valuePrice = livePrice ?? buyPrice;
+        if (valuePrice == null) return null;
+
+        const valueCurrency = livePrice != null
+          ? live.nativeCurrency
+          : (histData!.currency === "GBp" ? "GBP" : histData!.currency);
+
+        return {
+          value: Math.round(valuePrice * change.units!),
+          buyPrice: Math.round((buyPrice ?? valuePrice) * 100) / 100,
+          yahooCurrency: valueCurrency,
+        };
       }
       return null;
     })

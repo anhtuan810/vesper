@@ -8,15 +8,13 @@ import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
 import { parseBuyYear, normalizeIndex } from "@/lib/property-estimate";
 
-// TODO: live-price snapshots — tradeable asset values here are DB-stored, not real-time.
-// Consider fetching live prices for each tradeable asset before writing the snapshot.
 export async function writeSnapshot(userId: string): Promise<void> {
   try {
     const supabase = createServerSupabase();
 
     const { data: assets, error } = await supabase
       .from("assets")
-      .select("type, value, currency, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, buy_date, created_at")
+      .select("type, value, currency, symbol, units, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, buy_date, created_at")
       .eq("user_id", userId);
 
     if (error) throw error;
@@ -45,17 +43,81 @@ export async function writeSnapshot(userId: string): Promise<void> {
       return Math.max(0, (a.value as number) - computeCurrentBalance(a, anchorDate));
     };
 
+    // Tradeables are valued from the latest market close — the same source
+    // backfillSnapshots's computeRow uses — rather than the DB's `value`, which
+    // is only refreshed on add/edit and otherwise drifts from the market.
+    const historyStart = new Date(now);
+    historyStart.setUTCDate(historyStart.getUTCDate() - 10);
+    const historyStartStr = historyStart.toISOString().slice(0, 10);
+
+    const tradeableSymbols = [
+      ...new Set(
+        assets
+          .filter((a) => TRADEABLE.has(a.type as string) && a.symbol && (a.units as number | null))
+          .map((a) => a.symbol as string),
+      ),
+    ];
+    const priceHistories = new Map<string, Array<{ date: string; price: number; currency: string }>>();
+    await Promise.all(
+      tradeableSymbols.map(async (symbol) => {
+        const history = await fetchFullPriceHistory(symbol, historyStartStr, today);
+        if (history && history.length > 0) priceHistories.set(symbol, history);
+      }),
+    );
+
     let netTotal = 0;
     const breakdown: Record<string, number> = {};
     const nativeByCur: Record<string, number> = {};
+    let staleTradeableFallback = false;
+
     for (const a of assets) {
-      const cur = (a.currency as string | null) || "USD";
-      const equity = equityOf(a);
+      let cur = (a.currency as string | null) || "USD";
+      let equity: number;
+
+      if (TRADEABLE.has(a.type as string) && a.symbol && (a.units as number | null)) {
+        const priceEntry = priceAtOrBefore(priceHistories.get(a.symbol as string) ?? [], today);
+        if (priceEntry) {
+          equity = normalizePrice(priceEntry.price, priceEntry.currency) * (a.units as number);
+          cur = priceEntry.currency === "GBp" ? "GBP" : priceEntry.currency;
+        } else {
+          // Market price unavailable (Yahoo down, delisted, etc.) — fall back to
+          // the stored value, but flag it so the regression guard below can catch
+          // a fallback that collapses the total vs. the prior snapshot.
+          equity = a.value as number;
+          staleTradeableFallback = true;
+        }
+      } else {
+        equity = equityOf(a);
+      }
+
       netTotal += toUsd(equity, cur);
       breakdown[a.type as string] = (breakdown[a.type as string] ?? 0) + toUsd(equity, cur);
       nativeByCur[cur] = (nativeByCur[cur] ?? 0) + equity;
     }
     const native_breakdown = Object.fromEntries(Object.entries(nativeByCur).map(([c, v]) => [c, Math.round(v)]));
+
+    // Regression guard: if a held tradeable's market price couldn't be fetched
+    // and the fallback to its (possibly stale/cost-basis) `value` collapses the
+    // total vs. the most recent prior snapshot, skip the upsert rather than
+    // overwrite a good row with a bad one — log it so it can be retried.
+    if (staleTradeableFallback) {
+      const { data: priorRows } = await supabase
+        .from("snapshots")
+        .select("total_value")
+        .eq("user_id", userId)
+        .lte("date", today)
+        .order("date", { ascending: false })
+        .limit(1);
+      const reference = priorRows?.[0]?.total_value as number | undefined;
+      if (reference != null && reference > 0 && netTotal < reference * 0.5) {
+        Sentry.captureMessage("writeSnapshot: tradeable price fallback collapsed total vs. prior snapshot — skipped", {
+          level: "warning",
+          tags: { fn: "writeSnapshot" },
+          extra: { user_id: userId, date: today, netTotal, reference },
+        });
+        return;
+      }
+    }
 
     const { error: upsertError } = await supabase.from("snapshots").upsert(
       { user_id: userId, total_value: netTotal, breakdown, native_breakdown, date: today },
