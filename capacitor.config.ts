@@ -19,6 +19,10 @@ const config: CapacitorConfig = {
     // behind the web content before/around paint. Dark-mode parity comes with
     // @capacitor/status-bar in a later phase.
     backgroundColor: "#FAF6EB",
+    // Restrict the WKWebView's full native-bridge access to the domains listed
+    // in Info.plist's WKAppBoundDomains (app.volnar.nl). OAuth/magic-link run in
+    // the system browser via @capacitor/browser, so they're unaffected.
+    limitsNavigationsToAppBoundDomains: true,
   },
 };
 
