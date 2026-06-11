@@ -289,7 +289,7 @@ function targetSnapshotDates(earliest: string, todayStr: string, hasTradeables: 
     weeklyEnd.setUTCDate(weeklyEnd.getUTCDate() - 30);
     const monthlyStart = new Date(today);
     monthlyStart.setUTCFullYear(monthlyStart.getUTCFullYear() - 1);
-    let w = new Date(weeklyEnd);
+    const w = new Date(weeklyEnd);
     while (w > monthlyStart) {
       set.add(w.toISOString().slice(0, 10));
       w.setUTCDate(w.getUTCDate() - 7);
@@ -297,7 +297,7 @@ function targetSnapshotDates(earliest: string, todayStr: string, hasTradeables: 
 
     // Monthly: 1st of each month from 1 year ago back to earliest
     const earliestDate = new Date(earliest + "T12:00:00Z");
-    let m = new Date(monthlyStart);
+    const m = new Date(monthlyStart);
     m.setUTCDate(1);
     while (m >= earliestDate) {
       set.add(m.toISOString().slice(0, 10));
@@ -564,7 +564,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
             const buyPrice = asset.buy_price as number | null;
             const currentValue = asset.value as number;
             const tFn = realEstateT.get(asset.id as string);
-            let grossValue = (tFn && buyPrice && buyPrice > 0)
+            const grossValue = (tFn && buyPrice && buyPrice > 0)
               ? buyPrice + tFn(anchor) * (currentValue - buyPrice)
               : currentValue;
             const balFn = realEstateBalanceAt.get(asset.id as string);

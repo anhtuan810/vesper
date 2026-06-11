@@ -148,6 +148,21 @@ export async function DELETE(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
+  }
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("confirm" in body) ||
+    (body as { confirm?: unknown }).confirm !== "DELETE"
+  ) {
+    return NextResponse.json({ error: "Confirmation required" }, { status: 400 });
+  }
+
   const userId = user.id;
   const supabase = createServerSupabase();
 
