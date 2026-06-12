@@ -66,7 +66,7 @@ function ChevronRight() {
 
 export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = {}) {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, aiConsentAt } = useUser();
   const userId = user?.id;
   const profile = useProfile(user?.id);
   const signOut = useSignOut();
@@ -492,6 +492,47 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center" }}>
             Volnar provides informational portfolio observations, not investment advice.
           </div>
+
+          {/* Data & AI — standing disclosure, always reachable from Profile */}
+          <div style={{ width: "100%", maxWidth: 360, textAlign: "center", marginTop: 8 }}>
+            <div style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-dim)",
+              marginBottom: 5,
+              fontVariationSettings: "'opsz' 14",
+            }}>
+              Data &amp; AI
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)", lineHeight: 1.6 }}>
+              Volnar sends your portfolio context to Anthropic to power chat and
+              insights. All calculations are done by code, not the AI; data sent via
+              the API is not used to train models.{" "}
+              <a
+                href="https://volnar.nl/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--text-dim)", textDecoration: "underline", textUnderlineOffset: 2 }}
+              >
+                Privacy Policy
+              </a>
+            </div>
+            {aiConsentAt && (
+              <div style={{
+                fontSize: 11,
+                color: "var(--text-faint)",
+                marginTop: 6,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} />
+                AI processing acknowledged
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => setDeleteOpen(true)}
             style={{

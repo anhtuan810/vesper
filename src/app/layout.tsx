@@ -8,6 +8,7 @@ import { UndoDeleteToast } from "@/components/UndoDeleteToast";
 import { VitalsPrefetch } from "@/components/VitalsPrefetch";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
+import { AiConsentGate } from "@/components/AiConsentGate";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
 
 const sourceSerif = Source_Serif_4({
@@ -80,6 +81,7 @@ export default async function RootLayout({
             {!isMarketing && <BottomNav />}
             {!isMarketing && <UndoDeleteToast />}
             {!isMarketing && <VitalsPrefetch />}
+            {!isMarketing && <AiConsentGate />}
           </UserProvider>
         </ThemeProvider>
         <NativeBootstrap />

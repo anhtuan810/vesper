@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("users")
-    .select("name, avatar_url, display_currency, theme, fingerprint, profile")
+    .select("name, avatar_url, display_currency, theme, fingerprint, profile, ai_consent_at")
     .eq("id", user.id)
     .single();
 
