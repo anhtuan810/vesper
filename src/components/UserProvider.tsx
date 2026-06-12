@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, ty
 import { usePathname, useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { isNativeBuild } from "@/lib/api";
+import { bumpApiCacheGeneration, isNativeBuild } from "@/lib/api";
 import { CHAT_HISTORY_PREFIX } from "@/lib/constants";
 import { resetPortfolioRevision } from "@/lib/portfolio-revision";
 
@@ -98,6 +98,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
       if (event === "SIGNED_OUT" || switched) {
         purgeClientCaches();
+        // After the purge (which clears the volnar* namespace): new generation
+        // so /api GETs miss the previous user's HTTP-cached responses.
+        bumpApiCacheGeneration();
         resetPortfolioRevision();
         setAiConsentAt(undefined);
       }

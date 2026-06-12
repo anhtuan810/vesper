@@ -173,7 +173,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
     .sort((a, b) => b.localeCompare(a));
 
   for (const key of monthKeys) {
-    grouped[key].sort((a, b) => {
+    // monthKeys is the union of mutation-months and market-move-months — a
+    // month with only market moves has no grouped[key] bucket to sort.
+    grouped[key]?.sort((a, b) => {
       const dayA = a.occurred_at ?? a.recorded_at;
       const dayB = b.occurred_at ?? b.recorded_at;
       if (dayA !== dayB) return dayB.localeCompare(dayA);
