@@ -91,26 +91,34 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
                     aria-expanded={isOpen}
                     onClick={() => toggle(i)}
                     style={{
-                      display: "flex", alignItems: "flex-start", gap: 7, width: "100%",
+                      display: "block", width: "100%",
                       textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0,
                     }}
                   >
+                    {/* Title carries the expand chevron inline, right after the
+                        text, so a short headline (e.g. "Hosingenhof 19") reads
+                        as a tight unit instead of stranding the chevron at the
+                        far edge. The swipe dots (row-level, right) stay put. */}
                     <span
                       className="font-serif"
-                      style={{ flex: 1, minWidth: 0, fontSize: 13, fontStyle: "italic", lineHeight: 1.45, color: "var(--text)" }}
+                      style={{ fontSize: 13, fontStyle: "italic", lineHeight: 1.45, color: "var(--text)" }}
                     >
                       {item.title}
+                      {item.detail && (
+                        <svg
+                          {...CHEVRON_PROPS}
+                          aria-hidden="true"
+                          style={{
+                            width: 10, height: 10, color: "var(--accent-text)", opacity: 0.5,
+                            marginLeft: 6, display: "inline-block", verticalAlign: "baseline",
+                            transition: "transform 0.15s",
+                            transform: isOpen ? "rotate(90deg)" : undefined,
+                          }}
+                        >
+                          <polyline points="96 48 176 128 96 208" />
+                        </svg>
+                      )}
                     </span>
-                    <svg
-                      {...CHEVRON_PROPS}
-                      style={{
-                        width: 11, height: 11, color: "var(--accent-text)", opacity: 0.45,
-                        flexShrink: 0, marginTop: 3, transition: "transform 0.15s",
-                        transform: isOpen ? "rotate(90deg)" : undefined,
-                      }}
-                    >
-                      <polyline points="96 48 176 128 96 208" />
-                    </svg>
                   </button>
                   {isOpen && item.detail && (
                     onDetailClick ? (

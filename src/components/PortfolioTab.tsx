@@ -238,12 +238,12 @@ export function PortfolioTab({
       </div>
 
       {/* Portfolio summary — three compact rows (Projection, Worth knowing,
-          Markets) held in one contained card. Unlike the hero/chart and Holdings
-          (which bleed to the screen edge), this block keeps the page's side
-          padding so the card sits inset with margins — reading as a discrete
-          designed object nested between the two full-bleed sections. */}
+          Markets) held in one contained card. Bleeds to the same width as the
+          hero/chart and Holdings (-mx-4 md:mx-0) so the card's edges line up
+          with the net-worth number and the Holdings header instead of sitting
+          inset/indented. The card's own surface + border keeps it from floating. */}
       {assets.length > 0 && (
-        <div className="mb-6" style={{ maxWidth: 660 }}>
+        <div className="-mx-4 md:mx-0 mb-6" style={{ maxWidth: 660 }}>
           <PortfolioSummaryCard
             netTotal={netTotal}
             snapshots={fullSnapshots}
