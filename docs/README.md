@@ -1,40 +1,35 @@
-# Volnar — Documentation Index
+# Volnar — Documentation
 
-Code is the source of truth. These docs explain intent, history, and the parts
-that can't be read off the code (live-only behaviour, design decisions, manual
-QA). New to the project? Start with `volnar-project-handoff.md`.
+Code is the source of truth. These docs cover only what can't be read off the
+code: how to release, why things are the way they are, and the product math.
 
-## Start here / overview
+## Orientation (start here in a new session)
+
+Volnar is a personal portfolio tracker with a private-banker voice. Users track
+net worth across stocks/ETFs, crypto, property (with mortgages), pensions,
+cash, and bonds. The **chat is the only write path** — Claude parses intent,
+deterministic code validates and computes every figure (the "AI parses, code
+validates" rule; models never produce numbers, guardrails enforce it).
+
+Stack: Next.js (App Router) on Vercel · Supabase (auth, Postgres + RLS,
+storage) · Anthropic API (Sonnet for chat, Haiku for background generation) ·
+Capacitor iOS app that ships the UI **inside the binary** (static export,
+`scripts/build-native.mjs`) and talks to the same `/api` with Bearer auth;
+self-managed OTA updates via `scripts/ota-release.mjs`.
+
+Repo map: pages in `src/app`, API routes in `src/app/api`, domain logic in
+`src/lib` (chat agent in `src/lib/chat`, scenario engine in `src/lib/scenario`,
+vitals in `src/lib/vitals`, native shell glue in `src/lib/native`), components
+in `src/components`.
+
+## The docs
+
 | File | What it is |
 |------|------------|
-| `volnar-project-handoff.md` | Product vision, target user, stack, and a high-level repo map. **Start here in a new chat.** |
-| `current-features.md` | What is built and what is fragile, feature by feature, with file pointers. |
-| `technical-decisions.md` | Stack, Supabase schema, API routes, and the calculation rules (net worth, currency, mutations, pensions). |
-
-## Product decisions & roadmap
-| File | What it is |
-|------|------------|
-| `redesign-decisions.md` | The 11 locked product decisions (frozen historical record). |
-| `next-build-plan.md` | Prioritized roadmap, a "what just shipped" log, and tech debt. |
-
-## Feature notes
-| File | What it is |
-|------|------------|
-| `currency-feature-spec.md` | Display-currency feature history. The body predates the final design; the canonical model is `technical-decisions.md` → Currency Rules. |
-| `mobile-build.md` | iOS Capacitor remote-URL wrapper — config and common tasks. |
-
-## Vitals (its own doc set)
-| File | Source of truth for |
-|------|---------------------|
-| `vitals-build-state.md` | Vitals status, file inventory, data flow, decision log. Start here for Vitals. |
+| `RELEASING.md` | How changes reach users: web deploy, native OTA, App Store binaries. Read before any release. |
+| `technical-decisions.md` | Supabase schema, API routes, and the calculation rules (net worth, currency, mutations, pensions). |
 | `vitals-metrics-reference.md` | Per-vital formulas, thresholds, guards; Perspective percentiles. |
-| `vitals-design-spec.md` | Tokens, typography, per-component and per-chart geometry. |
-| `vitals-mockup.html` | The canonical rendered Vitals mockup (open in a browser). |
 
-## Testing & manual QA
-| File | What it is |
-|------|------------|
-| `testing-strategies.md` | Layered test-activation plan (deferred — there are no automated tests yet). |
-| `add-edit-flow-checks.md` | Manual (live, API-key) checklist for the chat add/edit cost-basis contract. |
-| `scenario-classification-manual-checks.md` | Manual checklist for chat what-if / scenario routing. |
-| `agent-chat-live-eval.md` | Gate checklist for enabling the flag-gated agent tool-loop (OFF by default). |
+Anything else (feature inventories, roadmaps, design specs, manual QA
+checklists) lives in git history — removed 2026-06-12 to keep this folder
+trustworthy rather than exhaustive.

@@ -35,6 +35,17 @@ npm run mobile:sync    # native export + cap sync ios
 npm run mobile:open    # Xcode → run/archive
 ```
 
+(Capacitor 8 iOS uses Swift Package Manager — there is no `pod install` step.)
+
+### Icons & splash
+
+Source assets live in `assets/` (`icon.png` 1024×1024, `splash.png` 2732×2732);
+regenerate the iOS asset catalog with `npm run mobile:assets`. ⚠️ The current
+artwork was generated programmatically from the Volnar "V" mark — functional
+and on-brand, but not designer-produced. Replace with final artwork before the
+App Store submission, then rerun `npm run mobile:assets`.
+
+
 Rules learned the hard way:
 
 1. **Server first, binary second.** A binary talks to the live API with
