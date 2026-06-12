@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const moves = await getDiaryMarketMoves(user.id, supabase);
-    return NextResponse.json({ moves });
+    return NextResponse.json({ moves }, {
+      headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=1800" },
+    });
   } catch (err) {
     console.warn("[diary/market-moves] failed:", err);
     return NextResponse.json({ moves: [] });

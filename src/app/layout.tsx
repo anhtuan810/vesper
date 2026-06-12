@@ -11,6 +11,7 @@ import { UserProvider } from "@/components/UserProvider";
 import { AiConsentGate } from "@/components/AiConsentGate";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
+import { PreloadResources } from "@/components/PreloadResources";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
@@ -74,6 +75,7 @@ export default async function RootLayout({
       className={`${sourceSerif.variable} ${albertSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
+        <PreloadResources />
         <ThemeProvider initialTheme={theme}>
           <UserProvider>
             <div className="mx-auto w-full max-w-[720px] px-5">

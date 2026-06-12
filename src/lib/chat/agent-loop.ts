@@ -105,7 +105,10 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   for (let round = 0; round < AGENT_MAX_TOOL_ROUNDTRIPS; round++) {
     let resp: Anthropic.Messages.Message;
     try {
-      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 1500, system: SYSTEM, tools: AGENT_TOOLS, messages });
+      // Top-level cache_control marks the last cacheable block, so each tool
+      // round-trip (and each follow-up turn) reads the tools+system+history
+      // prefix from cache instead of re-paying full input price for it.
+      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 1500, system: SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
       return { message: "Couldn't reach the assistant. Please try again.", remaining: CHAT_DAILY_LIMIT - input.used };

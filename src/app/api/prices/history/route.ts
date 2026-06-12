@@ -14,5 +14,7 @@ export async function GET(req: NextRequest) {
   }
 
   const data = await fetchHistory(symbol, range);
-  return NextResponse.json({ data });
+  return NextResponse.json({ data }, {
+    headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=1800" },
+  });
 }

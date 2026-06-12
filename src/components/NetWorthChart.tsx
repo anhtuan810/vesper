@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } from "@/lib/money";
@@ -296,7 +296,12 @@ export function NetWorthChart(props: Props) {
   const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate } = props;
   // Strip the live tip (last point = today's netTotal) until values are fully settled,
   // so the chart doesn't redraw as netTotal steps through intermediate states.
-  const displaySeries = valuesSettled ? series : series.slice(0, -1);
+  // Memoized so the slice doesn't mint a new reference on every scrub re-render
+  // (which would defeat the derived-geometry memo below).
+  const displaySeries = useMemo(
+    () => (valuesSettled ? series : series.slice(0, -1)),
+    [series, valuesSettled],
+  );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const haptic = useChartHaptic();
   const { currency: displayCurrency } = useDisplayCurrencyState();
@@ -342,13 +347,20 @@ export function NetWorthChart(props: Props) {
   // FX, no drift); rows without it fall back to total_value at the live display
   // rate. The synthesized "today" tip is the live net worth already converted
   // to the display currency by useNetWorth — returned unchanged.
-  const liveRates = buildLiveRates();
-  const converted = displaySeries.map((p) => ({
-    ...p,
-    total_value: convertPointToDisplay(p, displayCurrency, liveRates),
-  }));
+  // Memoized: scrubbing re-renders on every pointer move via setSelectedIndex,
+  // and re-running the per-point currency conversion, min/max scan, line path,
+  // and four stacked-band paths each frame makes touch-scrub janky on device.
+  // Live FX updates arrive with a new `series` reference, so the memo key
+  // covers them.
+  const converted = useMemo(() => {
+    const liveRates = buildLiveRates();
+    return displaySeries.map((p) => ({
+      ...p,
+      total_value: convertPointToDisplay(p, displayCurrency, liveRates),
+    }));
+  }, [displaySeries, displayCurrency]);
 
-  const values = converted.map((p) => p.total_value);
+  const values = useMemo(() => converted.map((p) => p.total_value), [converted]);
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
 
@@ -365,27 +377,47 @@ export function NetWorthChart(props: Props) {
   // Y domain fits the visible (range-clipped) series — recomputed on every
   // range switch, so 1W zooms tight to that week's band and All spans the
   // full history, rather than always stretching from 0 to the all-time max.
-  const dataMin = values.length >= 2 ? Math.min(...values) : 0;
-  const dataMax = values.length >= 2 ? Math.max(...values) : 1;
-  const { niceMin, niceMax, labels: yLabels } = computeYAxisDomain(dataMin, dataMax);
+  const { niceMin, niceMax, labels: yLabels } = useMemo(() => {
+    const dataMin = values.length >= 2 ? Math.min(...values) : 0;
+    const dataMax = values.length >= 2 ? Math.max(...values) : 1;
+    return computeYAxisDomain(dataMin, dataMax);
+  }, [values]);
 
   const drawW = W - CHART_PAD_RIGHT;
   const projectY = makeProjectY(H, niceMin, niceMax);
-  const { line } = buildPath(values, W, H, niceMin, niceMax, drawW);
+  const { line } = useMemo(
+    () => buildPath(values, W, H, niceMin, niceMax, drawW),
+    [values, W, H, niceMin, niceMax, drawW],
+  );
 
   // Per-category stacked bands — each point's segments sum exactly to
   // `values[i]` (the displayed total), so the top of the stack equals the
   // net-worth line at every point in any display currency.
-  const categoryProportions = computeCategoryProportions(converted);
-  const stackBounds = {} as Record<Category, { lower: number[]; upper: number[] }>;
-  {
+  const { categoryProportions, stackBounds } = useMemo(() => {
+    const proportions = computeCategoryProportions(converted);
+    const bounds = {} as Record<Category, { lower: number[]; upper: number[] }>;
     const cumulative = new Array(values.length).fill(0);
     for (const c of STACK_ORDER) {
       const lower = cumulative.slice();
-      for (let i = 0; i < values.length; i++) cumulative[i] += values[i] * categoryProportions[i][c];
-      stackBounds[c] = { lower, upper: cumulative.slice() };
+      for (let i = 0; i < values.length; i++) cumulative[i] += values[i] * proportions[i][c];
+      bounds[c] = { lower, upper: cumulative.slice() };
     }
-  }
+    return { categoryProportions: proportions, stackBounds: bounds };
+  }, [converted, values]);
+
+  // Band path strings, precomputed for the same reason as `line` above.
+  const bandPaths = useMemo(() => {
+    const paths = {} as Record<Category, { area: string; edge: string }>;
+    for (const c of STACK_ORDER) {
+      paths[c] = {
+        area: buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, drawW),
+        edge: buildEdgePath(stackBounds[c].upper, projectY, drawW),
+      };
+    }
+    return paths;
+    // projectY is a fresh closure each render; its inputs are H/niceMin/niceMax.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stackBounds, drawW, H, niceMin, niceMax]);
 
   const lastY = values.length >= 2 ? projectY(values[values.length - 1]) : H / 2;
 
@@ -488,12 +520,12 @@ export function NetWorthChart(props: Props) {
               {STACK_ORDER.map((c) => (
                 <g key={c}>
                   <path
-                    d={buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, drawW)}
+                    d={bandPaths[c].area}
                     fill={CATEGORY_FILL[c]}
                     fillOpacity={1}
                   />
                   <path
-                    d={buildEdgePath(stackBounds[c].upper, projectY, drawW)}
+                    d={bandPaths[c].edge}
                     fill="none"
                     stroke={CATEGORY_EDGE[c]}
                     strokeWidth={1}

@@ -16,5 +16,8 @@ export async function GET(request: NextRequest) {
   if (!result) {
     return NextResponse.json({ error: "address not found" }, { status: 404 });
   }
-  return NextResponse.json(result);
+  // Geocoding is deterministic per (address, country) — cache aggressively.
+  return NextResponse.json(result, {
+    headers: { "Cache-Control": "private, max-age=86400, stale-while-revalidate=604800" },
+  });
 }

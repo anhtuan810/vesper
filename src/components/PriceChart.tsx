@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { usePriceHistory } from "@/lib/hooks";
 import { useDisplayCurrencyState } from "@/lib/hooks";
@@ -166,15 +166,23 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
   const H = 140;
   const gradId = `chartFill_${symbol.replace(/[^a-zA-Z0-9]/g, "")}`;
 
-  const dataMin = closes.length >= 2 ? Math.min(...closes) : 0;
-  const dataMax = closes.length >= 2 ? Math.max(...closes) : 1;
-  const { niceMin, niceMax, labels: yLabels } = computeNiceLevels(dataMin * 0.97, dataMax * 1.03);
+  // Memoized: scrubbing re-renders on every pointer move via setSelectedIndex,
+  // and rebuilding the min/max scan, nice levels, and SVG path strings for
+  // hundreds of points per frame makes touch-scrub janky on device.
+  const { niceMin, niceMax, labels: yLabels } = useMemo(() => {
+    const dataMin = closes.length >= 2 ? Math.min(...closes) : 0;
+    const dataMax = closes.length >= 2 ? Math.max(...closes) : 1;
+    return computeNiceLevels(dataMin * 0.97, dataMax * 1.03);
+  }, [closes]);
   const yRange = Math.max(niceMax - niceMin, 1);
 
   const up = closes.length >= 2 && closes[closes.length - 1] >= closes[0];
   const strokeColor = up ? "var(--accent)" : "var(--negative)";
 
-  const { line, area } = buildPath(closes, totalPoints, W, H, niceMin, niceMax);
+  const { line, area } = useMemo(
+    () => buildPath(closes, totalPoints, W, H, niceMin, niceMax),
+    [closes, totalPoints, W, H, niceMin, niceMax],
+  );
 
   // End marker sits at the last actual data point (may be left of right edge for 1D)
   const lastX = closes.length >= 2 ? ((closes.length - 1) / n) * W : W;

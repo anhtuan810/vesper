@@ -64,7 +64,9 @@ export async function fetchMarketHighlights(assets: Asset[]): Promise<{
 4. Output ONLY a JSON array. No prose, no markdown, no code fences.
 Schema: [{ "title": string, "detail": string, "impact_eur": number | null, "symbol": string | null }]
 5. If nothing directly relevant, return [].`,
-    tools: [{ type: "web_search_20250305", name: "web_search" }],
+    // web_search_20260209 adds dynamic filtering: the model filters search
+    // results before they enter the context window, cutting input tokens.
+    tools: [{ type: "web_search_20260209", name: "web_search" }],
     messages: [{ role: "user", content: `Holdings:\n${holdingsLines}\n\nToday: ${today}` }],
   });
 
