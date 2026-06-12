@@ -41,6 +41,20 @@ export function ThemeProvider({
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    // Native: match the iOS keyboard appearance to the app theme — otherwise a
+    // dark-mode phone shows a black keyboard under the light UI (and vice versa).
+    if (isNativeBuild) {
+      (async () => {
+        try {
+          const { Capacitor } = await import("@capacitor/core");
+          if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("Keyboard")) return;
+          const { Keyboard, KeyboardStyle } = await import("@capacitor/keyboard");
+          await Keyboard.setStyle({ style: theme === "dark" ? KeyboardStyle.Dark : KeyboardStyle.Light });
+        } catch {
+          // Cosmetic — older binaries without the plugin keep the OS default.
+        }
+      })();
+    }
   }, [theme]);
 
   const setTheme = useCallback((mode: ThemeMode) => {

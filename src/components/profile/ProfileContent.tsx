@@ -53,18 +53,6 @@ function SettingsGearIcon({ size = 18 }: { size?: number }) {
   );
 }
 
-function ChevronRight() {
-  return (
-    <svg
-      width="14" height="14" viewBox="0 0 256 256" fill="none"
-      stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round"
-      style={{ color: "var(--text-faint)", flexShrink: 0 }}
-    >
-      <polyline points="96 48 176 128 96 208" />
-    </svg>
-  );
-}
-
 export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = {}) {
   const router = useRouter();
   const { user } = useUser();
@@ -242,28 +230,25 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           width: "100%",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          justifyContent: "center",
+          gap: 10,
           padding: "14px 16px",
           background: "var(--surface)",
-          border: "0.5px solid var(--border)",
+          border: "1px solid var(--border-strong)",
           borderRadius: 14,
           cursor: "pointer",
-          textAlign: "left",
-          color: "var(--text-dim)",
+          color: "var(--accent)",
         }}
       >
         <SettingsGearIcon size={18} />
         <span style={{
-          flex: 1,
           fontFamily: "var(--font-serif)",
           fontSize: 16,
           fontWeight: 500,
-          color: "var(--text)",
           fontVariationSettings: "'opsz' 18",
         }}>
           Settings
         </span>
-        <ChevronRight />
       </button>
 
     </div>
