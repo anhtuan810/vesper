@@ -258,28 +258,25 @@ export function PortfolioTab({
           the group headers and rows sit flush at the same left/right column as
           the hero and the full-bleed market band. Desktop keeps the 16px inset. */}
       <div className="-mx-4 md:-mx-8 md:px-4">
+        {/* Demoted from a 26px serif title to the app's small uppercase
+            section-label idiom (PERSPECTIVE / INDICATIVE VALUE) — the category
+            rows below self-describe, so the header only needs to carry the
+            position count and the collapse/expand-all tap affordance. */}
         <div
-          className="flex items-baseline justify-between mb-3"
           onClick={toggleAll}
           role="button"
           tabIndex={0}
           aria-expanded={allExpanded}
           aria-label={allExpanded ? "Collapse all holdings" : "Expand all holdings"}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleAll(); } }}
-          style={{ cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+          style={{
+            cursor: "pointer", WebkitTapHighlightColor: "transparent",
+            padding: "8px 0", marginBottom: 2,
+            fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+            textTransform: "uppercase", color: "var(--text-faint)",
+          }}
         >
-          <div
-            className="font-serif"
-            style={{
-              fontSize: 26, fontWeight: 500, letterSpacing: "-0.01em",
-              color: "var(--text)", fontVariationSettings: "'opsz' 24",
-            }}
-          >
-            Holdings
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
-            {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
-          </div>
+          Holdings · {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
         </div>
         <div>
           {groups.map((group) => (
@@ -308,14 +305,16 @@ export function PortfolioTab({
             the net-worth holdings, never added to any total or the allocation. */}
         {incomePensions.length > 0 && (
           <div style={{ marginTop: 28 }}>
-            <div className="flex items-baseline justify-between" style={{ marginBottom: 4 }}>
+            <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
               <div
-                className="font-serif"
-                style={{ fontSize: 26, fontWeight: 500, letterSpacing: "-0.01em", color: "var(--text)", fontVariationSettings: "'opsz' 24" }}
+                style={{
+                  fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+                  textTransform: "uppercase", color: "var(--text-faint)",
+                }}
               >
                 Future income
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
                 {formatMoney(
                   incomePensions.reduce((s, a) => {
                     const native = (a as { annual_income?: number | null }).annual_income ?? 0;
