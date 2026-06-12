@@ -57,7 +57,7 @@ export default function MarketingPage() {
 
       {/* Footer */}
       <footer
-        className="flex justify-center items-center gap-3 text-faint"
+        className="flex justify-center items-center gap-4 text-faint"
         style={{
           padding: "24px var(--wrap-pad) calc(28px + env(safe-area-inset-bottom, 0px))",
           borderTop: "1px solid var(--border)",
@@ -65,6 +65,18 @@ export default function MarketingPage() {
         }}
       >
         <span className="font-serif text-dim" style={{ fontSize: 15 }}>Volnar</span>
+        <Link
+          href="/privacy"
+          className="text-dim no-underline transition-colors hover:text-fg"
+        >
+          Privacy
+        </Link>
+        <Link
+          href="/terms"
+          className="text-dim no-underline transition-colors hover:text-fg"
+        >
+          Terms
+        </Link>
       </footer>
 
     </div>

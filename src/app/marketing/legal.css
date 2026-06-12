@@ -1,0 +1,176 @@
+/* ── Legal pages (privacy / terms) ──────────────────────────────────
+   Shared readable single-column layout for long-form legal text.
+   Serif headings (Source Serif via --font-serif), Albert Sans body.
+   Reuses the marketing palette tokens: --hero, --text-dim, --border,
+   --wrap-pad, --radius-md. */
+
+.legal {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 56px) var(--wrap-pad) clamp(48px, 8vw, 96px);
+}
+
+/* Wordmark / back link at the top of each legal page */
+.legal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: clamp(28px, 5vw, 48px);
+  margin-bottom: clamp(24px, 4vw, 40px);
+  border-bottom: 1px solid var(--border);
+}
+.legal-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--hero);
+}
+.legal-wordmark span {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 22;
+}
+.legal-back {
+  font-size: 14px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.legal-back:hover {
+  color: var(--hero);
+}
+
+/* Title block */
+.legal h1 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 500;
+  color: var(--hero);
+  font-size: clamp(32px, 6vw, 48px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 56;
+  margin: 0 0 12px;
+}
+.legal-updated {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0 0 clamp(28px, 4vw, 40px);
+}
+.legal-intro {
+  font-size: clamp(16px, 2.4vw, 18px);
+  line-height: 1.65;
+  color: var(--hero);
+  margin: 0 0 clamp(28px, 4vw, 40px);
+}
+
+/* Section headings */
+.legal h2 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 500;
+  color: var(--hero);
+  font-size: clamp(22px, 3.4vw, 28px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 32;
+  margin: clamp(36px, 5vw, 52px) 0 14px;
+}
+.legal h3 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 500;
+  color: var(--hero);
+  font-size: clamp(17px, 2.4vw, 20px);
+  line-height: 1.3;
+  margin: clamp(24px, 3vw, 32px) 0 10px;
+}
+
+/* Body copy */
+.legal p,
+.legal li {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--hero);
+}
+.legal p {
+  margin: 0 0 16px;
+}
+.legal a {
+  color: var(--hero);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Lists */
+.legal ul {
+  margin: 0 0 16px;
+  padding-left: 1.25em;
+  list-style: disc;
+}
+.legal li {
+  margin: 0 0 8px;
+}
+.legal li::marker {
+  color: var(--text-dim);
+}
+.legal strong {
+  font-weight: 600;
+  color: var(--hero);
+}
+
+/* Subprocessor table — rendered as definition-style rows that stay legible
+   on narrow screens (stacks within the same readable column). */
+.legal-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 0 0 20px;
+}
+.legal-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+.legal-row:last-child {
+  border-bottom: none;
+}
+.legal-row dt {
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--hero);
+  border-right: 1px solid var(--border);
+}
+.legal-row dd {
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+@media (max-width: 560px) {
+  .legal-row {
+    grid-template-columns: 1fr;
+  }
+  .legal-row dt {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+}
+
+/* Closing contact block */
+.legal-contact {
+  margin-top: clamp(40px, 6vw, 64px);
+  padding-top: clamp(24px, 4vw, 32px);
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+.legal-contact strong {
+  color: var(--hero);
+}
