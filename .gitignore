@@ -47,3 +47,7 @@ Pods/
 build/
 *.xcuserdata
 *.xcuserstate
+
+# Apple signing/auth keys — never commit
+*.p8
+AuthKey_*
