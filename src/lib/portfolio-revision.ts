@@ -16,6 +16,14 @@ export function bumpPortfolioRevision(): void {
   for (const listener of listeners) listener();
 }
 
+// Resets the revision counter to its initial value and notifies subscribers.
+// Called on an account switch / sign-out so no surface carries a prior account's
+// mutation revision into a fresh session.
+export function resetPortfolioRevision(): void {
+  revision = 0;
+  for (const listener of listeners) listener();
+}
+
 export function getPortfolioRevision(): number {
   return revision;
 }

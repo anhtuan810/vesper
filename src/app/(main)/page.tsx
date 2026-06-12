@@ -65,7 +65,7 @@ export default function Dashboard() {
       // Insight cache HIT: dashboard-init already carries the band's content (the
       // cached legacy insight and/or the deterministic portfolio cards). Prime the
       // band exactly as before — one round-trip, no extra fetch.
-      primeInsightCache(insight, cards, market ?? []);
+      primeInsightCache(user?.id, insight, cards, market ?? []);
     }
     // Insight cache MISS (no cards, no cached insight): dashboard-init returned
     // without paying the Haiku cost, so we deliberately leave the insight cache
@@ -84,6 +84,7 @@ export default function Dashboard() {
     setMutations(mutations ?? []);
   }, [user?.id]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchDashboardInit(); }, [fetchDashboardInit]);
 
   // Refresh the net-worth chart's snapshots without re-priming the insight cache

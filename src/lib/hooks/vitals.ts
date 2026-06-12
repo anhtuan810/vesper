@@ -22,8 +22,11 @@ type VitalsBody = Omit<VitalsResponse, "pulse" | "pulseLiquid">;
 type VitalsPulse = Pick<VitalsResponse, "pulse" | "pulseLiquid">;
 
 // Module-level cache survives client-side nav (but not a full page reload — that's
-// what the per-user sessionStorage mirror below is for).
-let _vitalsCache: { data: VitalsResponse; fetchedAt: number } | null = null;
+// what the per-user sessionStorage mirror below is for). It is tagged with the
+// userId it belongs to, so a cache warmed by a previous account can never be
+// served — or stamped into the new account's sessionStorage mirror — after an
+// in-session account switch.
+let _vitalsCache: { userId: string | undefined; data: VitalsResponse; fetchedAt: number } | null = null;
 
 // In-flight non-forced fetches, keyed by userId, so a prefetch and a navigation
 // that race collapse onto a single request instead of two.
@@ -41,20 +44,27 @@ function writeSessionVitals(userId: string, data: VitalsResponse): void {
 }
 
 function writeCaches(userId: string | undefined, data: VitalsResponse): void {
-  _vitalsCache = { data, fetchedAt: Date.now() };
+  _vitalsCache = { userId, data, fetchedAt: Date.now() };
   if (userId) writeSessionVitals(userId, data);
 }
 
-function cacheStale(ms: number): boolean {
-  return !_vitalsCache || Date.now() - _vitalsCache.fetchedAt >= ms;
+// Whether the module cache holds data FOR THIS user that is younger than `ms`. A
+// different (or absent) userId is treated as not-fresh, so an account switch can
+// never read or restamp another account's cached vitals.
+function moduleCacheFresh(userId: string | undefined, ms: number): boolean {
+  return (
+    !!_vitalsCache &&
+    _vitalsCache.userId === userId &&
+    Date.now() - _vitalsCache.fetchedAt < ms
+  );
 }
 
-// Whether a warm Vitals cache exists and is younger than `ms`. Reuses the same
-// staleness logic/threshold the focus revalidate uses, so the idle prefetcher
+// Whether a warm Vitals cache exists for `userId` and is younger than `ms`. Reuses
+// the same staleness threshold the focus revalidate uses, so the idle prefetcher
 // doesn't duplicate the number — it just skips warming when a fresh cache is
 // already present.
-export function vitalsCacheIsFresh(ms: number = VITALS_SWR_STALE_MS): boolean {
-  return !cacheStale(ms);
+export function vitalsCacheIsFresh(userId: string | undefined, ms: number = VITALS_SWR_STALE_MS): boolean {
+  return moduleCacheFresh(userId, ms);
 }
 
 // The single loader, shared by useVitals and the idle prefetcher. Fetches the
@@ -232,7 +242,7 @@ export function useVitals() {
           load(true, uid); // post-mutation: swap numbers in place
         } else {
           if (uid) writeSessionVitals(uid, dataRef.current); // backfill if uid arrived late
-          if (cacheStale(VITALS_SWR_STALE_MS)) load(true, uid);
+          if (!moduleCacheFresh(uid, VITALS_SWR_STALE_MS)) load(true, uid);
         }
         return;
       }
@@ -242,12 +252,12 @@ export function useVitals() {
       if (uid) {
         const cached = readSessionVitals(uid);
         if (cached) {
-          _vitalsCache = { data: cached, fetchedAt: 0 }; // mark stale so we revalidate
+          _vitalsCache = { userId: uid, data: cached, fetchedAt: 0 }; // mark stale so we revalidate
           paint(cached);
           load(true, uid); // silent background revalidate
           return;
         }
-        if (_vitalsCache && Date.now() - _vitalsCache.fetchedAt < VITALS_CACHE_TTL_MS) {
+        if (moduleCacheFresh(uid, VITALS_CACHE_TTL_MS) && _vitalsCache) {
           paint(_vitalsCache.data);
           writeSessionVitals(uid, _vitalsCache.data);
           if (revisionChanged) load(true, uid);
@@ -281,7 +291,7 @@ export function useVitals() {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       if (!dataRef.current) return; // nothing behind it; the mount path owns cold load
-      if (!cacheStale(VITALS_SWR_STALE_MS)) return; // throttle
+      if (moduleCacheFresh(userId, VITALS_SWR_STALE_MS)) return; // throttle
       load(true, userId);
     };
     window.addEventListener("focus", onVisible);

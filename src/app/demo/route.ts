@@ -44,6 +44,14 @@ export async function GET(request: NextRequest) {
     if (error || !data.user) {
       return redirectTo("/login");
     }
+    // Defense in depth: seed strictly the id returned by this password sign-in,
+    // never a pre-existing cookie session. If DEMO_USER_ID is configured, assert
+    // the signed-in id matches it and abort otherwise, so a real account can
+    // never be reseeded.
+    const expectedId = process.env.DEMO_USER_ID;
+    if (expectedId && data.user.id !== expectedId) {
+      return redirectTo("/login");
+    }
     await seedDemoUser(data.user.id);
     return response;
   } catch {

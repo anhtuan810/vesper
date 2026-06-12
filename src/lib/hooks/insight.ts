@@ -5,11 +5,15 @@ import type { MarketHighlight } from "@/lib/market-highlights";
 import type { InsightCard } from "@/lib/portfolio-insights";
 import { INSIGHT_CACHE_TTL_MS } from "@/lib/constants";
 import { usePortfolioRevision } from "@/lib/portfolio-revision";
+import { useUser } from "./user";
 
-let _insightCache: { detail: string | null; insights: InsightCard[]; market: MarketHighlight[]; fetchedAt: number } | null = null;
+// Tagged with the userId it belongs to, so the "Worth knowing" band of one
+// account can never be served against another account's session after an
+// in-session switch.
+let _insightCache: { userId: string | undefined; detail: string | null; insights: InsightCard[]; market: MarketHighlight[]; fetchedAt: number } | null = null;
 
-export function primeInsightCache(detail: string | null, insights: InsightCard[] = [], market: MarketHighlight[] = []) {
-  _insightCache = { detail, insights, market, fetchedAt: Date.now() };
+export function primeInsightCache(userId: string | undefined, detail: string | null, insights: InsightCard[] = [], market: MarketHighlight[] = []) {
+  _insightCache = { userId, detail, insights, market, fetchedAt: Date.now() };
 }
 
 export function invalidateInsightCache() {
@@ -19,13 +23,20 @@ export function invalidateInsightCache() {
 
 export function useInsight() {
   const revision = usePortfolioRevision();
+  const { user } = useUser();
+  const userId = user?.id;
   const [detail, setDetail] = useState<string | null>(null);
   const [insights, setInsights] = useState<InsightCard[]>([]);
   const [market, setMarket] = useState<MarketHighlight[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback((force: boolean) => {
-    if (!force && _insightCache && Date.now() - _insightCache.fetchedAt < INSIGHT_CACHE_TTL_MS) {
+    if (
+      !force &&
+      _insightCache &&
+      _insightCache.userId === userId &&
+      Date.now() - _insightCache.fetchedAt < INSIGHT_CACHE_TTL_MS
+    ) {
       setDetail(_insightCache.detail);
       setInsights(_insightCache.insights);
       setMarket(_insightCache.market);
@@ -44,14 +55,14 @@ export function useInsight() {
         const d = insight?.detail ?? null;
         const list = Array.isArray(ins) ? ins : [];
         const mk = Array.isArray(m) ? m : [];
-        _insightCache = { detail: d, insights: list, market: mk, fetchedAt: Date.now() };
+        _insightCache = { userId, detail: d, insights: list, market: mk, fetchedAt: Date.now() };
         setDetail(d);
         setInsights(list);
         setMarket(mk);
       })
       .catch(() => { setDetail(null); setInsights([]); setMarket([]); })
       .finally(() => setLoading(false));
-  }, []);
+  }, [userId]);
 
   // Initial mount respects the cache; every later revision bump forces a refresh,
   // the same way the holdings list and Vitals refetch on a portfolio change.

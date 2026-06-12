@@ -25,7 +25,7 @@ export function VitalsPrefetch() {
     if (!userId) return; // wait for auth
     if (pathname === "/vitals") return; // that page's own useVitals owns it
     if (document.visibilityState !== "visible") return; // don't warm a hidden tab
-    if (vitalsCacheIsFresh()) return; // a fresh warm cache already exists
+    if (vitalsCacheIsFresh(userId)) return; // a fresh warm cache already exists for this user
 
     let cancelled = false;
     const warm = () => {
