@@ -261,6 +261,12 @@ body {
    text-selection magnifier. Inputs keep selection so typing/editing works. */
 html.native-app * {
   -webkit-touch-callout: none;
+  /* No gray flash on tap, no drag ghosts, no double-tap-to-zoom gesture delay.
+     touch-action keeps pan/pinch working (maplibre's own rules are more
+     specific and still win on the map canvas). */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-drag: none;
+  touch-action: manipulation;
 }
 html.native-app {
   -webkit-user-select: none;
