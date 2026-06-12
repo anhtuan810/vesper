@@ -3,13 +3,23 @@ interface FormatTextProps {
 }
 
 function formatInline(str: string) {
-  const parts = str.split(/(\*\*.*?\*\*)/g);
+  // **bold** and *italic* — the alternation tries the double marker first so
+  // a bold span is never consumed as two italics; [^*] keeps a token from
+  // swallowing the marker of the next one.
+  const parts = str.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((part, j) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
       return (
         <span key={j} style={{ fontWeight: 600, color: "var(--text)" }}>
           {part.slice(2, -2)}
         </span>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return (
+        <em key={j} style={{ fontStyle: "italic" }}>
+          {part.slice(1, -1)}
+        </em>
       );
     }
     return <span key={j}>{part}</span>;
