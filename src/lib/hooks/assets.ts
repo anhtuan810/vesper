@@ -16,6 +16,7 @@ import {
   sparklinesCacheKey,
   pricesTsCacheKey,
 } from "@/lib/constants";
+import { apiFetch } from "@/lib/api";
 
 function assetsValueEqual(a: Asset[], b: Asset[]): boolean {
   if (a.length !== b.length) return false;
@@ -141,7 +142,7 @@ export function useAssets(userId: string | undefined) {
     setRefreshing(true);
     const timer = setTimeout(() => setPricesLoaded(true), PRICES_SAFETY_TIMEOUT_MS);
     try {
-      const res = await fetch("/api/prices", {
+      const res = await apiFetch("/api/prices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symbols: items }),

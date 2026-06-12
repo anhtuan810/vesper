@@ -29,6 +29,7 @@ import { firstSnapshotDate } from "@/lib/networth-history";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_COLOR, CATEGORY_ORDER, ALL_CATEGORIES,
 } from "@/lib/categories";
+import { apiFetch } from "@/lib/api";
 
 // Clips the FULL snapshot history to a range's display window: every real row
 // at or after `windowStart`, plus the single most recent row strictly BEFORE
@@ -96,7 +97,7 @@ export function PortfolioTab({
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/snapshots?range=All`, { signal: controller.signal })
+    apiFetch(`/api/snapshots?range=All`, { signal: controller.signal })
       .then((r) => r.json())
       .then((body) => {
         setFullSnapshots(body.data ?? []);
@@ -335,7 +336,7 @@ export function PortfolioTab({
                 rows. Value is the annual income, not a net-worth figure. */}
             <div>
               {incomePensions.map((a) => (
-                <Link key={a.id} href={`/asset/${a.id}`} className="block">
+                <Link key={a.id} href={`/asset?id=${a.id}`} className="block">
                   <div
                     className="flex items-center border-b border-border-strong last:border-0 gap-3"
                     style={{ paddingTop: 9, paddingBottom: 9 }}

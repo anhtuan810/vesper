@@ -1,6 +1,7 @@
 import { PushNotifications } from "@capacitor/push-notifications";
 import { Preferences } from "@capacitor/preferences";
 import { isNative } from "@/lib/platform";
+import { apiFetch } from "@/lib/api";
 
 // Native push notifications — opt-in from Profile → Preferences. The APNs
 // device token is registered with the server (per-user, per-device) so the
@@ -50,7 +51,7 @@ export async function enablePush(): Promise<boolean> {
   const token = await registered;
   if (!token) return false;
 
-  const res = await fetch("/api/push/register", {
+  const res = await apiFetch("/api/push/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, platform: "ios" }),
@@ -67,7 +68,7 @@ export async function disablePush(): Promise<void> {
   try {
     const { value: token } = await Preferences.get({ key: TOKEN_KEY });
     if (token) {
-      await fetch("/api/push/register", {
+      await apiFetch("/api/push/register", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),

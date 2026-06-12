@@ -6,6 +6,7 @@ import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
 import { trackChipInteraction, trackChipImpression, markImpression } from "@/lib/chip-telemetry";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 import { hasSufficientHistory } from "@/lib/networth-history";
+import { apiFetch } from "@/lib/api";
 
 // Ambient, tappable projection line under the net-worth chart. Quiet and
 // editorial — the sentence itself is the affordance (the old "What if?" pill is
@@ -68,7 +69,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
   // the effect body (keeps clear of react-hooks/set-state-in-effect).
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch("/api/scenarios/project", {
+    apiFetch("/api/scenarios/project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "trajectory", horizonYears: HORIZON_YEARS }),

@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/money";
 import { AssetLogo } from "@/components/AssetLogo";
 import { normalizePrice } from "@/lib/prices";
 import type { TradeableAsset, Mutation } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 interface Props {
   asset: TradeableAsset;
@@ -86,7 +87,7 @@ export function TradeableDetail({ asset }: Props) {
   useEffect(() => {
     if (!asset.symbol) return;
     let cancelled = false;
-    fetch(`/api/prices?symbol=${encodeURIComponent(asset.symbol)}`)
+    apiFetch(`/api/prices?symbol=${encodeURIComponent(asset.symbol)}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled && !data.error) {

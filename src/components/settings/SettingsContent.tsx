@@ -7,6 +7,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
 import { NativeSettingsRows } from "@/components/profile/NativeSettingsRows";
+import { apiFetch } from "@/lib/api";
 
 const supabase = createBrowserSupabase();
 
@@ -85,7 +86,7 @@ export function SettingsContent() {
     setCurrencyLoading(currency);
     setCurrencyError(null);
     try {
-      const res = await fetch("/api/users/me", {
+      const res = await apiFetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ display_currency: currency }),
@@ -122,7 +123,7 @@ export function SettingsContent() {
     setDeleting(true);
     setDeleteError(null);
     try {
-      const res = await fetch("/api/users/me", { method: "DELETE" });
+      const res = await apiFetch("/api/users/me", { method: "DELETE" });
       if (!res.ok) {
         setDeleteError("We could not complete the deletion. Please try again in a moment.");
         setDeleting(false);

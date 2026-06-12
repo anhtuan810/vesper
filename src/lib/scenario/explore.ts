@@ -8,6 +8,7 @@
 import { getUsdRate, toUsdClient, type DisplayCurrency } from "@/lib/money";
 import type { ChatSeed, ExploreCone } from "@/lib/chat-seeds";
 import type { LiveAsset } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 const HORIZON_YEARS = 10;
 const SYMBOL: Record<DisplayCurrency, string> = { EUR: "€", USD: "$", GBP: "£" };
@@ -87,12 +88,12 @@ export async function buildExploreSeed(assets: LiveAsset[], displayCurrency: Dis
   let history: Array<{ date: string; total_value: number }> = [];
   try {
     const [pr, sr] = await Promise.all([
-      fetch("/api/scenarios/project", {
+      apiFetch("/api/scenarios/project", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "trajectory", horizonYears: HORIZON_YEARS }),
       }),
-      fetch("/api/snapshots?range=All"),
+      apiFetch("/api/snapshots?range=All"),
     ]);
     if (pr.ok) proj = (await pr.json()) as ProjResp;
     if (sr.ok) { const b = await sr.json(); history = (b.data ?? []) as typeof history; }

@@ -1,5 +1,6 @@
 import { USD_FALLBACK_RATES, FX_STALE_AFTER_MS } from "@/lib/constants";
 import { convertCurrency } from "@/lib/currency-convert";
+import { apiFetch } from "@/lib/api";
 
 export type DisplayCurrency = "EUR" | "USD" | "GBP";
 
@@ -154,7 +155,7 @@ export function fetchUsdRate(currency: DisplayCurrency): Promise<number | null> 
   const existing = inFlightFetches.get(currency);
   if (existing) return existing;
 
-  const promise = fetch(`/api/fx?base=USD&quote=${currency}`)
+  const promise = apiFetch(`/api/fx?base=USD&quote=${currency}`)
     .then((r) => r.json())
     .then((data) => {
       if (typeof data.rate === "number") {

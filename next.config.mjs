@@ -26,22 +26,34 @@ const CSP = [
   "base-uri 'self'",
 ].join("; ");
 
+// Native target: a static export bundled into the iOS binary by Capacitor
+// (scripts/build-native.mjs). headers() is unsupported under output:"export"
+// (and HTTP headers don't exist for bundle-served files anyway).
+const isNativeBuild = process.env.BUILD_TARGET === "native";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   devIndicators: false,
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          { key: "Content-Security-Policy", value: CSP },
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        ],
-      },
-    ];
-  },
+  ...(isNativeBuild
+    ? {
+        output: "export",
+        images: { unoptimized: true },
+      }
+    : {
+        async headers() {
+          return [
+            {
+              source: "/(.*)",
+              headers: [
+                { key: "Content-Security-Policy", value: CSP },
+                { key: "X-Frame-Options", value: "DENY" },
+                { key: "X-Content-Type-Options", value: "nosniff" },
+                { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+              ],
+            },
+          ];
+        },
+      }),
 };
 
 export default withSentryConfig(nextConfig, {

@@ -56,25 +56,44 @@ export const viewport: Viewport = {
 
 type ThemeMode = "light" | "dark";
 
+// Native (static-export) build: no request, so no cookies()/headers() — both
+// are unsupported under output:"export". Theme comes from localStorage via the
+// pre-paint inline script below; the marketing chrome never applies in-app.
+const isNativeBuild = process.env.NEXT_PUBLIC_BUILD_TARGET === "native";
+
+// Sets data-theme before first paint so a dark-mode user doesn't get a light
+// flash on cold start. ThemeProvider initializes from the same key.
+const NATIVE_THEME_SCRIPT =
+  `try{var t=localStorage.getItem("volnar.theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}`;
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const raw = cookieStore.get("volnar.theme")?.value;
-  const theme: ThemeMode = raw === "dark" ? "dark" : "light";
+  let theme: ThemeMode = "light";
+  let isMarketing = false;
+  if (!isNativeBuild) {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get("volnar.theme")?.value;
+    theme = raw === "dark" ? "dark" : "light";
 
-  const headersList = await headers();
-  const isMarketing = headersList.get("x-volnar-domain") === "marketing";
+    const headersList = await headers();
+    isMarketing = headersList.get("x-volnar-domain") === "marketing";
+  }
 
   return (
     <html
       lang="en"
       data-theme={theme}
       className={`${sourceSerif.variable} ${albertSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning={isNativeBuild}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
+        {isNativeBuild && (
+          // eslint-disable-next-line @next/next/no-sync-scripts
+          <script dangerouslySetInnerHTML={{ __html: NATIVE_THEME_SCRIPT }} />
+        )}
         <PreloadResources />
         <ThemeProvider initialTheme={theme}>
           <UserProvider>
@@ -89,7 +108,8 @@ export default async function RootLayout({
         </ThemeProvider>
         <NativeBootstrap />
         <AppLock />
-        <Analytics />
+        {/* Vercel Analytics has no collector at capacitor://localhost. */}
+        {!isNativeBuild && <Analytics />}
       </body>
     </html>
   );

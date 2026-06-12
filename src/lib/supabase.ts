@@ -3,8 +3,22 @@ import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import type { DisplayCurrency } from "@/lib/money";
 
-// Verify the session from cookies — use in API routes instead of trusting body userId
+// Verify the session — use in API routes instead of trusting body userId.
+// Native app (bundled UI at capacitor://localhost) authenticates with a Bearer
+// token, because cookies don't cross that origin; the web app keeps cookie
+// sessions. Both paths validate the JWT against Supabase Auth.
 export async function getAuthUser(request: NextRequest) {
+  const bearer = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
+  if (bearer) {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const { data: { user } } = await supabase.auth.getUser(bearer);
+    return user;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

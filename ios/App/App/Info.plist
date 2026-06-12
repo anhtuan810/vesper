@@ -62,9 +62,5 @@
 			</array>
 		</dict>
 	</array>
-	<key>WKAppBoundDomains</key>
-	<array>
-		<string>app.volnar.nl</string>
-	</array>
 </dict>
 </plist>

@@ -5,6 +5,7 @@ import { useDisplayCurrency } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 // Per-year indicative property value chart. Sourced ENTIRELY from the prompt-1
 // estimate engine via GET /api/property-estimate — the component does no
@@ -78,7 +79,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   useEffect(() => {
     if (!eligible) return;
     const ctrl = new AbortController();
-    fetch(`/api/property-estimate?assetId=${encodeURIComponent(asset.id)}`, { signal: ctrl.signal })
+    apiFetch(`/api/property-estimate?assetId=${encodeURIComponent(asset.id)}`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: EstimateResponse | null) => {
         if (d?.available && Array.isArray(d.series) && d.series.length >= 2) setData(d);

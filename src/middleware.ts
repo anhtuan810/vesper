@@ -1,7 +1,35 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// The native app's bundled UI runs at these WKWebView origins and calls the
+// API cross-origin with a Bearer token (no cookies, so no CSRF surface — see
+// getAuthUser). Only these exact origins are echoed back.
+const NATIVE_ORIGINS = new Set(["capacitor://localhost", "ionic://localhost"]);
+
+function corsHeaders(origin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+  };
+}
+
 export async function middleware(request: NextRequest) {
+  // CORS for the native app on /api — auth/session logic stays out of this
+  // branch (each API route validates its own user; see getAuthUser).
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    const origin = request.headers.get("origin") ?? "";
+    if (!NATIVE_ORIGINS.has(origin)) return NextResponse.next();
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+    }
+    const response = NextResponse.next();
+    for (const [k, v] of Object.entries(corsHeaders(origin))) response.headers.set(k, v);
+    return response;
+  }
+
   // Rewrite marketing domains to /marketing/* without changing the URL bar.
   const host = request.headers.get("host")?.toLowerCase().replace(/:\d+$/, "") ?? "";
   const isMarketingDomain = host === "volnar.nl" || host === "www.volnar.nl";
@@ -73,6 +101,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // App pages (session refresh + login gating) — excludes api/ and auth/.
     "/((?!_next/static|_next/image|favicon.ico|api/|auth/).*)",
+    // API routes — CORS-only branch above (no session work).
+    "/api/:path*",
   ],
 };

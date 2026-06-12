@@ -1,8 +1,10 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { isNativeBuild } from "@/lib/api";
 import { CHAT_HISTORY_PREFIX } from "@/lib/constants";
 import { resetPortfolioRevision } from "@/lib/portfolio-revision";
 
@@ -113,6 +115,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Native build only: there is no middleware in the static bundle, so the
+  // login wall lives here. The web keeps its server-side redirect untouched.
+  const pathname = usePathname();
+  const router = useRouter();
+  useEffect(() => {
+    if (!isNativeBuild || loading || user) return;
+    if (pathname.startsWith("/login") || pathname.startsWith("/marketing")) return;
+    const next = pathname !== "/" ? `?next=${encodeURIComponent(pathname)}` : "";
+    router.replace(`/login${next}`);
+  }, [loading, user, pathname, router]);
 
   const markAiConsent = useCallback((at?: string) => {
     setAiConsentAt(at ?? new Date().toISOString());

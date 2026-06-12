@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import type { Mutation } from "@/lib/supabase";
 import { type PeriodKey, getPeriodLabel } from "@/lib/diary-utils";
+import { apiFetch } from "@/lib/api";
 
 interface PeriodHighlightProps {
   mutations: Mutation[];
@@ -27,7 +28,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
     setSummaryError(null);
     setSummaryLoading(true);
 
-    fetch("/api/diary-summary", {
+    apiFetch("/api/diary-summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,

@@ -1,8 +1,11 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { apiFetch, isNativeBuild } from "@/lib/api";
 
 type ThemeMode = "light" | "dark";
+
+const THEME_KEY = "volnar.theme";
 
 interface ThemeContextValue {
   theme: ThemeMode;
@@ -25,7 +28,16 @@ export function ThemeProvider({
   initialTheme: ThemeMode;
   children: ReactNode;
 }) {
-  const [theme, setThemeState] = useState<ThemeMode>(initialTheme);
+  // Native build: the static HTML bakes initialTheme="light"; the real value
+  // lives in localStorage (already applied pre-paint by the root layout's
+  // inline script), so state initializes from it instead of reverting on mount.
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    if (isNativeBuild && typeof window !== "undefined") {
+      const stored = window.localStorage.getItem(THEME_KEY);
+      if (stored === "dark" || stored === "light") return stored;
+    }
+    return initialTheme;
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -34,7 +46,8 @@ export function ThemeProvider({
   const setTheme = useCallback((mode: ThemeMode) => {
     setThemeState(mode);
     document.cookie = `volnar.theme=${mode}; path=/; max-age=31536000; samesite=lax`;
-    fetch("/api/users/me", {
+    try { window.localStorage.setItem(THEME_KEY, mode); } catch {}
+    apiFetch("/api/users/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ theme: mode }),

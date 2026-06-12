@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useUserContext } from "@/components/UserProvider";
 import { invalidateAssetsCache, invalidateInsightCache, invalidateVitalsCache } from "@/lib/hooks";
 import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
+import { apiFetch } from "@/lib/api";
 
 interface Snapshot {
   asset: Record<string, unknown> & { name?: string };
@@ -47,7 +48,7 @@ export function UndoDeleteToast() {
     setRestoring(true);
     setError(null);
     try {
-      const res = await fetch("/api/assets", {
+      const res = await apiFetch("/api/assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(snapshot.asset),

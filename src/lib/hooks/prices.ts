@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { normalizePrice } from "@/lib/prices";
 import type { PriceResult, PricePoint } from "@/lib/prices-server";
 import { readCachedSparklines, writeCachedSparklines } from "./assets";
+import { apiFetch } from "@/lib/api";
 
 export function usePriceHistory(symbol: string | null | undefined, range: string) {
   const [closes, setCloses] = useState<number[]>([]);
@@ -14,7 +15,7 @@ export function usePriceHistory(symbol: string | null | undefined, range: string
     if (!symbol) { setCloses([]); setTimestamps([]); return; }
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/prices/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`)
+    apiFetch(`/api/prices/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`)
       .then((r) => r.json())
       .then(({ data }) => {
         if (!cancelled) {
@@ -43,7 +44,7 @@ export function useSparklines(symbols: string[], range: string): Record<string, 
     if (cached) setSparklines(cached);
 
     let cancelled = false;
-    fetch("/api/prices/history/batch", {
+    apiFetch("/api/prices/history/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ symbols: unique, range }),
@@ -75,7 +76,7 @@ export function useLivePrice(symbol: string | undefined) {
   useEffect(() => {
     if (!symbol) return;
     let cancelled = false;
-    fetch(`/api/prices?symbol=${encodeURIComponent(symbol)}`)
+    apiFetch(`/api/prices?symbol=${encodeURIComponent(symbol)}`)
       .then((r) => r.json())
       .then((data: PriceResult) => {
         if (!cancelled && !data.error) {

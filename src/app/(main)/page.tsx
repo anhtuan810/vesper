@@ -15,6 +15,7 @@ import type { LiveAsset, Mutation } from "@/lib/supabase";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 import type { MarketHighlight } from "@/lib/market-highlights";
 import type { InsightCard } from "@/lib/portfolio-insights";
+import { apiFetch } from "@/lib/api";
 
 
 export default function Dashboard() {
@@ -51,7 +52,7 @@ export default function Dashboard() {
 
   const fetchDashboardInit = useCallback(async () => {
     if (!user?.id) return;
-    const res = await fetch("/api/dashboard-init");
+    const res = await apiFetch("/api/dashboard-init");
     if (!res.ok) return;
     const { insight, insights, market, marketHighlights, snapshots, mutations } = await res.json();
     // Chart + diary badge come from dashboard-init's fast, deterministic data —
@@ -78,7 +79,7 @@ export default function Dashboard() {
 
   const refreshMutations = useCallback(async () => {
     if (!user?.id) return;
-    const res = await fetch("/api/mutations");
+    const res = await apiFetch("/api/mutations");
     if (!res.ok) return;
     const { mutations } = await res.json();
     setMutations(mutations ?? []);
@@ -91,7 +92,7 @@ export default function Dashboard() {
   // (the "Worth knowing" band is an intentional 24h cache, not per-mutation).
   const refreshSnapshots = useCallback(async () => {
     if (!user?.id) return;
-    const res = await fetch("/api/snapshots?range=1M", { cache: "no-store" });
+    const res = await apiFetch("/api/snapshots?range=1M", { cache: "no-store" });
     if (!res.ok) return;
     const { data } = await res.json();
     setInitialSnapshots(data ?? []);

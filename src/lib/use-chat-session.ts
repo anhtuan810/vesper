@@ -8,6 +8,7 @@ import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
 import { CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX } from "@/lib/constants";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import type { ScenarioResult } from "@/lib/scenario/result";
+import { apiFetch } from "@/lib/api";
 
 export interface ChatMessage {
   id?: string;
@@ -124,7 +125,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
     // DB fallback: fires only when localStorage had no usable messages.
     if (!hasHistory) {
-      fetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`, { signal: controller.signal })
+      apiFetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`, { signal: controller.signal })
         .then((r) => r.json())
         .then((data) => {
           if (!Array.isArray(data?.messages) || data.messages.length === 0) {
@@ -173,7 +174,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setIsLoadingMore(true);
 
     try {
-      const res = await fetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}&before=${oldestId}`);
+      const res = await apiFetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}&before=${oldestId}`);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data?.messages)) return;
 
@@ -284,7 +285,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     clearImage();
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, fromChip: false }),
@@ -330,7 +331,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setLoading(true);
     setThinking(true);
     try {
-      const res = await fetch("/api/chat", {
+      const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioConfirm: pending, message: originalText }),
@@ -376,7 +377,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setMessages((prev) => [...prev, { from: "user", text: trimmed }]);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, fromChip: true }),
@@ -426,7 +427,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setMessages((prev) => [...prev, { from: "user", text: h.userMessage }]);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioHandoff: h }),

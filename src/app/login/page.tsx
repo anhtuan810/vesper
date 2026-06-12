@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { isNative } from "@/lib/platform";
+import { apiFetch } from "@/lib/api";
 import { signInWithGoogleNative, signInWithAppleNative, signInWithMagicLinkNative } from "@/lib/native/auth-native";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
@@ -352,6 +353,23 @@ function LoginInner() {
         <div className="text-center mt-6">
           <a
             href="/demo"
+            onClick={async (e) => {
+              // Native: /demo (cookie sign-in) doesn't exist in the bundled
+              // app — fetch the demo session tokens and adopt them instead.
+              if (!native) return;
+              e.preventDefault();
+              setError(null);
+              try {
+                const res = await apiFetch("/api/demo-session", { method: "POST" });
+                if (!res.ok) throw new Error();
+                const { access_token, refresh_token } = await res.json();
+                const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+                if (sessionError) throw new Error();
+                window.location.assign("/");
+              } catch {
+                setError("The demo account isn't available right now.");
+              }
+            }}
             className="font-mono text-faint transition-colors hover:text-dim"
             style={{ fontSize: 11, letterSpacing: "0.04em", textDecoration: "underline", textUnderlineOffset: 3 }}
           >

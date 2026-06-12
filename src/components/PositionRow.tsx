@@ -69,7 +69,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
       : NaN;
 
   return (
-    <Link href={`/asset/${asset.id}`} className="block">
+    <Link href={`/asset?id=${asset.id}`} className="block">
       <div
         className="flex items-center border-b border-border-strong last:border-0 gap-3"
         style={{ paddingTop: 9, paddingBottom: 9 }}

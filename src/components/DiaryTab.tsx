@@ -506,7 +506,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                     <Link
                       key={m.id}
                       id={`diary-entry-${m.id}`}
-                      href={`/asset/${m.asset_id}`}
+                      href={`/asset?id=${m.asset_id}`}
                       className="block last:border-0"
                       style={rowStyle}
                     >

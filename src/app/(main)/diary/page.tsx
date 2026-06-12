@@ -9,6 +9,7 @@ import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Mutation } from "@/lib/supabase";
 import { DIARY_PAGE_SIZE, diaryCacheKey } from "@/lib/constants";
+import { apiFetch } from "@/lib/api";
 
 const supabase = createBrowserSupabase();
 
@@ -127,7 +128,7 @@ export default function DiaryPage() {
   useEffect(() => {
     if (!user?.id || backfillDone) return;
     setBackfillDone(true);
-    fetch("/api/backfill", { method: "POST" }).then(async (res) => {
+    apiFetch("/api/backfill", { method: "POST" }).then(async (res) => {
       const { updated } = await res.json();
       if (updated > 0) reloadFirstPage();
     }).catch((err) => { console.error("Backfill fetch failed:", err); });

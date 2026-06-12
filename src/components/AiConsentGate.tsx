@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser } from "@/lib/hooks";
+import { apiFetch } from "@/lib/api";
 
 // One-time AI data-sharing disclosure. Shown once to an authenticated user who
 // has not yet acknowledged (ai_consent_at is null). There is no decline path —
@@ -35,7 +36,7 @@ export function AiConsentGate() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/users/ai-consent", { method: "POST" });
+      const res = await apiFetch("/api/users/ai-consent", { method: "POST" });
       if (!res.ok) {
         setError("Something went wrong. Please try again.");
         setSubmitting(false);

@@ -3,16 +3,12 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "nl.volnar.app",
   appName: "Volnar",
-  webDir: "public",
-  server: {
-    url: "https://app.volnar.nl",
-    cleartext: false,
-    // Local branded fallback (bundled from public/) shown when the remote URL
-    // fails to load — offline, DNS failure, server down. Served from the
-    // capacitor://localhost bundle, so it works with no network at all; its
-    // Retry button navigates back to the remote URL.
-    errorPath: "offline.html",
-  },
+  // The full UI ships inside the binary: a static export produced by
+  // `npm run build:native` (scripts/build-native.mjs). The app boots with no
+  // network and talks to https://app.volnar.nl only for data (/api/*, see
+  // src/lib/api.ts) — no remote server.url, so the App Store build is a real
+  // app rather than a wrapper around the website.
+  webDir: "out",
   ios: {
     // "never": don't let the WKWebView scroll view auto-inset content for the
     // safe area. The web layer manages insets itself via env(safe-area-inset-*)
@@ -24,10 +20,11 @@ const config: CapacitorConfig = {
     // behind the web content before/around paint. Dark-mode parity comes with
     // @capacitor/status-bar in a later phase.
     backgroundColor: "#FAF6EB",
-    // Restrict the WKWebView's full native-bridge access to the domains listed
-    // in Info.plist's WKAppBoundDomains (app.volnar.nl). OAuth/magic-link run in
-    // the system browser via @capacitor/browser, so they're unaffected.
-    limitsNavigationsToAppBoundDomains: true,
+    // NOTE: limitsNavigationsToAppBoundDomains was removed with the move to
+    // bundled assets — the webview now serves capacitor://localhost, which an
+    // app-bound-domains allowlist would lock out. OAuth/magic-link still run
+    // in the system browser via @capacitor/browser.
+    //
     // Disable the long-press link preview / "Open Link" context menu — a
     // browser affordance that breaks the native feel (pairs with the
     // touch-callout CSS in globals.css).

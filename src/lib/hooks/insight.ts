@@ -6,6 +6,7 @@ import type { InsightCard } from "@/lib/portfolio-insights";
 import { INSIGHT_CACHE_TTL_MS } from "@/lib/constants";
 import { usePortfolioRevision } from "@/lib/portfolio-revision";
 import { useUser } from "./user";
+import { apiFetch } from "@/lib/api";
 
 // Tagged with the userId it belongs to, so the "Worth knowing" band of one
 // account can never be served against another account's session after an
@@ -18,7 +19,7 @@ export function primeInsightCache(userId: string | undefined, detail: string | n
 
 export function invalidateInsightCache() {
   _insightCache = null;
-  fetch("/api/insight", { method: "DELETE" }).catch(() => {});
+  apiFetch("/api/insight", { method: "DELETE" }).catch(() => {});
 }
 
 export function useInsight() {
@@ -49,7 +50,7 @@ export function useInsight() {
     // (force) and any HTTP/edge cache (no-store + a unique query param), so a
     // removed or changed top position can never linger in the band.
     const url = force ? `/api/insight?fresh=1&rev=${Date.now()}` : "/api/insight";
-    fetch(url, { cache: "no-store" })
+    apiFetch(url, { cache: "no-store" })
       .then((r) => r.json())
       .then(({ insight, insights: ins, market: m }: { insight: { detail: string | null }; insights: InsightCard[]; market: MarketHighlight[] }) => {
         const d = insight?.detail ?? null;

@@ -5,6 +5,7 @@ import type { VitalResult } from "@/lib/vitals/index";
 import { usePortfolioRevision } from "@/lib/portfolio-revision";
 import { useUser } from "./user";
 import { VITALS_CACHE_PREFIX, vitalsCacheKey } from "@/lib/constants";
+import { apiFetch } from "@/lib/api";
 
 export const VITALS_CACHE_TTL_MS = 3_600_000; // 1 hour — module-cache freshness
 export const VITALS_SWR_STALE_MS = 60_000; // focus revalidates at most once/min
@@ -88,7 +89,7 @@ function runVitalsFetch(
   let merged: VitalsResponse | null = null;
   let pulsePayload: VitalsPulse = { pulse: null, pulseLiquid: null };
 
-  const bodyPromise = fetch(`/api/vitals${suffix}`, { cache: "no-store" })
+  const bodyPromise = apiFetch(`/api/vitals${suffix}`, { cache: "no-store" })
     .then(async (r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json() as Promise<VitalsBody>;
@@ -99,7 +100,7 @@ function runVitalsFetch(
       writeCaches(userId, merged);
     });
 
-  const pulsePromise = fetch(`/api/vitals/pulse${suffix}`, { cache: "no-store" })
+  const pulsePromise = apiFetch(`/api/vitals/pulse${suffix}`, { cache: "no-store" })
     .then(async (r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json() as Promise<VitalsPulse>;

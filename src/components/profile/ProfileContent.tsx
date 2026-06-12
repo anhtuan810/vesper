@@ -11,6 +11,7 @@ import { findBaselineSnapshot, MIN_BASELINE_AGE_DAYS } from "@/lib/vitals/realGr
 import { PerspectiveCard } from "@/components/perspective/PerspectiveCard";
 import { profileBaselineCacheKey, PROFILE_BASELINE_TTL_MS } from "@/lib/constants";
 import type { Snapshot } from "@/lib/vitals/types";
+import { apiFetch } from "@/lib/api";
 
 const supabase = createBrowserSupabase();
 
@@ -101,7 +102,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
     const now = Date.now();
     const after = isoDay(now - 400 * 86_400_000);
     const before = isoDay(now - 300 * 86_400_000);
-    fetch(`/api/snapshots?after=${after}&before=${before}`)
+    apiFetch(`/api/snapshots?after=${after}&before=${before}`)
       .then((r) => r.json())
       .then(({ data }) => {
         const snaps = (data ?? []) as Snapshot[];

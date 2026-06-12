@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
+import { apiFetch } from "@/lib/api";
 
 let _cache: { moves: DiaryMarketMove[]; fetchedAt: number } | null = null;
 
@@ -12,7 +13,7 @@ export function useDiaryMarketMoves() {
   useEffect(() => {
     if (_cache) return;
 
-    fetch("/api/diary/market-moves")
+    apiFetch("/api/diary/market-moves")
       .then((r) => r.json())
       .then(({ moves: m }: { moves: DiaryMarketMove[] }) => {
         const list = Array.isArray(m) ? m : [];

@@ -15,6 +15,7 @@ interface Props {
 }
 
 import { useState } from "react";
+import { apiUrl } from "@/lib/api";
 
 function Monogram({ symbol, name, type, size }: { type: string | null; symbol: string | null; name: string | null; size: number }) {
   const mono = symbol
@@ -147,9 +148,9 @@ export function AssetLogo({ type, symbol, name, size = 32, ownedFraction }: Prop
     // (logos were previously broken by a case-sensitivity bug in the proxy).
     if (type === "crypto") {
       const base = symbol.replace(/-USD$/i, "").replace(/-EUR$/i, "").toLowerCase();
-      imgUrl = `/api/logo?type=crypto&symbol=${encodeURIComponent(base)}&v=2`;
+      imgUrl = apiUrl(`/api/logo?type=crypto&symbol=${encodeURIComponent(base)}&v=2`);
     } else if (type === "stocks" || type === "etf") {
-      imgUrl = `/api/logo?type=stock&symbol=${encodeURIComponent(displayTicker(symbol))}&v=2`;
+      imgUrl = apiUrl(`/api/logo?type=stock&symbol=${encodeURIComponent(displayTicker(symbol))}&v=2`);
     }
   }
 
