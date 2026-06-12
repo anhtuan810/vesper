@@ -21,7 +21,7 @@ deletion is a later phase.
   - `appName`: `Volnar`
   - `webDir`: `public` (placeholder only; remote `server.url` is what actually loads)
   - `server.url`: `https://app.volnar.nl`, `cleartext: false`
-  - `ios.contentInset`: `always`
+  - `ios.contentInset`: `never` (web layer owns safe-area insets via `env(safe-area-inset-*)`)
   - `ios.backgroundColor`: `#FAF6EB` — native WebView background fallback so no
     white flashes behind the web content at the top edge.
 
