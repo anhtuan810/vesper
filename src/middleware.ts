@@ -50,6 +50,7 @@ export async function middleware(request: NextRequest) {
   // If not logged in and not on a public path, redirect to login
   const isPublic =
     request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/demo") ||
     request.nextUrl.pathname.startsWith("/marketing");
 
   if (!user && !isPublic) {

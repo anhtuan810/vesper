@@ -329,6 +329,16 @@ function LoginInner() {
           )}
         </div>
 
+        <div className="text-center mt-6">
+          <a
+            href="/demo"
+            className="font-mono text-faint transition-colors hover:text-dim"
+            style={{ fontSize: 11, letterSpacing: "0.04em", textDecoration: "underline", textUnderlineOffset: 3 }}
+          >
+            View a demo account
+          </a>
+        </div>
+
         <p
           className="text-center font-mono text-faint mt-10"
           style={{ fontSize: 10, letterSpacing: "0.04em", lineHeight: 1.6 }}
