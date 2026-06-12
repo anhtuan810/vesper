@@ -13,7 +13,11 @@ function LoginInner() {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    params.get("error") === "native_auth_failed"
+      ? "Sign-in didn't complete. Please try again."
+      : null
+  );
   const supabase = createBrowserSupabase();
 
   const callbackUrl = (typeof window !== "undefined")

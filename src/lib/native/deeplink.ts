@@ -38,6 +38,10 @@ export function installDeepLinkHandler(supabase: SupabaseClient) {
       `[native auth] appUrlOpen route="${route}" hasCode=${url.searchParams.has("code")} hasTokenHash=${url.searchParams.has("token_hash")}`
     );
 
+    // Browser.close() rejects when no in-app browser is open (e.g. magic links
+    // tapped in Mail) — never let that block the navigation that follows.
+    const closeBrowser = () => Browser.close().catch(() => {});
+
     try {
       if (route.endsWith("auth/callback")) {
         const code = url.searchParams.get("code");
@@ -45,7 +49,7 @@ export function installDeepLinkHandler(supabase: SupabaseClient) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) throw error;
         console.log("[native auth] callback ok, navigating to", next);
-        await Browser.close();
+        await closeBrowser();
         window.location.assign(next);
         return;
       }
@@ -57,13 +61,15 @@ export function installDeepLinkHandler(supabase: SupabaseClient) {
         const { error } = await supabase.auth.verifyOtp({ token_hash, type });
         if (error) throw error;
         console.log("[native auth] confirm ok, navigating to", next);
-        await Browser.close();
+        await closeBrowser();
         window.location.assign(next);
         return;
       }
     } catch (err) {
       console.error("[native auth] deep link failed", err);
-      await Browser.close();
+      await closeBrowser();
+      // Land the user somewhere actionable instead of a stuck blank view.
+      window.location.assign("/login?error=native_auth_failed");
     }
   });
 }
