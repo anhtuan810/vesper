@@ -22,7 +22,7 @@ export function InsightBand({ onVisibleChange }: { onVisibleChange?: (visible: b
 
   if (loading) {
     return (
-      <div style={{ padding: "7px 0" }}>
+      <div style={{ padding: "5px 0" }}>
         <div style={{ height: 9, width: 90, borderRadius: 3, background: "var(--text-faint)", opacity: 0.15, marginBottom: 8 }} />
         <div style={{ height: 13, width: "75%", borderRadius: 3, background: "var(--text-faint)", opacity: 0.15 }} />
       </div>
@@ -37,7 +37,7 @@ export function InsightBand({ onVisibleChange }: { onVisibleChange?: (visible: b
   };
 
   return (
-    <div style={{ padding: "7px 0" }}>
+    <div style={{ padding: "5px 0" }}>
       <SwipeExpandCarousel
         icon={<BulbIcon color="var(--text-faint)" />}
         items={insights}

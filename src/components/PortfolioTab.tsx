@@ -237,12 +237,13 @@ export function PortfolioTab({
         )}
       </div>
 
-      {/* Portfolio summary — three flat, hairline-separated sections (Projection,
-          Worth knowing, Markets), no card container. Same horizontal bounds as
-          the hero+chart block above (-mx-4 md:mx-0, maxWidth 660) so the section
-          edges line up with the net-worth number and the Holdings header. */}
+      {/* Portfolio summary — three compact rows (Projection, Worth knowing,
+          Markets) held in one contained card. Unlike the hero/chart and Holdings
+          (which bleed to the screen edge), this block keeps the page's side
+          padding so the card sits inset with margins — reading as a discrete
+          designed object nested between the two full-bleed sections. */}
       {assets.length > 0 && (
-        <div className="-mx-4 md:mx-0 mb-6" style={{ maxWidth: 660 }}>
+        <div className="mb-6" style={{ maxWidth: 660 }}>
           <PortfolioSummaryCard
             netTotal={netTotal}
             snapshots={fullSnapshots}

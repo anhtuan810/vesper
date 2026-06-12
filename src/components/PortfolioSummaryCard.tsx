@@ -16,18 +16,30 @@ interface PortfolioSummaryCardProps {
 
 const DIVIDER = <div style={{ borderTop: "0.5px solid var(--border)" }} />;
 
-// "Portfolio summary" — three flat, hairline-separated sections (Projection,
-// Worth knowing, Markets) sitting directly on the page, no card container. Each
-// slot self-reports whether it rendered anything; a divider is drawn only
-// between two visible sections, so a hidden projection, an absent insight, or
-// empty markets never leaves a stray hairline.
+// "Portfolio summary" — three compact, hairline-separated rows (Projection,
+// Worth knowing, Markets) held in ONE contained card (surface + hairline border
+// + radius) so the block reads as a single designed object lifted off the page
+// instead of loose floating text. Each slot self-reports whether it rendered
+// anything; a divider is drawn only between two visible rows, so a hidden
+// projection, an absent insight, or empty markets never leaves a stray hairline.
+// When nothing renders, the card collapses to nothing (no empty box).
 export function PortfolioSummaryCard({ netTotal, snapshots, marketHighlights, onExplore }: PortfolioSummaryCardProps) {
   const [showProjection, setShowProjection] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
   const [showMarket, setShowMarket] = useState(false);
 
+  const anyVisible = showProjection || showInsight || showMarket;
+
   return (
-    <div>
+    <div
+      style={{
+        background: "var(--surface)",
+        border: "0.5px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
+        padding: anyVisible ? "4px 14px" : 0,
+        transition: "padding 0.2s ease",
+      }}
+    >
       <ProjectionTeaser
         variant="card"
         onExplore={onExplore}

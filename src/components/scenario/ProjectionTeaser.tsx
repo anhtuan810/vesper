@@ -155,13 +155,16 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           display: "block",
           background: "none",
           border: "none",
-          padding: "7px 0",
+          padding: "5px 0",
           cursor: "pointer",
           opacity: shown ? 1 : 0,
           transform: shown ? "translateY(0)" : "translateY(3px)",
           transition: "opacity 0.7s ease, transform 0.7s ease",
         }}
       >
+        {/* Sentence + CTA share one line — the clause trails the statement inline
+            (in accent-text) rather than sitting on its own row, so the projection
+            costs a single compact row instead of two. */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
           <TrendingUpIcon size={13} color="var(--text-faint)" />
           <div
@@ -178,20 +181,18 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           >
             Assuming ~{ratePct}/yr, you could reach about{" "}
             <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
-            by <span style={{ fontWeight: 600 }}>{year}</span>.
-          </div>
-        </div>
-        <div style={{ marginTop: 4, marginLeft: 21 }}>
-          <span className="font-serif" style={{ fontStyle: "italic", fontSize: 12, color: "var(--accent-text)" }}>
-            {clause}{" "}
-            <span
-              aria-hidden="true"
-              className="inline-block transition-transform duration-200 group-hover:translate-x-[2px] group-active:translate-x-[2px]"
-              style={{ fontStyle: "normal" }}
-            >
-              →
+            by <span style={{ fontWeight: 600 }}>{year}</span>.{" "}
+            <span style={{ color: "var(--accent-text)", whiteSpace: "nowrap" }}>
+              {clause}{" "}
+              <span
+                aria-hidden="true"
+                className="inline-block transition-transform duration-200 group-hover:translate-x-[2px] group-active:translate-x-[2px]"
+                style={{ fontStyle: "normal" }}
+              >
+                →
+              </span>
             </span>
-          </span>
+          </div>
         </div>
       </button>
     );
