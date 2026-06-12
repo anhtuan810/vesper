@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { isNative } from "@/lib/platform";
 import {
   isAppLockEnabled, setAppLockEnabled, biometricAvailable, verifyIdentity,
@@ -84,33 +85,47 @@ export function NativeSettingsRows() {
 
   const toggleLock = async () => {
     setBusy("lock");
-    if (lockOn) {
-      // Re-verify before disabling so a passerby can't switch the lock off.
-      if (await verifyIdentity()) {
-        await setAppLockEnabled(false);
-        setLockOn(false);
+    try {
+      if (lockOn) {
+        // Re-verify before disabling so a passerby can't switch the lock off.
+        if (await verifyIdentity()) {
+          await setAppLockEnabled(false);
+          setLockOn(false);
+        }
+      } else if (await verifyIdentity()) {
+        await setAppLockEnabled(true);
+        setLockOn(true);
       }
-    } else if (await verifyIdentity()) {
-      await setAppLockEnabled(true);
-      setLockOn(true);
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
 
   const togglePush = async () => {
     setBusy("push");
     setPushNote(null);
-    if (pushOn) {
-      await disablePush();
-      setPushOn(false);
-    } else {
-      const ok = await enablePush();
-      setPushOn(ok);
-      if (!ok) {
-        setPushNote("Allow notifications for Volnar in iOS Settings, then try again.");
+    try {
+      // The web app updates independently of the installed binary; an old
+      // binary won't have the plugin compiled in.
+      if (!Capacitor.isPluginAvailable("PushNotifications")) {
+        setPushNote("Notifications need a newer build of the app — update Volnar, then try again.");
+        return;
       }
+      if (pushOn) {
+        await disablePush();
+        setPushOn(false);
+      } else {
+        const ok = await enablePush();
+        setPushOn(ok);
+        if (!ok) {
+          setPushNote("Allow notifications for Volnar in iOS Settings, then try again.");
+        }
+      }
+    } catch {
+      setPushNote("Couldn\u2019t update notifications \u2014 try again.");
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
 
   return (

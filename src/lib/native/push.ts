@@ -27,6 +27,8 @@ export async function isPushEnabled(): Promise<boolean> {
 export async function enablePush(): Promise<boolean> {
   if (!isNative()) return false;
 
+  // Throws when the installed binary predates the plugin — callers treat that
+  // as "not enabled" rather than crashing the toggle.
   const status = await PushNotifications.requestPermissions();
   if (status.receive !== "granted") return false;
 
