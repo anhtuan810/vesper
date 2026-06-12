@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useUser, useProfile, useNetWorth } from "@/lib/hooks";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
@@ -39,12 +39,12 @@ const PROFILE_FIELDS = [
   { key: "worth_raising", label: "Worth raising" },
 ] as const;
 
-function SettingsGearIcon() {
+function SettingsGearIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
-      width="22" height="22" viewBox="0 0 24 24" fill="none"
+      width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
-      style={{ display: "block" }}
+      style={{ display: "block", flexShrink: 0 }}
     >
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -52,7 +52,20 @@ function SettingsGearIcon() {
   );
 }
 
+function ChevronRight() {
+  return (
+    <svg
+      width="14" height="14" viewBox="0 0 256 256" fill="none"
+      stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round"
+      style={{ color: "var(--text-faint)", flexShrink: 0 }}
+    >
+      <polyline points="96 48 176 128 96 208" />
+    </svg>
+  );
+}
+
 export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = {}) {
+  const router = useRouter();
   const { user } = useUser();
   const userId = user?.id;
   const profile = useProfile(user?.id);
@@ -117,53 +130,32 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       ? { maxWidth: "none", margin: 0, padding: 0 }
       : { maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
 
-      {/* Name as page title + fingerprint as supporting line, with the gear that
-          opens the dedicated Settings page anchored top-right. */}
-      <div style={{ paddingTop: 32, marginBottom: 26, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div style={{ minWidth: 0 }}>
+      {/* Name as page title + fingerprint as supporting line */}
+      <div style={{ paddingTop: 32, marginBottom: 26 }}>
+        <div style={{
+          fontFamily: "var(--font-serif)",
+          fontSize: 38,
+          fontWeight: 500,
+          letterSpacing: "-0.025em",
+          color: "var(--hero)",
+          lineHeight: 1,
+          fontVariationSettings: "'opsz' 60",
+          marginBottom: profile?.fingerprint ? 10 : 0,
+        }}>
+          {profile?.name || "Investor"}
+        </div>
+        {profile?.fingerprint && (
           <div style={{
             fontFamily: "var(--font-serif)",
-            fontSize: 38,
-            fontWeight: 500,
-            letterSpacing: "-0.025em",
-            color: "var(--hero)",
-            lineHeight: 1,
-            fontVariationSettings: "'opsz' 60",
-            marginBottom: profile?.fingerprint ? 10 : 0,
-          }}>
-            {profile?.name || "Investor"}
-          </div>
-          {profile?.fingerprint && (
-            <div style={{
-              fontFamily: "var(--font-serif)",
-              fontStyle: "italic",
-              fontSize: 15,
-              color: "var(--text-dim)",
-              lineHeight: 1.45,
-              fontVariationSettings: "'opsz' 16",
-            }}>
-              {profile.fingerprint}
-            </div>
-          )}
-        </div>
-        <Link
-          href="/settings"
-          aria-label="Settings"
-          style={{
-            flexShrink: 0,
-            width: 38,
-            height: 38,
-            marginTop: 2,
-            marginRight: -6,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 999,
+            fontStyle: "italic",
+            fontSize: 15,
             color: "var(--text-dim)",
-          }}
-        >
-          <SettingsGearIcon />
-        </Link>
+            lineHeight: 1.45,
+            fontVariationSettings: "'opsz' 16",
+          }}>
+            {profile.fingerprint}
+          </div>
+        )}
       </div>
 
       {/* Perspective section */}
@@ -240,6 +232,38 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           </div>
         </>
       )}
+
+      {/* Settings — the only operational control on this page; everything else
+          (preferences, account, Data & AI, deletion) lives behind it. */}
+      <button
+        onClick={() => router.push("/settings")}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "14px 16px",
+          background: "var(--surface)",
+          border: "0.5px solid var(--border)",
+          borderRadius: 14,
+          cursor: "pointer",
+          textAlign: "left",
+          color: "var(--text-dim)",
+        }}
+      >
+        <SettingsGearIcon size={18} />
+        <span style={{
+          flex: 1,
+          fontFamily: "var(--font-serif)",
+          fontSize: 16,
+          fontWeight: 500,
+          color: "var(--text)",
+          fontVariationSettings: "'opsz' 18",
+        }}>
+          Settings
+        </span>
+        <ChevronRight />
+      </button>
 
     </div>
   );
