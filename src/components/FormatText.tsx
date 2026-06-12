@@ -10,7 +10,19 @@ function formatInline(str: string) {
   return parts.map((part, j) => {
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
       return (
-        <span key={j} style={{ fontWeight: 600, color: "var(--text)" }}>
+        <span
+          key={j}
+          style={{
+            fontWeight: 600,
+            color: "var(--text)",
+            background: "var(--accent-soft)",
+            borderRadius: 4,
+            padding: "0 3px",
+            margin: "0 -1px",
+            boxDecorationBreak: "clone",
+            WebkitBoxDecorationBreak: "clone",
+          }}
+        >
           {part.slice(2, -2)}
         </span>
       );

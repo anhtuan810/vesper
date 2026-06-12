@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { isNative } from "@/lib/platform";
 import { apiFetch } from "@/lib/api";
@@ -9,6 +9,7 @@ import { signInWithGoogleNative, signInWithAppleNative, signInWithMagicLinkNativ
 import { VolnarLogo } from "@/components/VolnarLogo";
 
 function LoginInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/";
   const [email, setEmail] = useState("");
@@ -57,7 +58,10 @@ function LoginInner() {
     setError(null);
     if (isNative()) {
       try {
-        await signInWithAppleNative(supabase, next);
+        await signInWithAppleNative(supabase);
+        // SPA navigation — a full page load of a non-root path would be
+        // served the root index.html in the bundled app.
+        router.replace(next);
       } catch (e) {
         // ASAuthorizationError 1001 = user dismissed the Apple sheet; per HIG
         // a cancel is silent, not an error state.

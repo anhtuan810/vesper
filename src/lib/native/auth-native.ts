@@ -47,10 +47,10 @@ async function sha256Hex(input: string): Promise<string> {
 // Native Apple sign-in: the OS presents the native "Sign in with Apple" sheet
 // directly — no system-browser round trip or deep link is involved. The
 // resulting identity token is handed straight to Supabase, which establishes
-// the session in place, so we navigate to nextPath ourselves on success.
+// the session in place. The caller navigates on success (SPA — a full page
+// load of a non-root path breaks in the bundled app).
 export async function signInWithAppleNative(
   supabase: SupabaseClient,
-  nextPath = "/"
 ) {
   const rawNonce = generateRawNonce();
   const hashedNonce = await sha256Hex(rawNonce);
@@ -68,8 +68,6 @@ export async function signInWithAppleNative(
     nonce: rawNonce,
   });
   if (error) throw error;
-
-  window.location.assign(nextPath);
 }
 
 // Native magic link: Supabase emails a link that deep-links back via

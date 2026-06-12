@@ -19,7 +19,10 @@ function routeOf(url: URL): string {
 // Installs the deep-link handler that completes native auth flows started in the
 // system browser. signInWith*Native open the browser; the OS hands the result
 // back to the app via the nl.volnar.app:// scheme, which lands here.
-export function installDeepLinkHandler(supabase: SupabaseClient) {
+// `navigate` must be an SPA navigation (Next router) — a full document load of
+// a non-root path would be served the root index.html by Capacitor's asset
+// handler in the bundled app.
+export function installDeepLinkHandler(supabase: SupabaseClient, navigate: (path: string) => void) {
   return App.addListener("appUrlOpen", async (event: URLOpenListenerEvent) => {
     let url: URL;
     try {
@@ -50,7 +53,7 @@ export function installDeepLinkHandler(supabase: SupabaseClient) {
         if (error) throw error;
         console.log("[native auth] callback ok, navigating to", next);
         await closeBrowser();
-        window.location.assign(next);
+        navigate(next);
         return;
       }
 
@@ -62,14 +65,14 @@ export function installDeepLinkHandler(supabase: SupabaseClient) {
         if (error) throw error;
         console.log("[native auth] confirm ok, navigating to", next);
         await closeBrowser();
-        window.location.assign(next);
+        navigate(next);
         return;
       }
     } catch (err) {
       console.error("[native auth] deep link failed", err);
       await closeBrowser();
       // Land the user somewhere actionable instead of a stuck blank view.
-      window.location.assign("/login?error=native_auth_failed");
+      navigate("/login?error=native_auth_failed");
     }
   });
 }

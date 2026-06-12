@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { isNativeBuild } from "@/lib/api";
 import { usePortfolioRevision } from "@/lib/portfolio-revision";
 import { useThemeContext } from "@/components/ThemeProvider";
 import { useUserContext } from "@/components/UserProvider";
@@ -123,9 +125,17 @@ export function useTheme() {
 
 export function useSignOut() {
   const supabase = createBrowserSupabase();
+  const router = useRouter();
 
   return useCallback(async () => {
     await supabase.auth.signOut();
-    window.location.href = "/login";
-  }, [supabase]);
+    if (isNativeBuild) {
+      // SPA navigation: in the bundled app a full load of /login would be
+      // served the root index.html. UserProvider purges caches on SIGNED_OUT.
+      router.replace("/login");
+    } else {
+      // Full reload on the web wipes all in-memory state across the app.
+      window.location.href = "/login";
+    }
+  }, [supabase, router]);
 }

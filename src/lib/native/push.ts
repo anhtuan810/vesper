@@ -83,12 +83,14 @@ export async function disablePush(): Promise<void> {
 }
 
 // Routes a notification tap to its in-app destination (payload `link` is a
-// same-app path, e.g. "/diary"). Installed once from NativeBootstrap.
-export async function installPushTapHandler() {
+// same-app path, e.g. "/diary"). Installed once from NativeBootstrap. SPA
+// navigation only — a full document load of a non-root path gets served the
+// root index.html in the bundled app.
+export async function installPushTapHandler(navigate: (path: string) => void) {
   return PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
     const link = action.notification.data?.link;
     if (typeof link === "string" && link.startsWith("/") && !link.startsWith("//")) {
-      window.location.assign(link);
+      navigate(link);
     }
   });
 }
