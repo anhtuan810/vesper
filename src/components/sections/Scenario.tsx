@@ -1,10 +1,13 @@
+import { Eyebrow } from "./Eyebrow";
+
 export function Scenario() {
   return (
-    <div className="band-dark" style={{ background: "var(--hero)", color: "rgba(255,255,255,0.85)" }}>
+    <div className="band-dark" id="scenarios" style={{ background: "var(--hero)", color: "rgba(255,255,255,0.85)" }}>
       <div className="max-w-[1200px] mx-auto" style={{ padding: "0 var(--wrap-pad)" }}>
-        <section style={{ padding: "clamp(24px,3.5vw,44px) 0" }}>
+        <section style={{ padding: "clamp(32px,5vw,56px) 0" }}>
 
           <div className="text-center" style={{ marginBottom: "clamp(14px,2.5vw,22px)" }}>
+            <Eyebrow n="04" light center>Scenarios</Eyebrow>
             <h2
               className="font-serif font-medium leading-[1.02] tracking-[-0.025em] mx-auto"
               style={{ fontSize: "clamp(30px,6.5vw,46px)", fontVariationSettings: "'opsz' 56", color: "#FFFFFF", maxWidth: 880 }}

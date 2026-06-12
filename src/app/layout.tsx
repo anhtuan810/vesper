@@ -34,8 +34,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Volnar",
-  description: "Your personal portfolio assistant",
+  title: { default: "Volnar", template: "%s · Volnar" },
+  description:
+    "Quiet confidence over your portfolio — everything you own, in one calm place.",
 };
 
 export const viewport: Viewport = {
@@ -50,8 +51,8 @@ export const viewport: Viewport = {
   // resolves to real values (needed by the bottom nav on notched iOS devices).
   viewportFit: "cover",
   // Native WebView background fallback (light mode). Dark-mode parity comes
-  // with @capacitor/status-bar in a later phase.
-  themeColor: "#FAF6EB",
+  // with @capacitor/status-bar in a later phase. Matches --bg (cool paper).
+  themeColor: "#EEF0EC",
 };
 
 type ThemeMode = "light" | "dark";
@@ -97,9 +98,15 @@ export default async function RootLayout({
         <PreloadResources />
         <ThemeProvider initialTheme={theme}>
           <UserProvider>
-            <div className="mx-auto w-full max-w-[720px] px-5">
-              {children}
-            </div>
+            {/* Marketing pages lay themselves out full-bleed (hero, ticker,
+                dark bands); only the app gets the centered reading column. */}
+            {isMarketing ? (
+              children
+            ) : (
+              <div className="mx-auto w-full max-w-[720px] px-5">
+                {children}
+              </div>
+            )}
             {!isMarketing && <BottomNav />}
             {!isMarketing && <UndoDeleteToast />}
             {!isMarketing && <VitalsPrefetch />}

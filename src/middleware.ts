@@ -30,6 +30,20 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Shared metadata routes (robots, sitemap, generated icons) resolve at the
+  // app root on every domain: skip the marketing rewrite AND the login gate.
+  {
+    const { pathname } = request.nextUrl;
+    if (
+      pathname === "/robots.txt" ||
+      pathname === "/sitemap.xml" ||
+      pathname.startsWith("/icon") ||
+      pathname.startsWith("/apple-icon")
+    ) {
+      return NextResponse.next();
+    }
+  }
+
   // Rewrite marketing domains to /marketing/* without changing the URL bar.
   const host = request.headers.get("host")?.toLowerCase().replace(/:\d+$/, "") ?? "";
   const isMarketingDomain = host === "volnar.nl" || host === "www.volnar.nl";
@@ -46,6 +60,14 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-volnar-domain", "marketing");
     return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  }
+
+  // Path-based access on the app domain (and local dev): same marketing chrome,
+  // no session work — these pages are public and render full-bleed.
+  if (request.nextUrl.pathname.startsWith("/marketing")) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-volnar-domain", "marketing");
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   let supabaseResponse = NextResponse.next({ request });

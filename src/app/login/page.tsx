@@ -111,7 +111,7 @@ function LoginInner() {
       style={{
         background: "var(--bg)",
         backgroundImage:
-          "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(212,165,116,0.05), transparent 50%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(107,170,117,0.03), transparent 50%)",
+          "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(94,124,166,0.06), transparent 50%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(46,110,96,0.05), transparent 50%)",
       }}
     >
       <div className="w-full" style={{ maxWidth: 360 }}>
@@ -125,10 +125,11 @@ function LoginInner() {
             <VolnarLogo size={48} />
             <span
               style={{
-                fontFamily: "var(--font-sans)",
-                fontWeight: 600, fontSize: 24,
-                letterSpacing: "-0.035em", lineHeight: 1,
-                color: "var(--text)",
+                fontFamily: "var(--serif)",
+                fontWeight: 500, fontSize: 26,
+                letterSpacing: "-0.02em", lineHeight: 1,
+                fontVariationSettings: "'opsz' 28",
+                color: "var(--hero)",
               }}
             >
               Volnar
@@ -329,8 +330,8 @@ function LoginInner() {
               style={{
                 padding: "14px 18px", borderRadius: 12,
                 background: "var(--accent-soft)",
-                border: "1px solid rgba(212,165,116,0.18)",
-                color: "var(--accent)",
+                border: "1px solid rgba(46,110,96,0.22)",
+                color: "var(--accent-text)",
                 fontSize: 12, lineHeight: 1.55,
               }}
             >

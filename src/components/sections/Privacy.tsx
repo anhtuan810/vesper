@@ -1,6 +1,6 @@
 export function Privacy() {
   return (
-    <div className="max-w-[1200px] mx-auto" style={{ padding: "0 var(--wrap-pad)" }}>
+    <div className="max-w-[1200px] mx-auto" id="privacy" style={{ padding: "0 var(--wrap-pad)" }}>
       <section style={{ paddingBottom: "clamp(48px,7vw,80px)", paddingTop: 0 }}>
         <div className="text-center max-w-[880px] mx-auto reveal" style={{ paddingTop: "clamp(32px,5vw,56px)" }}>
           <div

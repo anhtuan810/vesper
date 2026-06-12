@@ -9,6 +9,190 @@
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
 }
 
+/* ── Sticky frosted topbar (matches the app's nav surface) ──────── */
+.mkt-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--nav-surface);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--border);
+}
+.mkt-topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--wrap-pad);
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.mkt-nav {
+  display: flex;
+  gap: 26px;
+  margin: 0 auto;
+}
+.mkt-nav a {
+  font-size: 13.5px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.mkt-nav a:hover { color: var(--text); }
+@media (max-width: 880px) {
+  .mkt-nav { display: none; }
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.mkt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.mkt-btn-lg {
+  min-height: 52px;
+  padding: 14px 24px;
+  font-size: 15px;
+}
+.mkt-btn-primary { background: var(--accent); color: #fff; }
+.mkt-btn-primary:hover { background: var(--accent-deep); }
+.mkt-btn-ghost {
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  background: transparent;
+}
+.mkt-btn-ghost:hover { background: var(--surface); }
+.mkt-btn-light { background: #fff; color: var(--hero); }
+.mkt-btn-light:hover { background: rgba(255,255,255,0.88); }
+.mkt-btn-ghost-light {
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  background: transparent;
+}
+.mkt-btn-ghost-light:hover { background: rgba(255,255,255,0.08); }
+
+/* ── Hero aurora — quiet ambient wash behind the hero ───────────── */
+.mkt-aurora {
+  position: absolute;
+  top: -18%;
+  left: -8%;
+  right: -8%;
+  height: 640px;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(64px);
+  opacity: 0.6;
+  background:
+    radial-gradient(420px 320px at 12% 22%, rgba(46, 110, 96, 0.16), transparent 70%),
+    radial-gradient(520px 380px at 80% 10%, rgba(94, 124, 166, 0.15), transparent 70%),
+    radial-gradient(380px 300px at 52% 38%, rgba(196, 160, 107, 0.10), transparent 70%);
+}
+[data-theme="dark"] .mkt-aurora { opacity: 0.45; }
+@media (prefers-reduced-motion: no-preference) {
+  .mkt-aurora { animation: mkt-aurora-drift 26s ease-in-out infinite alternate; }
+  @keyframes mkt-aurora-drift {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(0, 36px, 0) scale(1.04); }
+  }
+}
+
+/* ── Hero load-in (staggered rise, blur settles) ────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    opacity: 0;
+    animation: mkt-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .rise-1 { animation-delay: 0.05s; }
+  .rise-2 { animation-delay: 0.16s; }
+  .rise-3 { animation-delay: 0.28s; }
+  .rise-4 { animation-delay: 0.40s; }
+  @keyframes mkt-rise {
+    from { opacity: 0; transform: translateY(22px); filter: blur(5px); }
+    to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  }
+}
+
+/* ── Market ticker — slim infinite marquee under the hero ───────── */
+.mkt-ticker {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.mkt-ticker-track {
+  display: flex;
+  width: max-content;
+}
+.mkt-ticker-half {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 13px 40px 13px 0;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mkt-ticker-track { animation: mkt-ticker-scroll 48s linear infinite; }
+  .mkt-ticker:hover .mkt-ticker-track { animation-play-state: paused; }
+  @keyframes mkt-ticker-scroll {
+    to { transform: translateX(-50%); }
+  }
+}
+.mkt-tick {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.mkt-tick-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.mkt-tick-val {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.mkt-tick-val.pos { color: var(--positive-text); }
+.mkt-tick-val.neg { color: var(--negative-text); }
+
+/* ── Section eyebrows — app-style tracked micro-labels ──────────── */
+.mkt-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: clamp(12px, 2vw, 18px);
+}
+.mkt-eyebrow-n { color: var(--accent-text); }
+.mkt-eyebrow-rule {
+  width: 26px;
+  height: 1px;
+  background: var(--border-strong);
+}
+.mkt-eyebrow[data-light] { color: rgba(255, 255, 255, 0.45); }
+.mkt-eyebrow[data-light] .mkt-eyebrow-n { color: var(--accent-soft); }
+.mkt-eyebrow[data-light] .mkt-eyebrow-rule { background: rgba(255, 255, 255, 0.2); }
+.mkt-eyebrow[data-center] { justify-content: center; }
+
 /* ── Dark band ──────────────────────────────────────────────────── */
 .band-dark {
   position: relative;
@@ -21,7 +205,7 @@
   left: -10%;
   width: 60%;
   height: 80%;
-  background: radial-gradient(ellipse at center, rgba(180,210,190,0.10), transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(143,202,168,0.10), transparent 70%);
   pointer-events: none;
   filter: blur(40px);
 }
@@ -32,7 +216,7 @@
   right: -10%;
   width: 50%;
   height: 60%;
-  background: radial-gradient(ellipse at center, rgba(110,145,130,0.08), transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(122,175,212,0.08), transparent 70%);
   pointer-events: none;
   filter: blur(50px);
 }
@@ -87,8 +271,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .live-dot { animation: mkt-live-pulse 2s ease-in-out infinite; }
   @keyframes mkt-live-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(74,124,94,0.4); }
-    50%       { box-shadow: 0 0 0 6px rgba(74,124,94,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46,110,96,0.4); }
+    50%       { box-shadow: 0 0 0 6px rgba(46,110,96,0); }
   }
 }
 
@@ -183,13 +367,13 @@
 .sig-i-text { font-size: 14px; line-height: 1.45; color: rgba(255,255,255,0.78); }
 .sig-i-text strong { color: #fff; font-weight: 600; }
 
-/* ── Icon tints (coverage grid) ─────────────────────────────────── */
-.ic-tint-green    { background: rgba(74,124,94,0.14);  color: #4A7C5E; }
-.ic-tint-blue     { background: rgba(95,128,170,0.16); color: #5F80AA; }
-.ic-tint-gold     { background: rgba(190,150,80,0.16); color: #BE9650; }
-.ic-tint-red      { background: rgba(192,108,90,0.16); color: #C06C5A; }
-.ic-tint-brown    { background: rgba(140,108,80,0.16); color: #8C6C50; }
-.ic-tint-mortgage { background: rgba(192,108,90,0.16); color: #C06C5A; }
+/* ── Icon tints (coverage grid) — app category palette ──────────── */
+.ic-tint-green    { background: var(--cat-property-soft); color: var(--cat-property); }
+.ic-tint-blue     { background: var(--cat-markets-soft);  color: var(--cat-markets); }
+.ic-tint-gold     { background: var(--cat-reserves-soft); color: var(--cat-reserves); }
+.ic-tint-red      { background: var(--cat-crypto-soft);   color: var(--cat-crypto); }
+.ic-tint-brown    { background: var(--cat-tangible-soft); color: var(--cat-tangible); }
+.ic-tint-mortgage { background: var(--negative-soft);     color: var(--negative); }
 
 /* ── Broker mock ────────────────────────────────────────────────── */
 .broker-tile {

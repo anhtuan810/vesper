@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Terms of Service — Volnar",
   description:
     "The terms that govern your use of Volnar, a portfolio tracking and intelligence tool operated by NovaHub B.V.",
+  alternates: { canonical: "/terms" },
 };
 
 const LAST_UPDATED = "12 June 2026";

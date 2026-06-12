@@ -1,11 +1,14 @@
+import { Eyebrow } from "./Eyebrow";
+
 export function ChatInput() {
   return (
     <div style={{ background: "var(--bg-deep)" }}>
       <div className="max-w-[1200px] mx-auto" style={{ padding: "0 var(--wrap-pad)" }}>
-        <section style={{ padding: "clamp(24px,3.5vw,44px) 0" }}>
+        <section style={{ padding: "clamp(32px,5vw,56px) 0" }}>
 
           {/* Section header */}
           <div className="text-center" style={{ marginBottom: "clamp(14px,2.5vw,22px)" }}>
+            <Eyebrow n="03" center>Effortless input</Eyebrow>
             <h2
               className="font-serif font-medium text-hero leading-[1.02] tracking-[-0.025em] mx-auto"
               style={{ fontSize: "clamp(30px,6.5vw,46px)", fontVariationSettings: "'opsz' 56", maxWidth: 880 }}
@@ -106,7 +109,7 @@ export function ChatInput() {
             <div className="flex items-center justify-center gap-[10px] mb-[14px]">
               <span
                 className="text-[10.5px] uppercase tracking-[0.08em] font-medium"
-                style={{ padding: "4px 10px", borderRadius: 999, background: "rgba(74,124,94,0.15)", color: "var(--accent-text)" }}
+                style={{ padding: "4px 10px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)" }}
               >
                 Coming soon
               </span>

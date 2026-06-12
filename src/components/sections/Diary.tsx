@@ -1,11 +1,11 @@
+import { Eyebrow } from "./Eyebrow";
+
 export function Diary() {
   return (
-    <div className="max-w-[1200px] mx-auto" style={{ padding: "0 var(--wrap-pad)" }}>
-      <section
-        className="border-t border-border"
-        style={{ padding: "clamp(24px,3.5vw,44px) 0" }}
-      >
+    <div className="max-w-[1200px] mx-auto" id="diary" style={{ padding: "0 var(--wrap-pad)" }}>
+      <section style={{ padding: "clamp(32px,5vw,56px) 0" }}>
         <div style={{ marginBottom: "clamp(14px,2.5vw,22px)" }}>
+          <Eyebrow n="01">The diary</Eyebrow>
           <h2
             className="font-serif font-medium text-hero leading-[1.02] tracking-[-0.025em] max-w-[880px] reveal"
             style={{ fontSize: "clamp(30px,6.5vw,46px)", fontVariationSettings: "'opsz' 56" }}

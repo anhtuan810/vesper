@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Eyebrow } from "./Eyebrow";
 
 interface AcCardProps {
   tint: string;
@@ -27,7 +28,7 @@ function AcCard({ tint, icon, name, soon, isNew, liability, delay = 0 }: AcCardP
       {isNew && (
         <span
           className="absolute text-[10.5px] uppercase tracking-[0.06em] font-medium"
-          style={{ top: 14, right: 14, padding: "4px 10px", borderRadius: 999, background: "rgba(74,124,94,0.15)", color: "var(--accent-text)" }}
+          style={{ top: 14, right: 14, padding: "4px 10px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)" }}
         >
           New
         </span>
@@ -64,10 +65,11 @@ const SVG = ({ children }: { children: ReactNode }) => (
 
 export function AssetOverview() {
   return (
-    <div className="max-w-[1320px] mx-auto" style={{ padding: "0 var(--wrap-pad)" }}>
-      <section className="border-t border-border" style={{ padding: "clamp(24px,3.5vw,44px) 0" }}>
+    <div className="max-w-[1320px] mx-auto" id="coverage" style={{ padding: "0 var(--wrap-pad)" }}>
+      <section style={{ padding: "clamp(32px,5vw,56px) 0" }}>
 
         <div style={{ marginBottom: "clamp(14px,2.5vw,22px)" }}>
+          <Eyebrow n="05">Coverage</Eyebrow>
           <h2
             className="font-serif font-medium text-hero leading-[1.02] tracking-[-0.025em] reveal"
             style={{ fontSize: "clamp(30px,6.5vw,46px)", fontVariationSettings: "'opsz' 56" }}

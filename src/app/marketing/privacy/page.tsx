@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Privacy Policy — Volnar",
   description:
     "How Volnar (NovaHub B.V.) collects, uses, and protects your personal data, and the rights you have under the GDPR.",
+  alternates: { canonical: "/privacy" },
 };
 
 const LAST_UPDATED = "12 June 2026";
