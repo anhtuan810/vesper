@@ -1,5 +1,5 @@
 import { createBrowserClient, createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import type { DisplayCurrency } from "@/lib/money";
 
@@ -28,8 +28,26 @@ export async function getAuthUser(request: NextRequest) {
   return user;
 }
 
-// Client-side Supabase client (used in components)
-export function createBrowserSupabase() {
+// Client-side Supabase client (used in components).
+// Web: @supabase/ssr's cookie-backed client, so the session is shared with
+// middleware and server routes. Native (bundled app at capacitor://localhost):
+// cookies don't persist on the custom scheme — a full page load would drop the
+// session — so it lives in localStorage via plain supabase-js instead.
+// Module singleton on native so every call site (components, apiFetch, deep
+// link handler) shares one auth state; createBrowserClient memoizes itself.
+let nativeClient: SupabaseClient | null = null;
+
+export function createBrowserSupabase(): SupabaseClient {
+  if (process.env.NEXT_PUBLIC_BUILD_TARGET === "native") {
+    nativeClient ??= createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      // detectSessionInUrl off: the deep-link handler exchanges the OAuth
+      // code explicitly (src/lib/native/deeplink.ts).
+      { auth: { flowType: "pkce", detectSessionInUrl: false } }
+    );
+    return nativeClient;
+  }
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
