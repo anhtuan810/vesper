@@ -56,8 +56,10 @@ function buildThinPortfolioInsight(assets: Asset[]): { title: string; detail: st
   if (assets.length === 1) {
     const name = assets[0].name;
     const gap = topAbsent.join(" and ") || "other asset classes";
+    // Title must carry meaning on its own — a bare asset name ("Hosingenhof
+    // 19") reads as a glitch in the band, not a headline.
     return {
-      title: name,
+      title: "A single anchor",
       detail: `${name} is your only tracked position. Adding ${gap} would give Volnar a fuller picture of your net worth.`,
     };
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { isNative } from "@/lib/platform";
@@ -19,6 +19,13 @@ function LoginInner() {
       : null
   );
   const supabase = createBrowserSupabase();
+
+  // Render-time native check must wait for mount: isNative() reads the
+  // Capacitor bridge, which doesn't exist during SSR, and a direct call in
+  // render would mismatch hydration.
+  const [native, setNative] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setNative(isNative()); }, []);
 
   const callbackUrl = (typeof window !== "undefined")
     ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
@@ -51,7 +58,11 @@ function LoginInner() {
       try {
         await signInWithAppleNative(supabase, next);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Sign-in failed");
+        // ASAuthorizationError 1001 = user dismissed the Apple sheet; per HIG
+        // a cancel is silent, not an error state.
+        const msg = e instanceof Error ? e.message : "";
+        if (msg.includes("1001")) return;
+        setError(msg || "Sign-in failed");
       }
       return;
     }
@@ -258,6 +269,10 @@ function LoginInner() {
             Continue with Apple
           </button>
 
+          {/* Email magic-link is web-only: on the native app Apple/Google cover
+              everyone, and the email round-trip out of the WebView is the most
+              fragile path. */}
+          {!native && (<>
           <div className="flex items-center gap-3 my-3">
             <div className="flex-1" style={{ height: 1, background: "var(--border)" }} />
             <span
@@ -314,9 +329,10 @@ function LoginInner() {
                 fontSize: 12, lineHeight: 1.55,
               }}
             >
-              Check your email. We've sent you a link to continue. You can close this tab.
+              Check your email. We&apos;ve sent you a link to continue. You can close this tab.
             </div>
           )}
+          </>)}
 
           {error && (
             <div

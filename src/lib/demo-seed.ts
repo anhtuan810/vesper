@@ -1,4 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase";
+import { serializeMarketDetail } from "@/lib/market-highlights";
 
 // Fixed, deterministic demo portfolio for App Review. Reseeded on every /demo
 // entry so a reviewer always lands on the same populated account and any edits
@@ -142,9 +143,15 @@ function snapshotRows(userId: string): Array<Record<string, unknown>> {
 export async function seedDemoUser(userId: string): Promise<void> {
   const supabase = createServerSupabase();
 
-  await supabase.from("mutations").delete().eq("user_id", userId);
-  await supabase.from("snapshots").delete().eq("user_id", userId);
-  await supabase.from("assets").delete().eq("user_id", userId);
+  // A silently failed delete leaves stale rows (e.g. old cron-written
+  // snapshots) under the fresh seed — the chart then renders the leftover
+  // history with today's live tip as a bogus cliff. Fail the whole seed
+  // instead, so /demo falls back to /login rather than presenting a
+  // half-reset account.
+  for (const table of ["mutations", "snapshots", "highlights", "assets"]) {
+    const { error } = await supabase.from(table).delete().eq("user_id", userId);
+    if (error) throw error;
+  }
 
   const { data: createdAssets, error: assetError } = await supabase
     .from("assets")
@@ -247,6 +254,50 @@ export async function seedDemoUser(userId: string): Promise<void> {
 
   const { error: snapshotError } = await supabase.from("snapshots").insert(snapshotRows(userId));
   if (snapshotError) throw snapshotError;
+
+  // Market highlights are normally written by the daily 07:00 cron, so a
+  // freshly reseeded demo account would show an empty market section until the
+  // next run — bad for App Review. Seed deterministic, evergreen items tied to
+  // the demo holdings instead; they expire on the cron's usual 24h horizon and
+  // every /demo entry re-creates them.
+  const marketExpiry = new Date(Date.now() + 86_400_000).toISOString();
+  const marketSeeds = [
+    {
+      title: "ASML steady after earnings",
+      detail: serializeMarketDetail({
+        detail: "ASML held its level this week as semiconductor demand stayed firm. Your 40 shares moved with the sector, not against it.",
+        impact_eur: 410,
+        symbol: "ASML.AS",
+      }),
+    },
+    {
+      title: "World index grinds higher",
+      detail: serializeMarketDetail({
+        detail: "Global equities added modest gains, led by US large caps. IWDA is your broadest exposure, so most of this flows straight through.",
+        impact_eur: 290,
+        symbol: "IWDA.AS",
+      }),
+    },
+    {
+      title: "Bitcoin holds its range",
+      detail: serializeMarketDetail({
+        detail: "Bitcoin traded inside its recent range. Your position is capped near 5% of liquid assets, so the day-to-day swings stay background noise.",
+        impact_eur: -120,
+        symbol: "BTC-EUR",
+      }),
+    },
+  ];
+  const { error: highlightError } = await supabase.from("highlights").insert(
+    marketSeeds.map((h) => ({
+      user_id: userId,
+      type: "market",
+      title: h.title,
+      detail: h.detail,
+      expires_at: marketExpiry,
+      seen: false,
+    }))
+  );
+  if (highlightError) throw highlightError;
 
   // Make the account self-consistent for the chart (EUR display) and skip the
   // one-time AI disclosure gate so the reviewer isn't interrupted.
