@@ -28,6 +28,10 @@ const config: CapacitorConfig = {
     // in Info.plist's WKAppBoundDomains (app.volnar.nl). OAuth/magic-link run in
     // the system browser via @capacitor/browser, so they're unaffected.
     limitsNavigationsToAppBoundDomains: true,
+    // Disable the long-press link preview / "Open Link" context menu — a
+    // browser affordance that breaks the native feel (pairs with the
+    // touch-callout CSS in globals.css).
+    allowsLinkPreview: false,
   },
 };
 

@@ -7,6 +7,10 @@ import { isNative } from "@/lib/platform";
 
 const LOCK_KEY = "volnar.appLock";
 
+// Fired on window whenever the preference changes, so the mounted AppLock
+// overlay can keep its cached copy current without polling.
+export const APP_LOCK_CHANGED_EVENT = "volnar:applock-changed";
+
 export async function isAppLockEnabled(): Promise<boolean> {
   if (!isNative()) return false;
   try {
@@ -20,6 +24,7 @@ export async function isAppLockEnabled(): Promise<boolean> {
 export async function setAppLockEnabled(enabled: boolean): Promise<void> {
   if (enabled) await Preferences.set({ key: LOCK_KEY, value: "1" });
   else await Preferences.remove({ key: LOCK_KEY });
+  window.dispatchEvent(new CustomEvent(APP_LOCK_CHANGED_EVENT, { detail: { enabled } }));
 }
 
 export async function biometricAvailable(): Promise<boolean> {

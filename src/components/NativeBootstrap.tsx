@@ -13,6 +13,8 @@ import { installPushTapHandler } from "@/lib/native/push";
 export function NativeBootstrap() {
   useEffect(() => {
     if (!isNative()) return;
+    // Scopes native-only CSS (long-press/callout suppression in globals.css).
+    document.documentElement.classList.add("native-app");
     const deepLink = installDeepLinkHandler(createBrowserSupabase());
     const pushTap = installPushTapHandler();
     return () => {

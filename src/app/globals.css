@@ -254,3 +254,21 @@ body {
      never shift when a vertical scrollbar appears or disappears. */
   scrollbar-gutter: stable;
 }
+
+/* Native app shell only (html.native-app is set by NativeBootstrap inside the
+   Capacitor webview; plain browsers are unaffected). Suppress the browser-y
+   long-press behaviors: the iOS callout sheet on links/images and the
+   text-selection magnifier. Inputs keep selection so typing/editing works. */
+html.native-app * {
+  -webkit-touch-callout: none;
+}
+html.native-app {
+  -webkit-user-select: none;
+  user-select: none;
+}
+html.native-app input,
+html.native-app textarea,
+html.native-app [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
