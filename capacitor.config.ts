@@ -7,6 +7,11 @@ const config: CapacitorConfig = {
   server: {
     url: "https://app.volnar.nl",
     cleartext: false,
+    // Local branded fallback (bundled from public/) shown when the remote URL
+    // fails to load — offline, DNS failure, server down. Served from the
+    // capacitor://localhost bundle, so it works with no network at all; its
+    // Retry button navigates back to the remote URL.
+    errorPath: "offline.html",
   },
   ios: {
     // "never": don't let the WKWebView scroll view auto-inset content for the

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Volnar</title>
+<style>
+  :root {
+    --bg: #FAF6EB; --text: #1A1915; --dim: #6B675C;
+    --accent: #4A7C5E; --surface: #FFFFFF; --border: #E5DFCF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0E0E0C; --text: #FAF6EB; --dim: #9A968A;
+      --accent: #6BAA75; --surface: #1A1915; --border: #2A2822;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    text-align: center;
+  }
+  .mark {
+    width: 48px; height: 48px; margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 10px; }
+  p { font-size: 14px; line-height: 1.6; color: var(--dim); max-width: 300px; margin: 0 auto 28px; }
+  button {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--bg); background: var(--accent);
+    border: none; border-radius: 12px; padding: 13px 36px;
+    cursor: pointer;
+  }
+  button:active { opacity: 0.8; }
+  .status { font-size: 11px; color: var(--dim); margin-top: 18px; min-height: 14px;
+    font-family: ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+  <main>
+    <div class="mark">
+      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+        <rect width="44" height="44" rx="10" fill="#0E0E0C"/>
+        <path d="M11 13 L22 33 L33 13 H27 L22 23 L17 13 Z" fill="#FAF6EB"/>
+        <path d="M19.5 13 L22 18 L24.5 13 Z" fill="#4A7C5E"/>
+      </svg>
+    </div>
+    <h1>You&rsquo;re offline</h1>
+    <p>Volnar needs a connection to reach your portfolio. Check your network and try again.</p>
+    <button id="retry" type="button">Retry</button>
+    <div class="status" id="status"></div>
+  </main>
+  <script>
+    var APP_URL = "https://app.volnar.nl/";
+    var statusEl = document.getElementById("status");
+    function retry() {
+      statusEl.textContent = "Connecting…";
+      // If the app is still unreachable, Capacitor routes back to this page.
+      window.location.replace(APP_URL);
+    }
+    document.getElementById("retry").addEventListener("click", retry);
+    // Reconnect automatically the moment the network returns.
+    window.addEventListener("online", retry);
+  </script>
+</body>
+</html>

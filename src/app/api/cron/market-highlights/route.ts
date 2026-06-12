@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pushToUser } from "@/lib/apns";
 import { createServerSupabase } from "@/lib/supabase";
 import { fetchMarketHighlights, serializeMarketDetail, TRADEABLE_TYPES } from "@/lib/market-highlights";
 import { generatePortfolioInsights, valueToEur, type SnapshotRow, type AssetWithEur } from "@/lib/portfolio-insights";
@@ -130,6 +131,17 @@ export async function GET(req: NextRequest) {
         });
         if (!error) marketRowsInserted++;
         else console.error(`market: insert error for ${userId}:`, error.message);
+      }
+
+      // Push at most one notification per user per run — the lead market
+      // highlight, only when something fresh was inserted. No-op when APNs env
+      // is unconfigured or the user has no registered devices.
+      if (marketRowsInserted > 0 && highlights[0]) {
+        await pushToUser(supabase, userId, {
+          title: highlights[0].title,
+          body: highlights[0].detail,
+          link: "/diary",
+        });
       }
 
       // ── Per-user log line ────────────────────────────────────────────────────

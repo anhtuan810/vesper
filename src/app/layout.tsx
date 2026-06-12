@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
 import { AiConsentGate } from "@/components/AiConsentGate";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
+import { AppLock } from "@/components/AppLock";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
@@ -85,6 +86,7 @@ export default async function RootLayout({
           </UserProvider>
         </ThemeProvider>
         <NativeBootstrap />
+        <AppLock />
         <Analytics />
       </body>
     </html>

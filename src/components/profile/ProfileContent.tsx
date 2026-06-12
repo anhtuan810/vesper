@@ -11,6 +11,7 @@ import { findBaselineSnapshot, MIN_BASELINE_AGE_DAYS } from "@/lib/vitals/realGr
 import { PerspectiveCard } from "@/components/perspective/PerspectiveCard";
 import { profileBaselineCacheKey, PROFILE_BASELINE_TTL_MS } from "@/lib/constants";
 import type { Snapshot } from "@/lib/vitals/types";
+import { NativeSettingsRows } from "@/components/profile/NativeSettingsRows";
 
 const supabase = createBrowserSupabase();
 
@@ -466,6 +467,9 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
               </div>
             )}
           </div>
+
+          {/* Native-only rows: Face ID lock + notifications */}
+          <NativeSettingsRows />
         </div>
 
         {/* Account — email + sign out */}
