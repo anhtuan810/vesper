@@ -6,6 +6,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { installDeepLinkHandler } from "@/lib/native/deeplink";
 import { installPushTapHandler } from "@/lib/native/push";
 import { installNativePolish } from "@/lib/native/webview-polish";
+import { installOtaUpdater } from "@/lib/native/ota";
 
 // On native (Capacitor) only, wires up the auth deep-link handler so OAuth /
 // magic-link flows opened in the system browser can return into the app, and
@@ -17,6 +18,9 @@ export function NativeBootstrap() {
     const deepLink = installDeepLinkHandler(createBrowserSupabase());
     const pushTap = installPushTapHandler();
     const polish = installNativePolish();
+    // Fire-and-forget: confirms this launch is healthy (the updater's rollback
+    // safety net) and stages any newer OTA bundle for the next cold start.
+    installOtaUpdater();
     return () => {
       deepLink.then((h) => h.remove()).catch(() => {});
       pushTap.then((h) => h.remove()).catch(() => {});

@@ -9,6 +9,13 @@ const config: CapacitorConfig = {
   // src/lib/api.ts) — no remote server.url, so the App Store build is a real
   // app rather than a wrapper around the website.
   webDir: "out",
+  plugins: {
+    // Self-managed OTA: we check, download, and stage bundles ourselves
+    // (src/lib/native/ota.ts + scripts/ota-release.mjs) — no Capgo cloud.
+    CapacitorUpdater: {
+      autoUpdate: false,
+    },
+  },
   ios: {
     // "never": don't let the WKWebView scroll view auto-inset content for the
     // safe area. The web layer manages insets itself via env(safe-area-inset-*)
