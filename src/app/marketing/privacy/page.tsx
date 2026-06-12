@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         registered with the Dutch Chamber of Commerce (KVK) under number{" "}
         <strong>92194923</strong>, with its registered office in Eindhoven, the
         Netherlands. You can reach us at{" "}
-        <a href="mailto:support@volnar.nl">support@volnar.nl</a> for any privacy
+        <a href="mailto:support@novahub.nl">support@novahub.nl</a> for any privacy
         question or to exercise your rights.
       </p>
 
@@ -209,7 +209,7 @@ export default function PrivacyPage() {
       </ul>
       <p>
         To exercise any of these rights, email{" "}
-        <a href="mailto:support@volnar.nl">support@volnar.nl</a>. You also have the
+        <a href="mailto:support@novahub.nl">support@novahub.nl</a>. You also have the
         right to lodge a complaint with your local data protection authority. In
         the Netherlands this is the{" "}
         <strong>Autoriteit Persoonsgegevens</strong> (Dutch Data Protection
@@ -229,7 +229,7 @@ export default function PrivacyPage() {
           <br />
           KVK 92194923 · Eindhoven, the Netherlands
           <br />
-          <a href="mailto:support@volnar.nl">support@volnar.nl</a>
+          <a href="mailto:support@novahub.nl">support@novahub.nl</a>
         </p>
         <p style={{ margin: 0 }}>
           See also our{" "}

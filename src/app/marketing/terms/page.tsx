@@ -58,7 +58,7 @@ export default function TermsPage() {
         You are responsible for keeping your account secure, including your login
         credentials and any device you stay signed in on. You are responsible for
         the activity that happens under your account. Tell us promptly at{" "}
-        <a href="mailto:support@volnar.nl">support@volnar.nl</a> if you believe
+        <a href="mailto:support@novahub.nl">support@novahub.nl</a> if you believe
         your account has been accessed without your permission.
       </p>
       <p>
@@ -136,7 +136,7 @@ export default function TermsPage() {
           <br />
           KVK 92194923 · Eindhoven, the Netherlands
           <br />
-          <a href="mailto:support@volnar.nl">support@volnar.nl</a>
+          <a href="mailto:support@novahub.nl">support@novahub.nl</a>
         </p>
         <p style={{ margin: 0 }}>
           See also our{" "}
