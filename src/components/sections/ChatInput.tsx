@@ -34,12 +34,12 @@ export function ChatInput() {
 
             {/* User: text */}
             <div className="mb-3 max-w-[86%] ml-auto text-fg" style={{ fontSize: "clamp(13.5px,3.4vw,15px)", lineHeight: 1.5, background: "var(--surface-elev)", padding: "11px 15px", borderRadius: "16px 16px 4px 16px" }}>
-              Bought 50 ASML today at €642 each.
+              Bought 50 NVIDIA today at $158 each.
             </div>
 
             {/* Assistant */}
             <div className="mb-3 max-w-[86%] text-fg" style={{ fontSize: "clamp(13.5px,3.4vw,15px)", lineHeight: 1.5, padding: "4px 0" }}>
-              Updated. 312 shares now at a blended €598.
+              Updated. 134 shares now at a blended $96.
             </div>
 
             {/* User: PDF attachment */}
@@ -75,7 +75,7 @@ export function ChatInput() {
 
             {/* Assistant */}
             <div className="mb-3 max-w-[86%] text-fg" style={{ fontSize: "clamp(13.5px,3.4vw,15px)", lineHeight: 1.5, padding: "4px 0" }}>
-              Found <strong className="font-medium">ASML, VWCE, IEFA</strong>, €4.740 cash. Save all?{" "}
+              Found <strong className="font-medium">NVIDIA, VWCE, IEFA</strong>, €4.740 cash. Save all?{" "}
               <em className="font-serif italic text-dim">I&apos;ll ask before overwriting.</em>
             </div>
 

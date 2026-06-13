@@ -3,9 +3,12 @@ import { serializeMarketDetail } from "@/lib/market-highlights";
 
 // Fixed, deterministic demo portfolio for App Review. Reseeded on every /demo
 // entry so a reviewer always lands on the same populated account and any edits
-// they make never persist across entries. Every amount is EUR (the demo user's
-// display currency), and every snapshot carries a native_breakdown in EUR, so
-// the net-worth chart renders identically regardless of live FX or market data.
+// they make never persist across entries. The demo user displays in EUR; the US
+// stocks are held in USD (real tickers, live-priced) while the home, ETF, cash,
+// pension and crypto are EUR. Every snapshot carries a native_breakdown in EUR,
+// so the chart's HISTORY renders identically regardless of live FX; only today's
+// live tip reflects current US prices — a small, smooth continuation, never a
+// cliff (the US sleeve is ~10% of net worth).
 //
 // The mutation invariant holds for seeded data: each seeded asset has a matching
 // "add" mutation row recording how it entered the portfolio.
@@ -19,15 +22,19 @@ function assetSeeds(): Array<Record<string, unknown>> {
   return [
     {
       type: "real_estate",
-      name: "Apartment — Eindhoven",
+      name: "Apartment — Amsterdam",
       value: 575000,
       currency: "EUR",
       country: "NL",
-      address: "Vestdijk 21, 5611 CA Eindhoven, Netherlands",
-      latitude: 51.4381,
-      longitude: 5.4797,
+      address: "Eerste Helmersstraat 95, 1054 DZ Amsterdam, Netherlands",
+      latitude: 52.3625,
+      longitude: 4.8718,
       property_type: "apartment",
       size_sqm: 96,
+      // buy_price + buy_date make the per-year indicative value chart resolve
+      // (the CBS estimate engine needs a purchase year to anchor the series).
+      buy_price: 498000,
+      buy_date: "2022-09-01",
       mortgage_balance: 312000,
       mortgage_rate: 3.6,
       monthly_payment: 1685,
@@ -40,14 +47,57 @@ function assetSeeds(): Array<Record<string, unknown>> {
     },
     {
       type: "stocks",
-      name: "ASML Holding",
-      value: 38400,
-      currency: "EUR",
-      country: "NL",
-      symbol: "ASML.AS",
-      units: 40,
-      buy_price: 612,
-      buy_date: "2025-10-20",
+      name: "NVIDIA",
+      value: 13440,
+      currency: "USD",
+      symbol: "NVDA",
+      units: 84,
+      buy_price: 96,
+      buy_date: "2025-10-02",
+      buy_price_source: "user",
+    },
+    {
+      type: "stocks",
+      name: "Apple",
+      value: 9870,
+      currency: "USD",
+      symbol: "AAPL",
+      units: 42,
+      buy_price: 165,
+      buy_date: "2025-08-11",
+      buy_price_source: "user",
+    },
+    {
+      type: "stocks",
+      name: "Microsoft",
+      value: 8645,
+      currency: "USD",
+      symbol: "MSFT",
+      units: 19,
+      buy_price: 360,
+      buy_date: "2025-09-29",
+      buy_price_source: "user",
+    },
+    {
+      type: "stocks",
+      name: "Amazon.com",
+      value: 7220,
+      currency: "USD",
+      symbol: "AMZN",
+      units: 38,
+      buy_price: 150,
+      buy_date: "2026-01-12",
+      buy_price_source: "user",
+    },
+    {
+      type: "stocks",
+      name: "Tesla",
+      value: 6480,
+      currency: "USD",
+      symbol: "TSLA",
+      units: 24,
+      buy_price: 230,
+      buy_date: "2026-02-28",
       buy_price_source: "user",
     },
     {
@@ -110,14 +160,16 @@ const MONTHLY_TOTALS: Array<[string, number]> = [
   ["2026-06-01", 421000],
 ];
 
-// Fixed category proportions (sum to 1.0), matching today's composition.
+// Fixed category proportions (sum to 1.0), matching today's composition
+// (property equity €263k, ETF €47k, five US stocks ≈ €42k, pension €42k,
+// crypto €21.5k, cash €18.5k on a ≈ €434k net worth).
 const BREAKDOWN_RATIOS: Record<string, number> = {
-  real_estate: 0.61,
-  etf: 0.115,
-  pension: 0.1,
-  stocks: 0.085,
-  crypto: 0.05,
-  cash: 0.04,
+  real_estate: 0.606,
+  etf: 0.109,
+  stocks: 0.097,
+  pension: 0.097,
+  crypto: 0.049,
+  cash: 0.042,
 };
 
 function snapshotRows(userId: string): Array<Record<string, unknown>> {
@@ -207,12 +259,28 @@ export async function seedDemoUser(userId: string): Promise<void> {
       44000,
     ),
     mut(
-      "Apartment — Eindhoven",
+      "Apple",
+      "2025-08-11",
+      6930,
+      42,
+      "Started a core Apple position. Boring in the best way — a cash machine with a sticky ecosystem and relentless buybacks.",
+      52000,
+    ),
+    mut(
+      "Apartment — Amsterdam",
       "2025-08-20",
       575000,
       null,
       "Added the apartment and current mortgage so net worth finally reflects our home equity, not just the liquid accounts.",
       268000,
+    ),
+    mut(
+      "Microsoft",
+      "2025-09-29",
+      6840,
+      19,
+      "Bought Microsoft for the cloud + Copilot story. Enterprise AI revenue that actually shows up in the numbers, not just the headlines.",
+      301000,
     ),
     mut(
       "Brand New Day DC pension",
@@ -223,13 +291,13 @@ export async function seedDemoUser(userId: string): Promise<void> {
       309000,
     ),
     mut(
-      "ASML Holding",
-      "2025-10-20",
-      36500,
-      40,
-      "Bought ASML on the post-earnings dip. Long-term conviction in the AI supply chain — I work adjacent to semis and understand the moat.",
+      "NVIDIA",
+      "2025-10-02",
+      8064,
+      84,
+      "Bought NVIDIA on the dip — the clearest pick-and-shovel play on AI compute. I'd rather own the infrastructure than guess which model wins.",
       346000,
-      "Semiconductors had sold off broadly on a soft near-term guide; I treated it as an entry, not a warning.",
+      "AI chips had sold off broadly on a soft near-term guide; I treated it as an entry, not a warning.",
     ),
     mut(
       "Emergency fund",
@@ -240,12 +308,28 @@ export async function seedDemoUser(userId: string): Promise<void> {
       365000,
     ),
     mut(
+      "Amazon.com",
+      "2026-01-12",
+      5700,
+      38,
+      "Added Amazon — AWS margins plus a retail business that finally runs lean. A long compounder I'm happy to leave alone.",
+      388000,
+    ),
+    mut(
       "Bitcoin",
       "2026-02-14",
       19800,
       0.32,
       "Opened a small Bitcoin position, deliberately capped near 5% of liquid assets. High conviction, but sized so a drawdown won't hurt.",
       398000,
+    ),
+    mut(
+      "Tesla",
+      "2026-02-28",
+      5520,
+      24,
+      "A small Tesla position — the volatile, high-conviction corner of the book. Sized so a bad delivery quarter doesn't sting.",
+      404000,
     ),
   ];
 
@@ -263,11 +347,11 @@ export async function seedDemoUser(userId: string): Promise<void> {
   const marketExpiry = new Date(Date.now() + 86_400_000).toISOString();
   const marketSeeds = [
     {
-      title: "ASML steady after earnings",
+      title: "NVIDIA steady after earnings",
       detail: serializeMarketDetail({
-        detail: "ASML held its level this week as semiconductor demand stayed firm. Your 40 shares moved with the sector, not against it.",
+        detail: "NVIDIA held its level this week as AI-chip demand stayed firm. Your 84 shares moved with the sector, not against it.",
         impact_eur: 410,
-        symbol: "ASML.AS",
+        symbol: "NVDA",
       }),
     },
     {

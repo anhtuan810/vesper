@@ -73,7 +73,7 @@ export function QnA() {
               answer={
                 <>
                   <Who /><br />
-                  <strong className="text-accent-text font-semibold">ASML at 41% of the public-markets sleeve.</strong>{" "}
+                  <strong className="text-accent-text font-semibold">NVIDIA at 41% of the public-markets sleeve.</strong>{" "}
                   Six percentage points above the 35% comfort you mentioned in October.
                   <em className="font-serif italic text-dim block mt-[6px]">Worth a look before the next add.</em>
                 </>
@@ -85,7 +85,7 @@ export function QnA() {
               answer={
                 <>
                   <Who /><br />
-                  The 1,8-point lead is almost entirely ASML.{" "}
+                  The 1,8-point lead is almost entirely NVIDIA.{" "}
                   <em className="font-serif italic text-dim">Strip it out and you trail by 0,6.</em>
                 </>
               }

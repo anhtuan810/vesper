@@ -118,25 +118,25 @@ export function MarketEvents() {
               ]}
             />
             <SignalCard
-              badgeText="A"
-              source="ASML · Q1 earnings"
-              time="Yesterday · 07:00"
-              headline="Quarterly beat; bookings up 12% on AI capex."
+              badgeText="N"
+              source="NVIDIA · Q1 earnings"
+              time="Yesterday · 22:00"
+              headline="Quarterly beat; data-center revenue up 12%."
               impacts={[
                 {
                   dir: "pos",
-                  label: "Your 312 ASML shares",
+                  label: "Your 180 NVIDIA shares",
                   text: <>Worth <strong>+€8.300</strong> more at market open.</>,
                 },
                 {
                   dir: "neg",
                   label: "Concentration",
-                  text: <>Semis are now <strong>43%</strong> of public markets — above the <strong>35%</strong> comfort you set in October.</>,
+                  text: <>AI chips are now <strong>43%</strong> of public markets — above the <strong>35%</strong> comfort you set in October.</>,
                 },
                 {
                   dir: "pos",
                   label: "Sector tailwind",
-                  text: "EU expanded its chip subsidy program last week — a tailwind for the sector.",
+                  text: "Hyperscalers raised AI capex guidance this week — a tailwind for the sector.",
                 },
               ]}
             />

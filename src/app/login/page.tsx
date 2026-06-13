@@ -5,16 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { isNative } from "@/lib/platform";
 import { apiFetch } from "@/lib/api";
-import { signInWithGoogleNative, signInWithAppleNative, signInWithMagicLinkNative } from "@/lib/native/auth-native";
+import { signInWithGoogleNative, signInWithAppleNative } from "@/lib/native/auth-native";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/";
-  const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
     params.get("error") === "native_auth_failed"
       ? "Sign-in didn't complete. Please try again."
@@ -31,10 +28,6 @@ function LoginInner() {
 
   const callbackUrl = (typeof window !== "undefined")
     ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-    : undefined;
-
-  const confirmUrl = (typeof window !== "undefined")
-    ? `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`
     : undefined;
 
   async function signInWithGoogle() {
@@ -78,81 +71,65 @@ function LoginInner() {
     if (error) setError(error.message);
   }
 
-  async function signInWithEmail() {
-    if (!email) return;
-    setLoading(true);
-    setError(null);
-    if (isNative()) {
-      try {
-        await signInWithMagicLinkNative(supabase, email, next);
-        setEmailSent(true);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Sign-in failed");
-      }
-      setLoading(false);
-      return;
-    }
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: confirmUrl },
-    });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-    setEmailSent(true);
-    setLoading(false);
-  }
+  const oauthButtonStyle: React.CSSProperties = {
+    padding: "15px 22px",
+    borderRadius: 14,
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
+    color: "var(--text)",
+    fontSize: 14.5,
+    fontWeight: 500,
+    cursor: "pointer",
+    minHeight: 54,
+    boxShadow: "0 1px 2px rgba(26,24,22,0.04)",
+  };
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-6"
+      className="min-h-dvh flex items-center justify-center"
       style={{
         background: "var(--bg)",
         backgroundImage:
-          "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(94,124,166,0.06), transparent 50%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(46,110,96,0.05), transparent 50%)",
+          "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(94,124,166,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(46,110,96,0.06), transparent 55%)",
+        padding: "clamp(24px,6vw,56px) 24px",
       }}
     >
-      <div className="w-full" style={{ maxWidth: 360 }}>
-        <div className="text-center mb-12">
-          <div
-            style={{
-              display: "flex", flexDirection: "column",
-              alignItems: "center", gap: 16, marginBottom: 20,
-            }}
-          >
-            <VolnarLogo size={48} />
+      <div className="w-full" style={{ maxWidth: 408 }}>
+        <div className="text-center" style={{ marginBottom: 28 }}>
+          <div className="flex flex-col items-center" style={{ gap: 18, marginBottom: 22 }}>
+            <VolnarLogo size={56} />
             <span
               style={{
                 fontFamily: "var(--serif)",
-                fontWeight: 500, fontSize: 26,
+                fontWeight: 500, fontSize: 30,
                 letterSpacing: "-0.02em", lineHeight: 1,
-                fontVariationSettings: "'opsz' 28",
+                fontVariationSettings: "'opsz' 32",
                 color: "var(--hero)",
               }}
             >
               Volnar
             </span>
           </div>
-          <p
-            className="font-serif italic text-dim"
-            style={{ fontSize: 14, lineHeight: 1.5, fontVariationSettings: "'opsz' 144" }}
+          <h1
+            className="font-serif text-hero mx-auto"
+            style={{ fontSize: "clamp(26px,7vw,32px)", fontWeight: 500, lineHeight: 1.12, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 36", maxWidth: 340 }}
           >
-            Quiet confidence over your portfolio.
-          </p>
+            Quiet confidence{" "}
+            <span className="italic font-normal text-dim">over your portfolio.</span>
+          </h1>
+
           <div
-            className="mx-auto mt-6 max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
-            style={{ boxShadow: "0 1px 2px rgba(26,24,22,0.04), 0 8px 20px rgba(26,24,22,0.05)" }}
+            className="mx-auto mt-7 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+            style={{ maxWidth: 360, boxShadow: "0 1px 2px rgba(26,24,22,0.04), 0 18px 40px -20px rgba(26,24,22,0.18)" }}
           >
             {/* Meta row */}
-            <div className="flex items-center gap-1.5 px-4 pt-3.5 pb-2.5 text-[10.5px] font-medium uppercase tracking-[0.025em] text-[var(--text-dim)]">
+            <div className="flex items-center gap-1.5 px-4 pt-4 pb-2.5 text-[10.5px] font-medium uppercase tracking-[0.05em] text-[var(--text-dim)]">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
               Live · today
             </div>
 
             {/* Asset class rows */}
-            <div className="flex flex-col gap-1.5 px-4 pb-2.5">
+            <div className="flex flex-col gap-2 px-4 pb-3">
               {[
                 {
                   name: "Property",
@@ -201,7 +178,7 @@ function LoginInner() {
                   <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-[var(--surface-elev)] text-[var(--text-dim)]">
                     {row.icon}
                   </div>
-                  <div className="flex-1 text-[13px] font-medium text-[var(--text)]">{row.name}</div>
+                  <div className="flex-1 text-[13px] font-medium text-[var(--text)] text-left">{row.name}</div>
                   <div
                     className={`text-[13px] font-semibold tabular-nums tracking-tight ${
                       row.tone === "up"
@@ -218,37 +195,30 @@ function LoginInner() {
             </div>
 
             {/* Worth knowing band */}
-            <div className="border-t border-[var(--border)] bg-[var(--surface-elev)] px-4 py-3">
-              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.012em] text-[var(--text-dim)]">
+            <div className="border-t border-[var(--border)] bg-[var(--surface-elev)] px-4 py-3 text-left">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--text-dim)]">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
                 Worth knowing
               </div>
               <p className="m-0 font-serif text-[13px] italic leading-snug text-[var(--text-dim)]">
-                <strong className="font-semibold text-[var(--text)]">NVIDIA reports tonight</strong>. Your largest position, ASML, sits in the same AI supply chain.
+                <strong className="font-semibold not-italic text-[var(--text)]">NVIDIA reports tonight</strong>. It&apos;s your largest holding — the AI-chip read-through everyone&apos;s watching.
               </p>
             </div>
           </div>
 
-          <p className="mx-auto mt-4 mb-2 max-w-[320px] px-2 text-center text-[12.5px] leading-snug text-[var(--text-dim)]">
+          <p className="mx-auto mt-5 max-w-[330px] text-center text-[13px] leading-snug text-[var(--text-dim)]">
             Every asset. Every market event.{" "}
             <strong className="font-medium text-[var(--text)]">Every reason why.</strong>
           </p>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <button
             onClick={signInWithApple}
             className="w-full flex items-center justify-center gap-2.5 transition-colors hover:bg-surface-elev"
-            style={{
-              padding: "12px 20px", borderRadius: 12,
-              background: "var(--surface)",
-              border: "1px solid var(--border-strong)",
-              color: "var(--text)",
-              fontSize: 13, fontWeight: 500,
-              cursor: "pointer",
-            }}
+            style={oauthButtonStyle}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
             </svg>
             Continue with Apple
@@ -257,16 +227,9 @@ function LoginInner() {
           <button
             onClick={signInWithGoogle}
             className="w-full flex items-center justify-center gap-2.5 transition-colors hover:bg-surface-elev"
-            style={{
-              padding: "12px 20px", borderRadius: 12,
-              background: "var(--surface)",
-              border: "1px solid var(--border-strong)",
-              color: "var(--text)",
-              fontSize: 13, fontWeight: 500,
-              cursor: "pointer",
-            }}
+            style={oauthButtonStyle}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -275,77 +238,12 @@ function LoginInner() {
             Continue with Google
           </button>
 
-          {/* Email magic-link is web-only: on the native app Apple/Google cover
-              everyone, and the email round-trip out of the WebView is the most
-              fragile path. */}
-          {!native && (<>
-          <div className="flex items-center gap-3 my-3">
-            <div className="flex-1" style={{ height: 1, background: "var(--border)" }} />
-            <span
-              className="font-mono uppercase text-faint"
-              style={{ fontSize: 9, letterSpacing: "0.18em" }}
-            >
-              or
-            </span>
-            <div className="flex-1" style={{ height: 1, background: "var(--border)" }} />
-          </div>
-
-          {!emailSent ? (
-            <>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && signInWithEmail()}
-                placeholder="your@email.com"
-                disabled={loading}
-                style={{
-                  width: "100%", padding: "12px 14px", borderRadius: 12,
-                  background: "var(--surface)",
-                  border: "1px solid var(--border-strong)",
-                  color: "var(--text)",
-                  fontSize: 13, outline: "none", boxSizing: "border-box",
-                  fontFamily: "var(--sans)",
-                }}
-              />
-              <button
-                onClick={signInWithEmail}
-                disabled={loading || !email}
-                className="w-full transition-opacity"
-                style={{
-                  padding: "12px 20px", borderRadius: 12, border: "none",
-                  background: loading || !email ? "var(--surface-elev)" : "var(--accent)",
-                  color: loading || !email ? "var(--text-faint)" : "var(--bg)",
-                  fontSize: 13, fontWeight: 600, fontFamily: "var(--mono)",
-                  letterSpacing: "0.04em",
-                  cursor: loading || !email ? "default" : "pointer",
-                  opacity: loading || !email ? 0.6 : 1,
-                }}
-              >
-                {loading ? "Sending…" : "Continue with email"}
-              </button>
-            </>
-          ) : (
-            <div
-              style={{
-                padding: "14px 18px", borderRadius: 12,
-                background: "var(--accent-soft)",
-                border: "1px solid rgba(46,110,96,0.22)",
-                color: "var(--accent-text)",
-                fontSize: 12, lineHeight: 1.55,
-              }}
-            >
-              Check your email. We&apos;ve sent you a link to continue. You can close this tab.
-            </div>
-          )}
-          </>)}
-
           {error && (
             <div
               className="font-mono"
               style={{
                 fontSize: 11, color: "var(--negative)",
-                padding: "8px 12px", borderRadius: 8,
+                padding: "10px 14px", borderRadius: 10,
                 background: "rgba(201,122,110,0.08)",
                 border: "1px solid rgba(201,122,110,0.18)",
               }}
@@ -355,7 +253,7 @@ function LoginInner() {
           )}
         </div>
 
-        <div className="text-center mt-6">
+        <div className="text-center mt-7">
           <a
             href="/demo"
             onClick={async (e) => {
@@ -375,10 +273,13 @@ function LoginInner() {
                 setError("The demo account isn't available right now.");
               }
             }}
-            className="font-mono text-faint transition-colors hover:text-dim"
-            style={{ fontSize: 11, letterSpacing: "0.04em", textDecoration: "underline", textUnderlineOffset: 3 }}
+            className="inline-flex items-center gap-1.5 text-dim transition-colors hover:text-fg"
+            style={{ fontSize: 13, textDecoration: "none" }}
           >
-            View a demo account
+            Explore a live demo account
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </a>
         </div>
 

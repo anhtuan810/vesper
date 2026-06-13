@@ -1,3 +1,5 @@
+import { AppStoreBadges } from "./AppStoreBadges";
+
 export function ClosingCta() {
   return (
     <div className="band-dark" id="get-started" style={{ background: "var(--hero)" }}>
@@ -46,16 +48,22 @@ export function ClosingCta() {
               View the live demo
             </a>
           </div>
+
+          {/* App store badges — the download moment */}
+          <div className="reveal reveal-delay-2 flex justify-center" style={{ marginTop: "clamp(24px,4vw,32px)" }}>
+            <AppStoreBadges light />
+          </div>
+
           <p
             className="font-mono uppercase reveal reveal-delay-3"
             style={{
               fontSize: 10,
               letterSpacing: "0.18em",
               color: "rgba(255,255,255,0.4)",
-              marginTop: "clamp(24px,4vw,32px)",
+              marginTop: "clamp(20px,3vw,26px)",
             }}
           >
-            Web &amp; iPhone &nbsp;·&nbsp; EU-hosted &nbsp;·&nbsp; Read-only by design
+            iPhone &amp; web today &nbsp;·&nbsp; Android soon &nbsp;·&nbsp; EU-hosted
           </p>
         </section>
       </div>

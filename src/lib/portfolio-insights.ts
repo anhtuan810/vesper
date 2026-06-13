@@ -161,7 +161,7 @@ const eur = (n: number) => `€${nlNum(n)}`;
 const pctStr = (n: number) => `${n}%`;
 
 export interface InsightCard {
-  title: string;   // short headline, e.g. "Concentration in ASML"
+  title: string;   // short headline, e.g. "Concentration in NVIDIA"
   detail: string;  // one-sentence explanation, figures pre-formatted
 }
 

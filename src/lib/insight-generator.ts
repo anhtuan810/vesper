@@ -105,8 +105,8 @@ Style rules:
 
 Good examples:
 {"title": "Public markets", "detail": "Public markets are up 12% this quarter, ahead of typical benchmarks. The compounding is starting to show in your trajectory."}
-{"title": "Real estate and ASML", "detail": "Real estate and ASML together make up 51% of your gross portfolio. The other half carries your diversification."}
-{"title": "ASML concentration", "detail": "ASML is now 24% of net worth, near the threshold where one position drives everything. Worth watching as it grows."}
+{"title": "Real estate and NVIDIA", "detail": "Real estate and NVIDIA together make up 51% of your gross portfolio. The other half carries your diversification."}
+{"title": "NVIDIA concentration", "detail": "NVIDIA is now 24% of net worth, near the threshold where one position drives everything. Worth watching as it grows."}
 
 Reject if "detail" merely restates "title", or if the tone slides into either advice or vague positivity ('great progress!').
 

@@ -1,13 +1,13 @@
 const TICKS: { label: string; value: string; tone?: "pos" | "neg" }[] = [
   { label: "ECB", value: "+25 bps · your mortgage", tone: "neg" },
-  { label: "ASML · earnings", value: "+€8.300 on 312 sh", tone: "pos" },
-  { label: "BTC", value: "above $60k · +€4.100", tone: "pos" },
+  { label: "NVIDIA · earnings", value: "+€8.300 on 180 sh", tone: "pos" },
+  { label: "Bitcoin", value: "above $60k · +€4.100", tone: "pos" },
   { label: "EUR/USD", value: "1,09" },
-  { label: "Housing · NL", value: "+0,3% q/q", tone: "pos" },
-  { label: "AEX", value: "+0,8%", tone: "pos" },
+  { label: "Apple", value: "+1,4% · +€2.100", tone: "pos" },
+  { label: "S&P 500", value: "+0,8%", tone: "pos" },
   { label: "US CPI", value: "2,4% y/y" },
-  { label: "NVIDIA", value: "reports tonight · ASML supply chain" },
-  { label: "Dutch State 2,5%", value: "−€180 repriced", tone: "neg" },
+  { label: "NVIDIA", value: "reports tonight · your largest holding" },
+  { label: "Tesla", value: "−2,1% on deliveries", tone: "neg" },
   { label: "Semis index", value: "+18% YTD", tone: "pos" },
 ];
 

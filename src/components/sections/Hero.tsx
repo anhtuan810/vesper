@@ -1,6 +1,7 @@
+import { AppStoreBadges } from "./AppStoreBadges";
+
 export function Hero() {
-  return (
-    <div className="relative">
+  return (    <div className="relative">
       {/* Ambient wash — accent + steel + amber, blurred, drifting slowly */}
       <div className="mkt-aurora" aria-hidden="true" />
 
@@ -37,11 +38,12 @@ export function Hero() {
                   View the live demo
                 </a>
               </div>
+              <AppStoreBadges className="rise rise-4 mt-7" />
               <p
                 className="rise rise-4 font-serif italic text-faint"
-                style={{ fontSize: 13, marginTop: 18 }}
+                style={{ fontSize: 13, marginTop: 16 }}
               >
-                Pilot access · invite only · web &amp; iPhone
+                On iPhone and the web — Android coming soon.
               </p>
             </div>
 
@@ -119,9 +121,9 @@ export function Hero() {
                   {/* Asset rows */}
                   <div className="border-t border-border pt-[6px]">
                     {[
-                      { color: "var(--cat-property)", name: "House · Lelystad",  value: "€308.000" },
-                      { color: "var(--cat-markets)",  name: "ASML · 312 sh",     value: "€186.624" },
-                      { color: "var(--cat-crypto)",   name: "BTC · 0,84",        value: "€48.310" },
+                      { color: "var(--cat-property)", name: "Apartment · Amsterdam", value: "€308.000" },
+                      { color: "var(--cat-markets)",  name: "NVIDIA · 180 sh",       value: "€186.624" },
+                      { color: "var(--cat-crypto)",   name: "Bitcoin · 0,84",        value: "€48.310" },
                     ].map((row, i, arr) => (
                       <div
                         key={row.name}
@@ -149,8 +151,8 @@ export function Hero() {
                       Worth knowing
                     </div>
                     <p className="m-0 font-serif italic leading-snug text-dim" style={{ fontSize: 12.5 }}>
-                      <strong className="not-italic font-semibold text-fg">ECB decides Thursday</strong> — your mortgage
-                      resets in March 2027.
+                      <strong className="not-italic font-semibold text-fg">NVIDIA reports tonight</strong> — your largest
+                      holding, ahead of the AI-chip read-through.
                     </p>
                   </div>
                 </div>
@@ -177,8 +179,8 @@ export function Hero() {
                       </svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="chip-cat">ASML · earnings beat</div>
-                      <div className="chip-msg"><strong>+€8.300</strong> on your 312 shares.</div>
+                      <div className="chip-cat">NVIDIA · earnings beat</div>
+                      <div className="chip-msg"><strong>+€8.300</strong> on your 180 shares.</div>
                     </div>
                   </div>
 
@@ -190,7 +192,7 @@ export function Hero() {
                       </svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="chip-cat">BTC · momentum</div>
+                      <div className="chip-cat">Bitcoin · momentum</div>
                       <div className="chip-msg">Above $60k — <strong>+€4.100</strong>.</div>
                     </div>
                   </div>

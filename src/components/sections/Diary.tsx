@@ -41,10 +41,10 @@ export function Diary() {
               className="font-serif font-medium text-hero leading-[1.1] tracking-[-0.01em] mb-1"
               style={{ fontSize: "clamp(22px,4vw,26px)", fontVariationSettings: "'opsz' 28" }}
             >
-              ASML Holding
+              NVIDIA
             </div>
             <div className="text-[13px] text-dim mb-[18px]">
-              −20 shares at €621 &nbsp;·&nbsp; −€12.420
+              −80 shares at €150 &nbsp;·&nbsp; −€12.000
             </div>
             <div className="uppercase tracking-[0.1em] font-medium mb-2" style={{ fontSize: "10.5px", color: "var(--text-faint)" }}>
               Your reasoning, in your words
@@ -85,10 +85,10 @@ export function Diary() {
             <div className="flex flex-col">
               {[
                 { k: "ECB rate",     v: "4,00%" },
-                { k: "ASML price",   v: <>€621 · <em className="italic text-dim">−12% from peak</em></> },
+                { k: "NVIDIA price", v: <>€150 · <em className="italic text-dim">−12% from peak</em></> },
                 { k: "Semis index",  v: "+18% YTD" },
                 { k: "In the news",  v: <em className="italic text-dim">&ldquo;AI capex cycle peaking&rdquo; — FT, Oct 11</em> },
-                { k: "Your portfolio", v: "Semis 45% of markets sleeve" },
+                { k: "Your portfolio", v: "AI chips 45% of markets sleeve" },
               ].map((row, i, arr) => (
                 <div
                   key={row.k}
@@ -107,7 +107,7 @@ export function Diary() {
 
             <div className="mt-[14px] pt-3 border-t border-border font-serif text-fg leading-[1.5]" style={{ fontSize: "13.5px", fontVariationSettings: "'opsz' 14" }}>
               Looking back:{" "}
-              <strong style={{ color: "var(--accent-text)", fontWeight: 600 }}>ASML rose 14% in the six months after.</strong>
+              <strong style={{ color: "var(--accent-text)", fontWeight: 600 }}>NVIDIA rose 14% in the six months after.</strong>
               <em className="italic text-dim block mt-[2px]">You reassessed in March and added back.</em>
             </div>
           </div>

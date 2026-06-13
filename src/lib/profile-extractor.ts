@@ -62,7 +62,7 @@ PROFILE FIELDS YOU CAN USE (all optional):
 - approach: how they invest — philosophy, style, time horizon, risk posture.
   Example: 'Buy-and-hold, quality compounders, low turnover, long horizon.'
 - currently_exploring: what they are actively researching or thinking through right now.
-  Examples: 'Selling six properties (~€3M); deciding where the proceeds land.' / 'Considering ASML at current levels; the position would double if executed.'
+  Examples: 'Selling six properties (~€3M); deciding where the proceeds land.' / 'Considering NVIDIA at current levels; the position would double if executed.'
 - worth_raising: recurring themes, blind spots, or tensions worth surfacing.
   Examples: 'Selling property removes the leverage risk, but the proceeds need a thoughtful new home.' / 'Single-position concentration is high; worth knowing as the position grows.'
 

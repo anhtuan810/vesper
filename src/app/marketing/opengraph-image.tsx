@@ -171,7 +171,7 @@ export default async function Image() {
               color: "#232826",
             }}
           >
-            <span>House · Lelystad</span>
+            <span>Home · Amsterdam</span>
             <span>€308.000</span>
           </div>
           <div
@@ -183,7 +183,7 @@ export default async function Image() {
               color: "#232826",
             }}
           >
-            <span>ASML · 312 sh</span>
+            <span>NVIDIA · 180 sh</span>
             <span>€186.624</span>
           </div>
         </div>

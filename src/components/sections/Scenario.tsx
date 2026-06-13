@@ -24,7 +24,7 @@ export function Scenario() {
 
           <div className="grid gap-4 min-[720px]:grid-cols-3 min-[720px]:gap-[14px]">
 
-            {/* Card 1: ASML concentration */}
+            {/* Card 1: NVIDIA concentration */}
             <div
               className="reveal rounded-2xl flex flex-col gap-[14px]"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "clamp(18px,3vw,24px)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 12px rgba(0,0,0,0.25)" }}
@@ -33,7 +33,7 @@ export function Scenario() {
                 className="font-serif italic pb-4"
                 style={{ fontSize: "clamp(18px,3.5vw,21px)", lineHeight: 1.3, color: "rgba(255,255,255,0.92)", fontVariationSettings: "'opsz' 22", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
               >
-                &ldquo;What if I sell €40k of ASML and put it in VWCE?&rdquo;
+                &ldquo;What if I sell €40k of NVIDIA and put it in VWCE?&rdquo;
               </div>
               <div style={{ fontSize: "14.5px", lineHeight: 1.55, color: "rgba(255,255,255,0.7)" }}>
                 <span
