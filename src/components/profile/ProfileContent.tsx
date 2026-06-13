@@ -9,6 +9,7 @@ import type { DisplayCurrency } from "@/lib/money";
 import { computePerspective } from "@/lib/vitals/perspective";
 import { findBaselineSnapshot, MIN_BASELINE_AGE_DAYS } from "@/lib/vitals/realGrowth";
 import { PerspectiveCard } from "@/components/perspective/PerspectiveCard";
+import { SubscriptionSection } from "@/components/profile/SubscriptionSection";
 import { profileBaselineCacheKey, PROFILE_BASELINE_TTL_MS } from "@/lib/constants";
 import type { Snapshot } from "@/lib/vitals/types";
 import { apiFetch } from "@/lib/api";
@@ -221,6 +222,9 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           </div>
         </>
       )}
+
+      {/* Your subscription — plan, status, renewal date, source + Manage. */}
+      <SubscriptionSection />
 
       {/* Settings — the only operational control on this page; everything else
           (preferences, account, Data & AI, deletion) lives behind it. */}
