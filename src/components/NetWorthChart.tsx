@@ -7,6 +7,7 @@ import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } f
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
+import { computeYAxisDomain } from "@/lib/networth-axis";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -111,72 +112,6 @@ function fmtYLabel(value: number, currency: string): string {
   if (abs >= 1_000_000) return `${sign}${sym}${fmt(abs / 1_000_000)}M`;
   if (abs >= 1_000) return `${sign}${sym}${fmt(abs / 1_000)}K`;
   return `${sign}${sym}${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
-}
-
-interface NiceLevels {
-  niceMin: number;
-  niceMax: number;
-  labels: number[];
-}
-
-function computeNiceLevels(dataMin: number, dataMax: number): NiceLevels {
-  const range = dataMax - dataMin;
-  if (range === 0) {
-    const step = Math.max(Math.abs(dataMax) * 0.1, 1);
-    return { niceMin: dataMax - step, niceMax: dataMax + step, labels: [dataMax - step, dataMax, dataMax + step] };
-  }
-  const rawBase = Math.pow(10, Math.floor(Math.log10(range)));
-  const mults = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
-
-  // Target 4–5 labels first for a clean IBKR-style look
-  for (const m of mults) {
-    const step = rawBase * m;
-    const niceMin = Math.floor(dataMin / step) * step;
-    let niceMax = Math.ceil(dataMax / step) * step;
-    if (niceMax <= dataMax) niceMax += step; // ensure strict headroom above the peak
-    const count = Math.round((niceMax - niceMin) / step) + 1;
-    if (count >= 4 && count <= 5) {
-      const labels: number[] = [];
-      for (let i = 0; i < count; i++) labels.push(niceMin + i * step);
-      return { niceMin, niceMax, labels };
-    }
-  }
-
-  // Fallback: accept 3–6
-  for (const m of mults) {
-    const step = rawBase * m;
-    const niceMin = Math.floor(dataMin / step) * step;
-    let niceMax = Math.ceil(dataMax / step) * step;
-    if (niceMax <= dataMax) niceMax += step;
-    const count = Math.round((niceMax - niceMin) / step) + 1;
-    if (count >= 3 && count <= 6) {
-      const labels: number[] = [];
-      for (let i = 0; i < count; i++) labels.push(niceMin + i * step);
-      return { niceMin, niceMax, labels };
-    }
-  }
-
-  const mid = (dataMin + dataMax) / 2;
-  return { niceMin: dataMin, niceMax: dataMax, labels: [dataMin, mid, dataMax] };
-}
-
-// Fits the y-axis to the visible (range-clipped) series rather than always
-// spanning 0..max — so 1W zooms tight to that week's band and All spans the
-// full history. Pads ~8% of the data span above and below so the line never
-// sits flush against an edge, then nice-rounds the bounds to clean values.
-// Near-flat windows (min ≈ max) get a minimum span centered on the value so
-// the line reads as a calm flat band, not as exaggerated noise blown up from
-// a near-zero data range.
-function computeYAxisDomain(dataMin: number, dataMax: number): NiceLevels {
-  const mid = (dataMin + dataMax) / 2;
-  const span = dataMax - dataMin;
-  const minSpan = Math.max(Math.abs(mid) * 0.04, 1);
-  const effMin = span < minSpan ? mid - minSpan / 2 : dataMin;
-  const effMax = span < minSpan ? mid + minSpan / 2 : dataMax;
-  const pad = (effMax - effMin) * 0.08;
-  // Never let the y-axis dip below zero when all data is non-negative.
-  const rawMin = effMin - pad;
-  return computeNiceLevels(dataMin >= 0 ? Math.max(0, rawMin) : rawMin, effMax + pad);
 }
 
 const CHART_PAD_TOP = 6;
