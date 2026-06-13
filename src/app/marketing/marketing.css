@@ -193,6 +193,65 @@
 .mkt-eyebrow[data-light] .mkt-eyebrow-rule { background: rgba(255, 255, 255, 0.2); }
 .mkt-eyebrow[data-center] { justify-content: center; }
 
+/* ── Hero: layered tab screens behind the net-worth card ────────── */
+/* A fan of dimmed mini-screens (Diary, Vitals) peeking up-left from behind
+   the net-worth card, so the hero says "there's more than net worth here"
+   without crowding the focal card. Decorative + pointer-inert; a large-desktop
+   flourish only (hidden where there isn't comfortable room to the side). */
+.hero-stage { position: relative; }
+.hero-behind {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 248px;
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(26,31,46,0.03), 0 26px 52px -30px rgba(26,31,46,0.20);
+  padding: 14px 16px;
+  pointer-events: none;
+}
+.hero-behind-diary  { z-index: 2; transform: translate(-42px, -24px) rotate(-4deg); }
+.hero-behind-vitals { z-index: 1; transform: translate(-74px, -46px) rotate(-8deg); }
+.hero-front { position: relative; z-index: 3; }
+.hb-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+.hb-head svg { width: 13px; height: 13px; }
+@media (max-width: 1100px) {
+  .hero-behind { display: none; }
+}
+
+/* ── Hero: portfolio summary rows (projection / worth knowing / markets) ── */
+.hero-sum-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 0;
+}
+.hero-sum-row > svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 2px; color: var(--text-faint); }
+.hero-sum-text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  font-variation-settings: "opsz" 13;
+}
+.hero-sum-text strong { font-style: normal; font-weight: 600; color: var(--hero); }
+.hero-sum-cta { font-style: normal; color: var(--accent-text); white-space: nowrap; }
+.hero-sum-chev { color: var(--accent-text); opacity: 0.5; margin-left: 4px; }
+
 /* ── Dark band ──────────────────────────────────────────────────── */
 .band-dark {
   position: relative;

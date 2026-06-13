@@ -28,14 +28,11 @@ export function Hero() {
                 <strong className="text-fg font-medium">With a quiet eye on the world that moves it.</strong>
               </p>
               <div className="rise rise-4 flex items-center gap-3 flex-wrap">
-                <a href="https://app.volnar.nl" className="mkt-btn mkt-btn-lg mkt-btn-primary">
-                  Get started
+                <a href="https://app.volnar.nl/demo" className="mkt-btn mkt-btn-lg mkt-btn-primary">
+                  View the live demo
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                   </svg>
-                </a>
-                <a href="https://app.volnar.nl/demo" className="mkt-btn mkt-btn-lg mkt-btn-ghost">
-                  View the live demo
                 </a>
               </div>
               <AppStoreBadges className="rise rise-4 mt-7" />
@@ -51,15 +48,53 @@ export function Hero() {
             <div className="rise rise-3 w-full max-w-[580px] ml-auto max-[920px]:mx-auto max-[920px]:pt-4">
               <div className="grid min-[920px]:grid-cols-[1.35fr_1fr] gap-3 max-[920px]:gap-[14px]">
 
-                {/* Portfolio card */}
-                <div
-                  className="bg-surface border border-border rounded-xl overflow-hidden"
-                  style={{
-                    "--card-pad": "clamp(18px,3vw,22px)",
-                    padding: "var(--card-pad)",
-                    boxShadow: "0 1px 2px rgba(26,31,46,0.03), 0 32px 64px -28px rgba(26,31,46,0.18)",
-                  } as React.CSSProperties}
-                >
+                {/* Portfolio card + layered tab screens fanned behind it, so the
+                    hero shows there's more than net worth (Diary, Vitals…). */}
+                <div className="hero-stage">
+
+                  {/* Behind: Vitals (furthest back) */}
+                  <div className="hero-behind hero-behind-vitals" aria-hidden="true">
+                    <div className="hb-head">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6" /></svg>
+                      Vitals
+                    </div>
+                    <div className="flex justify-between" style={{ fontSize: 11, marginBottom: 6 }}>
+                      <span className="text-dim">Concentration</span>
+                      <span className="font-semibold text-hero tabular-nums">41%</span>
+                    </div>
+                    <div style={{ height: 5, borderRadius: 999, background: "var(--surface-elev)", overflow: "hidden", marginBottom: 12 }}>
+                      <span style={{ display: "block", height: "100%", width: "41%", background: "var(--cat-markets)" }} />
+                    </div>
+                    <div className="flex justify-between" style={{ fontSize: 11 }}>
+                      <span className="text-dim">Liquidity</span>
+                      <span className="font-semibold text-hero tabular-nums">6 mo</span>
+                    </div>
+                  </div>
+
+                  {/* Behind: Diary */}
+                  <div className="hero-behind hero-behind-diary" aria-hidden="true">
+                    <div className="hb-head">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 1-2-2V4z" /><path d="M9 2v18" /></svg>
+                      Diary
+                    </div>
+                    <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+                      <span className="font-serif italic text-faint" style={{ fontSize: 10.5 }}>14 Oct 2025</span>
+                      <span className="uppercase" style={{ fontSize: 8.5, letterSpacing: "0.08em", padding: "2px 7px", borderRadius: 999, background: "var(--negative-soft)", color: "var(--negative-text)" }}>Trimmed</span>
+                    </div>
+                    <div className="font-serif font-medium text-hero" style={{ fontSize: 15, fontVariationSettings: "'opsz' 16" }}>NVIDIA</div>
+                    <div className="font-serif italic text-dim" style={{ fontSize: 11.5, lineHeight: 1.4, marginTop: 4 }}>
+                      &ldquo;Above my 35% comfort level — trimmed back.&rdquo;
+                    </div>
+                  </div>
+
+                  {/* Front: net worth */}
+                  <div
+                    className="hero-front bg-surface border border-border rounded-xl"
+                    style={{
+                      padding: "clamp(18px,3vw,22px)",
+                      boxShadow: "0 1px 2px rgba(26,31,46,0.03), 0 32px 64px -28px rgba(26,31,46,0.18)",
+                    }}
+                  >
                   <div className="flex items-baseline justify-between mb-1">
                     <span className="text-faint uppercase tracking-[0.08em]" style={{ fontSize: "10.5px" }}>
                       <span className="live-dot" aria-hidden="true" />
@@ -137,24 +172,47 @@ export function Hero() {
                     ))}
                   </div>
 
-                  {/* Worth knowing band — the app's signature callout */}
-                  <div
-                    className="border-t border-border"
-                    style={{
-                      margin: "10px calc(var(--card-pad) * -1) calc(var(--card-pad) * -1)",
-                      padding: "10px var(--card-pad) 12px",
-                      background: "var(--surface-elev)",
-                    }}
-                  >
-                    <div className="mb-1 flex items-center gap-1.5 uppercase tracking-[0.08em] text-faint" style={{ fontSize: 9.5 }}>
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
-                      Worth knowing
+                  {/* Portfolio summary — projection · worth knowing · markets,
+                      the same three rows the app's home screen shows. */}
+                  <div className="border-t border-border" style={{ marginTop: 8, paddingTop: 2 }}>
+                    {/* Projection */}
+                    <div className="hero-sum-row">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3 17l6-6 4 4 8-9" /><path d="M14 6h7v7" />
+                      </svg>
+                      <div className="hero-sum-text">
+                        Assuming ~5%/yr, you could reach about <strong>€910K</strong> by <strong>2034</strong>.{" "}
+                        <span className="hero-sum-cta">See what moves it →</span>
+                      </div>
                     </div>
-                    <p className="m-0 font-serif italic leading-snug text-dim" style={{ fontSize: 12.5 }}>
-                      <strong className="not-italic font-semibold text-fg">NVIDIA reports tonight</strong> — your largest
-                      holding, ahead of the AI-chip read-through.
-                    </p>
+                    <div style={{ borderTop: "0.5px solid var(--border)" }} />
+                    {/* Worth knowing */}
+                    <div className="hero-sum-row">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
+                      </svg>
+                      <div className="hero-sum-text">
+                        <strong>NVIDIA reports tonight</strong> — your largest holding, ahead of the AI-chip read-through.
+                        <svg className="hero-sum-chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="28" strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9, display: "inline-block", verticalAlign: "baseline" }} aria-hidden="true">
+                          <polyline points="96 48 176 128 96 208" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: "0.5px solid var(--border)" }} />
+                    {/* Markets */}
+                    <div className="hero-sum-row">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                      </svg>
+                      <div className="hero-sum-text">
+                        Global equities up <strong>0,8%</strong> — most of it flows to your world ETF.
+                        <svg className="hero-sum-chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="28" strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9, display: "inline-block", verticalAlign: "baseline" }} aria-hidden="true">
+                          <polyline points="96 48 176 128 96 208" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
+                </div>
                 </div>
 
                 {/* Alert chip stack — overlaps portfolio card edge on desktop */}
