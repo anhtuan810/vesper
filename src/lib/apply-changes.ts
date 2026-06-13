@@ -33,6 +33,10 @@ type CurrentAsset = {
   units?: number | null;
   mortgage_balance?: number | null;
   country?: string | null;
+  // Acquisition anchors — needed to scope a history rebuild when this asset is
+  // removed/edited. Present on full asset rows (select *).
+  buy_date?: string | null;
+  created_at?: string | null;
   // Pension fields — present on pension rows; needed to merge + re-validate edits.
   pension_kind?: PensionKind | null;
   annual_income?: number | null;
@@ -54,6 +58,12 @@ type PortfolioChange = {
   units?: number;
   buy_price?: number;
   buy_date?: string;
+  // Remove-only. "sold" (default): a real disposal on `sell_date` (or today) —
+  // history up to the sale is preserved (soft-delete). "mistake": the position
+  // never truly belonged here — erase it from all history (hard-delete + drop
+  // its mutations). See the remove branch.
+  removal_reason?: "sold" | "mistake";
+  sell_date?: string;
   buy_price_source?: string;
   mortgage_balance?: number;
   mortgage_rate?: number;
@@ -142,7 +152,7 @@ export async function applyPortfolioChanges({
   currentAssets: CurrentAsset[];
   contextNote: string | null;
   proposalTimestamp?: string | null;
-}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string }[] }> {
+}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string }[]; rebuildFrom: string | null }> {
   // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
   const usdRates = await getUsdRates();
   const toUsdSync = (amount: number, currency: string): number => {
@@ -158,6 +168,21 @@ export async function applyPortfolioChanges({
   // screenshot import) reports and skips rather than aborting every other row.
   const failures: { name: string; reason: string }[] = [];
   let changed = false;
+
+  // Earliest date from which historical snapshot rows must be rebuilt (not
+  // upsert-skipped) so they actually include/exclude the asset this turn
+  // touched. Computed HERE — the one place that resolves every date and writes
+  // every mutation — so the two callers (chat route + agent loop) don't each
+  // re-derive it from drifting heuristics. null = no historical rows changed
+  // (e.g. an add/sale dated today; writeSnapshot owns today's row).
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let rebuildFrom: string | null = null;
+  const considerRebuild = (d: string | null | undefined) => {
+    if (!d) return;
+    const day = d.slice(0, 10);
+    if (day >= todayStr) return; // today's row is owned by writeSnapshot
+    if (rebuildFrom === null || day < rebuildFrom) rebuildFrom = day;
+  };
 
   // Alias-resolve symbols synchronously before any I/O (e.g. TL0.DE → TSLA)
   const aliasedSymbols = changes.map((change) =>
@@ -235,6 +260,13 @@ export async function applyPortfolioChanges({
     // null — deterministic code owns this decision, never the model.
     if (change.buy_date !== undefined) {
       change.buy_date = resolveAcquisitionDate(change.buy_date) ?? undefined;
+    }
+
+    // A dated add (or a buy_date correction on an edit) changes what every
+    // historical row from that date forward should contain — flag the rebuild.
+    // Real-estate edits also ripple (value/shape), even without a buy_date.
+    if (action === "add" || action === "edit") {
+      considerRebuild(change.buy_date);
     }
 
     try {
@@ -493,6 +525,13 @@ export async function applyPortfolioChanges({
       );
 
       if (existing) {
+        // A real-estate edit changes value/mortgage shape, which ripples
+        // across every historical row from acquisition forward (the property
+        // value sampler interpolates buy→current). Rebuild from its inception,
+        // independent of whether a buy_date was supplied this turn.
+        if (existing.type === "real_estate") {
+          considerRebuild(existing.buy_date ?? (existing.created_at ? existing.created_at.slice(0, 10) : null));
+        }
         const hasValueDelta = typeof change.value_delta === "number" && change.value_delta !== 0;
         const editHasUnits = typeof change.units === "number";
         const isTradeable = TRADEABLE_TYPES.has(existing.type);
@@ -713,6 +752,19 @@ export async function applyPortfolioChanges({
       }
 
     } else if (action === "remove") {
+      // Two intents (see PortfolioChange.removal_reason):
+      //   "sold"    — a real disposal. Soft-delete (removed_at) and write a
+      //               remove mutation dated to the sale, so backfill keeps
+      //               reconstructing the position as held up to that date and
+      //               zero after. History up to the sale is preserved.
+      //   "mistake" — the position never belonged here. Hard-delete the row
+      //               AND its mutations so backfill can't reconstruct it, then
+      //               rebuild from its acquisition so it vanishes everywhere.
+      // Default is "sold" (non-destructive — data is preserved; a mistake can
+      // still be corrected later, but erased history can't be recovered).
+      const reason = change.removal_reason === "mistake" ? "mistake" : "sold";
+      const saleDate = resolveAcquisitionDate(change.sell_date) ?? todayStr;
+
       const matching = currentAssets.filter(
         (a) => a.name.toLowerCase() === name.toLowerCase() ||
                (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
@@ -725,9 +777,26 @@ export async function applyPortfolioChanges({
           : existing.value;
         const newRunningTotal = runningTotal - toUsdSync(existingContribution, existing.currency || "USD");
 
-        // INSERT the mutation row while asset_id still exists, then DELETE.
-        // mutations.asset_id is ON DELETE SET NULL, so it nulls out post-delete and the row persists.
-        const removeOccurredAt = new Date().toISOString().split("T")[0];
+        if (reason === "mistake") {
+          // Erase from history: drop the asset's mutations (so backfill's unit
+          // timeline / acquisition map no longer see it) then hard-delete the
+          // row. No remove mutation is written — this was not a financial event.
+          // Rebuild from acquisition so every row that falsely included it is
+          // recomputed without it.
+          considerRebuild(existing.buy_date ?? (existing.created_at ? existing.created_at.slice(0, 10) : null));
+          await supabase.from("mutations").delete().eq("user_id", userId).eq("asset_id", existing.id);
+          const { error } = await supabase.from("assets").delete().eq("id", existing.id);
+          if (error) {
+            console.error("REMOVE (mistake) ERROR:", error);
+          } else {
+            changed = true;
+            runningTotal = newRunningTotal;
+          }
+          continue;
+        }
+
+        // sold: INSERT the remove mutation (asset_id preserved — soft-delete
+        // keeps the row, so asset_id never nulls out), then mark removed_at.
         const { error: mutationError, data: removedMutation } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: existing.id,
@@ -742,21 +811,27 @@ export async function applyPortfolioChanges({
           currency: existing.currency || "EUR",
           personal_context: change.personal_context || contextNote,
           portfolio_total: newRunningTotal,
-          occurred_at: removeOccurredAt,
+          occurred_at: saleDate,
         }).select("id").single();
 
         if (mutationError) throw mutationError;
         if (removedMutation?.id) {
-          mutationMetas.push({ id: removedMutation.id, symbol: existing.symbol || null, occurredAt: removeOccurredAt, assetType: existing.type });
+          mutationMetas.push({ id: removedMutation.id, symbol: existing.symbol || null, occurredAt: saleDate, assetType: existing.type });
         }
 
-        const { error } = await supabase.from("assets").delete().eq("id", existing.id);
+        const { error } = await supabase
+          .from("assets")
+          .update({ removed_at: new Date().toISOString() })
+          .eq("id", existing.id);
 
         if (error) {
-          console.error("REMOVE ERROR:", error);
+          console.error("REMOVE (sold) ERROR:", error);
         } else {
           changed = true;
           runningTotal = newRunningTotal;
+          // A sale dated in the past changes [saleDate, today) — rebuild it.
+          // A sale today changes only today's row (writeSnapshot owns it).
+          considerRebuild(saleDate);
         }
       }
     }
@@ -770,5 +845,5 @@ export async function applyPortfolioChanges({
     }
   }
 
-  return { changed, duplicateWarnings, fxWarnings, mutationMetas, failures };
+  return { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, rebuildFrom };
 }

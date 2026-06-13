@@ -47,7 +47,12 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
     const val = existing?.value ?? 0;
     const units = existing?.units ?? null;
     const unitStr = units != null ? `, ${units} shares` : "";
-    return `Delete ${existing?.name ?? name} position (current value: ${cur} ${val.toLocaleString()}${unitStr})`;
+    const reason = (proposal as { removal_reason?: string }).removal_reason === "mistake" ? "mistake" : "sold";
+    const label = existing?.name ?? name;
+    const valueStr = `${cur} ${val.toLocaleString()}${unitStr}`;
+    return reason === "mistake"
+      ? `Remove ${label} as a mistake — erased from your history (was ${valueStr})`
+      : `Sell ${label} — kept in history up to the sale (current value: ${valueStr})`;
   }
 
   if (action === "edit" && typeof proposal.value_delta === "number") {

@@ -269,36 +269,41 @@ function unitsAtDate(
 }
 
 // Generates snapshot target dates with decreasing resolution going further back:
-//   - daily:   D-1 … D-30
-//   - weekly:  every 7 days from D-30 back to D-365
-//   - monthly: 1st of each month from D-365 back to `earliest`
+//   - daily:   D-1 … D-30 (the only relative tier; recent + recomputed every run)
+//   - weekly:  every MONDAY from this week back to ~1 year ago
+//   - monthly: 1st of each month from this month back to `earliest`
+// The weekly and monthly tiers are CALENDAR-anchored (fixed Mondays / 1sts),
+// not offset from `today` — so every run targets the SAME historical dates
+// regardless of which weekday it runs. That stability is what lets the upsert
+// keep the whole set current instead of interleaving each run's freshly-computed
+// dates between a previous run's (the cause of the sawtooth on add/remove).
 // Returns dates sorted ascending that are >= earliest and < todayStr.
-function targetSnapshotDates(earliest: string, todayStr: string, hasTradeables: boolean): string[] {
+// Exported for verify-snapshot-dates.ts (pure; deterministic given its args).
+export function targetSnapshotDates(earliest: string, todayStr: string, hasTradeables: boolean): string[] {
   const set = new Set<string>();
   const today = new Date(todayStr + "T12:00:00Z");
+  const earliestDate = new Date(earliest + "T12:00:00Z");
 
   if (hasTradeables) {
-    // Daily
+    // Daily: last 30 days.
     for (let i = 1; i <= 30; i++) {
       const d = new Date(today);
       d.setUTCDate(d.getUTCDate() - i);
       set.add(d.toISOString().slice(0, 10));
     }
 
-    // Weekly: D-30 back to D-365
-    const weeklyEnd = new Date(today);
-    weeklyEnd.setUTCDate(weeklyEnd.getUTCDate() - 30);
-    const monthlyStart = new Date(today);
-    monthlyStart.setUTCFullYear(monthlyStart.getUTCFullYear() - 1);
-    let w = new Date(weeklyEnd);
-    while (w > monthlyStart) {
+    // Weekly (Mondays): this week's Monday back to ~1 year ago.
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setUTCFullYear(oneYearAgo.getUTCFullYear() - 1);
+    const w = new Date(today);
+    w.setUTCDate(w.getUTCDate() - ((w.getUTCDay() + 6) % 7)); // snap to Monday
+    while (w > oneYearAgo) {
       set.add(w.toISOString().slice(0, 10));
       w.setUTCDate(w.getUTCDate() - 7);
     }
 
-    // Monthly: 1st of each month from 1 year ago back to earliest
-    const earliestDate = new Date(earliest + "T12:00:00Z");
-    let m = new Date(monthlyStart);
+    // Monthly: 1st of each month from this month back to earliest.
+    const m = new Date(today);
     m.setUTCDate(1);
     while (m >= earliestDate) {
       set.add(m.toISOString().slice(0, 10));
@@ -310,7 +315,6 @@ function targetSnapshotDates(earliest: string, todayStr: string, hasTradeables: 
     // samples, since these holdings don't change value within a month.
     const m = new Date(today);
     m.setUTCDate(1);
-    const earliestDate = new Date(earliest + "T12:00:00Z");
     while (m >= earliestDate) {
       set.add(m.toISOString().slice(0, 10));
       m.setUTCMonth(m.getUTCMonth() - 1);
@@ -322,35 +326,66 @@ function targetSnapshotDates(earliest: string, todayStr: string, hasTradeables: 
     .sort();
 }
 
-// Backfills historical net-worth snapshots using actual units held at each date.
-// Normally only writes rows that don't already exist (ignoreDuplicates: true) —
-// recomputing every existing row on every call would be wasteful and would
-// fight the live cron's "today" row. But adding or removing a dated asset
-// changes what EVERY historical row from that asset's acquisition date forward
-// should contain, and upsert-skip would leave those rows stale (missing the
-// asset entirely). When `rebuildFrom` is given, every snapshot row — backfilled
-// or daily-cron alike — with `date >= rebuildFrom` (today's row excluded; the
-// live cron owns it) is deleted and recomputed from the current asset set, so
-// the corrected total actually lands instead of being discarded as a duplicate.
+// Backfills historical net-worth snapshots using the actual asset set held at
+// each date (units from the mutation timeline; property/cash/etc. gated by
+// acquisition and sale dates). Target dates come from a CALENDAR-anchored
+// lattice (see targetSnapshotDates) so every run hits the same dates.
+//
+// Two modes:
+//   - Standard pass (no rebuildFrom): upsert the sparse lattice, OVERWRITING on
+//     conflict. Idempotent and self-healing — a re-run corrects any stale row
+//     rather than skipping it. today's row is excluded (the live cron owns it).
+//   - Rebuild (rebuildFrom set): adding/removing/editing a dated asset changes
+//     what every row from that date forward should contain. The range
+//     [rebuildFrom, today) — lattice dates AND any pre-existing rows in range —
+//     is recomputed and atomically replaced (delete + insert). Rows before the
+//     range are left intact (older missing ones are insert-only backfilled).
+//
+// Both modes abort BEFORE any write if a currently-held tradeable's price
+// history failed to load, so a transient market-data outage can never replace
+// good rows with collapsed ones.
 export async function backfillSnapshots(userId: string, rebuildFrom?: string | null): Promise<void> {
   try {
     const supabase = createServerSupabase();
 
-    // Load all assets
+    // Load all assets — INCLUDING soft-deleted (removed_at set) ones, so a sold
+    // position is still reconstructed as held up to its sale date. (Current-
+    // holdings reads filter removed_at; historical reconstruction must not.)
     const { data: assets, error: aErr } = await supabase
       .from("assets")
-      .select("id, type, value, currency, symbol, created_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
+      .select("id, type, value, currency, symbol, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
       .eq("user_id", userId);
     if (aErr) throw aErr;
     if (!assets || assets.length === 0) return;
 
-    // Load all mutations (asset_id is never null for portfolio changes)
+    // Load all mutations (asset_id stays set for soft-deletes; a hard-deleted
+    // "mistake" asset's mutations are deleted with it, so it's invisible here —
+    // exactly the intent). recorded_at tie-breaks same-day mutations so the
+    // unit timeline is deterministic regardless of DB row order.
     const { data: mutations, error: mErr } = await supabase
       .from("mutations")
-      .select("asset_id, action, after_units, occurred_at")
+      .select("asset_id, action, after_units, occurred_at, recorded_at")
       .eq("user_id", userId)
       .not("asset_id", "is", null);
     if (mErr) throw mErr;
+
+    // Per-asset removal date: the sale recorded by a remove mutation (occurred_at),
+    // falling back to the asset's removed_at marker. Non-tradeable types (which
+    // have no unit timeline) read this to STOP contributing after the sale;
+    // tradeables already stop via their remove mutation zeroing units.
+    const removalByAsset = new Map<string, string>();
+    for (const m of mutations ?? []) {
+      if (m.asset_id && m.action === "remove" && m.occurred_at) {
+        const d = (m.occurred_at as string).slice(0, 10);
+        const prev = removalByAsset.get(m.asset_id as string);
+        if (!prev || d < prev) removalByAsset.set(m.asset_id as string, d);
+      }
+    }
+    for (const a of assets) {
+      if (a.removed_at && !removalByAsset.has(a.id as string)) {
+        removalByAsset.set(a.id as string, (a.removed_at as string).slice(0, 10));
+      }
+    }
 
     // Determine earliest date from dated mutations and asset creation dates
     const datedDates = (mutations ?? [])
@@ -452,18 +487,22 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
 
     // Build per-asset unit timeline.
     // Mutations with null occurred_at (starting positions) are placed at earliest.
-    const mutsByAsset = new Map<string, Array<{ date: string; units: number }>>();
+    const mutsByAsset = new Map<string, Array<{ date: string; units: number; seq: string }>>();
     for (const m of mutations ?? []) {
       if (!m.asset_id) continue;
       // For remove, after_units is null → 0 units; for add/edit, use after_units directly.
       const afterUnits = m.action === "remove" ? 0 : (m.after_units as number | null);
       if (afterUnits === null) continue;
       const date = m.occurred_at ? (m.occurred_at as string).slice(0, 10) : earliest;
+      const seq = (m.recorded_at as string | null) ?? "";
       if (!mutsByAsset.has(m.asset_id as string)) mutsByAsset.set(m.asset_id as string, []);
-      mutsByAsset.get(m.asset_id as string)!.push({ date, units: afterUnits });
+      mutsByAsset.get(m.asset_id as string)!.push({ date, units: afterUnits, seq });
     }
     for (const timeline of mutsByAsset.values()) {
-      timeline.sort((a, b) => a.date.localeCompare(b.date));
+      // Sort by event date, then recorded_at — so two mutations on the same day
+      // (e.g. an add then a same-day edit) apply in the order they were recorded,
+      // not in arbitrary DB row order.
+      timeline.sort((a, b) => a.date.localeCompare(b.date) || a.seq.localeCompare(b.seq));
     }
 
     // Fetch full price history once per unique tradeable symbol
@@ -481,6 +520,28 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         if (history && history.length > 0) priceHistories.set(symbol, history);
       }),
     );
+
+    // Non-destructive guard: if a CURRENTLY-HELD tradeable's price history failed
+    // to load (Yahoo down, rate-limited, transient), every row containing it
+    // would collapse to ~0. The rebuild path DELETEs before reinserting, so a bad
+    // pass would replace good rows with corrupt ones. Abort before touching the
+    // table and let a later run retry — a stale-but-correct chart beats a freshly
+    // corrupted one. (Sold/removed symbols are exempt: a delisted disposal may
+    // legitimately no longer fetch, and it only contributes pre-sale.)
+    const heldSymbols = new Set(
+      assets
+        .filter((a) => TRADEABLE.has(a.type as string) && a.symbol && a.removed_at == null)
+        .map((a) => a.symbol as string),
+    );
+    const missingHeld = [...heldSymbols].filter((s) => !priceHistories.has(s));
+    if (missingHeld.length > 0) {
+      Sentry.captureMessage("backfillSnapshots: aborting — missing price history for held symbols", {
+        level: "warning",
+        tags: { fn: "backfillSnapshots" },
+        extra: { user_id: userId, missingHeld, rebuildFrom: rebuildFrom ?? null },
+      });
+      return;
+    }
 
     const fx = await getUsdRates();
     const hasTradeables = assets.some((a) => TRADEABLE.has(a.type as string));
@@ -526,6 +587,11 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       for (const asset of assets) {
         const type = asset.type as string;
         const inception = acquisitionByAsset.get(asset.id as string) ?? (asset.created_at as string).slice(0, 10);
+        // A sold (soft-deleted) asset stops contributing from its sale date.
+        // Tradeables also stop via their remove mutation zeroing units; this
+        // gate is what makes property / cash / bonds / pension stop too.
+        const removalDate = removalByAsset.get(asset.id as string);
+        const removed = removalDate != null && date >= removalDate;
         let contribution = 0;
         let nativeContribution = 0;
         let nativeCurrency = "USD";
@@ -553,7 +619,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
           // (created_at = today) still produces historical rows back to purchase.
           const buyDateNorm = normalizeBuyDate(asset.buy_date as string | null);
           const reInception = buyDateNorm ?? inception;
-          if (date >= reInception) {
+          if (date >= reInception && !removed) {
             // Freeze property value per calendar month: every date anchors to
             // the 1st of its calendar month (clamped forward to acquisition),
             // including the current month — so a daily write within a month
@@ -565,7 +631,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
             const buyPrice = asset.buy_price as number | null;
             const currentValue = asset.value as number;
             const tFn = realEstateT.get(asset.id as string);
-            let grossValue = (tFn && buyPrice && buyPrice > 0)
+            const grossValue = (tFn && buyPrice && buyPrice > 0)
               ? buyPrice + tFn(anchor) * (currentValue - buyPrice)
               : currentValue;
             const balFn = realEstateBalanceAt.get(asset.id as string);
@@ -580,8 +646,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         } else {
           // Cash / bonds / pension / other: held flat at current value from
           // acquisition (the add mutation's occurred_at = stated buy_date) —
-          // not from when the row was created in the DB.
-          if (date >= inception) {
+          // not from when the row was created in the DB. Stops at the sale date.
+          if (date >= inception && !removed) {
             const cur = (asset.currency as string | null) || "USD";
             const val = asset.value as number;
             const flatRate = rateAt(date, cur);
@@ -670,9 +736,13 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
 
     if (rows.length === 0) return;
 
+    // Overwrite on conflict (not ignoreDuplicates): every row is recomputed
+    // from the current asset set, so re-running this pass HEALS a stale vintage
+    // rather than leaving it in place to interleave with fresh rows. today's
+    // row is never in `dates` (filtered < todayStr), so the live cron's row is
+    // never disturbed.
     const { error: upsertError } = await supabase.from("snapshots").upsert(rows, {
       onConflict: "user_id,date",
-      ignoreDuplicates: true,
     });
     if (upsertError) throw upsertError;
   } catch (err) {

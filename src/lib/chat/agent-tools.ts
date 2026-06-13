@@ -557,23 +557,12 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   if (validationError) return { forModel: { error: validationError } };
 
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
-  const touchesRealEstateHistory = (changes as Array<{ action?: string; name?: string }>).some((c) => {
-    if (c.action !== "edit" && c.action !== "remove") return false;
-    if (!c.name) return false;
-    const nm = c.name.toLowerCase();
-    const m = ctx.currentAssets.find((a) =>
-      String(a.name ?? "").toLowerCase() === nm ||
-      (a.symbol && String(a.symbol).toLowerCase() === nm)
-    );
-    return !!m && m.type === "real_estate";
-  });
-  const needsBackfill = changes.length > 1
-    || changes.some((c) => c.buy_date && String(c.buy_date) < thirtyDaysAgo)
-    || touchesRealEstateHistory;
   const hasAdds = changes.some((c) => c.action === "add");
 
-  const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures } = await applyPortfolioChanges({
+  // applyPortfolioChanges resolves every date and writes every mutation, so it
+  // is the single source of truth for which historical rows changed. It returns
+  // `rebuildFrom` (earliest affected date, or null) — no caller-side re-derivation.
+  const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, rebuildFrom } = await applyPortfolioChanges({
     supabase: ctx.supabase,
     userId: ctx.userId,
     changes: changes as never,
@@ -584,49 +573,8 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
 
   const notes = [...duplicateWarnings, ...fxWarnings, ...failures.map((f) => `Couldn't record ${f.name}.`)];
 
-  // Adding or removing a dated asset changes what every historical snapshot
-  // row from its acquisition date forward should contain — those rows must be
-  // rebuilt (not upsert-skipped) to actually include/exclude it. Take the
-  // EARLIEST such date across the batch: a single rebuild pass covers them all.
-  // `applyPortfolioChanges` resolves `change.buy_date` to an ISO string IN
-  // PLACE (apply-changes.ts), so the post-call value reflects the real
-  // acquisition date for adds/edits. Removes have no resolved date on the
-  // change itself — fall back to the matched existing asset's own buy_date /
-  // created_at (the date its history began).
-  let rebuildFrom: string | null = null;
-  const considerDate = (d: string | null | undefined) => {
-    if (!d) return;
-    if (rebuildFrom === null || d < rebuildFrom) rebuildFrom = d;
-  };
-  for (const c of changes as Array<{ action?: string; name?: string; buy_date?: string }>) {
-    if (c.action === "add") {
-      considerDate(c.buy_date ?? null);
-    } else if (c.action === "remove" && c.name) {
-      const name = c.name.toLowerCase();
-      const matching = ctx.currentAssets.filter((a) => {
-        const aName = String(a.name ?? "").toLowerCase();
-        const aSymbol = a.symbol ? String(a.symbol).toLowerCase() : null;
-        return aName === name || aSymbol === name;
-      });
-      for (const existing of matching) {
-        const buyDate = (existing.buy_date as string | null | undefined) ?? null;
-        const createdAt = (existing.created_at as string | null | undefined) ?? null;
-        considerDate(buyDate ?? createdAt?.slice(0, 10) ?? null);
-      }
-    } else if (c.action === "edit" && c.name) {
-      const nm = c.name.toLowerCase();
-      const m = ctx.currentAssets.find((a) =>
-        String(a.name ?? "").toLowerCase() === nm ||
-        (a.symbol && String(a.symbol).toLowerCase() === nm)
-      );
-      if (m && m.type === "real_estate") {
-        considerDate((m.buy_date as string | null) ?? (m.created_at ? String(m.created_at).slice(0, 10) : null));
-      }
-    }
-  }
-
   return {
     forModel: { committed: changed, ...(notes.length ? { notes } : {}) },
-    commit: { changed, mutationMetas, analyticsEvent: hasAdds ? "first_asset_added" : null, needsBackfill, hasAdds, rebuildFrom },
+    commit: { changed, mutationMetas, analyticsEvent: hasAdds ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
   };
 }

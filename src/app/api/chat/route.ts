@@ -883,10 +883,11 @@ export async function POST(req: NextRequest) {
     let needsBackfill = false;
     let hasAdds = false;
     let analyticsEvent: string | null = null;
-    // Earliest acquisition date among this turn's adds/removes — every snapshot
-    // row from this date forward must be rebuilt (not upsert-skipped) to
-    // actually include/exclude the asset. See agent-tools.ts's commitMutationTool
-    // for the canonical computation this mirrors.
+    // Earliest date whose snapshot rows this turn invalidated — every row from
+    // here forward must be rebuilt (not upsert-skipped) to include/exclude the
+    // touched asset. Returned by applyPortfolioChanges (the one place that
+    // resolves every date and writes every mutation); null = nothing historical
+    // changed (writeSnapshot owns today's row).
     let rebuildFrom: string | null = null;
 
     // --- Apply portfolio changes ---
@@ -894,26 +895,6 @@ export async function POST(req: NextRequest) {
       try {
         const changes = JSON.parse(changesRaw.trim());
         if (Array.isArray(changes) && changes.length > 0) {
-          // Trigger backfill for multi-action turns or any change with a buy_date
-          // older than 30 days (historical context that affects the chart shape).
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
-          const touchesRealEstateHistory = changes.some((c) => {
-            if (c.action !== "edit" && c.action !== "remove") return false;
-            if (!c.name) return false;
-            const nm = c.name.toLowerCase();
-            const m = currentAssets.find((a) =>
-              a.name.toLowerCase() === nm ||
-              (a.symbol && a.symbol.toLowerCase() === nm)
-            );
-            return !!m && m.type === "real_estate";
-          });
-          if (
-            changes.length > 1 ||
-            changes.some((c) => c.buy_date && c.buy_date < thirtyDaysAgo) ||
-            touchesRealEstateHistory
-          ) {
-            needsBackfill = true;
-          }
           hasAdds = changes.some((c) => c.action === "add");
           if (isNewUser && hasAdds) {
             analyticsEvent = "first_asset_added";
@@ -971,7 +952,7 @@ export async function POST(req: NextRequest) {
           // Enables the freshness check in apply-changes for confirmed proposals.
           const proposalTimestamp = (recentMessages || []).find((m) => m.role === "assistant")?.created_at ?? null;
 
-          const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures } = await applyPortfolioChanges({
+          const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, rebuildFrom: rf } = await applyPortfolioChanges({
             supabase,
             userId,
             changes,
@@ -980,35 +961,8 @@ export async function POST(req: NextRequest) {
             proposalTimestamp,
           });
           portfolioChanged = changed;
-
-          {
-            const considerRebuildDate = (d: string | null | undefined) => {
-              if (!d) return;
-              if (rebuildFrom === null || d < rebuildFrom) rebuildFrom = d;
-            };
-            for (const c of changes) {
-              if (c.action === "add") {
-                considerRebuildDate(c.buy_date ?? null);
-              } else if (c.action === "remove") {
-                const matching = currentAssets.filter(
-                  (a) => a.name.toLowerCase() === c.name?.toLowerCase() ||
-                         (a.symbol && a.symbol.toLowerCase() === c.name?.toLowerCase())
-                );
-                for (const existing of matching) {
-                  considerRebuildDate(existing.buy_date ?? existing.created_at?.slice(0, 10) ?? null);
-                }
-              } else if (c.action === "edit" && c.name) {
-                const nm = c.name.toLowerCase();
-                const m = currentAssets.find((a) =>
-                  a.name.toLowerCase() === nm ||
-                  (a.symbol && a.symbol.toLowerCase() === nm)
-                );
-                if (m && m.type === "real_estate") {
-                  considerRebuildDate(m.buy_date ?? m.created_at?.slice(0, 10) ?? null);
-                }
-              }
-            }
-          }
+          rebuildFrom = rf;
+          needsBackfill = rf != null;
 
           if (mutationMetas.length > 0) {
             after(async () => {

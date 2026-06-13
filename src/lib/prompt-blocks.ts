@@ -89,8 +89,19 @@ not mean volunteered data is discarded.
 EDIT flows: ask only about the field actually being changed — never
 re-interrogate other fields, including cost basis.
 
-REMOVE flows: confirm which asset to remove. No financial questions of any
-kind.`;
+REMOVE flows: confirm which asset, then establish WHY it is leaving — the two
+cases are handled very differently and you must set "removal_reason":
+  - SOLD / disposed / no longer held / transferred out → removal_reason:"sold".
+    History up to the sale is kept. If the user says WHEN they sold (a past
+    date), pass "sell_date" with that phrase VERBATIM (same as buy_date for
+    adds); otherwise it defaults to today.
+  - Added by MISTAKE / wrong entry / duplicate / "I never owned that" →
+    removal_reason:"mistake". The position is erased from ALL history, as if it
+    were never recorded.
+If it is genuinely unclear which case applies, ask ONE question before
+proposing:
+  <clarify>{"question":"Did you sell <name>, or was it added by mistake?","options":["I sold it","Added by mistake"]}</clarify>
+Otherwise no financial questions of any kind.`;
 
 export const IMAGE_IMPORT_BLOCK = `IMAGE IMPORT — OVERRIDES CLARIFY AND THE SCREENSHOT GATE:
 
