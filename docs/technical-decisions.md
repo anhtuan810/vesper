@@ -128,6 +128,20 @@ Regional CBS PBK index-series cache (migration `20260606_price_index_cache.sql`)
 - Written only via the service role by `/api/property-estimate`; refreshed when `fetched_at` is older than ~30 days. Reads/writes are best-effort — a missing row degrades to a live CBS fetch.
 - Replaced the dropped `woz_cache` table (the WOZ integration was removed entirely).
 
+### entitlements
+Cross-platform subscription entitlement (migration `20260618_subscriptions.sql`). **The single source of truth for paid access**, keyed to the user account, not a device or platform — so a purchase on any platform grants access on all of them.
+- `user_id` (uuid PK, FK → users, ON DELETE CASCADE) — one row per user = one active entitlement per user.
+- `status` (text, check `in ('trialing','active','past_due','canceled','expired','incomplete')`) — `trialing`/`active` grant access; the rest don't.
+- `source` (text, check `in ('stripe','app_store','play_store')`) — which processor/store owns the entitlement; drives the Profile "Manage" destination.
+- `plan` (text, check `in ('monthly','annual')`), `current_period_end`, `trial_end`, `cancel_at_period_end`.
+- Processor refs: `stripe_customer_id`, `stripe_subscription_id`, `revenuecat_app_user_id`, `product_id`.
+- RLS: owner-only `SELECT` (`auth.uid() = user_id`); **no write policies** — only the service role writes, from verified webhooks. Never hard-deleted on cancellation (status moves to canceled/expired); removed only with the account.
+
+### billing_events
+Webhook idempotency ledger (same migration). Server-only (service role): RLS enabled, no policies. Global, not user-scoped, retained across account deletion.
+- `provider` (text, check `in ('stripe','revenuecat')`), `event_id` (text), `received_at`. PK `(provider, event_id)`.
+- Each event id is recorded once; a re-delivered webhook collides on the PK and is skipped, so writes never double-apply.
+
 ## Cron Jobs
 
 Configured in `vercel.json`:
@@ -353,6 +367,23 @@ Assets are cached in `sessionStorage` under the key `volnar.assets.<userId>` for
 - `ANTHROPIC_API_KEY`
 - `CRON_SECRET`
 - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` (optional)
+- `NEXT_PUBLIC_API_ORIGIN` (native build only)
+- Subscriptions — Stripe (web): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_ANNUAL`
+- Subscriptions — RevenueCat (mobile): `NEXT_PUBLIC_REVENUECAT_IOS_KEY`, `NEXT_PUBLIC_REVENUECAT_ANDROID_KEY` (Android, later), `NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID`, `REVENUECAT_WEBHOOK_AUTH`, `REVENUECAT_MONTHLY_PRODUCT_ID`, `REVENUECAT_ANNUAL_PRODUCT_ID`
+- All names are listed in `.env.example`. No keys or price IDs are hardcoded.
+
+## Subscriptions / Entitlements (2026-06)
+
+Commercialized with cross-platform subscriptions: sign in once, subscribe from any platform, full access everywhere. 14-day card-on-file free trial, then €9.99/month or €99.99/year (annual preferred, "2 months free").
+
+- **Single source of truth**: the `entitlements` table (above), keyed to the Supabase user account. The server decides access; clients only read it via the authed `GET /api/subscription` (or their own RLS row).
+- **Two writers, both verified webhooks**, each matched to the Supabase user id:
+  - **Stripe** (`POST /api/webhooks/stripe`) — web. Verifies the `Stripe-Signature` against `STRIPE_WEBHOOK_SECRET`. Checkout stamps `client_reference_id` and `subscription_data.metadata.supabase_user_id` with the user id; customer metadata too. Maps `customer.subscription.*` to the entitlement.
+  - **RevenueCat** (`POST /api/webhooks/revenuecat`) — mobile. Verifies the `Authorization` header against `REVENUECAT_WEBHOOK_AUTH`. The SDK is configured with `appUserID` = Supabase user id, so every event maps to an account.
+  - Both are idempotent via `billing_events`. Invalid signature/auth or malformed input is rejected (400/401). Cross-source writes never let one processor's expiry revoke the other's active entitlement (see `upsertEntitlement`).
+- **Platform-correct purchase path**: web uses Stripe Checkout (`POST /api/checkout`); the native app uses RevenueCat/StoreKit (`src/lib/native/purchases.ts`) and never the web checkout. The native purchase SDK (`@revenuecat/purchases-capacitor`) is **only ever `import()`-ed at runtime behind an `isNative()` guard**, so the web bundle never imports it.
+- **Surfaces**: a paywall (`src/components/Paywall.tsx`) gates the app when not `trialing`/`active`, with Restore (native), the Apple auto-renew disclosure, and Terms/Privacy near the buy button; a Profile "Your subscription" section (plan, status, renewal/expiry in nl-NL, source, Manage, trial CTA); a marketing pricing section. Manage routes per source: Stripe billing portal (`POST /api/billing-portal`) for web, App Store subscriptions for iOS, Play subscriptions for Android.
+- Account deletion removes the entitlement row (listed explicitly in `DELETE /api/users/me`).
 
 ## Known Technical Debt
 
