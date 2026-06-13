@@ -28,17 +28,35 @@ function addMonths(date: Date, n: number): Date {
   return d;
 }
 
-// Reducing-balance amortization with a fixed extra principal payment each month.
-// monthly rate = annual / 12; iterate until the balance clears. Returns months to
-// payoff, or null when the (boosted) payment can't cover the monthly interest.
+// Months to payoff with a fixed extra principal payment each month, using the
+// SAME amortization model as the baseline `projectMortgage` for this `type` —
+// otherwise the saving (baseline − this) compares two different curves.
+// Returns months to payoff, or null when the (boosted) payment can't amortise.
 function monthsToPayoffWithExtra(
   balance: number,
   annualRatePct: number,
   monthlyPayment: number,
   extra: number,
+  type: string | null | undefined,
 ): number | null {
   if (balance <= 0) return 0;
   const r = annualRatePct / 1200;
+
+  // Linear: the principal/month is fixed (payment minus interest on the current
+  // balance), so an extra payment adds straight to that constant principal.
+  // projectMortgage amortises a linear loan this way for the baseline
+  // remainingMonths, so this stays a true like-for-like comparison. Running the
+  // annuity loop below on a linear loan instead would wildly overstate the
+  // months saved (annuity clears far faster than the linear baseline assumes).
+  if (type === "linear") {
+    const scheduledPrincipal = r > 0 ? monthlyPayment - balance * r : monthlyPayment;
+    const principalPerMonth = scheduledPrincipal + extra;
+    if (principalPerMonth <= 0) return null;
+    return Math.ceil(balance / principalPerMonth);
+  }
+
+  // Annuity (and unknown types, which projectMortgage also amortises as an
+  // annuity): reducing-balance simulation at the boosted level payment.
   const pmt = monthlyPayment + extra;
   if (r > 0 && pmt <= balance * r) return null;
   if (r === 0 && pmt <= 0) return null;
@@ -107,7 +125,7 @@ export function MortgageProjectionLine({
     // has no defined effect on the existing schedule — show the fallback.
     let sooner: { newYear: number; yearsSooner: number } | null = null;
     if (type !== "interest_only" && pmt != null) {
-      const newMonths = monthsToPayoffWithExtra(balance, rate, pmt, EXTRA_PER_MONTH);
+      const newMonths = monthsToPayoffWithExtra(balance, rate, pmt, EXTRA_PER_MONTH, type);
       if (newMonths != null) {
         const saved = proj.remainingMonths - newMonths;
         if (saved >= MIN_MONTHS_SAVED) {

@@ -165,7 +165,10 @@ export function PortfolioTab({
         label: CATEGORY_LABEL[cat] ?? cat,
         items: [...items].sort((a, b) => b.value - a.value),
         total: items.reduce((s, a) => {
-          const equity = a.type === "real_estate" ? a.value - computeCurrentBalance(a) : a.value;
+          // Equity floored at 0 for real estate — matches netTotal (page.tsx) and
+          // todayBreakdown, so an underwater property can't push a group total
+          // (or its allocation bar) negative while the hero net worth floors at 0.
+          const equity = a.type === "real_estate" ? Math.max(0, a.value - computeCurrentBalance(a)) : a.value;
           const inDisplay = toDisplay(equity, a.currency || "USD", displayCurrency);
           return s + (inDisplay ?? 0);
         }, 0),

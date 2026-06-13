@@ -85,5 +85,23 @@ export async function buildVitalsInputs(
     return { ...a, value: toEur(a.value, cur) };
   });
 
-  return { user, assets: normalizedAssets, snapshots, netWorthEur, fxRates };
+  // Snapshots are written in USD (writeSnapshot / backfillSnapshots sum each
+  // contribution through toUsd). The vital modules compare snapshot figures
+  // against the EUR-normalized assets above — realGrowth's 12-month nominal
+  // delta (nowNetWorth EUR vs baseline.total_value) and leverage's historical
+  // LTV trend (EUR property value − breakdown.real_estate) — so the snapshot
+  // total_value and per-type breakdown MUST be on the same EUR basis, or the
+  // comparison mixes currencies and a genuinely flat year reads as ±the USD/EUR
+  // offset (~8%). Convert at today's USD→EUR rate — the same single-rate
+  // treatment the net-worth chart applies to historical USD rows; in the growth
+  // ratio the rate cancels, leaving the true native move.
+  const normalizedSnapshots: Snapshot[] = snapshots.map((s) => ({
+    date: s.date,
+    total_value: s.total_value * eurRate,
+    breakdown: s.breakdown
+      ? Object.fromEntries(Object.entries(s.breakdown).map(([k, v]) => [k, v * eurRate]))
+      : s.breakdown,
+  }));
+
+  return { user, assets: normalizedAssets, snapshots: normalizedSnapshots, netWorthEur, fxRates };
 }
