@@ -12,6 +12,7 @@ import { AssetOverview } from "@/components/sections/AssetOverview";
 import { QnA } from "@/components/sections/QnA";
 import { PullQuote } from "@/components/sections/PullQuote";
 import { Privacy } from "@/components/sections/Privacy";
+import { Pricing } from "@/components/sections/Pricing";
 import { ClosingCta } from "@/components/sections/ClosingCta";
 
 export default function MarketingPage() {
@@ -41,6 +42,7 @@ export default function MarketingPage() {
             <a href="#signals">Signals</a>
             <a href="#scenarios">Scenarios</a>
             <a href="#coverage">Coverage</a>
+            <a href="#pricing">Pricing</a>
             <a href="#privacy">Privacy</a>
           </nav>
           <div className="flex items-center gap-2 ml-auto min-[880px]:ml-0">
@@ -69,6 +71,7 @@ export default function MarketingPage() {
       <QnA />
       <PullQuote />
       <Privacy />
+      <Pricing />
       <ClosingCta />
 
       {/* Footer */}
