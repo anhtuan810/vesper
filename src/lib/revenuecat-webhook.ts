@@ -1,0 +1,117 @@
+// Server-only mapping from a RevenueCat webhook event to our entitlement. Pure
+// (no SDK, no secrets beyond the env product mapping), so it is unit-testable in
+// isolation. The webhook route handles auth, idempotency, and persistence.
+
+import type { EntitlementWrite } from "@/lib/entitlements";
+import type { PlanId, SubscriptionSource, SubscriptionStatus } from "@/lib/subscription";
+
+// The subset of the RevenueCat webhook payload we rely on.
+// See https://www.revenuecat.com/docs/webhooks/event-types-and-fields
+export interface RevenueCatEvent {
+  id: string;
+  type: string;
+  app_user_id?: string;
+  product_id?: string;
+  entitlement_ids?: string[] | null;
+  period_type?: string; // TRIAL | INTRO | NORMAL | PROMOTIONAL
+  expiration_at_ms?: number | null;
+  purchased_at_ms?: number | null;
+  store?: string; // APP_STORE | PLAY_STORE | MAC_APP_STORE | AMAZON | STRIPE
+  environment?: string; // SANDBOX | PRODUCTION
+}
+
+export interface RevenueCatWebhookBody {
+  api_version?: string;
+  event?: RevenueCatEvent;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function entitlementId(): string {
+  return process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || "premium";
+}
+
+function sourceFromStore(store: string | undefined): SubscriptionSource | null {
+  switch (store) {
+    case "APP_STORE":
+    case "MAC_APP_STORE":
+      return "app_store";
+    case "PLAY_STORE":
+      return "play_store";
+    default:
+      // STRIPE-via-RevenueCat and AMAZON are not part of this integration.
+      return null;
+  }
+}
+
+function planForProduct(productId: string | undefined): PlanId | null {
+  if (!productId) return null;
+  if (productId === process.env.REVENUECAT_ANNUAL_PRODUCT_ID) return "annual";
+  if (productId === process.env.REVENUECAT_MONTHLY_PRODUCT_ID) return "monthly";
+  // Heuristic fallback so a missing env mapping still resolves the common cases.
+  const p = productId.toLowerCase();
+  if (p.includes("annual") || p.includes("year")) return "annual";
+  if (p.includes("month")) return "monthly";
+  return null;
+}
+
+// Maps an event to an entitlement write, or returns null when the event is
+// irrelevant (anonymous app user id, an unhandled store, or an event that does
+// not touch our entitlement). Returning null tells the webhook to ack-and-skip.
+export function mapRevenueCatEvent(event: RevenueCatEvent): EntitlementWrite | null {
+  const userId = event.app_user_id;
+  // Require a real Supabase user id. Anonymous RevenueCat ids ($RCAnonymousID:…)
+  // and aliases never map to an account, so they are ignored.
+  if (!userId || !UUID_RE.test(userId)) return null;
+
+  const source = sourceFromStore(event.store);
+  if (!source) return null;
+
+  // Act only on events that concern our entitlement. Some test events omit the
+  // list entirely; those are allowed through.
+  const ent = entitlementId();
+  if (event.entitlement_ids && event.entitlement_ids.length > 0 && !event.entitlement_ids.includes(ent)) {
+    return null;
+  }
+
+  const expMs = event.expiration_at_ms ?? null;
+  const activeNow = expMs == null ? true : expMs > Date.now();
+  const isTrial = event.period_type === "TRIAL" || event.period_type === "INTRO";
+
+  let status: SubscriptionStatus;
+  let cancelAtPeriodEnd = false;
+
+  switch (event.type) {
+    case "EXPIRATION":
+      status = "expired";
+      break;
+    case "BILLING_ISSUE":
+      status = activeNow ? "past_due" : "expired";
+      break;
+    case "CANCELLATION":
+      // Auto-renew turned off; access continues until expiration.
+      cancelAtPeriodEnd = true;
+      status = activeNow ? (isTrial ? "trialing" : "active") : "expired";
+      break;
+    case "SUBSCRIPTION_PAUSED":
+      status = "canceled";
+      break;
+    default:
+      // INITIAL_PURCHASE, RENEWAL, PRODUCT_CHANGE, UNCANCELLATION, TRANSFER, …
+      status = activeNow ? (isTrial ? "trialing" : "active") : "expired";
+  }
+
+  const expIso = expMs ? new Date(expMs).toISOString() : null;
+
+  return {
+    userId,
+    status,
+    source,
+    plan: planForProduct(event.product_id),
+    currentPeriodEnd: expIso,
+    trialEnd: isTrial ? expIso : null,
+    cancelAtPeriodEnd,
+    revenuecatAppUserId: userId,
+    productId: event.product_id ?? null,
+  };
+}
