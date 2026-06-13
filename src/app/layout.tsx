@@ -8,6 +8,8 @@ import { UndoDeleteToast } from "@/components/UndoDeleteToast";
 import { VitalsPrefetch } from "@/components/VitalsPrefetch";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
+import { SubscriptionProvider } from "@/components/SubscriptionProvider";
+import { Paywall } from "@/components/Paywall";
 import { AiConsentGate } from "@/components/AiConsentGate";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
@@ -98,19 +100,24 @@ export default async function RootLayout({
         <PreloadResources />
         <ThemeProvider initialTheme={theme}>
           <UserProvider>
-            {/* Marketing pages lay themselves out full-bleed (hero, ticker,
-                dark bands); only the app gets the centered reading column. */}
-            {isMarketing ? (
-              children
-            ) : (
-              <div className="mx-auto w-full max-w-[720px] px-5">
-                {children}
-              </div>
-            )}
-            {!isMarketing && <BottomNav />}
-            {!isMarketing && <UndoDeleteToast />}
-            {!isMarketing && <VitalsPrefetch />}
-            {!isMarketing && <AiConsentGate />}
+            <SubscriptionProvider>
+              {/* Marketing pages lay themselves out full-bleed (hero, ticker,
+                  dark bands); only the app gets the centered reading column. */}
+              {isMarketing ? (
+                children
+              ) : (
+                <div className="mx-auto w-full max-w-[720px] px-5">
+                  {children}
+                </div>
+              )}
+              {!isMarketing && <BottomNav />}
+              {!isMarketing && <UndoDeleteToast />}
+              {!isMarketing && <VitalsPrefetch />}
+              {!isMarketing && <AiConsentGate />}
+              {/* Paywall-first access gate. Inert on marketing/login, while
+                  loading, signed out, or entitled. */}
+              {!isMarketing && <Paywall />}
+            </SubscriptionProvider>
           </UserProvider>
         </ThemeProvider>
         <NativeBootstrap />
