@@ -23,6 +23,12 @@ const EXCLUDED = [
   "src/middleware.ts",    // marketing rewrite + login wall — client-side on native
   "src/app/icon.tsx",     // ImageResponse routes don't export; the native icon
   "src/app/apple-icon.tsx", // comes from the iOS asset catalog
+  // Web-SEO metadata routes served only on the public domains (volnar.nl). They
+  // are not statically exportable under output:"export" and the bundled app never
+  // serves robots / sitemap / social-card URLs.
+  "src/app/marketing/opengraph-image.tsx",
+  "src/app/robots.ts",
+  "src/app/sitemap.ts",
 ];
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://app.volnar.nl";
