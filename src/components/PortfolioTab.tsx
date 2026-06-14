@@ -161,12 +161,11 @@ export function PortfolioTab({
   useEffect(() => {
     try { setLiquidOnly(sessionStorage.getItem(LIQUID_ONLY_KEY) === "true"); } catch {}
   }, []);
-  const toggleLiquid = () => {
-    const next = !liquidOnly;
-    setLiquidOnly(next);
-    try { sessionStorage.setItem(LIQUID_ONLY_KEY, String(next)); } catch {}
+  const setLiquid = (v: boolean) => {
+    setLiquidOnly(v);
+    try { sessionStorage.setItem(LIQUID_ONLY_KEY, String(v)); } catch {}
     // 1D is liquid-only; leaving the liquid view drops back to the default window.
-    if (!next && range === "1D") setRange("1M");
+    if (!v && range === "1D") setRange("1M");
   };
 
   // Per-asset liquid display values (display currency) — stocks + ETF + crypto,
@@ -332,7 +331,7 @@ export function PortfolioTab({
           chart and range pills sit flush with the full-bleed market/insight band edges. */}
       <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={heroTotal} range={range} selectedPoint={selectedPoint} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onToggleLiquid={toggleLiquid} />
+          <NetWorthHero netTotal={heroTotal} range={range} selectedPoint={selectedPoint} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onSetLiquid={setLiquid} />
         </div>
 
         {heroTotal > 0 && (
@@ -359,7 +358,7 @@ export function PortfolioTab({
           with the net-worth number and the Holdings header instead of sitting
           inset/indented. The card's own surface + border keeps it from floating. */}
       {assets.length > 0 && (
-        <div className="-mx-4 md:mx-0 mb-6" style={{ maxWidth: 660 }}>
+        <div className="-mx-4 md:mx-0 mb-3" style={{ maxWidth: 660 }}>
           <PortfolioSummaryCard
             netTotal={netTotal}
             snapshots={fullSnapshots}
@@ -387,7 +386,7 @@ export function PortfolioTab({
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleAll(); } }}
           style={{
             cursor: "pointer", WebkitTapHighlightColor: "transparent",
-            padding: "8px 0", marginBottom: 2,
+            padding: "2px 0 0", marginBottom: 0,
             fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
             textTransform: "uppercase", color: "var(--text-faint)",
           }}

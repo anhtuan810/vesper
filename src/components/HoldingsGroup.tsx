@@ -29,7 +29,7 @@ export function HoldingsGroup({
           gap: 14,
           // Generous top spacing sets each class apart from the previous class's
           // rows; the tighter bottom keeps the header tied to its own rows.
-          padding: "24px 0 12px",
+          padding: "16px 0 10px",
           background: "none",
           border: "none",
           cursor: "pointer",
@@ -37,12 +37,12 @@ export function HoldingsGroup({
         }}
       >
         <span style={{
-          fontSize: 16,
+          fontSize: 14,
           fontWeight: 600,
           letterSpacing: "-0.01em",
           color: "var(--text)",
           flexShrink: 0,
-          minWidth: 140,
+          minWidth: 104,
           textAlign: "left",
         }}>
           {label}
