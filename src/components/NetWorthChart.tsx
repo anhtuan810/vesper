@@ -457,13 +457,14 @@ export function NetWorthChart(props: Props) {
                   <path
                     d={bandPaths[c].area}
                     fill={CATEGORY_FILL[c]}
-                    fillOpacity={1}
+                    fillOpacity={0.58}
                   />
                   <path
                     d={bandPaths[c].edge}
                     fill="none"
                     stroke={CATEGORY_EDGE[c]}
-                    strokeWidth={1}
+                    strokeWidth={0.5}
+                    strokeOpacity={0.55}
                   />
                 </g>
               ))}
@@ -471,7 +472,7 @@ export function NetWorthChart(props: Props) {
                 d={line}
                 fill="none"
                 stroke={strokeColor}
-                strokeWidth={1.5}
+                strokeWidth={1}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />

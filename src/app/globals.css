@@ -67,14 +67,14 @@
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band:  #7FA890;
-  --cat-property-edge:  #3F6354;
-  --cat-markets-band:   #8FB3C9;
-  --cat-markets-edge:   #4A6E86;
-  --cat-reserves-band:  #D9BE84;
-  --cat-reserves-edge:  #A07F49;
-  --cat-crypto-band:    #D88E80;
-  --cat-crypto-edge:    #A8473C;
+  --cat-property-band:  #3F6B5A;
+  --cat-property-edge:  #2E5246;
+  --cat-markets-band:   #4E7E9A;
+  --cat-markets-edge:   #3A6076;
+  --cat-reserves-band:  #CFC09C;
+  --cat-reserves-edge:  #B6A576;
+  --cat-crypto-band:    #C79A4E;
+  --cat-crypto-edge:    #A87E36;
   --cat-tangible-band:  #BCAE94;
   --cat-tangible-edge:  #7E6F54;
   /* PerspectiveCard translucent surfaces — light values */
@@ -132,14 +132,14 @@
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band: rgba(111, 173, 138, 0.30);
-  --cat-property-edge: #6FAD8A;
-  --cat-markets-band:  rgba(122, 175, 212, 0.30);
-  --cat-markets-edge:  #7AAFD4;
-  --cat-reserves-band: rgba(201, 168, 122, 0.30);
-  --cat-reserves-edge: #C9A87A;
-  --cat-crypto-band:   rgba(232, 144, 134, 0.30);
-  --cat-crypto-edge:   #E89086;
+  --cat-property-band: #3F6B5A;
+  --cat-property-edge: #2E5246;
+  --cat-markets-band:  #4E7E9A;
+  --cat-markets-edge:  #3A6076;
+  --cat-reserves-band: #CFC09C;
+  --cat-reserves-edge: #B6A576;
+  --cat-crypto-band:   #C79A4E;
+  --cat-crypto-edge:   #A87E36;
   --cat-tangible-band: rgba(181, 164, 138, 0.30);
   --cat-tangible-edge: #B5A48A;
   /* PerspectiveCard translucent surfaces — dark values */
