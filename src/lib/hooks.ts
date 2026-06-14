@@ -37,6 +37,9 @@ export type { VitalsResponse } from "./hooks/vitals";
 
 export { useNetWorth } from "./hooks/netWorth";
 
+export { useLiquidIntraday } from "./hooks/liquidIntraday";
+export type { LiquidIntradayData, LiquidIntradayAsset } from "./hooks/liquidIntraday";
+
 export {
   usePortfolioRevision,
   bumpPortfolioRevision,

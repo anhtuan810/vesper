@@ -7,6 +7,7 @@ import type { Mutation } from "@/lib/supabase";
 import { firstSnapshotDate, hasSufficientHistory } from "@/lib/networth-history";
 
 const RANGE_LABEL: Record<Range, string> = {
+  "1D": "today",
   "1W": "past week",
   "1M": "past month",
   "3M": "past 3 months",
@@ -18,6 +19,7 @@ const RANGE_LABEL: Record<Range, string> = {
 // Mirrors the snapshots route's RANGE_DAYS — used to derive the window start
 // for the "is there real history at the start of this window?" check.
 const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
+  "1D": 1,
   "1W": 7,
   "1M": 30,
   "3M": 90,
@@ -38,7 +40,9 @@ interface NetWorthHeroProps {
 }
 
 function fmtSelectedDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
+  // Accept both daily ("YYYY-MM-DD") and intraday ISO ("YYYY-MM-DDTHH:mm:...Z")
+  // dates — slice to the date part so intraday timestamps still parse.
+  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
   });
@@ -114,10 +118,16 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       ? (rangeAbs / baseValue) * 100
       : null;
 
+  // Intraday liquid (1D): series[0] is today's open and netTotal is now, so the
+  // existing delta math already yields the genuine intraday move — show the
+  // percentage without the sufficientHistory gate.
+  const isIntradayLiquid = range === "1D" && liquidOnly;
   // Suppress the percentage when the base is too small to be meaningful, when
   // there isn't enough real history to anchor it, or when holdings changed —
   // never present data entry as a return.
-  const showPct = (seriesStart?.total_value ?? 1000) >= 1000 && sufficientHistory && !includesHoldingsChange;
+  const showPct = isIntradayLiquid
+    ? true
+    : (seriesStart?.total_value ?? 1000) >= 1000 && sufficientHistory && !includesHoldingsChange;
 
   const activeAbs = showSelected ? selAbs! : rangeAbs;
   const activePct = showSelected ? selPct! : rangePct;
@@ -127,9 +137,11 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   const earliestDate = series ? firstSnapshotDate(series) : null;
   const label = selectedPoint != null
     ? fmtSelectedDate(selectedPoint.date)
-    : !sufficientHistory && earliestDate != null
-      ? `since ${fmtSelectedDate(earliestDate)}`
-      : RANGE_LABEL[range];
+    : isIntradayLiquid
+      ? RANGE_LABEL[range]
+      : !sufficientHistory && earliestDate != null
+        ? `since ${fmtSelectedDate(earliestDate)}`
+        : RANGE_LABEL[range];
   const annotation = !showSelected && !showPct && includesHoldingsChange ? " · includes added holdings" : "";
 
   if (!currencyLoaded || !valuesSettled) {

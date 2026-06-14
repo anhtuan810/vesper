@@ -9,14 +9,14 @@ import { formatDate } from "@/lib/utils";
 import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
 import { computeYAxisDomain, computeNiceLevels } from "@/lib/networth-axis";
 
-export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
+export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
 
 // Mirrors the snapshots route's RANGE_DAYS — used to tell whether a timeframe's
 // start predates the earliest real data we have (in which case stretching a
 // handful of points across that whole width would misrepresent the history).
 const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
-  "1W": 7, "1M": 30, "3M": 90, "1Y": 365, "3Y": 1095, "All": null,
+  "1D": 1, "1W": 7, "1M": 30, "3M": 90, "1Y": 365, "3Y": 1095, "All": null,
 };
 
 export function rangeStartDate(r: Range): string | null {
@@ -100,6 +100,9 @@ interface Props {
   // "Liquid only" mode: render a single zoomed line (no stacked bands, no
   // category breakdown tooltip); the series total is the combined liquid value.
   lineOnly?: boolean;
+  // Whether the Liquid-only view is active — gates the intraday 1D pill (enabled
+  // only here, never by trackingSinceDate).
+  liquidOnly?: boolean;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -231,7 +234,7 @@ export function buildSeries(raw: SnapshotPoint[], currentNet: number, todayBreak
 }
 
 export function NetWorthChart(props: Props) {
-  const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate, lineOnly } = props;
+  const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate, lineOnly, liquidOnly } = props;
   // Strip the live tip (last point = today's netTotal) until values are fully settled,
   // so the chart doesn't redraw as netTotal steps through intermediate states.
   // Memoized so the slice doesn't mint a new reference on every scrub re-render
@@ -577,7 +580,12 @@ export function NetWorthChart(props: Props) {
       >
         {RANGES.map((r) => {
           const start = rangeStartDate(r);
-          const disabled = trackingSinceDate != null && start != null && start < trackingSinceDate;
+          // 1D is intraday-liquid only: enabled purely by liquidOnly, never
+          // gated by trackingSinceDate. Every other range keeps the
+          // history-coverage gate.
+          const disabled = r === "1D"
+            ? !liquidOnly
+            : trackingSinceDate != null && start != null && start < trackingSinceDate;
           return (
           <button
             key={r}

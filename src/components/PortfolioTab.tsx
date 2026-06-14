@@ -17,7 +17,7 @@ import { PortfolioSummaryCard } from "@/components/PortfolioSummaryCard";
 import { PositionRow } from "@/components/PositionRow";
 import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
-import { useSparklines, useDisplayCurrency } from "@/lib/hooks";
+import { useSparklines, useDisplayCurrency, useLiquidIntraday } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { toDisplay, formatMoney } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
@@ -162,23 +162,29 @@ export function PortfolioTab({
     try { setLiquidOnly(sessionStorage.getItem(LIQUID_ONLY_KEY) === "true"); } catch {}
   }, []);
   const toggleLiquid = () => {
-    setLiquidOnly((prev) => {
-      const next = !prev;
-      try { sessionStorage.setItem(LIQUID_ONLY_KEY, String(next)); } catch {}
-      return next;
-    });
+    const next = !liquidOnly;
+    setLiquidOnly(next);
+    try { sessionStorage.setItem(LIQUID_ONLY_KEY, String(next)); } catch {}
+    // 1D is liquid-only; leaving the liquid view drops back to the default window.
+    if (!next && range === "1D") setRange("1M");
   };
 
-  // Combined liquid value (display currency) — stocks + ETF + crypto. Same
-  // conversion as netTotal/the Holdings groups; unlevered so value == display.
-  const liquidTotal = useMemo(() => {
-    let sum = 0;
-    for (const a of netWorthAssets) {
-      if (!LIQUID_TYPES.includes(a.type)) continue;
-      sum += toDisplay(a.value, a.currency || "USD", displayCurrency) ?? 0;
-    }
-    return sum;
-  }, [netWorthAssets, displayCurrency]);
+  // Per-asset liquid display values (display currency) — stocks + ETF + crypto,
+  // unlevered so value == display. Single source of truth reused by both the
+  // liquid total and the intraday ratio model (no second valuation path).
+  const liquidAssets = useMemo(
+    () => netWorthAssets
+      .filter((a) => LIQUID_TYPES.includes(a.type))
+      .map((a) => ({
+        id: a.id,
+        displayValue: toDisplay(a.value, a.currency || "USD", displayCurrency) ?? 0,
+      })),
+    [netWorthAssets, displayCurrency],
+  );
+  const liquidTotal = useMemo(
+    () => liquidAssets.reduce((s, a) => s + a.displayValue, 0),
+    [liquidAssets],
+  );
 
   // Liquid line series — each historical point's liquid USD sum
   // (breakdown.stocks+etf+crypto) converted to the display currency at the live
@@ -202,11 +208,56 @@ export function PortfolioTab({
     return out;
   }, [fullSnapshots, range, displayCurrency, liquidTotal]);
 
-  // Active total/series for the hero + chart — swapped to the liquid view when
-  // the toggle is on; otherwise byte-for-byte the existing net-worth values.
+  // Intraday 5m bars for the liquid set — only fetched in the Liquid-only 1D view.
+  const isIntraday = liquidOnly && range === "1D";
+  const { data: intraday, isLoading: intradayLoading } = useLiquidIntraday(isIntraday);
+
+  // Intraday combined line (display currency) via the ratio model:
+  //   value_a(t) = currentDisplayValue(a) × close_a(t) / close_a(latest)
+  // over the sorted union of all assets' 5m timestamps, each asset forward-filled
+  // to the grid (its first close before its first bar). Assets absent from the
+  // response contribute a flat current display value at every t, so the last grid
+  // point ≈ the daily liquid total (continuity). The ratio is unitless, so FX is
+  // held flat automatically. native_breakdown is tagged with the display currency
+  // so NetWorthChart's per-point conversion stays an identity (Phase B rationale).
+  // Empty until the fetch returns.
+  const intradaySeries = useMemo<SnapshotPoint[]>(() => {
+    if (!intraday || intraday.assets.length === 0) return [];
+    const byId = new Map(intraday.assets.map((a) => [a.id, [...a.closes].sort((x, y) => x.t - y.t)]));
+    const tsSet = new Set<number>();
+    for (const a of intraday.assets) for (const c of a.closes) tsSet.add(c.t);
+    const grid = [...tsSet].sort((x, y) => x - y);
+    if (grid.length < 2) return [];
+
+    const totals = new Array<number>(grid.length).fill(0);
+    for (const a of liquidAssets) {
+      const closes = byId.get(a.id);
+      if (!closes || closes.length === 0 || !closes[closes.length - 1].close) {
+        // No intraday coverage (or a zero latest close) → flat contribution.
+        for (let i = 0; i < grid.length; i++) totals[i] += a.displayValue;
+        continue;
+      }
+      const denom = closes[closes.length - 1].close;
+      let j = 0;
+      let cur = closes[0].close; // before the first bar, hold the first close
+      for (let i = 0; i < grid.length; i++) {
+        while (j < closes.length && closes[j].t <= grid[i]) { cur = closes[j].close; j++; }
+        totals[i] += a.displayValue * (cur / denom);
+      }
+    }
+    return grid.map((t, i) => ({
+      date: new Date(t * 1000).toISOString(),
+      total_value: totals[i],
+      native_breakdown: { [displayCurrency]: totals[i] },
+    }));
+  }, [intraday, liquidAssets, displayCurrency]);
+
+  // Active total/series for the hero + chart. Liquid-only 1D → intraday combined
+  // line (netTotal stays the live liquid total for continuity); liquid daily →
+  // Phase B series; net worth → unchanged.
   const heroTotal = liquidOnly ? liquidTotal : netTotal;
-  const heroSeriesActive = liquidOnly ? liquidSeries : heroSeries;
-  const chartSeriesActive = liquidOnly ? liquidSeries : series;
+  const heroSeriesActive = !liquidOnly ? heroSeries : isIntraday ? intradaySeries : liquidSeries;
+  const chartSeriesActive = !liquidOnly ? series : isIntraday ? intradaySeries : liquidSeries;
 
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
@@ -290,12 +341,13 @@ export function PortfolioTab({
               range={range}
               onRangeChange={setRange}
               series={chartSeriesActive}
-              loading={loading}
+              loading={isIntraday ? intradayLoading : loading}
               onSelectPoint={setSelectedPoint}
               valuesSettled={valuesSettled}
               realPointCount={fullSnapshots.length}
               trackingSinceDate={trackingSinceDate}
               lineOnly={liquidOnly}
+              liquidOnly={liquidOnly}
             />
           </div>
         )}
