@@ -48,10 +48,13 @@ function fmtSelectedDate(dateStr: string): string {
   });
 }
 
-// Intraday (1D) scrub label — the bar's wall-clock time in the viewer's local
-// zone (the date is "today", so the time is what disambiguates the point).
-function fmtSelectedTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+// Intraday (1D) scrub label — full weekday + date and the bar's wall-clock time
+// in the viewer's local zone (e.g. "Sat, 14 Jun 2026, 14:35").
+function fmtSelectedDateTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("en-GB", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
 function fmtPct(n: number): string {
@@ -142,7 +145,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
 
   const earliestDate = series ? firstSnapshotDate(series) : null;
   const label = selectedPoint != null
-    ? (isIntradayLiquid ? fmtSelectedTime(selectedPoint.date) : fmtSelectedDate(selectedPoint.date))
+    ? (isIntradayLiquid ? fmtSelectedDateTime(selectedPoint.date) : fmtSelectedDate(selectedPoint.date))
     : isIntradayLiquid
       ? RANGE_LABEL[range]
       : !sufficientHistory && earliestDate != null
