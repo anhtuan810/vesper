@@ -48,6 +48,12 @@ function fmtSelectedDate(dateStr: string): string {
   });
 }
 
+// Intraday (1D) scrub label — the bar's wall-clock time in the viewer's local
+// zone (the date is "today", so the time is what disambiguates the point).
+function fmtSelectedTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
 function fmtPct(n: number): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
@@ -136,7 +142,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
 
   const earliestDate = series ? firstSnapshotDate(series) : null;
   const label = selectedPoint != null
-    ? fmtSelectedDate(selectedPoint.date)
+    ? (isIntradayLiquid ? fmtSelectedTime(selectedPoint.date) : fmtSelectedDate(selectedPoint.date))
     : isIntradayLiquid
       ? RANGE_LABEL[range]
       : !sufficientHistory && earliestDate != null
