@@ -12,81 +12,74 @@ interface HoldingsGroupProps {
   expanded: boolean;
   onToggle: () => void;
   children: ReactNode;
-  // Optional drag handle rendered OUTSIDE the toggle button (so there are no
-  // nested interactive elements) — sits immediately left of the header. When
-  // undefined, the layout is unchanged.
-  dragHandle?: ReactNode;
 }
 
 export function HoldingsGroup({
-  label, barColor, barPct, total, expanded, onToggle, children, dragHandle,
+  label, barColor, barPct, total, expanded, onToggle, children,
 }: HoldingsGroupProps) {
   const displayCurrency = useDisplayCurrency();
   return (
     <div style={{ borderBottom: "0.5px solid var(--border-strong)" }}>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        {dragHandle}
-        <button
-          onClick={onToggle}
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            // Generous top spacing sets each class apart from the previous class's
-            // rows; the tighter bottom keeps the header tied to its own rows.
-            padding: "24px 0 12px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          <span style={{
-            fontSize: 19,
-            fontWeight: 600,
-            letterSpacing: "-0.01em",
-            color: "var(--text)",
-            flexShrink: 0,
-            minWidth: 140,
-            textAlign: "left",
-          }}>
-            {label}
-          </span>
+      <button
+        onClick={onToggle}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          // Generous top spacing sets each class apart from the previous class's
+          // rows; the tighter bottom keeps the header tied to its own rows.
+          padding: "24px 0 12px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <span style={{
+          fontSize: 16,
+          fontWeight: 600,
+          letterSpacing: "-0.01em",
+          color: "var(--text)",
+          flexShrink: 0,
+          minWidth: 140,
+          textAlign: "left",
+        }}>
+          {label}
+        </span>
 
-          {/* Proportional allocation bar — class accent, thicker with rounded ends
-              so it reads as a section gauge, not a row sparkline. */}
+        {/* Proportional allocation bar — class accent, thicker with rounded ends
+            so it reads as a section gauge, not a row sparkline. */}
+        <div style={{
+          flex: 1,
+          height: 6,
+          background: "var(--surface-elev)",
+          borderRadius: 999,
+          overflow: "hidden",
+          position: "relative",
+        }}>
           <div style={{
-            flex: 1,
-            height: 6,
-            background: "var(--surface-elev)",
+            position: "absolute",
+            top: 0, left: 0,
+            height: "100%",
+            width: `${barPct}%`,
+            minWidth: 8,
             borderRadius: 999,
-            overflow: "hidden",
-            position: "relative",
-          }}>
-            <div style={{
-              position: "absolute",
-              top: 0, left: 0,
-              height: "100%",
-              width: `${barPct}%`,
-              minWidth: 8,
-              borderRadius: 999,
-              background: barColor,
-            }} />
-          </div>
+            background: barColor,
+          }} />
+        </div>
 
-          {/* Group total */}
-          <span style={{
-            fontSize: 15,
-            fontWeight: 500,
-            fontVariantNumeric: "tabular-nums",
-            color: "var(--text)",
-            flexShrink: 0,
-          }}>
-            {formatMoney(total, displayCurrency, displayCurrency)}
-          </span>
-        </button>
-      </div>
+        {/* Group total */}
+        <span style={{
+          fontSize: 15,
+          fontWeight: 500,
+          fontVariantNumeric: "tabular-nums",
+          color: "var(--text)",
+          flexShrink: 0,
+        }}>
+          {formatMoney(total, displayCurrency, displayCurrency)}
+        </span>
+      </button>
 
       <div
         style={{

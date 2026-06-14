@@ -3,15 +3,6 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import {
   NetWorthChart,
@@ -56,56 +47,6 @@ function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
     else within.push(p);
   }
   return anchor ? [anchor, ...within] : within;
-}
-
-// Per-device persisted order for the Holdings category groups (localStorage,
-// not synced across devices — see NON-GOALS).
-const HOLDINGS_ORDER_KEY = "volnar:holdings-order";
-function loadHoldingsOrder(): string[] {
-  try { const raw = localStorage.getItem(HOLDINGS_ORDER_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; }
-}
-// Saved order first (only still-present categories), then any new ones by
-// CATEGORY_ORDER — so a removed category drops out cleanly and a freshly-added
-// one appends in its canonical slot without clobbering the user's arrangement.
-function reconcileOrder(saved: string[], present: string[]): string[] {
-  const kept = saved.filter((c) => present.includes(c));
-  const rest = present.filter((c) => !kept.includes(c))
-    .sort((a, b) => (CATEGORY_ORDER[a] ?? 99) - (CATEGORY_ORDER[b] ?? 99));
-  return [...kept, ...rest];
-}
-
-// Sortable wrapper around HoldingsGroup — owns the dnd-kit node/transform and
-// injects a grip handle (the drag activator) left of the header. The handle is
-// the only activator, so tapping the header still toggles expand/collapse.
-function SortableHoldingsGroup({ category, children, ...groupProps }:
-  { category: string; children: React.ReactNode } & React.ComponentProps<typeof HoldingsGroup>) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: category });
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    position: "relative",
-    zIndex: isDragging ? 5 : undefined,
-    background: isDragging ? "var(--surface)" : undefined,
-    boxShadow: isDragging ? "0 6px 20px rgba(0,0,0,0.10)" : undefined,
-  };
-  const handle = (
-    <span ref={setActivatorNodeRef} {...attributes} {...listeners}
-      role="button" tabIndex={0} aria-label="Reorder category"
-      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: 24, height: 24, marginRight: 4, flexShrink: 0,
-        cursor: "grab", touchAction: "none", color: "var(--text-faint)", opacity: 0.5 }}>
-      <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
-        <circle cx="2" cy="3" r="1.3"/><circle cx="8" cy="3" r="1.3"/>
-        <circle cx="2" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/>
-        <circle cx="2" cy="13" r="1.3"/><circle cx="8" cy="13" r="1.3"/>
-      </svg>
-    </span>
-  );
-  return (
-    <div ref={setNodeRef} style={style}>
-      <HoldingsGroup {...groupProps} dragHandle={handle}>{children}</HoldingsGroup>
-    </div>
-  );
 }
 
 // "Liquid only" view — combined public-markets + crypto. These types are
@@ -294,35 +235,6 @@ export function PortfolioTab({
       .sort((a, b) => (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99));
   }, [netWorthAssets, displayCurrency]);
 
-  // User's drag-reordered category sequence (per-device). Empty until the
-  // mount-only load below — keeping it out of the initializer avoids touching
-  // localStorage during SSR.
-  const [order, setOrder] = useState<string[]>([]);
-  useEffect(() => { setOrder(loadHoldingsOrder()); }, []);
-
-  // The value-sorted `groups` re-sequenced by the saved order; new categories
-  // append by CATEGORY_ORDER and removed ones drop out (reconcileOrder).
-  const orderedGroups = useMemo(() => {
-    const present = groups.map((g) => g.category);
-    const seq = reconcileOrder(order, present);
-    const byCat = new Map(groups.map((g) => [g.category, g]));
-    return seq.map((c) => byCat.get(c)).filter(Boolean) as typeof groups;
-  }, [groups, order]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  function handleDragEnd(e: DragEndEvent) {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const present = orderedGroups.map((g) => g.category);
-    const next = arrayMove(present, present.indexOf(active.id as string), present.indexOf(over.id as string));
-    setOrder(next);
-    try { localStorage.setItem(HOLDINGS_ORDER_KEY, JSON.stringify(next)); } catch {}
-  }
-
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     try {
       const raw = sessionStorage.getItem("volnar.holdings.collapsed");
@@ -431,31 +343,26 @@ export function PortfolioTab({
           Holdings · {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
         </div>
         <div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={orderedGroups.map((g) => g.category)} strategy={verticalListSortingStrategy}>
-              {orderedGroups.map((group) => (
-                <SortableHoldingsGroup
-                  key={group.category}
-                  category={group.category}
-                  label={group.label}
-                  barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
-                  barPct={netTotal > 0 ? Math.max((group.total / netTotal) * 100, 2) : 2}
-                  total={group.total}
-                  expanded={isExpanded(group.category)}
-                  onToggle={() => toggleGroup(group.category)}
-                >
-                  {group.items.map((asset) => (
-                    <PositionRow
-                      key={asset.id}
-                      asset={asset}
-                      closes={asset.symbol ? sparklines[asset.symbol] : []}
-                      valuesSettled={valuesSettled}
-                    />
-                  ))}
-                </SortableHoldingsGroup>
+          {groups.map((group) => (
+            <HoldingsGroup
+              key={group.category}
+              label={group.label}
+              barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
+              barPct={netTotal > 0 ? Math.max((group.total / netTotal) * 100, 2) : 2}
+              total={group.total}
+              expanded={isExpanded(group.category)}
+              onToggle={() => toggleGroup(group.category)}
+            >
+              {group.items.map((asset) => (
+                <PositionRow
+                  key={asset.id}
+                  asset={asset}
+                  closes={asset.symbol ? sparklines[asset.symbol] : []}
+                  valuesSettled={valuesSettled}
+                />
               ))}
-            </SortableContext>
-          </DndContext>
+            </HoldingsGroup>
+          ))}
         </div>
 
         {/* Future income — income pensions (db/state). Off-balance: shown below
