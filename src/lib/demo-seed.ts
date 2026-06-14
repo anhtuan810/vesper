@@ -383,6 +383,32 @@ export async function seedDemoUser(userId: string): Promise<void> {
   );
   if (highlightError) throw highlightError;
 
+  // Grant the demo account full access. The paywall-first gate (src/components/
+  // Paywall.tsx) covers every signed-in user who isn't trialing/active, so without
+  // an entitlement the reviewer would hit the paywall instead of the populated app.
+  // Seeded as an active App Store annual subscription (what a real iOS subscriber
+  // sees: "Purchased via App Store", a far-future renewal, a Manage link that opens
+  // a valid store URL). Upserted so every reseed keeps the single per-user row
+  // consistent; not real billing — purely to unlock the demo.
+  const demoPeriodEnd = new Date(Date.now() + 365 * 86_400_000).toISOString();
+  const { error: entitlementError } = await supabase
+    .from("entitlements")
+    .upsert(
+      {
+        user_id: userId,
+        status: "active",
+        source: "app_store",
+        plan: "annual",
+        current_period_end: demoPeriodEnd,
+        trial_end: null,
+        cancel_at_period_end: false,
+        product_id: "demo",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+  if (entitlementError) throw entitlementError;
+
   // Make the account self-consistent for the chart (EUR display) and skip the
   // one-time AI disclosure gate so the reviewer isn't interrupted.
   await supabase
