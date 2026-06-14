@@ -86,3 +86,24 @@ export function mapStripeSubscription(sub: Stripe.Subscription, userId: string):
     productId: priceId,
   };
 }
+
+// Cancels a subscription immediately as part of account deletion, so a deleted
+// account is never billed again. No proration and no refund — cancellation only
+// stops future charges. Idempotent: a subscription that no longer exists at
+// Stripe, or is already in a terminal state, is treated as success. Throws only
+// on a genuine API failure, so the caller can block deletion and retry rather
+// than silently orphaning a live, still-billing subscription.
+export async function cancelStripeSubscription(subscriptionId: string): Promise<void> {
+  const stripe = getStripe();
+  let sub: Stripe.Subscription;
+  try {
+    sub = await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (err) {
+    // The subscription no longer exists at Stripe — nothing left to bill.
+    if ((err as { code?: string }).code === "resource_missing") return;
+    throw err;
+  }
+  // Already terminal (canceled/expired) — no further billing will occur.
+  if (sub.status === "canceled" || sub.status === "incomplete_expired") return;
+  await stripe.subscriptions.cancel(subscriptionId);
+}

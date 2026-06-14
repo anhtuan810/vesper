@@ -1,0 +1,11 @@
+-- Drop the legacy public.vital_highlights table.
+--
+-- It is no longer written or read by any application code (the current vitals
+-- pipeline persists to vital_snapshots; the dashboard/cron use highlights). It
+-- survived only as a server-only, RLS-locked table holding regenerable derived
+-- metrics, and it was never included in account-deletion purge — so leaving it
+-- would orphan rows for deleted users. Dropping it removes that gap entirely.
+--
+-- IF EXISTS keeps this safe to run against an environment where the table was
+-- never created. CASCADE removes its dependent objects (policies/indexes).
+DROP TABLE IF EXISTS public.vital_highlights CASCADE;

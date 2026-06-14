@@ -2,6 +2,12 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
+import { getEntitlement } from "@/lib/entitlements";
+import { cancelStripeSubscription } from "@/lib/stripe";
+
+// The Stripe SDK (used to cancel an active subscription on deletion) and the
+// Supabase admin API both require the Node runtime, not edge.
+export const runtime = "nodejs";
 
 const PROFILE_FIELD_KEYS = new Set([
   "life_and_direction", "approach", "currently_exploring", "worth_raising",
@@ -138,12 +144,17 @@ async function purgeUserPropertyPhotos(
 }
 
 // Permanent, irreversible account deletion. The user id is resolved from the
-// session only — never from the request body. Removes the user's Storage objects,
-// then every row owned by the user across all tables, then the users row, then
-// the auth user itself. Every step is idempotent, so a mid-sequence failure can be
-// safely retried while the session (and thus the auth user) is still valid — which
-// is why the auth user is deleted LAST. Any step failure returns 500 rather than a
-// silent partial success.
+// session only — never from the request body. First cancels an active Stripe
+// (web) subscription so a deleted account is never billed again, then removes the
+// user's Storage objects, then every row owned by the user across all tables, then
+// the users row, then the auth user itself. Every step is idempotent, so a
+// mid-sequence failure can be safely retried while the session (and thus the auth
+// user) is still valid — which is why the auth user is deleted LAST. Any step
+// failure returns 500 rather than a silent partial success.
+//
+// Store subscriptions (App Store / Play) cannot be cancelled server-side — only
+// the user can, in their store settings — so the delete dialog warns them; see
+// src/components/settings/SettingsContent.tsx.
 export async function DELETE(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -152,10 +163,22 @@ export async function DELETE(request: NextRequest) {
   const supabase = createServerSupabase();
 
   try {
-    // 1. Storage first — user-owned property-map thumbnails (public bucket).
+    // 1. Stop billing first. A deleted account must never be charged again, so
+    // cancel an active Stripe (web) subscription up front. cancelStripeSubscription
+    // is idempotent (a missing/already-terminal subscription is a no-op) and throws
+    // only on a genuine Stripe failure — in which case we abort the whole deletion
+    // and surface a retry, rather than deleting the account and orphaning a live,
+    // still-billing subscription. On a retry after a later-step failure the
+    // entitlement row may already be gone (getEntitlement → null), so this is skipped.
+    const entitlement = await getEntitlement(supabase, userId);
+    if (entitlement?.source === "stripe" && entitlement.stripe_subscription_id) {
+      await cancelStripeSubscription(entitlement.stripe_subscription_id);
+    }
+
+    // 2. Storage — user-owned property-map thumbnails (public bucket).
     await purgeUserPropertyPhotos(supabase, userId);
 
-    // 2. Dependent table rows. Every user-scoped table is listed explicitly (all
+    // 3. Dependent table rows. Every user-scoped table is listed explicitly (all
     // keyed by user_id). rate_limits is omitted — it has ON DELETE CASCADE to
     // users(id); fx_rates is global and price_index_cache is region-keyed, both
     // intentionally untouched. entitlements also cascades, but is removed
@@ -166,11 +189,11 @@ export async function DELETE(request: NextRequest) {
       if (error) throw new Error(`Failed deleting ${table}: ${error.message}`);
     }
 
-    // 3. The users row (cascades rate_limits).
+    // 4. The users row (cascades rate_limits).
     const { error: userError } = await supabase.from("users").delete().eq("id", userId);
     if (userError) throw new Error(`Failed deleting users row: ${userError.message}`);
 
-    // 4. The auth user LAST — so the session stays valid for a retry if any
+    // 5. The auth user LAST — so the session stays valid for a retry if any
     // earlier step failed.
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);
     if (authError) throw new Error(`Failed deleting auth user: ${authError.message}`);
