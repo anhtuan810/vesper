@@ -338,6 +338,21 @@ export function NetWorthChart(props: Props) {
     [values, W, H, niceMin, niceMax, drawW],
   );
 
+  // Gradient area under the line — lineOnly (Liquid) mode only. Same top
+  // boundary (x positions + projected y) as `line`, then down to the plot
+  // baseline (y = H) and closed, so the fill fades from the line to nothing.
+  const areaPath = useMemo(() => {
+    if (!lineOnly || values.length < 2) return "";
+    const toX = (i: number) => (i / (values.length - 1)) * drawW;
+    let d = `M ${toX(0).toFixed(2)} ${projectY(values[0]).toFixed(2)}`;
+    for (let i = 1; i < values.length; i++) d += ` L ${toX(i).toFixed(2)} ${projectY(values[i]).toFixed(2)}`;
+    d += ` L ${toX(values.length - 1).toFixed(2)} ${H.toFixed(2)}`;
+    d += ` L ${toX(0).toFixed(2)} ${H.toFixed(2)} Z`;
+    return d;
+    // projectY is a fresh closure each render; its inputs are H/niceMin/niceMax.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values, drawW, H, niceMin, niceMax, lineOnly]);
+
   // Per-category stacked bands — each point's segments sum exactly to
   // `values[i]` (the displayed total), so the top of the stack equals the
   // net-worth line at every point in any display currency.
@@ -482,6 +497,20 @@ export function NetWorthChart(props: Props) {
                   />
                 </g>
               ))}
+              {/* Soft gradient fill beneath the line — Liquid (lineOnly) mode
+                  only; follows the up/down strokeColor and fades to nothing at
+                  the baseline. Rendered behind the line. */}
+              {lineOnly && (
+                <>
+                  <defs>
+                    <linearGradient id="liquid-area-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={strokeColor} stopOpacity={0.16} />
+                      <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <path d={areaPath} fill="url(#liquid-area-grad)" stroke="none" />
+                </>
+              )}
               <path
                 d={line}
                 fill="none"
