@@ -33,6 +33,8 @@ interface NetWorthHeroProps {
   series?: SnapshotPoint[];
   valuesSettled: boolean;
   mutations?: Mutation[];
+  liquidOnly: boolean;
+  onToggleLiquid: () => void;
 }
 
 function fmtSelectedDate(dateStr: string): string {
@@ -49,7 +51,7 @@ function fmtPct(n: number): string {
   }).format(n);
 }
 
-export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled, mutations }: NetWorthHeroProps) {
+export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled, mutations, liquidOnly, onToggleLiquid }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
 
   const seriesStart = series?.[0];
@@ -134,7 +136,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
     return (
       <div>
         <div className="text-dim mb-[14px]" style={{ fontSize: 14 }}>
-          Total net worth
+          {liquidOnly ? "Liquid assets" : "Total net worth"}
         </div>
         <div
           className="bg-surface-elev rounded-lg animate-pulse"
@@ -152,44 +154,63 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   const formattedPct = activePct != null ? fmtPct(Math.abs(activePct)) : null;
 
   return (
-    <div>
-      <div className="text-dim mb-[14px]" style={{ fontSize: 14 }}>
-        Total net worth
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div>
+        <div className="text-dim mb-[14px]" style={{ fontSize: 14 }}>
+          {liquidOnly ? "Liquid assets" : "Total net worth"}
+        </div>
+
+        {/* Hero number — serif, monochrome */}
+        <div
+          className="font-serif leading-none"
+          style={{
+            fontSize: 54,
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+            color: "var(--hero)",
+            fontVariationSettings: "'opsz' 60",
+          }}
+        >
+          <span>{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
+        </div>
+
+        {/* Change line — IBKR-style plain text, no pill */}
+        {formattedAbs != null && (
+          <div style={{ fontSize: 15, lineHeight: 1.4, marginTop: 14 }}>
+            <span
+              style={{
+                fontWeight: 500,
+                color: isPositive ? "var(--positive-text)" : "var(--negative-text)",
+              }}
+            >
+              {sign}{formattedAbs}{showPct && formattedPct != null ? ` (${formattedPct}%)` : ""}
+            </span>
+            <span style={{ color: "var(--text)", marginLeft: 6, fontSize: 13 }}>
+              {label}
+            </span>
+            {annotation && (
+              <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{annotation}</span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Hero number — serif, monochrome */}
-      <div
-        className="font-serif leading-none"
+      {/* Liquid-only toggle — combined stocks + ETF + crypto. Sits top-right of
+          the hero block; the existing delta/percent math runs on whichever
+          series/total it's given, so it reports the liquid change when on. */}
+      <button
+        onClick={onToggleLiquid}
         style={{
-          fontSize: 54,
-          fontWeight: 600,
-          letterSpacing: "-0.02em",
-          color: "var(--hero)",
-          fontVariationSettings: "'opsz' 60",
+          marginTop: 30, display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "6px 13px", borderRadius: 999, fontSize: 12.5, fontWeight: 500,
+          whiteSpace: "nowrap", cursor: "pointer", border: "0.5px solid",
+          borderColor: liquidOnly ? "var(--accent)" : "var(--border)",
+          background: liquidOnly ? "var(--accent-soft)" : "transparent",
+          color: liquidOnly ? "var(--accent-text)" : "var(--text-faint)",
         }}
       >
-        <span>{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
-      </div>
-
-      {/* Change line — IBKR-style plain text, no pill */}
-      {formattedAbs != null && (
-        <div style={{ fontSize: 15, lineHeight: 1.4, marginTop: 14 }}>
-          <span
-            style={{
-              fontWeight: 500,
-              color: isPositive ? "var(--positive-text)" : "var(--negative-text)",
-            }}
-          >
-            {sign}{formattedAbs}{showPct && formattedPct != null ? ` (${formattedPct}%)` : ""}
-          </span>
-          <span style={{ color: "var(--text)", marginLeft: 6, fontSize: 13 }}>
-            {label}
-          </span>
-          {annotation && (
-            <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{annotation}</span>
-          )}
-        </div>
-      )}
+        Liquid only
+      </button>
     </div>
   );
 }

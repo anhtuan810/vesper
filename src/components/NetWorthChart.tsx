@@ -7,7 +7,7 @@ import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } f
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
-import { computeYAxisDomain } from "@/lib/networth-axis";
+import { computeYAxisDomain, computeNiceLevels } from "@/lib/networth-axis";
 
 export const RANGES = ["1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -97,6 +97,9 @@ interface Props {
   realPointCount?: number;
   // Earliest real snapshot date, for the "Tracking since {date}" caption.
   trackingSinceDate?: string | null;
+  // "Liquid only" mode: render a single zoomed line (no stacked bands, no
+  // category breakdown tooltip); the series total is the combined liquid value.
+  lineOnly?: boolean;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -228,7 +231,7 @@ export function buildSeries(raw: SnapshotPoint[], currentNet: number, todayBreak
 }
 
 export function NetWorthChart(props: Props) {
-  const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate } = props;
+  const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate, lineOnly } = props;
   // Strip the live tip (last point = today's netTotal) until values are fully settled,
   // so the chart doesn't redraw as netTotal steps through intermediate states.
   // Memoized so the slice doesn't mint a new reference on every scrub re-render
@@ -315,8 +318,15 @@ export function NetWorthChart(props: Props) {
   const { niceMin, niceMax, labels: yLabels } = useMemo(() => {
     const dataMin = values.length >= 2 ? Math.min(...values) : 0;
     const dataMax = values.length >= 2 ? Math.max(...values) : 1;
+    // Liquid line zooms to its own min..max like a price chart; the stacked-area
+    // domain anchors at 0 (needed so bands aren't clipped), which would flatten
+    // a single line — so override to a padded data band in lineOnly mode.
+    if (lineOnly) {
+      const pad = Math.max((dataMax - dataMin) * 0.08, 1);
+      return computeNiceLevels(dataMin - pad, dataMax + pad);
+    }
     return computeYAxisDomain(dataMin, dataMax);
-  }, [values]);
+  }, [values, lineOnly]);
 
   const drawW = W - CHART_PAD_RIGHT;
   const projectY = makeProjectY(H, niceMin, niceMax);
@@ -451,8 +461,9 @@ export function NetWorthChart(props: Props) {
               style={{ display: "block" }}
             >
               {/* Stacked asset-class bands — bottom (property) to top (reserves),
-                  painted under the net-worth line so the trajectory reads identically. */}
-              {STACK_ORDER.map((c) => (
+                  painted under the net-worth line so the trajectory reads identically.
+                  Suppressed in lineOnly mode, which shows a single combined line. */}
+              {!lineOnly && STACK_ORDER.map((c) => (
                 <g key={c}>
                   <path
                     d={bandPaths[c].area}
@@ -501,7 +512,7 @@ export function NetWorthChart(props: Props) {
           {/* Per-class breakdown card — one row per non-zero category. The hero
               already surfaces the date and total on hover, so this is an
               annotation only: no header, no divider, no total. */}
-          {selectedIndex !== null && selectedX !== null && tooltipSegments.length > 0 && (
+          {!lineOnly && selectedIndex !== null && selectedX !== null && tooltipSegments.length > 0 && (
             <div
               style={{
                 position: "absolute",

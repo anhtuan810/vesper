@@ -108,6 +108,12 @@ function SortableHoldingsGroup({ category, children, ...groupProps }:
   );
 }
 
+// "Liquid only" view — combined public-markets + crypto. These types are
+// unlevered, so display value == value (no mortgage/equity-floor logic).
+// Property, cash, pension, bonds and gold are excluded.
+const LIQUID_TYPES = ["stocks", "etf", "crypto"];
+const LIQUID_ONLY_KEY = "volnar:liquid-only";
+
 interface PortfolioTabProps {
   assets: LiveAsset[];
   grossTotal: number;
@@ -207,6 +213,59 @@ export function PortfolioTab({
     const liveRates = buildLiveRates();
     return series.map((p) => ({ ...p, total_value: convertPointToDisplay(p, displayCurrency, liveRates) }));
   }, [series, displayCurrency]);
+
+  // "Liquid only" toggle — per-device (sessionStorage). Loaded on mount (kept
+  // out of the initializer to avoid touching sessionStorage during SSR).
+  const [liquidOnly, setLiquidOnly] = useState(false);
+  useEffect(() => {
+    try { setLiquidOnly(sessionStorage.getItem(LIQUID_ONLY_KEY) === "true"); } catch {}
+  }, []);
+  const toggleLiquid = () => {
+    setLiquidOnly((prev) => {
+      const next = !prev;
+      try { sessionStorage.setItem(LIQUID_ONLY_KEY, String(next)); } catch {}
+      return next;
+    });
+  };
+
+  // Combined liquid value (display currency) — stocks + ETF + crypto. Same
+  // conversion as netTotal/the Holdings groups; unlevered so value == display.
+  const liquidTotal = useMemo(() => {
+    let sum = 0;
+    for (const a of netWorthAssets) {
+      if (!LIQUID_TYPES.includes(a.type)) continue;
+      sum += toDisplay(a.value, a.currency || "USD", displayCurrency) ?? 0;
+    }
+    return sum;
+  }, [netWorthAssets, displayCurrency]);
+
+  // Liquid line series — each historical point's liquid USD sum
+  // (breakdown.stocks+etf+crypto) converted to the display currency at the live
+  // rate. FX is held flat for this phase: historical points use today's rate,
+  // an accepted, documented trade-off (the per-currency native_breakdown the
+  // full series carries isn't available per asset-type). total_value is the
+  // display value; native_breakdown is tagged with the display currency so
+  // NetWorthChart's per-point conversion is an identity — otherwise it treats
+  // total_value as USD and double-converts. The live "today" tip carries
+  // liquidTotal.
+  const liquidSeries = useMemo<SnapshotPoint[]>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const out: SnapshotPoint[] = [];
+    for (const p of clipToRange(fullSnapshots, range)) {
+      if (p.date === today) continue;
+      const usd = (p.breakdown?.stocks ?? 0) + (p.breakdown?.etf ?? 0) + (p.breakdown?.crypto ?? 0);
+      const value = toDisplay(usd, "USD", displayCurrency) ?? usd;
+      out.push({ date: p.date, total_value: value, native_breakdown: { [displayCurrency]: value } });
+    }
+    out.push({ date: today, total_value: liquidTotal });
+    return out;
+  }, [fullSnapshots, range, displayCurrency, liquidTotal]);
+
+  // Active total/series for the hero + chart — swapped to the liquid view when
+  // the toggle is on; otherwise byte-for-byte the existing net-worth values.
+  const heroTotal = liquidOnly ? liquidTotal : netTotal;
+  const heroSeriesActive = liquidOnly ? liquidSeries : heroSeries;
+  const chartSeriesActive = liquidOnly ? liquidSeries : series;
 
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
@@ -310,20 +369,21 @@ export function PortfolioTab({
           chart and range pills sit flush with the full-bleed market/insight band edges. */}
       <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={netTotal} range={range} selectedPoint={selectedPoint} series={heroSeries} valuesSettled={valuesSettled} mutations={mutations} />
+          <NetWorthHero netTotal={heroTotal} range={range} selectedPoint={selectedPoint} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onToggleLiquid={toggleLiquid} />
         </div>
 
-        {netTotal > 0 && (
+        {heroTotal > 0 && (
           <div className="mb-2">
             <NetWorthChart
               range={range}
               onRangeChange={setRange}
-              series={series}
+              series={chartSeriesActive}
               loading={loading}
               onSelectPoint={setSelectedPoint}
               valuesSettled={valuesSettled}
               realPointCount={fullSnapshots.length}
               trackingSinceDate={trackingSinceDate}
+              lineOnly={liquidOnly}
             />
           </div>
         )}
