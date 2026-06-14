@@ -42,7 +42,13 @@ function LoginInner() {
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: callbackUrl },
+      options: {
+        redirectTo: callbackUrl,
+        // Always show Google's account chooser. Without this, Google silently
+        // reuses the last-used account (e.g. a since-deleted one), giving no way
+        // to pick a different account on a device with several signed in.
+        queryParams: { prompt: "select_account" },
+      },
     });
     if (error) setError(error.message);
   }

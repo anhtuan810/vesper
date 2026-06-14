@@ -84,6 +84,29 @@ export function formatRenewalDate(iso: string | null | undefined): string | null
   return nlDateFmt.format(d);
 }
 
+// Whole calendar days remaining in a trial, counting from `now` up to `trialEnd`
+// (rounded up, so a trial ending in 6h still reads "1 day left"). Returns null
+// when there is no usable trial end; clamps to 0 once the end has passed so a
+// just-lapsed trial never shows a negative count.
+export function trialDaysLeft(
+  trialEnd: string | null | undefined,
+  now: Date = new Date(),
+): number | null {
+  if (!trialEnd) return null;
+  const end = new Date(trialEnd);
+  if (Number.isNaN(end.getTime())) return null;
+  const ms = end.getTime() - now.getTime();
+  if (ms <= 0) return 0;
+  return Math.ceil(ms / 86_400_000);
+}
+
+// Human label for the trial countdown shown in Profile, e.g. "9 days left".
+export function formatTrialDaysLeft(days: number): string {
+  if (days <= 0) return "Ends today";
+  if (days === 1) return "1 day left";
+  return `${days} days left`;
+}
+
 // ── Labels (English UI, matching the rest of the app) ──────────────────────────
 export const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   trialing: "Free trial",

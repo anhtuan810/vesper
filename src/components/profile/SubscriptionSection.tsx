@@ -14,6 +14,8 @@ import {
   formatRenewalDate,
   PLAN_PRICES,
   TRIAL_DAYS,
+  trialDaysLeft,
+  formatTrialDaysLeft,
   type PlanId,
   type SubscriptionView,
 } from "@/lib/subscription";
@@ -67,6 +69,13 @@ export function SubscriptionSection() {
   if (loading) return null;
 
   const hasActive = data != null && (data.status === "trialing" || data.status === "active");
+
+  // Days remaining in the trial — only meaningful while trialing. Computed from
+  // the same date the "Trial ends" row shows, so the two never disagree.
+  const daysLeft =
+    hasActive && data && data.status === "trialing"
+      ? trialDaysLeft(data.trialEnd ?? data.currentPeriodEnd)
+      : null;
 
   async function manage() {
     if (!data) return;
@@ -137,6 +146,14 @@ export function SubscriptionSection() {
             badgeColor={statusColor(data)}
           />
           <Row label={dateLabel(data)} value={formatRenewalDate(renewalDate(data)) ?? "—"} />
+          {daysLeft != null && (
+            <Row
+              label="Trial remaining"
+              value={formatTrialDaysLeft(daysLeft)}
+              badge={daysLeft <= 3 ? "Ending soon" : undefined}
+              badgeColor="var(--amber-deep, var(--negative-text))"
+            />
+          )}
           {data.source && <Row label="Purchased via" value={SOURCE_LABEL[data.source]} />}
           <button
             onClick={manage}

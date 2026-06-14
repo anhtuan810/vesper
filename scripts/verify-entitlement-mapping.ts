@@ -12,7 +12,7 @@ process.env.REVENUECAT_ANNUAL_PRODUCT_ID = "rc_annual";
 process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID = "premium";
 
 import type Stripe from "stripe";
-import { isEntitled } from "../src/lib/subscription";
+import { isEntitled, trialDaysLeft, formatTrialDaysLeft } from "../src/lib/subscription";
 import {
   mapStripeSubscription,
   planForStripePrice,
@@ -41,6 +41,17 @@ assert(!isEntitled("past_due"), "past_due is not entitled");
 assert(!isEntitled("canceled"), "canceled is not entitled");
 assert(!isEntitled("expired"), "expired is not entitled");
 assert(!isEntitled(null), "null is not entitled");
+
+// ── Trial days remaining (Profile countdown) ───────────────────────────────────
+const t0 = new Date("2026-06-14T12:00:00Z");
+assert(trialDaysLeft(null, t0) === null, "no trial end -> null");
+assert(trialDaysLeft("not-a-date", t0) === null, "unparseable trial end -> null");
+assert(trialDaysLeft("2026-06-14T11:00:00Z", t0) === 0, "already-passed trial -> 0 (clamped)");
+assert(trialDaysLeft("2026-06-14T18:00:00Z", t0) === 1, "ends in 6h -> rounds up to 1");
+assert(trialDaysLeft("2026-06-23T12:00:00Z", t0) === 9, "9 days out -> 9");
+assert(formatTrialDaysLeft(0) === "Ends today", "0 -> Ends today");
+assert(formatTrialDaysLeft(1) === "1 day left", "1 -> singular");
+assert(formatTrialDaysLeft(9) === "9 days left", "9 -> plural");
 
 // ── Stripe price -> plan ───────────────────────────────────────────────────────
 assert(planForStripePrice("price_monthly") === "monthly", "Stripe monthly price -> monthly");

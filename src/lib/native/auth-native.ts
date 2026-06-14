@@ -16,6 +16,10 @@ export async function signInWithGoogleNative(
     options: {
       skipBrowserRedirect: true,
       redirectTo: `nl.volnar.app://auth/callback?next=${encodeURIComponent(nextPath)}`,
+      // Force Google's account chooser every time. The system browser keeps the
+      // Google session, so without this Google auto-selects the previously used
+      // account — leaving no way to switch to another account on the device.
+      queryParams: { prompt: "select_account" },
     },
   });
   if (error) throw error;
