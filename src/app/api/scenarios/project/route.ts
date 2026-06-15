@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { entitledGate } from "@/lib/require-entitled";
 import { assembleProject } from "@/lib/scenario/project-assemble";
 
 // POST /api/scenarios/project — deterministic future projection. Read-only.
 export async function POST(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createServerSupabase();
+  const gate = await entitledGate(supabase, user.id);
+  if (gate) return gate;
 
   let body: Record<string, unknown>;
   try {
@@ -14,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const result = await assembleProject(createServerSupabase(), user.id, body);
+  const result = await assembleProject(supabase, user.id, body);
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
   return NextResponse.json(result);
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { entitledGate } from "@/lib/require-entitled";
 import type { Asset } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateEnv } from "@/lib/env";
@@ -61,6 +62,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerSupabase();
+  const gate = await entitledGate(supabase, user.id);
+  if (gate) return gate;
 
   // A forced read (the client sends fresh=1 after a portfolio mutation, the same
   // signal holdings/Vitals refresh on) regenerates the band from current assets

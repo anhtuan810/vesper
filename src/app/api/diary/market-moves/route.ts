@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { entitledGate } from "@/lib/require-entitled";
 import { getDiaryMarketMoves } from "@/lib/diary-market-moves";
 
 export async function GET(request: NextRequest) {
@@ -7,6 +8,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerSupabase();
+  const gate = await entitledGate(supabase, user.id);
+  if (gate) return gate;
 
   try {
     const moves = await getDiaryMarketMoves(user.id, supabase);

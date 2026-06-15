@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
+import { entitledGate } from "@/lib/require-entitled";
 import { validateEnv } from "@/lib/env";
 import { getUsdRates } from "@/lib/fx";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const supabase = createServerSupabase();
+    const gate = await entitledGate(supabase, user.id);
+    if (gate) return gate;
 
     // 2. Parse body
     const text = await req.text();

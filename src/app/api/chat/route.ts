@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse, after } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
+import { entitledGate } from "@/lib/require-entitled";
 import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
 import { toUsd, getUsdRates } from "@/lib/fx";
@@ -470,6 +471,12 @@ export async function POST(req: NextRequest) {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userId = user.id;
+
+    // Paid-access gate (server-side enforcement, not just the client paywall):
+    // chat is the most cost-bearing surface (Anthropic). Covers every POST path,
+    // including the scenario-narration handoff below.
+    const gate = await entitledGate(createServerSupabase(), userId);
+    if (gate) return gate;
 
     const { message, images: rawImages, scenarioHandoff, scenarioConfirm, fromChip } = await req.json();
 
