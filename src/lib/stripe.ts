@@ -87,6 +87,47 @@ export function mapStripeSubscription(sub: Stripe.Subscription, userId: string):
   };
 }
 
+// Of a customer's subscriptions, the one that best represents current access: an
+// entitling one (trialing/active) first, otherwise the most recently created, so a
+// reconcile reflects what the user actually holds at Stripe.
+function pickSubscription(subs: Stripe.Subscription[]): Stripe.Subscription | null {
+  if (subs.length === 0) return null;
+  const entitling = subs.find((s) => s.status === "trialing" || s.status === "active");
+  return entitling ?? subs.slice().sort((a, b) => b.created - a.created)[0];
+}
+
+// Fallback used when our DB shows no access but the user may actually have paid —
+// e.g. the checkout webhook was missed, delayed, or never configured, which would
+// otherwise strand a paying user behind the paywall. Looks the user up at Stripe by
+// their known customer id (preferred) and/or email (immediately consistent, unlike
+// Search, so a just-completed checkout is found) and returns the mapped entitlement
+// for their current subscription — but only when it actually grants access now
+// (trialing/active/past_due), so a stale canceled sub never gets recorded in a way
+// that blocks a later re-subscribe from healing. Returns null when there is nothing
+// that grants access.
+export async function findStripeEntitlement(
+  userId: string,
+  opts: { customerId?: string | null; email?: string | null },
+): Promise<EntitlementWrite | null> {
+  const stripe = getStripe();
+  const customerIds: string[] = [];
+  if (opts.customerId) customerIds.push(opts.customerId);
+  if (opts.email) {
+    const customers = await stripe.customers.list({ email: opts.email, limit: 10 });
+    for (const c of customers.data) if (!customerIds.includes(c.id)) customerIds.push(c.id);
+  }
+  for (const customerId of customerIds) {
+    const subs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 10 });
+    const sub = pickSubscription(subs.data);
+    if (!sub) continue;
+    const write = mapStripeSubscription(sub, userId);
+    if (write.status === "trialing" || write.status === "active" || write.status === "past_due") {
+      return write;
+    }
+  }
+  return null;
+}
+
 // Cancels a subscription immediately as part of account deletion, so a deleted
 // account is never billed again. No proration and no refund — cancellation only
 // stops future charges. Idempotent: a subscription that no longer exists at
