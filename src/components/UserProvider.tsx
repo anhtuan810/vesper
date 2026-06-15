@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { isAuthRetryableFetchError, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { bumpApiCacheGeneration, isNativeBuild } from "@/lib/api";
 import { CHAT_HISTORY_PREFIX } from "@/lib/constants";
@@ -78,12 +78,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
         .then(({ data }) => setAiConsentAt(data?.ai_consent_at ?? null));
     };
 
-    // Initial resolution (preserves prior behavior; no purge on first load).
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Initial resolution from the local session (fast, offline-friendly; no
+    // purge on first load).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user ?? null;
       setUser(user);
       setLoading(false);
       lastSeenUserId.current = user?.id ?? null;
       if (user) loadConsent(supabase, user.id);
+
+      // Validate the local JWT against the server exactly once per load. The
+      // session above comes from storage, so a stale token (e.g. the user was
+      // deleted) would otherwise keep re-populating `user` via the
+      // onAuthStateChange events below. If the server reports an explicit auth
+      // failure, sign out to clear the session; ignore transient/network errors
+      // (retryable fetch) so a blip never logs a valid user out.
+      if (session) {
+        supabase.auth.getUser().then(({ error }) => {
+          if (error && !isAuthRetryableFetchError(error)) {
+            supabase.auth.signOut();
+          }
+        });
+      }
     });
 
     // React to every later auth transition. On sign-out, or whenever the user id
