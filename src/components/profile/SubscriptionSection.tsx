@@ -68,6 +68,10 @@ export function SubscriptionSection() {
 
   if (loading) return null;
 
+  // The demo/review account runs on a seeded entitlement, not real billing — hide
+  // the whole subscription card. Settings offers a path to a real subscription.
+  if (data?.isDemo) return null;
+
   // Show the subscription card (not the trial CTA) for an active/trialing user and
   // for a past_due subscriber still inside the period they paid for — the Manage
   // action then takes them to update their card, instead of starting a new sub.

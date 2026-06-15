@@ -78,6 +78,9 @@ export function SettingsContent() {
   const router = useRouter();
   const { user, aiConsentAt } = useUser();
   const { data: subscription } = useSubscription();
+  // The shared demo/review account hides real billing surfaces (subscription card,
+  // delete account) and swaps Sign out for a path to a real subscription.
+  const isDemo = subscription?.isDemo ?? false;
   const deletionNotice = subscription
     ? subscriptionDeletionNotice(subscription.source, subscription.status)
     : null;
@@ -351,7 +354,8 @@ export function SettingsContent() {
           <NativeSettingsRows />
         </div>
 
-        {/* Account — email + sign out */}
+        {/* Account — email + sign out. On the demo account: a note + a path to a
+            real subscription (sign out, then create your own account → paywall). */}
         <div style={SECTION_LABEL_STYLE}>Account</div>
         <div style={{
           background: "var(--surface)",
@@ -360,28 +364,55 @@ export function SettingsContent() {
           marginBottom: 24,
           overflow: "hidden",
         }}>
-          {user?.email && (
-            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-sans)" }}>
-              {user.email}
-            </div>
+          {isDemo ? (
+            <>
+              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, fontFamily: "var(--font-sans)" }}>
+                You’re exploring a live demo account. Start your own subscription to track your real portfolio.
+              </div>
+              <button
+                onClick={signOut}
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  textAlign: "left",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--accent)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-sans)",
+                }}
+              >
+                Start your subscription
+              </button>
+            </>
+          ) : (
+            <>
+              {user?.email && (
+                <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-sans)" }}>
+                  {user.email}
+                </div>
+              )}
+              <button
+                onClick={signOut}
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  textAlign: "left",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  color: "var(--negative)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-sans)",
+                }}
+              >
+                Sign out
+              </button>
+            </>
           )}
-          <button
-            onClick={signOut}
-            style={{
-              width: "100%",
-              padding: "14px 16px",
-              textAlign: "left",
-              fontSize: 15,
-              fontWeight: 500,
-              color: "var(--negative)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "var(--font-sans)",
-            }}
-          >
-            Sign out
-          </button>
         </div>
 
         {/* Data & AI — short, generic standing disclosure */}
@@ -425,22 +456,25 @@ export function SettingsContent() {
           <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", maxWidth: 320 }}>
             Volnar provides informational portfolio observations, not investment advice.
           </div>
-          <button
-            onClick={() => setDeleteOpen(true)}
-            style={{
-              fontSize: 12,
-              fontWeight: 400,
-              color: "var(--text-faint)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "var(--font-sans)",
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
-            }}
-          >
-            Delete account
-          </button>
+          {/* No account deletion on the shared demo account. */}
+          {!isDemo && (
+            <button
+              onClick={() => setDeleteOpen(true)}
+              style={{
+                fontSize: 12,
+                fontWeight: 400,
+                color: "var(--text-faint)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "var(--font-sans)",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              Delete account
+            </button>
+          )}
         </div>
       </div>
 

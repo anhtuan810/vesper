@@ -60,6 +60,10 @@ export interface SubscriptionView {
   currentPeriodEnd: string | null; // ISO 8601
   trialEnd: string | null;         // ISO 8601
   cancelAtPeriodEnd: boolean;
+  // True for the seeded demo/review account (entitlement product_id === "demo").
+  // The UI hides real billing surfaces (the subscription card, delete account) and
+  // offers a path to a real subscription instead — see SubscriptionSection/Settings.
+  isDemo: boolean;
 }
 
 // ── Plan pricing (display copy) ────────────────────────────────────────────────

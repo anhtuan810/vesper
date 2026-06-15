@@ -93,6 +93,7 @@ export function toSubscriptionView(row: EntitlementRow | null): SubscriptionView
       currentPeriodEnd: null,
       trialEnd: null,
       cancelAtPeriodEnd: false,
+      isDemo: false,
     };
   }
   return {
@@ -103,6 +104,8 @@ export function toSubscriptionView(row: EntitlementRow | null): SubscriptionView
     currentPeriodEnd: row.current_period_end,
     trialEnd: row.trial_end,
     cancelAtPeriodEnd: row.cancel_at_period_end,
+    // The demo account is seeded with this sentinel product id (see demo-seed.ts).
+    isDemo: row.product_id === "demo",
   };
 }
 
