@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AssetLogo } from "@/components/AssetLogo";
 
 const ASSET_COLOR: Record<string, string> = {
@@ -35,7 +35,7 @@ interface Props {
   positions: Position[];
 }
 
-const LABEL_W = 88;
+const LABEL_W = 104;
 const VALUE_W = 46;
 const BAR_H = 9;
 const ROW_GAP = 7;
@@ -44,11 +44,28 @@ const HEADER_H = 18;
 export function ConcentrationBars({ positions }: Props) {
   const sorted = [...positions].sort((a, b) => b.pct - a.pct);
   const [animated, setAnimated] = useState(false);
+  // Index of the row whose full name is expanded (tap to expand, tap elsewhere
+  // to collapse). Names are truncated to one line by default; tapping a row
+  // reveals the full name above its bar.
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setAnimated(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  // Collapse when the user taps anywhere outside the card.
+  useEffect(() => {
+    if (expandedIndex === null) return;
+    function onDown(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setExpandedIndex(null);
+      }
+    }
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [expandedIndex]);
 
   if (sorted.length === 0) return null;
 
@@ -67,7 +84,7 @@ export function ConcentrationBars({ positions }: Props) {
   const restSum = rest.reduce((s, p) => s + p.pct, 0);
 
   return (
-    <div style={{ paddingTop: HEADER_H, position: "relative" }}>
+    <div ref={containerRef} style={{ paddingTop: HEADER_H, position: "relative" }}>
       {/* Threshold label — floats above the dashed line */}
       <div
         style={{
@@ -105,79 +122,104 @@ export function ConcentrationBars({ positions }: Props) {
         {top5.map((pos, i) => {
           const barWidthPct = (pos.pct / axisMax) * 100;
           const label = pos.symbol ?? pos.name;
+          const isExpanded = expandedIndex === i;
 
           return (
             <div
               key={i}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isExpanded}
+              onClick={() => setExpandedIndex((prev) => (prev === i ? null : i))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpandedIndex((prev) => (prev === i ? null : i)); }
+              }}
               style={{
-                display: "flex",
-                alignItems: "center",
-                minHeight: BAR_H + 8,
                 marginBottom: i < top5.length - 1 ? ROW_GAP : 0,
                 position: "relative",
                 zIndex: 1,
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
               }}
             >
-              {/* Label column — small leading asset icon (the same AssetLogo used
-                  in holdings rows and detail headers) + name. Top-aligned so a
-                  two-line name keeps the icon beside its first line. The bar start
-                  (LABEL_W) is unchanged. */}
-              <div
-                style={{
-                  flexShrink: 0,
-                  width: LABEL_W,
-                  paddingRight: 10,
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 8,
-                }}
-              >
-                <AssetLogo type={pos.type} symbol={pos.symbol ?? null} name={pos.name} size={18} />
+              {/* Expanded: full name on its own line above the bar (wraps at word
+                  boundaries, never mid-word). The bar row below keeps the same
+                  LABEL_W offset so bars and the threshold line stay aligned. */}
+              {isExpanded && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                  <AssetLogo type={pos.type} symbol={pos.symbol ?? null} name={pos.name} size={18} />
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 11, lineHeight: 1.3, color: "var(--text)", overflowWrap: "break-word" }}>
+                    {pos.name}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", minHeight: BAR_H + 8 }}>
+                {/* Label column — icon + single-line truncated name when collapsed;
+                    an empty spacer when expanded (the name moved above). */}
                 <div
                   style={{
-                    minWidth: 0,
-                    fontSize: 11,
-                    lineHeight: 1.3,
-                    color: "var(--text-dim)",
-                    overflowWrap: "break-word",
-                    wordBreak: "normal",
-                  }}
-                >
-                  {label}
-                </div>
-              </div>
-
-              {/* Bar + % label — the value column has a fixed width so the bar
-                  track (flex:1, minWidth:0) never extends under it; a 100%
-                  bar therefore stays inside the card. */}
-              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      height: BAR_H,
-                      borderRadius: 2,
-                      background: colorFor(pos.type),
-                      width: animated ? `${barWidthPct}%` : "0%",
-                      transition: animated
-                        ? `width 0.45s cubic-bezier(0.25, 0.1, 0.25, 1) ${i * 65}ms`
-                        : "none",
-                      flexShrink: 0,
-                    }}
-                  />
-                </div>
-                <span
-                  style={{
-                    width: VALUE_W,
                     flexShrink: 0,
-                    textAlign: "left",
-                    fontSize: 10.5,
-                    color: "var(--text-dim)",
-                    fontFeatureSettings: "'tnum'",
-                    lineHeight: 1,
+                    width: LABEL_W,
+                    paddingRight: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
                   }}
                 >
-                  {fmtPct(pos.pct)}
-                </span>
+                  {!isExpanded && (
+                    <>
+                      <AssetLogo type={pos.type} symbol={pos.symbol ?? null} name={pos.name} size={18} />
+                      <div
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          fontSize: 11,
+                          lineHeight: 1.3,
+                          color: "var(--text-dim)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {label}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Bar + % label — the value column has a fixed width so the bar
+                    track (flex:1, minWidth:0) never extends under it; a 100%
+                    bar therefore stays inside the card. */}
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        height: BAR_H,
+                        borderRadius: 2,
+                        background: colorFor(pos.type),
+                        width: animated ? `${barWidthPct}%` : "0%",
+                        transition: animated
+                          ? `width 0.45s cubic-bezier(0.25, 0.1, 0.25, 1) ${i * 65}ms`
+                          : "none",
+                        flexShrink: 0,
+                      }}
+                    />
+                  </div>
+                  <span
+                    style={{
+                      width: VALUE_W,
+                      flexShrink: 0,
+                      textAlign: "left",
+                      fontSize: 10.5,
+                      color: "var(--text-dim)",
+                      fontFeatureSettings: "'tnum'",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {fmtPct(pos.pct)}
+                  </span>
+                </div>
               </div>
             </div>
           );
