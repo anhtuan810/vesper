@@ -48,7 +48,7 @@ export default function MarketingPage() {
           <div className="flex items-center gap-2 ml-auto min-[880px]:ml-0">
             <a
               href="https://app.volnar.nl"
-              className="text-sm text-dim transition-colors hover:text-fg max-[480px]:hidden"
+              className="text-sm text-dim transition-colors hover:text-fg"
               style={{ padding: "10px 12px", textDecoration: "none" }}
             >
               Sign in
