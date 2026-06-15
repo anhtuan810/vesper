@@ -30,12 +30,25 @@ async function resolveUserId(
   return null;
 }
 
+// Re-read the subscription fresh from Stripe so we always apply its CURRENT state,
+// not the (possibly stale) snapshot embedded in an out-of-order or retried event —
+// the Stripe-recommended way to stay correct without ordering bookkeeping. Falls
+// back to the event payload if the subscription can no longer be retrieved.
+async function freshSubscription(sub: Stripe.Subscription): Promise<Stripe.Subscription> {
+  try {
+    return await getStripe().subscriptions.retrieve(sub.id);
+  } catch (err) {
+    if ((err as { code?: string }).code === "resource_missing") return sub;
+    throw err;
+  }
+}
+
 async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
-      const sub = event.data.object as Stripe.Subscription;
+      const sub = await freshSubscription(event.data.object as Stripe.Subscription);
       const userId = await resolveUserId(supabase, sub);
       if (!userId) {
         Sentry.captureMessage("Stripe webhook: unmapped subscription", {

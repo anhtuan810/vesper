@@ -16,8 +16,13 @@ export interface RevenueCatEvent {
   period_type?: string; // TRIAL | INTRO | NORMAL | PROMOTIONAL
   expiration_at_ms?: number | null;
   purchased_at_ms?: number | null;
+  event_timestamp_ms?: number | null; // when RevenueCat emitted the event (ordering)
   store?: string; // APP_STORE | PLAY_STORE | MAC_APP_STORE | AMAZON | STRIPE
   environment?: string; // SANDBOX | PRODUCTION
+  // TRANSFER moves a subscription between app_user_ids; the previous owner(s)
+  // must lose access. See transferRevokeWrites.
+  transferred_from?: string[] | null;
+  transferred_to?: string[] | null;
 }
 
 export interface RevenueCatWebhookBody {
@@ -58,11 +63,23 @@ function planForProduct(productId: string | undefined): PlanId | null {
 // Maps an event to an entitlement write, or returns null when the event is
 // irrelevant (anonymous app user id, an unhandled store, or an event that does
 // not touch our entitlement). Returning null tells the webhook to ack-and-skip.
+// Sandbox events (TestFlight / App Store sandbox / RevenueCat sandbox) reach the
+// same webhook URL as production. Without this gate a sandbox purchase would write
+// a real `active` entitlement, letting anyone with a sandbox Apple ID self-grant
+// paid access in production. Sandbox is rejected unless explicitly opted in (set
+// REVENUECAT_ALLOW_SANDBOX=true only in staging/dev to test real purchases).
+function isAllowedEnvironment(environment: string | undefined): boolean {
+  if (environment !== "SANDBOX") return true;
+  return process.env.REVENUECAT_ALLOW_SANDBOX === "true";
+}
+
 export function mapRevenueCatEvent(event: RevenueCatEvent): EntitlementWrite | null {
   const userId = event.app_user_id;
   // Require a real Supabase user id. Anonymous RevenueCat ids ($RCAnonymousID:…)
   // and aliases never map to an account, so they are ignored.
   if (!userId || !UUID_RE.test(userId)) return null;
+
+  if (!isAllowedEnvironment(event.environment)) return null;
 
   const source = sourceFromStore(event.store);
   if (!source) return null;
@@ -94,7 +111,10 @@ export function mapRevenueCatEvent(event: RevenueCatEvent): EntitlementWrite | n
       status = activeNow ? (isTrial ? "trialing" : "active") : "expired";
       break;
     case "SUBSCRIPTION_PAUSED":
-      status = "canceled";
+      // Play pause schedules a suspension at period end; access continues until
+      // then, like a cancellation — not an immediate revoke.
+      cancelAtPeriodEnd = true;
+      status = activeNow ? (isTrial ? "trialing" : "active") : "canceled";
       break;
     default:
       // INITIAL_PURCHASE, RENEWAL, PRODUCT_CHANGE, UNCANCELLATION, TRANSFER, …
@@ -102,6 +122,7 @@ export function mapRevenueCatEvent(event: RevenueCatEvent): EntitlementWrite | n
   }
 
   const expIso = expMs ? new Date(expMs).toISOString() : null;
+  const eventAt = event.event_timestamp_ms ? new Date(event.event_timestamp_ms).toISOString() : null;
 
   return {
     userId,
@@ -113,5 +134,33 @@ export function mapRevenueCatEvent(event: RevenueCatEvent): EntitlementWrite | n
     cancelAtPeriodEnd,
     revenuecatAppUserId: userId,
     productId: event.product_id ?? null,
+    eventAt,
   };
+}
+
+// A TRANSFER moves a subscription to a new app_user_id (e.g. "this subscription is
+// already associated with a different account", a device/Apple-ID change, or a
+// family change). The new owner is granted via the normal mapping above plus their
+// own restore/renewal events; here we revoke the PREVIOUS owners listed in
+// `transferred_from`, so a stale grant never lingers on an account that lost the
+// subscription. Best-effort: only well-formed Supabase user ids are touched.
+export function transferRevokeWrites(event: RevenueCatEvent): EntitlementWrite[] {
+  if (event.type !== "TRANSFER" || !Array.isArray(event.transferred_from)) return [];
+  if (!isAllowedEnvironment(event.environment)) return [];
+  const source = sourceFromStore(event.store) ?? "app_store";
+  const eventAt = event.event_timestamp_ms ? new Date(event.event_timestamp_ms).toISOString() : null;
+  return event.transferred_from
+    .filter((id) => typeof id === "string" && UUID_RE.test(id))
+    .map((id) => ({
+      userId: id,
+      status: "expired" as const,
+      source,
+      plan: null,
+      currentPeriodEnd: null,
+      trialEnd: null,
+      cancelAtPeriodEnd: false,
+      revenuecatAppUserId: id,
+      productId: event.product_id ?? null,
+      eventAt,
+    }));
 }

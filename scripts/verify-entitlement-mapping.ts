@@ -12,13 +12,17 @@ process.env.REVENUECAT_ANNUAL_PRODUCT_ID = "rc_annual";
 process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID = "premium";
 
 import type Stripe from "stripe";
-import { isEntitled, trialDaysLeft, formatTrialDaysLeft } from "../src/lib/subscription";
+import { hasAccess, isEntitled, trialDaysLeft, formatTrialDaysLeft } from "../src/lib/subscription";
 import {
   mapStripeSubscription,
   planForStripePrice,
   userIdFromStripeSubscription,
 } from "../src/lib/stripe";
-import { mapRevenueCatEvent, type RevenueCatEvent } from "../src/lib/revenuecat-webhook";
+import {
+  mapRevenueCatEvent,
+  transferRevokeWrites,
+  type RevenueCatEvent,
+} from "../src/lib/revenuecat-webhook";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -41,6 +45,17 @@ assert(!isEntitled("past_due"), "past_due is not entitled");
 assert(!isEntitled("canceled"), "canceled is not entitled");
 assert(!isEntitled("expired"), "expired is not entitled");
 assert(!isEntitled(null), "null is not entitled");
+
+// ── Access decision incl. past_due dunning grace ───────────────────────────────
+const futureIso = new Date(future).toISOString();
+const pastIso = new Date(past).toISOString();
+assert(hasAccess("active", null), "active has access");
+assert(hasAccess("trialing", null), "trialing has access");
+assert(hasAccess("past_due", futureIso), "past_due within paid period keeps access (grace)");
+assert(!hasAccess("past_due", pastIso), "past_due after period end loses access");
+assert(!hasAccess("past_due", null), "past_due with no period end loses access");
+assert(!hasAccess("canceled", futureIso), "canceled has no access even before period end");
+assert(!hasAccess(null, null), "no subscription has no access");
 
 // ── Trial days remaining (Profile countdown) ───────────────────────────────────
 const t0 = new Date("2026-06-14T12:00:00Z");
@@ -134,6 +149,29 @@ assert(mapRevenueCatEvent(rcEvent({ app_user_id: "$RCAnonymousID:abc" })) === nu
 assert(mapRevenueCatEvent(rcEvent({ app_user_id: "not-a-uuid" })) === null, "RC non-uuid app_user_id -> null");
 assert(mapRevenueCatEvent(rcEvent({ store: "STRIPE" })) === null, "RC unhandled store -> null");
 assert(mapRevenueCatEvent(rcEvent({ entitlement_ids: ["something_else"] })) === null, "RC unrelated entitlement -> null");
+
+// ── RevenueCat: sandbox isolation ──────────────────────────────────────────────
+assert(mapRevenueCatEvent(rcEvent({ environment: "SANDBOX" })) === null, "RC sandbox event -> null in production (no self-grant)");
+process.env.REVENUECAT_ALLOW_SANDBOX = "true";
+assert(mapRevenueCatEvent(rcEvent({ environment: "SANDBOX" }))?.status === "active", "RC sandbox event maps when explicitly allowed");
+delete process.env.REVENUECAT_ALLOW_SANDBOX;
+
+// ── RevenueCat: paused (Play) keeps access until period end ─────────────────────
+const rcPausedActive = mapRevenueCatEvent(rcEvent({ type: "SUBSCRIPTION_PAUSED" }));
+assert(rcPausedActive?.status === "active" && rcPausedActive?.cancelAtPeriodEnd === true, "RC pause within period -> active + cancelAtPeriodEnd");
+const rcPausedEnded = mapRevenueCatEvent(rcEvent({ type: "SUBSCRIPTION_PAUSED", expiration_at_ms: past }));
+assert(rcPausedEnded?.status === "canceled", "RC pause after period end -> canceled");
+
+// ── RevenueCat: event timestamp -> ordering watermark ──────────────────────────
+assert(mapRevenueCatEvent(rcEvent({ event_timestamp_ms: future }))?.eventAt === new Date(future).toISOString(), "RC event_timestamp_ms -> eventAt ISO");
+assert(mapRevenueCatEvent(rcEvent({}))?.eventAt === null, "RC without event_timestamp_ms -> eventAt null");
+
+// ── RevenueCat: TRANSFER revokes the previous owner(s) ─────────────────────────
+const OTHER = "22222222-2222-4222-8222-222222222222";
+const revokes = transferRevokeWrites(rcEvent({ type: "TRANSFER", transferred_from: [USER, OTHER, "not-a-uuid"], store: "PLAY_STORE" }));
+assert(revokes.length === 2, "TRANSFER revokes only well-formed user ids");
+assert(revokes.every((w) => w.status === "expired" && w.source === "play_store"), "TRANSFER revokes are expired + correct source");
+assert(transferRevokeWrites(rcEvent({})) .length === 0, "non-transfer event -> no revokes");
 
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed.`);

@@ -27,6 +27,28 @@ export function isEntitled(status: SubscriptionStatus | null | undefined): boole
   return status != null && ENTITLED_STATUSES.has(status);
 }
 
+// Full paid-access decision, including the dunning grace. A payment that fails
+// mid-period moves the subscription to `past_due` while Stripe/RevenueCat retry
+// the card; revoking access the instant that happens would lock out a paying
+// subscriber over a transient decline. So past_due keeps access until the period
+// it has already paid for ends (`current_period_end`), and only then is gated —
+// matching how Netflix/Spotify treat a failed renewal. trialing/active always pass.
+// This is the predicate the paywall, the Profile section, and the server-side
+// route gate all use; `isEntitled` stays the pure status check the cross-source
+// webhook guard relies on.
+export function hasAccess(
+  status: SubscriptionStatus | null | undefined,
+  currentPeriodEnd: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (isEntitled(status)) return true;
+  if (status === "past_due" && currentPeriodEnd) {
+    const end = new Date(currentPeriodEnd);
+    return !Number.isNaN(end.getTime()) && end.getTime() > now.getTime();
+  }
+  return false;
+}
+
 // The shape returned by GET /api/subscription and consumed by the paywall and the
 // Profile "Your subscription" section. `status === null` means no subscription row
 // exists yet (never subscribed) — distinct from an expired/canceled one.

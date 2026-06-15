@@ -2,7 +2,11 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { markEventProcessed, upsertEntitlement } from "@/lib/entitlements";
-import { mapRevenueCatEvent, type RevenueCatWebhookBody } from "@/lib/revenuecat-webhook";
+import {
+  mapRevenueCatEvent,
+  transferRevokeWrites,
+  type RevenueCatWebhookBody,
+} from "@/lib/revenuecat-webhook";
 
 export const runtime = "nodejs";
 
@@ -40,9 +44,14 @@ export async function POST(request: NextRequest) {
 
     try {
       const write = mapRevenueCatEvent(event);
-      // null = event irrelevant (anonymous id, unhandled store, unrelated
+      // null = event irrelevant (anonymous id, sandbox, unhandled store, unrelated
       // entitlement); the dedupe marker stays so it is not reconsidered.
       if (write) await upsertEntitlement(supabase, write);
+      // On a transfer, also revoke the previous owners so a stale grant never
+      // lingers on an account that lost the subscription.
+      for (const revoke of transferRevokeWrites(event)) {
+        await upsertEntitlement(supabase, revoke);
+      }
     } catch (err) {
       await supabase
         .from("billing_events")
