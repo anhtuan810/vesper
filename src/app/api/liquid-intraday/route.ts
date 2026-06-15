@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { fetchIntradayBars } from "@/lib/prices-server";
+import { easternMidnightUnix } from "@/lib/market-day";
 
 // Public markets + crypto — the liquid set (same as PortfolioTab Phase B).
 const LIQUID_TYPES = new Set(["stocks", "etf", "crypto"]);
-
-// Epoch (seconds) of the start of today's US-Eastern trading day. "1D" is
-// anchored to the market day for everyone (US or EU): session-bound stocks
-// define their day/previous-close in ET, and crypto (24/7) follows that day so
-// the combined line shares one clock instead of spanning a rolling 24h.
-function easternMidnightUnix(now = new Date()): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-  }).formatToParts(now);
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
-  const secsSinceMidnight = (get("hour") % 24) * 3600 + get("minute") * 60 + get("second");
-  return Math.floor(now.getTime() / 1000) - secsSinceMidnight;
-}
 
 // Per-asset 5m intraday close series for the liquid holdings, clipped to today's
 // ET trading day, used to draw the combined 1D line in the Liquid-only view.

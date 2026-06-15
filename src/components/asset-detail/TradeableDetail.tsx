@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PriceChart, type Range, type ScrubInfo } from "@/components/PriceChart";
@@ -30,6 +30,26 @@ function rangeToStartDate(range: Range): Date {
     "3Y": 3 * 365 * ONE_DAY_MS,
   };
   return new Date(now.getTime() - ms[range]);
+}
+
+// Compact tinted change pill with a caret — mirrors the portfolio hero's delta
+// pill so the asset detail reads as the same family.
+function DeltaPill({ isPositive, children }: { isPositive: boolean; children: ReactNode }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px",
+      borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1',
+      background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)",
+      color: isPositive ? "var(--positive-text)" : "var(--negative-text)",
+    }}>
+      <svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+        {isPositive
+          ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" />
+          : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}
+      </svg>
+      {children}
+    </span>
+  );
 }
 
 function ActivityDate({ dateStr }: { dateStr: string }) {
@@ -214,11 +234,9 @@ export function TradeableDetail({ asset }: Props) {
             if (scrubInfo) {
               const isUp = scrubInfo.pct >= 0;
               return (
-                <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
-                  <span style={{ fontWeight: 500, color: isUp ? "var(--positive-text)" : "var(--negative-text)" }}>
-                    {isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2)}%
-                  </span>
-                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{scrubInfo.label}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2)}%</DeltaPill>
+                  <span style={{ color: "var(--text-faint)", fontSize: 12.5 }}>{scrubInfo.label}</span>
                 </div>
               );
             }
@@ -228,28 +246,21 @@ export function TradeableDetail({ asset }: Props) {
                 const ageMs = now.getTime() - earliestBuyDate.getTime();
                 // Case C: position added today
                 if (ageMs < ONE_DAY_MS) {
-                  return (
-                    <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
-                      <span style={{ color: "var(--text-faint)" }}>Just added</span>
-                    </div>
-                  );
+                  return <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>Just added</div>;
                 }
                 const chartRangeStart = rangeToStartDate(periodInfo.range);
                 const effectiveStartMs = Math.max(chartRangeStart.getTime(), earliestBuyDate.getTime());
-                // Case B: chart range extends more than 1 day before earliest buy
+                // Case B: chart range extends more than 1 day before earliest buy —
+                // total-return-since-buy, kept muted (not the selected range's move).
                 if (effectiveStartMs - chartRangeStart.getTime() > ONE_DAY_MS) {
                   const pct = avgBuyPrice != null && avgBuyPrice > 0 && livePrice != null
                     ? ((livePrice - avgBuyPrice) / avgBuyPrice) * 100
                     : null;
                   const dateLabel = `since ${formatDate(earliestBuyDate.toISOString())}`;
                   return (
-                    <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
-                      {pct !== null && (
-                        <span style={{ fontWeight: 500, color: "var(--text-faint)" }}>
-                          {pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2)}%
-                        </span>
-                      )}
-                      <span style={{ color: "var(--text-faint)", marginLeft: pct !== null ? 6 : 0 }}>{dateLabel}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12.5, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1' }}>
+                      {pct !== null && <span style={{ fontWeight: 500 }}>{pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2)}%</span>}
+                      <span>{dateLabel}</span>
                     </div>
                   );
                 }
@@ -257,22 +268,20 @@ export function TradeableDetail({ asset }: Props) {
               // Case A: chart range fits inside holding period (or no buy date yet)
               const isUp = periodInfo.pct >= 0;
               return (
-                <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
-                  <span style={{ fontWeight: 500, color: isUp ? "var(--positive-text)" : "var(--negative-text)" }}>
-                    {isUp ? "+" : "−"}{Math.abs(periodInfo.pct).toFixed(2)}%
-                  </span>
-                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>{periodInfo.label}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(periodInfo.pct).toFixed(2)}%</DeltaPill>
+                  <span style={{ color: "var(--text-faint)", fontSize: 12.5 }}>{periodInfo.label}</span>
                 </div>
               );
             }
             if (dailyChg !== null) {
               return (
-                <div style={{ fontSize: 15, lineHeight: 1.4, fontFeatureSettings: '"tnum" 1' }}>
-                  <span style={{ fontWeight: 500, color: up ? "var(--positive-text)" : "var(--negative-text)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <DeltaPill isPositive={up}>
                     {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), assetCur, displayCurrency)} · `}
                     {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2)}%
-                  </span>
-                  <span style={{ color: "var(--text-dim)", marginLeft: 6 }}>today</span>
+                  </DeltaPill>
+                  <span style={{ color: "var(--text-faint)", fontSize: 12.5 }}>today</span>
                 </div>
               );
             }

@@ -119,7 +119,11 @@ function periodLabel(range: Range, timestamps: number[]): string {
 function fmtScrubLabel(timestamp: number, range: Range): string {
   const d = new Date(timestamp * 1000);
   if (range === "1D") {
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    // Full weekday + date + local time, matching the portfolio hero's 1D scrub.
+    return d.toLocaleString("en-GB", {
+      weekday: "short", day: "numeric", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
   }
   return d.toLocaleDateString("en-GB", {
     day: "numeric", month: "short",
