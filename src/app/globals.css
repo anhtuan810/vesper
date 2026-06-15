@@ -239,6 +239,13 @@
   .logo-pulse {
     animation: logo-pulse 4s ease-in-out infinite;
   }
+  @keyframes loading-dot {
+    0%, 80%, 100% { opacity: 0.28; }
+    40%           { opacity: 1; }
+  }
+  .loading-dot {
+    animation: loading-dot 1.4s ease-in-out infinite;
+  }
 }
 
 html {
