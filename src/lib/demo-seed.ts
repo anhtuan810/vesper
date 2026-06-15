@@ -195,12 +195,19 @@ function snapshotRows(userId: string): Array<Record<string, unknown>> {
 export async function seedDemoUser(userId: string): Promise<void> {
   const supabase = createServerSupabase();
 
-  // A silently failed delete leaves stale rows (e.g. old cron-written
-  // snapshots) under the fresh seed — the chart then renders the leftover
-  // history with today's live tip as a bogus cliff. Fail the whole seed
-  // instead, so /demo falls back to /login rather than presenting a
+  // Wipe every per-user table a reviewer can write to, so each /demo entry is a
+  // truly fresh account and nothing from a previous reviewer's session (chat,
+  // goals, saved scenarios, diary) carries over — matching the "edits never
+  // persist across entries" guarantee above. mutations are deleted before assets
+  // (they reference assets). A silently failed delete leaves stale rows (e.g. old
+  // cron-written snapshots) under the fresh seed — the chart then renders the
+  // leftover history with today's live tip as a bogus cliff — so fail the whole
+  // seed instead, letting /demo fall back to /login rather than present a
   // half-reset account.
-  for (const table of ["mutations", "snapshots", "highlights", "assets"]) {
+  for (const table of [
+    "mutations", "snapshots", "highlights", "messages",
+    "goals", "diary_summaries", "vital_snapshots", "scenarios", "assets",
+  ]) {
     const { error } = await supabase.from(table).delete().eq("user_id", userId);
     if (error) throw error;
   }

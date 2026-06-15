@@ -29,5 +29,15 @@ export async function GET(req: NextRequest) {
     }),
   );
 
+  // Prune the webhook-idempotency ledger so it doesn't grow unbounded. Entries far
+  // older than any provider's retry window can never collide with a live delivery,
+  // so they're safe to drop. Best-effort: a failure here must not fail the cron.
+  try {
+    const cutoff = new Date(Date.now() - 90 * 86_400_000).toISOString();
+    await supabase.from("billing_events").delete().lt("received_at", cutoff);
+  } catch (err) {
+    Sentry.captureException(err, { tags: { fn: "cron/snapshot", step: "pruneBillingEvents" } });
+  }
+
   return NextResponse.json({ ok: true, users: userIds.length });
 }

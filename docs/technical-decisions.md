@@ -383,7 +383,17 @@ Commercialized with cross-platform subscriptions: sign in once, subscribe from a
   - Both are idempotent via `billing_events`. Invalid signature/auth or malformed input is rejected (400/401). Cross-source writes never let one processor's expiry revoke the other's active entitlement (see `upsertEntitlement`).
 - **Platform-correct purchase path**: web uses Stripe Checkout (`POST /api/checkout`); the native app uses RevenueCat/StoreKit (`src/lib/native/purchases.ts`) and never the web checkout. The native purchase SDK (`@revenuecat/purchases-capacitor`) is **only ever `import()`-ed at runtime behind an `isNative()` guard**, so the web bundle never imports it.
 - **Surfaces**: a paywall (`src/components/Paywall.tsx`) gates the app when not `trialing`/`active`, with Restore (native), the Apple auto-renew disclosure, and Terms/Privacy near the buy button; a Profile "Your subscription" section (plan, status, renewal/expiry in nl-NL, source, Manage, trial CTA); a marketing pricing section. Manage routes per source: Stripe billing portal (`POST /api/billing-portal`) for web, App Store subscriptions for iOS, Play subscriptions for Android.
-- Account deletion removes the entitlement row (listed explicitly in `DELETE /api/users/me`).
+- Account deletion removes the entitlement row (listed explicitly in `DELETE /api/users/me`), cancels an active Stripe subscription, and deletes the Stripe customer (erasing its PII; also cancels any lingering web sub when the current source is a store).
+
+### Hardening (2026-06)
+- **Server-side enforcement, not just the paywall**: the client paywall is only an overlay, so premium/cost-bearing routes also gate server-side via `entitledGate` (`src/lib/require-entitled.ts`) — chat, insight, diary-summary, diary/market-moves, and the scenario compute/counterfactual/project routes return **402** unless the caller is entitled. A bypassed overlay (devtools, a direct API call) no longer reaches Anthropic.
+- **Dunning grace**: access is decided by `hasAccess(status, current_period_end)` (not raw status) — `past_due` keeps access until the period already paid for ends, then gates. The paywall then offers "Update payment method" (Stripe portal / store) instead of a fresh checkout; Profile shows a "Payment due" card.
+- **Out-of-order webhooks**: the Stripe webhook re-reads the subscription fresh from the API on every event (always current state); the RevenueCat writer drops a strictly-older store event using a `revenuecat_event_at` watermark (`20260620_entitlements_event_ordering.sql`).
+- **Deleted-user webhooks**: a store/Stripe event for an already-deleted account (FK violation) is ack-and-skipped, not retried into a 500 loop.
+- **Sandbox isolation**: RevenueCat SANDBOX events are rejected in production unless `REVENUECAT_ALLOW_SANDBOX=true` (staging only), so a sandbox purchase can't self-grant real access.
+- **Transfers**: a RevenueCat `TRANSFER` revokes the previous owners (`transferred_from`) so a stale grant can't linger on an account that lost the subscription.
+- **One trial per account**: web checkout grants the 14-day trial only when no entitlement row exists yet; a returning (cancelled) subscriber is charged immediately. StoreKit enforces this per Apple ID natively.
+- **`billing_events`** is pruned (>90 days) by the daily cron so the idempotency ledger doesn't grow unbounded.
 
 ## Known Technical Debt
 
