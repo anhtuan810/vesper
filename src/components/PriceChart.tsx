@@ -89,13 +89,11 @@ function buildPath(
   const toX = (i: number) => (i / n) * W;
   const toY = (v: number) => H - ((v - yMin) / yRange) * H;
   const pts = values.map((c, i) => ({ x: toX(i), y: toY(c) }));
+  // Straight segments (no smoothing) to match the portfolio net-worth chart.
   let line = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const mx = ((pts[i].x + pts[i + 1].x) / 2).toFixed(2);
-    const my = ((pts[i].y + pts[i + 1].y) / 2).toFixed(2);
-    line += ` Q ${pts[i].x.toFixed(2)} ${pts[i].y.toFixed(2)} ${mx} ${my}`;
+  for (let i = 1; i < pts.length; i++) {
+    line += ` L ${pts[i].x.toFixed(2)} ${pts[i].y.toFixed(2)}`;
   }
-  line += ` L ${pts[pts.length - 1].x.toFixed(2)} ${pts[pts.length - 1].y.toFixed(2)}`;
   const lastPt = pts[pts.length - 1];
   // Area closes at last actual data point (not full width), so 1D shows empty right portion
   const area = line + ` L ${lastPt.x.toFixed(2)} ${H} L 0 ${H} Z`;
@@ -172,7 +170,10 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
   const { niceMin, niceMax, labels: yLabels } = useMemo(() => {
     const dataMin = closes.length >= 2 ? Math.min(...closes) : 0;
     const dataMax = closes.length >= 2 ? Math.max(...closes) : 1;
-    return computeNiceLevels(dataMin * 0.97, dataMax * 1.03);
+    // Pad by 8% of the data range (matches the portfolio net-worth chart's
+    // lineOnly zoom) rather than a fixed ±3% of price.
+    const pad = Math.max((dataMax - dataMin) * 0.08, 1);
+    return computeNiceLevels(dataMin - pad, dataMax + pad);
   }, [closes]);
   const yRange = Math.max(niceMax - niceMin, 1);
 
@@ -300,7 +301,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
             >
               <defs>
                 <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
+                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.16} />
                   <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -309,7 +310,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
                 d={line}
                 fill="none"
                 stroke={strokeColor}
-                strokeWidth={1.5}
+                strokeWidth={1}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
