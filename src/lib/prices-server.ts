@@ -52,6 +52,49 @@ export async function fetchHistory(symbol: string, range: string): Promise<Price
   }
 }
 
+export interface IntradayBars {
+  closes: PricePoint[];
+  // Previous close from the chart meta, in the SAME raw native units as the bar
+  // closes (NOT normalized) — so the 1D ratio model's day-open baseline stays
+  // unitless even for GBp-listed instruments.
+  prevClose: number | null;
+}
+
+const intradayCache = new Map<string, { data: IntradayBars; ts: number }>();
+
+// 5m intraday bars for the 1D liquid chart plus the raw previous close. Mirrors
+// fetchHistory's fetch/cache but keeps meta.chartPreviousClose so the day-open
+// (yesterday's close) is available for instruments that have no overnight bars.
+export async function fetchIntradayBars(symbol: string): Promise<IntradayBars> {
+  const key = `${symbol}_1D_intraday`;
+  const cached = intradayCache.get(key);
+  if (cached && Date.now() - cached.ts < PRICE_CACHE_TTL_MS) return cached.data;
+
+  const params = RANGE_PARAMS["1D"];
+  const url = `${YAHOO_FINANCE_BASE_URL}/${encodeURIComponent(symbol)}?interval=${params.interval}&range=${params.range}`;
+
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) return { closes: [], prevClose: null };
+
+    const timestamps: number[] = result.timestamp ?? [];
+    const closes: (number | null)[] = result.indicators?.quote?.[0]?.close ?? [];
+    const data: PricePoint[] = timestamps
+      .map((ts, i) => ({ timestamp: ts, close: closes[i] as number }))
+      .filter((p) => p.close != null && !isNaN(p.close));
+
+    const rawPrev = result.meta?.chartPreviousClose ?? result.meta?.previousClose ?? null;
+    const out: IntradayBars = { closes: data, prevClose: typeof rawPrev === "number" ? rawPrev : null };
+    intradayCache.set(key, { data: out, ts: Date.now() });
+    return out;
+  } catch (err) {
+    console.error("fetchIntradayBars failed for", symbol, ":", err);
+    return { closes: [], prevClose: null };
+  }
+}
+
 interface YahooResult {
   price: number;
   previousClose: number;

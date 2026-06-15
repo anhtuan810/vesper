@@ -213,32 +213,36 @@ export function PortfolioTab({
 
   // Intraday combined line (display currency) via the ratio model:
   //   value_a(t) = currentDisplayValue(a) × close_a(t) / close_a(latest)
-  // over the sorted union of all assets' 5m timestamps, each asset forward-filled
-  // to the grid (its first close before its first bar). Assets absent from the
-  // response contribute a flat current display value at every t, so the last grid
-  // point ≈ the daily liquid total (continuity). The ratio is unitless, so FX is
-  // held flat automatically. native_breakdown is tagged with the display currency
-  // so NetWorthChart's per-point conversion stays an identity (Phase B rationale).
-  // Empty until the fetch returns.
+  // The grid is the ET trading day: windowStart (yesterday's close, the line's
+  // left edge) plus the union of each asset's today bars. Each asset is
+  // forward-filled to the grid, holding its day-open close before its first bar
+  // (so a stock sits flat at the previous close until its 9:30 ET open, baking
+  // in the overnight gap). Assets that didn't trade today contribute a flat
+  // current value, so the last grid point equals the live liquid total
+  // (continuity). The ratio is unitless, so FX is held flat automatically;
+  // native_breakdown is tagged with the display currency so NetWorthChart's
+  // per-point conversion stays an identity. Empty until the fetch returns.
   const intradaySeries = useMemo<SnapshotPoint[]>(() => {
     if (!intraday || intraday.assets.length === 0) return [];
-    const byId = new Map(intraday.assets.map((a) => [a.id, [...a.closes].sort((x, y) => x.t - y.t)]));
+    const byId = new Map(intraday.assets.map((a) => [a.id, { closes: [...a.closes].sort((x, y) => x.t - y.t), dayOpen: a.dayOpen }]));
     const tsSet = new Set<number>();
+    if (intraday.windowStart) tsSet.add(intraday.windowStart);
     for (const a of intraday.assets) for (const c of a.closes) tsSet.add(c.t);
     const grid = [...tsSet].sort((x, y) => x - y);
     if (grid.length < 2) return [];
 
     const totals = new Array<number>(grid.length).fill(0);
     for (const a of liquidAssets) {
-      const closes = byId.get(a.id);
-      if (!closes || closes.length === 0 || !closes[closes.length - 1].close) {
-        // No intraday coverage (or a zero latest close) → flat contribution.
+      const entry = byId.get(a.id);
+      const denom = entry && entry.closes.length > 0 ? entry.closes[entry.closes.length - 1].close : 0;
+      if (!entry || !denom) {
+        // Didn't trade today (e.g. a stock on a weekend) → flat current value.
         for (let i = 0; i < grid.length; i++) totals[i] += a.displayValue;
         continue;
       }
-      const denom = closes[closes.length - 1].close;
+      const { closes, dayOpen } = entry;
       let j = 0;
-      let cur = closes[0].close; // before the first bar, hold the first close
+      let cur = dayOpen || closes[0].close; // before the first bar, hold the day-open
       for (let i = 0; i < grid.length; i++) {
         while (j < closes.length && closes[j].t <= grid[i]) { cur = closes[j].close; j++; }
         totals[i] += a.displayValue * (cur / denom);
