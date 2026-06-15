@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
 import { SubscriptionProvider } from "@/components/SubscriptionProvider";
 import { Paywall } from "@/components/Paywall";
+import { AppGate } from "@/components/AppGate";
 import { AiConsentGate } from "@/components/AiConsentGate";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
@@ -117,6 +118,10 @@ export default async function RootLayout({
               {/* Paywall-first access gate. Inert on marketing/login, while
                   loading, signed out, or entitled. */}
               {!isMarketing && <Paywall />}
+              {/* Covers the app during auth/subscription transitions so the main
+                  surfaces never flash before the access decision (login →
+                  Paywall) or during sign-out (→ /login). */}
+              {!isMarketing && <AppGate />}
             </SubscriptionProvider>
           </UserProvider>
         </ThemeProvider>

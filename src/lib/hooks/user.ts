@@ -126,8 +126,13 @@ export function useTheme() {
 export function useSignOut() {
   const supabase = createBrowserSupabase();
   const router = useRouter();
+  const { beginSignOut } = useUserContext();
 
   return useCallback(async () => {
+    // Cover the app before the round-trip: signOut() revokes server-side first and
+    // only then clears the local session (and fires SIGNED_OUT), so the main screen
+    // would otherwise linger for the duration of that call.
+    beginSignOut();
     await supabase.auth.signOut();
     if (isNativeBuild) {
       // SPA navigation: in the bundled app a full load of /login would be
@@ -137,5 +142,5 @@ export function useSignOut() {
       // Full reload on the web wipes all in-memory state across the app.
       window.location.href = "/login";
     }
-  }, [supabase, router]);
+  }, [supabase, router, beginSignOut]);
 }

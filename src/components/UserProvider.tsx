@@ -11,6 +11,13 @@ import { resetPortfolioRevision } from "@/lib/portfolio-revision";
 interface UserContextValue {
   user: User | null;
   loading: boolean;
+  // True from the moment a sign-out begins until the session is actually cleared.
+  // supabase.auth.signOut() revokes server-side before it clears the local session
+  // (and fires SIGNED_OUT), so `user` stays set during that round-trip — this flag
+  // lets the app gate cover the screen immediately so the main surfaces don't linger.
+  signingOut: boolean;
+  // Raised synchronously by useSignOut before it awaits signOut().
+  beginSignOut: () => void;
   // The one-time AI disclosure acknowledgment timestamp. `undefined` while it is
   // still being loaded (so the gate never flashes), `null` once loaded and not
   // yet acknowledged, or an ISO string once acknowledged.
@@ -23,6 +30,8 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue>({
   user: null,
   loading: true,
+  signingOut: false,
+  beginSignOut: () => {},
   aiConsentAt: undefined,
   markAiConsent: () => {},
 });
@@ -60,7 +69,9 @@ function purgeClientCaches(): void {
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
   const [aiConsentAt, setAiConsentAt] = useState<string | null | undefined>(undefined);
+  const beginSignOut = useCallback(() => setSigningOut(true), []);
 
   // Last authenticated user id we've seen on this client. `undefined` means "not
   // resolved yet" (so the first resolution is never treated as a switch).
@@ -124,6 +135,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       lastSeenUserId.current = newId;
       setUser(session?.user ?? null);
       setLoading(false);
+      // The transition has resolved: if this is the SIGNED_OUT that ends a
+      // sign-out, the gate keeps covering via `!user` (and the redirect follows);
+      // if it's a sign-in, we're no longer signing out. Either way, clear the flag.
+      setSigningOut(false);
 
       // Only (re)load the acknowledgment flag on an actual switch — not on a
       // routine token refresh, which would needlessly refetch and could briefly
@@ -151,7 +166,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, loading, aiConsentAt, markAiConsent }}>
+    <UserContext.Provider value={{ user, loading, signingOut, beginSignOut, aiConsentAt, markAiConsent }}>
       {children}
     </UserContext.Provider>
   );
