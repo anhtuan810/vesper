@@ -32,6 +32,35 @@ export function usePriceHistory(symbol: string | null | undefined, range: string
   return { closes, timestamps, loading };
 }
 
+// 1D intraday for a single symbol — the most recent session's 5m bars with the
+// previous close prepended (the day-open baseline), so the line starts at
+// yesterday's close and the change reads as the daily move (matches the
+// portfolio liquid 1D). Inert unless `enabled`. Same shape as usePriceHistory.
+export function useIntradayPrices(symbol: string | null | undefined, enabled: boolean) {
+  const [closes, setCloses] = useState<number[]>([]);
+  const [timestamps, setTimestamps] = useState<number[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!enabled || !symbol) { setCloses([]); setTimestamps([]); setLoading(false); return; } // eslint-disable-line react-hooks/set-state-in-effect
+    let cancelled = false;
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect
+    apiFetch(`/api/prices/intraday?symbol=${encodeURIComponent(symbol)}`)
+      .then((r) => r.json())
+      .then(({ data }) => {
+        if (cancelled) return;
+        const points = (data as PricePoint[] | undefined) ?? [];
+        setCloses(points.map((p) => p.close));
+        setTimestamps(points.map((p) => p.timestamp));
+      })
+      .catch(() => { if (!cancelled) { setCloses([]); setTimestamps([]); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol, enabled]);
+
+  return { closes, timestamps, loading };
+}
+
 export function useSparklines(symbols: string[], range: string): Record<string, number[]> {
   const [sparklines, setSparklines] = useState<Record<string, number[]>>({});
   const symbolKey = useMemo(() => [...new Set(symbols)].sort().join(","), [symbols]);

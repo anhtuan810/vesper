@@ -2,15 +2,12 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { usePriceHistory } from "@/lib/hooks";
+import { usePriceHistory, useIntradayPrices } from "@/lib/hooks";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
 
 export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y"] as const;
 export type Range = (typeof RANGES)[number];
-
-// US trading day: 9:30–16:00 ET at 5-minute intervals = 78 bars
-const FULL_DAY_POINTS = 78;
 
 export interface ScrubInfo {
   ratio: number;   // closes[i] / closes[last] — multiply by livePrice to get approx EUR
@@ -95,7 +92,7 @@ function buildPath(
     line += ` L ${pts[i].x.toFixed(2)} ${pts[i].y.toFixed(2)}`;
   }
   const lastPt = pts[pts.length - 1];
-  // Area closes at last actual data point (not full width), so 1D shows empty right portion
+  // Area closes down from the last point to the baseline and back to the start.
   const area = line + ` L ${lastPt.x.toFixed(2)} ${H} L 0 ${H} Z`;
   return { line, area };
 }
@@ -154,10 +151,17 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
     if ((RANGES as readonly string[]).includes(r)) setRange(r as Range); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
-  const { closes, timestamps, loading } = usePriceHistory(symbol, range);
+  // 1D uses the intraday source (previous-close baseline, like the portfolio
+  // liquid chart); other ranges use the standard history. Only one fetches at a
+  // time — usePriceHistory is fed a null symbol when intraday is active.
+  const isIntraday = range === "1D";
+  const history = usePriceHistory(isIntraday ? null : symbol, range);
+  const intraday = useIntradayPrices(symbol, isIntraday);
+  const { closes, timestamps, loading } = isIntraday ? intraday : history;
 
-  // For 1D: X axis spans a full trading day even if we only have partial data
-  const totalPoints = range === "1D" ? Math.max(FULL_DAY_POINTS, closes.length) : closes.length;
+  // Line fills the full width (last point at the right edge) for every range,
+  // matching the portfolio chart.
+  const totalPoints = closes.length;
   const n = Math.max(totalPoints - 1, 1);
 
   const W = chartWidth;

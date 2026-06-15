@@ -18,6 +18,7 @@ export {
 
 export {
   usePriceHistory,
+  useIntradayPrices,
   useSparklines,
   useLivePrice,
 } from "./hooks/prices";
