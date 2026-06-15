@@ -107,3 +107,19 @@ export async function cancelStripeSubscription(subscriptionId: string): Promise<
   if (sub.status === "canceled" || sub.status === "incomplete_expired") return;
   await stripe.subscriptions.cancel(subscriptionId);
 }
+
+// Deletes the Stripe customer as part of account deletion, so the customer's PII
+// (email) does not linger at Stripe after the account is gone (GDPR erasure) and a
+// later re-signup with the same email doesn't accumulate duplicate customers.
+// Deleting a customer also cancels its subscriptions, so this is the belt to the
+// cancel above. Idempotent: a customer that no longer exists is treated as success.
+// Throws only on a genuine API failure, so the caller can block deletion and retry.
+export async function deleteStripeCustomer(customerId: string): Promise<void> {
+  const stripe = getStripe();
+  try {
+    await stripe.customers.del(customerId);
+  } catch (err) {
+    if ((err as { code?: string }).code === "resource_missing") return;
+    throw err;
+  }
+}

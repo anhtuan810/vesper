@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
 import { getEntitlement } from "@/lib/entitlements";
-import { cancelStripeSubscription } from "@/lib/stripe";
+import { cancelStripeSubscription, deleteStripeCustomer } from "@/lib/stripe";
 
 // The Stripe SDK (used to cancel an active subscription on deletion) and the
 // Supabase admin API both require the Node runtime, not edge.
@@ -173,6 +173,11 @@ export async function DELETE(request: NextRequest) {
     const entitlement = await getEntitlement(supabase, userId);
     if (entitlement?.source === "stripe" && entitlement.stripe_subscription_id) {
       await cancelStripeSubscription(entitlement.stripe_subscription_id);
+    }
+    // Erase the Stripe customer (and its PII) once billing is stopped. Idempotent,
+    // so a retry after a later-step failure is safe even if the customer is gone.
+    if (entitlement?.stripe_customer_id) {
+      await deleteStripeCustomer(entitlement.stripe_customer_id);
     }
 
     // 2. Storage — user-owned property-map thumbnails (public bucket).

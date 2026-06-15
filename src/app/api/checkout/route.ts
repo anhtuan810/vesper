@@ -43,6 +43,14 @@ export async function POST(request: NextRequest) {
       customerId = customer.id;
     }
 
+    // The 14-day free trial is granted once per account. An entitlement row exists
+    // only after a real subscription has been created on some platform, so its
+    // presence means the user has already had their trial — a returning subscriber
+    // (cancelled then re-subscribing) is charged immediately, closing the
+    // cancel-before-trial-end → re-subscribe loop of endless free trials. StoreKit
+    // enforces this per Apple ID natively; this is the web equivalent.
+    const grantTrial = !existing;
+
     const origin = request.nextUrl.origin;
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -50,7 +58,7 @@ export async function POST(request: NextRequest) {
       client_reference_id: user.id,
       line_items: [{ price: stripePriceId(plan), quantity: 1 }],
       subscription_data: {
-        trial_period_days: TRIAL_DAYS,
+        ...(grantTrial ? { trial_period_days: TRIAL_DAYS } : {}),
         metadata: { supabase_user_id: user.id },
       },
       // Card-on-file: collect a payment method even though the trial is free.

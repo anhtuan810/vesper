@@ -7,7 +7,7 @@ import { useSubscription } from "@/components/SubscriptionProvider";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { SUPPORTED_CURRENCIES, isSupportedCurrency } from "@/lib/money";
 import type { DisplayCurrency } from "@/lib/money";
-import type { SubscriptionSource } from "@/lib/subscription";
+import type { SubscriptionSource, SubscriptionStatus } from "@/lib/subscription";
 import { NativeSettingsRows } from "@/components/profile/NativeSettingsRows";
 import { apiFetch } from "@/lib/api";
 
@@ -46,18 +46,24 @@ function ChevronRight() {
   );
 }
 
-// Deleting the Volnar account never cancels the underlying paid subscription:
-// store subscriptions (App Store / Play) can only be cancelled by the user in
-// their store settings — there is no developer API for it — and a web (Stripe)
-// subscription must be cancelled before deletion. Surfaced in the delete dialog
-// so a user can't unknowingly keep being billed for an account that's gone.
-function subscriptionDeletionNotice(source: SubscriptionSource | null): string {
+// Billing notice for the delete dialog. Store subscriptions (App Store / Play) can
+// only be cancelled by the user in their store settings — there is no developer API
+// — so warn them; a web (Stripe) subscription is cancelled automatically as part of
+// deletion (see DELETE /api/users/me), so reassure rather than warn. Returned for
+// any subscription that could still be billing; null once it has already ended, so
+// the dialog stays uncluttered when there's nothing to act on.
+function subscriptionDeletionNotice(
+  source: SubscriptionSource | null,
+  status: SubscriptionStatus | null,
+): string | null {
+  // Already ended → no further billing either way, nothing to warn about.
+  if (!status || status === "expired" || status === "canceled") return null;
   if (source === "app_store")
     return "Deleting your account does not cancel your App Store subscription. To stop being billed, cancel it in Settings → your name → Subscriptions on your device.";
   if (source === "play_store")
     return "Deleting your account does not cancel your Google Play subscription. To stop being billed, cancel it in the Play Store under Payments & subscriptions.";
-  // Web / Stripe.
-  return "Deleting your account does not cancel your subscription. To stop being billed, cancel it first from “Manage subscription” on your profile.";
+  // Web / Stripe — cancelled automatically when the account is deleted.
+  return "Deleting your account also cancels your web subscription, so you won’t be billed again.";
 }
 
 function BackArrow() {
@@ -72,10 +78,9 @@ export function SettingsContent() {
   const router = useRouter();
   const { user, aiConsentAt } = useUser();
   const { data: subscription } = useSubscription();
-  const activeSubSource =
-    subscription && (subscription.status === "trialing" || subscription.status === "active")
-      ? subscription.source
-      : undefined;
+  const deletionNotice = subscription
+    ? subscriptionDeletionNotice(subscription.source, subscription.status)
+    : null;
   const signOut = useSignOut();
   const { theme: currentTheme, setTheme } = useTheme();
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("EUR");
@@ -479,7 +484,7 @@ export function SettingsContent() {
               This is permanent and cannot be undone. It removes all of your portfolio
               data, diary entries, and chat history. To continue, type DELETE below.
             </div>
-            {activeSubSource !== undefined && (
+            {deletionNotice && (
               <div
                 style={{
                   fontSize: 12.5,
@@ -492,7 +497,7 @@ export function SettingsContent() {
                   marginBottom: 16,
                 }}
               >
-                {subscriptionDeletionNotice(activeSubSource)}
+                {deletionNotice}
               </div>
             )}
             <input
