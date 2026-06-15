@@ -62,18 +62,22 @@ function statusColor(view: SubscriptionView): string {
 // was purchased, with a Manage action that routes to the correct destination per
 // source. Shows a trial CTA when there is no active subscription.
 export function SubscriptionSection() {
-  const { data, loading, refresh } = useSubscription();
+  const { data, loading, refreshUntilEntitled } = useSubscription();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (loading) return null;
 
-  const hasActive = data != null && (data.status === "trialing" || data.status === "active");
+  // Show the subscription card (not the trial CTA) for an active/trialing user and
+  // for a past_due subscriber still inside the period they paid for — the Manage
+  // action then takes them to update their card, instead of starting a new sub.
+  const hasSubscription =
+    data != null && (data.status === "trialing" || data.status === "active" || data.status === "past_due");
 
   // Days remaining in the trial — only meaningful while trialing. Computed from
   // the same date the "Trial ends" row shows, so the two never disagree.
   const daysLeft =
-    hasActive && data && data.status === "trialing"
+    hasSubscription && data && data.status === "trialing"
       ? trialDaysLeft(data.trialEnd ?? data.currentPeriodEnd)
       : null;
 
@@ -106,9 +110,10 @@ export function SubscriptionSection() {
       let purchases: typeof import("@/lib/native/purchases") | null = null;
       try {
         purchases = await import("@/lib/native/purchases");
-        const info = await purchases.purchasePlan(plan);
-        if (purchases.isEntitledFromInfo(info)) await refresh();
-        else await refresh();
+        await purchases.purchasePlan(plan);
+        // Poll until the webhook writes the entitlement, so access persists past
+        // the next cold start rather than depending on a single immediate read.
+        await refreshUntilEntitled();
       } catch (e) {
         if (!purchases || !purchases.isPurchaseCancelled(e)) {
           setError("The purchase didn't complete. Please try again.");
@@ -137,7 +142,7 @@ export function SubscriptionSection() {
     <>
       <div style={SECTION_LABEL_STYLE}>Your subscription</div>
 
-      {hasActive && data ? (
+      {hasSubscription && data ? (
         <div style={CARD_STYLE}>
           <Row
             label="Plan"
@@ -230,6 +235,7 @@ function renewalDate(view: SubscriptionView): string | null {
 
 function dateLabel(view: SubscriptionView): string {
   if (view.status === "trialing") return "Trial ends";
+  if (view.status === "past_due") return "Payment due";
   if (view.cancelAtPeriodEnd) return "Access until";
   return "Renews";
 }

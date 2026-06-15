@@ -9,7 +9,7 @@
 // remains the source of truth; the customerInfo here is only used for an instant,
 // optimistic unlock after a purchase/restore (the webhook makes it authoritative).
 
-import { isNative } from "@/lib/platform";
+import { isNative, getPlatform } from "@/lib/platform";
 import type {
   CustomerInfo,
   PurchasesOffering,
@@ -21,7 +21,15 @@ function entitlementId(): string {
   return process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || "premium";
 }
 
-function iosApiKey(): string {
+// The public SDK key for the running platform. Android ships later; selecting by
+// platform here means `configure` uses the correct key the moment it does, rather
+// than always sending the iOS key.
+function platformApiKey(): string {
+  if (getPlatform() === "android") {
+    const key = process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_KEY;
+    if (!key) throw new Error("NEXT_PUBLIC_REVENUECAT_ANDROID_KEY is not set");
+    return key;
+  }
   const key = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY;
   if (!key) throw new Error("NEXT_PUBLIC_REVENUECAT_IOS_KEY is not set");
   return key;
@@ -41,7 +49,7 @@ export async function configurePurchases(appUserId: string): Promise<void> {
   if (!isNative()) return;
   if (configuredFor === appUserId) return;
   const Purchases = await loadPurchases();
-  await Purchases.configure({ apiKey: iosApiKey(), appUserID: appUserId });
+  await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
   configuredFor = appUserId;
 }
 

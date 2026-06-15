@@ -9,6 +9,8 @@ import { apiFetch } from "@/lib/api";
 import { isNative } from "@/lib/platform";
 import {
   ANNUAL_MONTHS_FREE,
+  APP_STORE_SUBSCRIPTIONS_URL,
+  PLAY_STORE_SUBSCRIPTIONS_URL,
   PLAN_PRICES,
   TRIAL_DAYS,
   formatPrice,
@@ -39,7 +41,8 @@ async function openExternal(e: React.MouseEvent, url: string) {
 export function Paywall() {
   const pathname = usePathname();
   const { user, loading: userLoading } = useUser();
-  const { loading: subLoading, entitled, refresh, markEntitledOptimistic } = useSubscription();
+  const { loading: subLoading, entitled, data, refresh, refreshUntilEntitled, markEntitledOptimistic } =
+    useSubscription();
 
   const [native, setNative] = useState(false);
   const [selected, setSelected] = useState<PlanId>("annual");
@@ -87,7 +90,10 @@ export function Paywall() {
         purchases = await import("@/lib/native/purchases");
         const info = await purchases.purchasePlan(plan);
         if (purchases.isEntitledFromInfo(info)) markEntitledOptimistic();
-        await refresh();
+        // Poll until the RevenueCat webhook has written the server entitlement, so
+        // access survives the next cold start rather than relying on the optimistic
+        // unlock alone.
+        await refreshUntilEntitled();
       } catch (e) {
         if (!purchases || !purchases.isPurchaseCancelled(e)) {
           setError("The purchase didn't complete. Please try again.");
@@ -121,7 +127,7 @@ export function Paywall() {
       const info = await restorePurchases();
       if (isEntitledFromInfo(info)) {
         markEntitledOptimistic();
-        await refresh();
+        await refreshUntilEntitled();
       } else {
         await refresh();
         setError("We couldn't find an active subscription to restore.");
@@ -133,8 +139,49 @@ export function Paywall() {
     }
   }
 
+  // Recovery path for a user who already has a subscription that lapsed — most
+  // importantly past_due (a failed renewal): send them to manage/fix the EXISTING
+  // subscription, not to start a brand-new one. Routes by source: Stripe billing
+  // portal (update card / reactivate) on web, the store's subscription page on
+  // native.
+  async function manageExisting() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (data?.source === "app_store" || data?.source === "play_store") {
+        const url =
+          data.source === "play_store" ? PLAY_STORE_SUBSCRIPTIONS_URL : APP_STORE_SUBSCRIPTIONS_URL;
+        if (native) {
+          try {
+            const { Browser } = await import("@capacitor/browser");
+            await Browser.open({ url });
+          } catch {
+            window.open(url, "_blank");
+          }
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+        setBusy(false);
+        return;
+      }
+      const res = await apiFetch("/api/billing-portal", { method: "POST" });
+      if (!res.ok) throw new Error();
+      const { url } = (await res.json()) as { url: string };
+      window.location.href = url;
+    } catch {
+      setError("We couldn't open your subscription settings. Please try again.");
+      setBusy(false);
+    }
+  }
+
   const monthlyPrice = storePrices.monthly ?? formatPrice(PLAN_PRICES.monthly);
   const annualPrice = storePrices.annual ?? formatPrice(PLAN_PRICES.annual);
+
+  // True when there is a prior subscription that no longer grants access — show a
+  // "manage existing" affordance alongside the buy buttons. past_due gets the most
+  // direct copy because the fix is to update the card, not to buy again.
+  const lapsed = !!data?.status && data.status !== "trialing" && data.status !== "active";
+  const manageLabel = data?.status === "past_due" ? "Update payment method" : "Manage existing subscription";
 
   const renewLocation = native ? "the App Store" : "your account";
 
@@ -257,6 +304,27 @@ export function Paywall() {
             }}
           >
             Restore purchases
+          </button>
+        )}
+
+        {lapsed && (
+          <button
+            onClick={manageExisting}
+            disabled={busy}
+            style={{
+              width: "100%",
+              marginTop: 10,
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid var(--border-strong)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: busy ? "default" : "pointer",
+            }}
+          >
+            {manageLabel}
           </button>
         )}
 

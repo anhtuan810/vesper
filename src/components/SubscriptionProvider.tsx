@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { useUserContext } from "@/components/UserProvider";
 import { apiFetch, isNativeBuild } from "@/lib/api";
 import { isNative } from "@/lib/platform";
@@ -22,6 +23,11 @@ interface SubscriptionContextValue {
   // unlock right after a native purchase/restore (before the webhook lands).
   entitled: boolean;
   refresh: () => Promise<SubscriptionView | null>;
+  // Poll the status a few times until entitled — used after a native
+  // purchase/restore so the server entitlement (written by the webhook) is picked
+  // up even if it lands a few seconds late, instead of relying on the optimistic
+  // unlock alone (which would re-gate the user on the next cold start).
+  refreshUntilEntitled: () => Promise<SubscriptionView | null>;
   markEntitledOptimistic: () => void;
 }
 
@@ -30,6 +36,7 @@ const SubscriptionContext = createContext<SubscriptionContextValue>({
   loading: true,
   entitled: false,
   refresh: async () => null,
+  refreshUntilEntitled: async () => null,
   markEntitledOptimistic: () => {},
 });
 
@@ -90,9 +97,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // is loaded only here (dynamic import), never in the web bundle.
   useEffect(() => {
     if (!isNative() || !user) return;
+    // Report configure failures instead of swallowing them: a failed configure
+    // leaves the SDK on an anonymous app user id, so a subsequent purchase maps to
+    // a non-account id the webhook can't resolve and never persists server-side.
     import("@/lib/native/purchases")
-      .then(({ configurePurchases }) => configurePurchases(user.id).catch(() => {}))
-      .catch(() => {});
+      .then(({ configurePurchases }) =>
+        configurePurchases(user.id).catch((e) =>
+          Sentry.captureException(e, { tags: { area: "revenuecat-configure" } }),
+        ),
+      )
+      .catch((e) => Sentry.captureException(e, { tags: { area: "revenuecat-configure-import" } }));
   }, [user]);
 
   // Web: returning from Stripe Checkout (?checkout=success), poll until the
@@ -126,13 +140,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [fetchStatus]);
 
   const refresh = useCallback(() => fetchStatus(), [fetchStatus]);
+
+  const refreshUntilEntitled = useCallback(async (): Promise<SubscriptionView | null> => {
+    const TRIES = 5;
+    const DELAY_MS = 1500;
+    for (let i = 0; i < TRIES; i++) {
+      const view = await fetchStatus();
+      if (view?.entitled) return view;
+      if (i < TRIES - 1) await new Promise((r) => setTimeout(r, DELAY_MS));
+    }
+    return null;
+  }, [fetchStatus]);
+
   const markEntitledOptimistic = useCallback(() => setOptimistic(true), []);
 
   const entitled = optimistic || (data?.entitled ?? false);
 
   return (
     <SubscriptionContext.Provider
-      value={{ data, loading, entitled, refresh, markEntitledOptimistic }}
+      value={{ data, loading, entitled, refresh, refreshUntilEntitled, markEntitledOptimistic }}
     >
       {children}
     </SubscriptionContext.Provider>
