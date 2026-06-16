@@ -108,10 +108,13 @@ function assetSeeds(): Array<Record<string, unknown>> {
     {
       type: "stocks",
       name: "SpaceX",
-      value: 3000,
-      currency: "EUR",
-      // Private/pre-listing holding: no public ticker, so no symbol — it shows at
-      // its entered value and is never live-priced.
+      value: 3800,
+      currency: "USD",
+      // Bought 20 shares at the IPO ($161). No public Yahoo ticker exists, so no
+      // symbol — it shows at its entered value and is never live-priced; the gain
+      // reads against the 20 x $161 cost basis.
+      units: 20,
+      buy_price: 161,
       buy_date: "2024-05-15",
       buy_price_source: "user",
     },
@@ -425,10 +428,11 @@ export async function seedDemoUser(userId: string): Promise<void> {
     add(
       "SpaceX",
       "2024-05-15",
-      3000,
-      null,
-      "Took a small stake in SpaceX through a private share offering. A speculative, illiquid slice I am happy to leave untouched for years.",
+      3220,
+      20,
+      "Bought 20 shares of SpaceX on its first day of trading. A speculative slice I am happy to leave untouched for years.",
       280000,
+      "SpaceX listed publicly for the first time; I took a small position on day one of the IPO.",
     ),
     topUp(
       "iShares Core MSCI World",
@@ -544,7 +548,7 @@ export async function seedDemoUser(userId: string): Promise<void> {
         life_and_direction:
           "Early forties, lives in Amsterdam with a partner and two children, dual income across tech and healthcare. Owns the family apartment and a small Rotterdam rental, and wants the next decade to be about compounding quietly rather than chasing the next thing.",
         approach:
-          "Index-first. A global MSCI World position is the core, topped up through every dip. Around it sits a small sleeve of high-conviction names — NVIDIA, a pre-listing SpaceX stake and Apple — and a deliberately tiny Bitcoin position. Property is treated as a long-term hold with leverage kept conservative.",
+          "Index-first. A global MSCI World position is the core, topped up through every dip. Around it sits a small sleeve of high-conviction names — NVIDIA, a SpaceX position bought at its IPO and Apple — and a deliberately tiny Bitcoin position. Property is treated as a long-term hold with leverage kept conservative.",
         currently_exploring:
           "Whether to overpay the 1.9 percent home mortgage or keep investing the difference, and how much of the Rotterdam rental's cash flow to reinvest versus hold as buffer.",
         worth_raising:
