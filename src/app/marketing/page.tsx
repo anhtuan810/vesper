@@ -47,13 +47,13 @@ export default function MarketingPage() {
           </nav>
           <div className="flex items-center gap-2 ml-auto min-[880px]:ml-0">
             <a
-              href="https://app.volnar.nl"
+              href="https://app.volnar.nl/login"
               className="text-sm text-dim transition-colors hover:text-fg"
               style={{ padding: "10px 12px", textDecoration: "none" }}
             >
               Sign in
             </a>
-            <a href="https://app.volnar.nl" className="mkt-btn mkt-btn-primary" style={{ minHeight: 38, padding: "8px 16px" }}>
+            <a href="https://app.volnar.nl/login" className="mkt-btn mkt-btn-primary" style={{ minHeight: 38, padding: "8px 16px" }}>
               Get started
             </a>
           </div>
@@ -94,7 +94,7 @@ export default function MarketingPage() {
                 Product
               </div>
               <div className="flex flex-col gap-2 text-[13.5px]">
-                <a href="https://app.volnar.nl" className="text-dim no-underline transition-colors hover:text-fg">Sign in</a>
+                <a href="https://app.volnar.nl/login" className="text-dim no-underline transition-colors hover:text-fg">Sign in</a>
                 <a href="https://app.volnar.nl/demo" className="text-dim no-underline transition-colors hover:text-fg">Live demo</a>
               </div>
             </div>

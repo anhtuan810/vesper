@@ -25,8 +25,9 @@ export function DemoBanner() {
   useEffect(() => setNative(isNative()), []);
 
   if (!data?.isDemo) return null;
-  // The mobile chat composer sits where this pill would — skip it there.
-  if (pathname === "/chat") return null;
+  // The mobile chat composer sits where this pill would — skip it there. Also skip
+  // the login page, which a demo session can now reach (to sign in as themselves).
+  if (pathname === "/chat" || pathname.startsWith("/login")) return null;
 
   return (
     <>

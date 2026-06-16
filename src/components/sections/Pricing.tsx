@@ -8,8 +8,9 @@ import {
 
 // Signing up happens in the app; an unauthenticated visitor lands on login, then
 // the paywall after signing in. Absolute URL so it works from the marketing
-// domain (volnar.nl) too.
-const APP_URL = "https://app.volnar.nl";
+// domain (volnar.nl) too. Points at /login so a returning demo visitor reaches a
+// fresh sign-in rather than resuming the demo session.
+const APP_URL = "https://app.volnar.nl/login";
 
 // Marketing pricing section: the 14-day trial and both plans, annual highlighted
 // with "2 months free", and a CTA into signup → the paywall. Amounts come from the

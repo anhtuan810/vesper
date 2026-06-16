@@ -111,8 +111,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If logged in and on login page, redirect to home
-  if (user && request.nextUrl.pathname.startsWith("/login")) {
+  // If logged in and on the login page, send to the app — EXCEPT for the shared
+  // demo session. A returning visitor who explored the demo still carries its
+  // session; bouncing them off /login would drop them straight back into the demo
+  // account when they meant to sign in as themselves. Let them reach /login (a
+  // real sign-in there replaces the demo session). Detected by the configured
+  // demo user id, so normal accounts are unaffected.
+  const demoUserId = process.env.DEMO_USER_ID;
+  const isDemoSession = !!demoUserId && user?.id === demoUserId;
+  if (user && !isDemoSession && request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
