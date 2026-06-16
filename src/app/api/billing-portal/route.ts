@@ -28,7 +28,16 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ url: portal.url });
   } catch (err) {
+    // Surface the underlying Stripe reason so config/mode issues are diagnosable
+    // without digging through logs (billing-portal errors are operational — e.g.
+    // "customer portal not configured" or "No such customer" — not user data).
+    const detail = err instanceof Error ? err.message : String(err);
+    const code = (err as { code?: string } | null)?.code ?? null;
+    console.error(`billing-portal: code=${code ?? "-"} ${detail}`);
     Sentry.captureException(err, { tags: { route: "POST /api/billing-portal" } });
-    return NextResponse.json({ error: "Could not open billing portal" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not open billing portal", code, detail },
+      { status: 500 }
+    );
   }
 }
