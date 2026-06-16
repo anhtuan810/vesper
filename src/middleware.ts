@@ -115,10 +115,15 @@ export async function middleware(request: NextRequest) {
   // demo session. A returning visitor who explored the demo still carries its
   // session; bouncing them off /login would drop them straight back into the demo
   // account when they meant to sign in as themselves. Let them reach /login (a
-  // real sign-in there replaces the demo session). Detected by the configured
-  // demo user id, so normal accounts are unaffected.
+  // real sign-in there replaces the demo session). The demo always authenticates
+  // as DEMO_USER_EMAIL (DEMO_USER_ID is optional), so match on the email, with the
+  // id as a fallback. Normal accounts are unaffected.
+  const demoEmail = process.env.DEMO_USER_EMAIL?.toLowerCase();
   const demoUserId = process.env.DEMO_USER_ID;
-  const isDemoSession = !!demoUserId && user?.id === demoUserId;
+  const isDemoSession =
+    !!user &&
+    ((!!demoEmail && user.email?.toLowerCase() === demoEmail) ||
+      (!!demoUserId && user.id === demoUserId));
   if (user && !isDemoSession && request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
