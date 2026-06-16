@@ -3,17 +3,20 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSubscription } from "@/components/SubscriptionProvider";
+import { useSignOut } from "@/lib/hooks";
 import { isNative } from "@/lib/platform";
 
 // Quiet banner shown only on the shared demo account (entitlement product_id
-// "demo", surfaced server-side as SubscriptionView.isDemo). On web it offers a
-// Subscribe link to the marketing pricing section; on native it is just a notice
-// (no external purchase link). Always visible on the demo account — no dismiss —
-// and rendered nowhere else. Sits below the BottomNav (z-25 < z-30) and clears it
-// on mobile; skipped on the mobile chat route so it never covers the composer.
+// "demo", surfaced server-side as SubscriptionView.isDemo). On web a Subscribe
+// action signs out of the shared demo and goes to the login page, where a visitor
+// creates their own account and subscribes through the paywall; on native it is
+// just a notice. Always visible on the demo account — no dismiss — and rendered
+// nowhere else. Sits below the BottomNav (z-25 < z-30) and clears it on mobile;
+// skipped on the mobile chat route so it never covers the composer.
 export function DemoBanner() {
   const { data } = useSubscription();
   const pathname = usePathname();
+  const signOut = useSignOut();
 
   // Resolve the platform in an effect (mirrors Paywall) so server/web render and
   // device hydration agree on whether the Subscribe link appears.
@@ -71,15 +74,23 @@ export function DemoBanner() {
               aria-hidden="true"
               style={{ width: "0.5px", height: 14, background: "var(--border)" }}
             />
-            <a
+            <button
+              type="button"
               className="demo-banner-link"
-              href="https://volnar.nl/#pricing"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: 13, fontWeight: 500, color: "var(--accent)" }}
+              onClick={signOut}
+              style={{
+                fontFamily: "var(--font-sans)",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--accent)",
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+              }}
             >
               Subscribe
-            </a>
+            </button>
           </>
         )}
       </div>
