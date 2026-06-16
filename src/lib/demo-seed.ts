@@ -84,10 +84,10 @@ function assetSeeds(): Array<Record<string, unknown>> {
     {
       type: "etf",
       name: "iShares Core MSCI World",
-      value: 22000,
+      value: 30000,
       currency: "EUR",
       symbol: "IWDA.AS",
-      units: 240,
+      units: 320,
       buy_price: 83,
       buy_date: "2021-03-08",
       buy_price_source: "user",
@@ -95,10 +95,10 @@ function assetSeeds(): Array<Record<string, unknown>> {
     {
       type: "stocks",
       name: "NVIDIA",
-      value: 4500,
+      value: 5000,
       currency: "USD",
       symbol: "NVDA",
-      units: 35,
+      units: 40,
       // Split-adjusted blended cost (a 2023 entry topped up in 2026); live price
       // is split-adjusted too, so the gain reads correctly.
       buy_price: 36,
@@ -110,9 +110,10 @@ function assetSeeds(): Array<Record<string, unknown>> {
       name: "SpaceX",
       value: 3800,
       currency: "USD",
-      // Bought 20 shares at the IPO ($161). No public Yahoo ticker exists, so no
-      // symbol — it shows at its entered value and is never live-priced; the gain
-      // reads against the 20 x $161 cost basis.
+      // Now publicly traded — rendered as an ordinary stock. SPCX is a placeholder
+      // ticker; if it doesn't resolve to a live quote the holding falls back to its
+      // stored value, with the gain read against the 20 x $161 IPO cost basis.
+      symbol: "SPCX",
       units: 20,
       buy_price: 161,
       buy_date: "2024-05-15",
@@ -121,29 +122,62 @@ function assetSeeds(): Array<Record<string, unknown>> {
     {
       type: "stocks",
       name: "Apple",
-      value: 2500,
+      value: 3000,
       currency: "USD",
       symbol: "AAPL",
-      units: 11,
+      units: 16,
       buy_price: 165,
       buy_date: "2023-08-12",
       buy_price_source: "user",
     },
     {
+      type: "stocks",
+      name: "Micron Technology",
+      value: 3500,
+      currency: "USD",
+      symbol: "MU",
+      units: 30,
+      buy_price: 90,
+      buy_date: "2024-07-15",
+      buy_price_source: "user",
+    },
+    {
+      type: "stocks",
+      name: "Microsoft",
+      value: 3500,
+      currency: "USD",
+      symbol: "MSFT",
+      units: 9,
+      buy_price: 370,
+      buy_date: "2024-02-22",
+      buy_price_source: "user",
+    },
+    {
       type: "crypto",
       name: "Bitcoin",
-      value: 4000,
+      value: 5500,
       currency: "EUR",
       symbol: "BTC-EUR",
-      units: 0.05,
+      units: 0.07,
       buy_price: 56000,
       buy_date: "2021-11-08",
       buy_price_source: "user",
     },
     {
+      type: "crypto",
+      name: "Ethereum",
+      value: 3500,
+      currency: "EUR",
+      symbol: "ETH-EUR",
+      units: 1.1,
+      buy_price: 2400,
+      buy_date: "2024-01-18",
+      buy_price_source: "user",
+    },
+    {
       type: "cash",
       name: "Emergency fund",
-      value: 20000,
+      value: 26000,
       currency: "EUR",
       // mortgage_rate is repurposed as the interest rate for cash/pension.
       mortgage_rate: 1.8,
@@ -186,23 +220,25 @@ const SNAPSHOT_CATEGORIES: Array<keyof CategoryValues> = [
 const SNAPSHOT_ANCHORS: Array<[string, CategoryValues]> = [
   // Pre-home: a large cash down-payment fund alongside a small index position.
   ["2021-01-01", { real_estate: 0,      etf: 16000, stocks: 0,     crypto: 0,    pension: 4000,  cash: 120000 }],
-  // Bought the Amsterdam apartment — cash converts into home equity (€115k at
-  // purchase: €495k value less a €380k mortgage), so net worth barely moves.
-  ["2021-06-01", { real_estate: 115000, etf: 19000, stocks: 0,     crypto: 0,    pension: 6000,  cash: 8000  }],
+  // Bought the Amsterdam apartment — cash converts into home equity, so net worth
+  // barely moves; cash then rebuilds toward the rental deposit.
+  ["2021-06-01", { real_estate: 115000, etf: 19000, stocks: 0,     crypto: 0,    pension: 6000,  cash: 12000 }],
   // First small Bitcoin buy near the cycle top.
-  ["2021-11-01", { real_estate: 122000, etf: 21000, stocks: 0,     crypto: 4000, pension: 8000,  cash: 14000 }],
-  // 2022 sell-off: equities and crypto down, cash rebuilt toward the next deposit.
-  ["2022-06-01", { real_estate: 128000, etf: 18500, stocks: 0,     crypto: 1800, pension: 9000,  cash: 28000 }],
-  // Bought the Rotterdam rental — €50k of cash becomes €50k of rental equity.
-  ["2022-09-01", { real_estate: 178000, etf: 18000, stocks: 0,     crypto: 1900, pension: 9500,  cash: 6000  }],
-  // First individual stock (NVIDIA) as the AI rally began.
-  ["2023-03-01", { real_estate: 185000, etf: 20000, stocks: 2500,  crypto: 2600, pension: 11000, cash: 9000  }],
-  ["2023-12-01", { real_estate: 195000, etf: 21500, stocks: 5500,  crypto: 3400, pension: 14000, cash: 12000 }],
-  // Added the SpaceX stake; markets at highs.
-  ["2024-09-01", { real_estate: 220000, etf: 22500, stocks: 9000,  crypto: 4200, pension: 20000, cash: 15000 }],
-  ["2025-06-01", { real_estate: 240000, etf: 22000, stocks: 9500,  crypto: 4500, pension: 27000, cash: 17000 }],
-  // Today: €250k property equity + €56k markets/cash + €34k pension ≈ €340k.
-  ["2026-06-01", { real_estate: 250000, etf: 22000, stocks: 10000, crypto: 4000, pension: 34000, cash: 20000 }],
+  ["2021-11-01", { real_estate: 125000, etf: 21000, stocks: 0,     crypto: 4000, pension: 8000,  cash: 16000 }],
+  // 2022 sell-off: equities and crypto down, cash built up for the rental deposit.
+  ["2022-06-01", { real_estate: 150000, etf: 18500, stocks: 0,     crypto: 1800, pension: 9000,  cash: 40000 }],
+  // Bought the Rotterdam rental — cash converts into rental equity.
+  ["2022-09-01", { real_estate: 200000, etf: 18000, stocks: 0,     crypto: 1900, pension: 9500,  cash: 8000  }],
+  // Housing correction + market trough — a mild dip before the recovery; first
+  // individual stock (NVIDIA) as the AI rally began.
+  ["2023-03-01", { real_estate: 186000, etf: 20000, stocks: 2500,  crypto: 2600, pension: 11000, cash: 10000 }],
+  ["2023-12-01", { real_estate: 196000, etf: 23000, stocks: 6500,  crypto: 3600, pension: 14000, cash: 13000 }],
+  // Diversifying the liquid sleeve through 2024: Ethereum, Microsoft, Micron added
+  // alongside the index core; markets at highs.
+  ["2024-09-01", { real_estate: 222000, etf: 26000, stocks: 14000, crypto: 6500, pension: 20000, cash: 18000 }],
+  ["2025-06-01", { real_estate: 240000, etf: 28000, stocks: 16500, crypto: 8000, pension: 27000, cash: 22000 }],
+  // Today: €250k property equity + ~€84k markets/cash + €34k pension ≈ €368k.
+  ["2026-06-01", { real_estate: 250000, etf: 30000, stocks: 18800, crypto: 9000, pension: 34000, cash: 26000 }],
 ];
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
@@ -332,8 +368,8 @@ export async function seedDemoUser(userId: string): Promise<void> {
     occurredAt: string,
     beforeValue: number,
     afterValue: number,
-    beforeUnits: number,
-    afterUnits: number,
+    beforeUnits: number | null,
+    afterUnits: number | null,
     personalContext: string,
     portfolioTotal: number,
     marketContext: string | null = null,
@@ -420,10 +456,26 @@ export async function seedDemoUser(userId: string): Promise<void> {
     add(
       "Apple",
       "2023-08-12",
-      1815,
-      11,
+      3300,
+      20,
       "Added a core Apple position. Boring in the best way: a cash machine with a sticky ecosystem and relentless buybacks.",
       245000,
+    ),
+    add(
+      "Ethereum",
+      "2024-01-18",
+      2640,
+      1.1,
+      "Added Ethereum alongside Bitcoin — I wanted exposure to the smart-contract side of crypto, still sized small on purpose.",
+      262000,
+    ),
+    add(
+      "Microsoft",
+      "2024-02-22",
+      3330,
+      9,
+      "Bought Microsoft for the cloud and Copilot story. Enterprise AI revenue that actually shows up in the numbers, not just the headlines.",
+      266000,
     ),
     add(
       "SpaceX",
@@ -434,25 +486,63 @@ export async function seedDemoUser(userId: string): Promise<void> {
       280000,
       "SpaceX listed publicly for the first time; I took a small position on day one of the IPO.",
     ),
+    add(
+      "Micron Technology",
+      "2024-07-15",
+      2700,
+      30,
+      "Bought Micron as the memory play on the AI build-out — the picks and shovels behind the GPUs, at a far cheaper multiple.",
+      292000,
+    ),
+    topUp(
+      "Bitcoin",
+      "2024-10-08",
+      3000,
+      4900,
+      0.05,
+      0.07,
+      "Added a little more Bitcoin on a quiet stretch. Still capped near a few percent of liquid assets, still boring on purpose.",
+      305000,
+    ),
+    topUp(
+      "Apple",
+      "2025-05-20",
+      4200,
+      3360,
+      20,
+      16,
+      "Trimmed Apple back after a strong run, taking a little off the top to rebalance. Not a change of view, just keeping any one name from getting too big.",
+      338000,
+    ),
+    topUp(
+      "Apartment — Amsterdam",
+      "2025-08-12",
+      165000,
+      190000,
+      null,
+      null,
+      "Made a one-off overpayment of 25,000 euro on the home mortgage. A guaranteed 1.9 percent saved beat leaving the cash idle, and it brings the payoff date closer.",
+      345000,
+    ),
     topUp(
       "iShares Core MSCI World",
       "2025-10-14",
       19000,
-      22800,
+      30000,
       200,
-      240,
+      320,
       "Kept the monthly index plan running and topped up again. The most reliable thing I do is buy a little every month and ignore the noise.",
-      325000,
+      352000,
     ),
     topUp(
       "NVIDIA",
       "2026-02-18",
       3600,
-      4200,
+      4800,
       30,
-      35,
+      40,
       "Added a little more NVIDIA. Letting a winner run, but only inside a sleeve I have sized to sleep through.",
-      335000,
+      362000,
     ),
   ];
 
@@ -472,8 +562,8 @@ export async function seedDemoUser(userId: string): Promise<void> {
     {
       title: "NVIDIA steady after earnings",
       detail: serializeMarketDetail({
-        detail: "NVIDIA held its level this week as AI-chip demand stayed firm. Your 35 shares moved with the sector, not against it.",
-        impact_eur: 240,
+        detail: "NVIDIA held its level this week as AI-chip demand stayed firm. Your 40 shares moved with the sector, not against it.",
+        impact_eur: 280,
         symbol: "NVDA",
       }),
     },
@@ -543,14 +633,14 @@ export async function seedDemoUser(userId: string): Promise<void> {
       name: "Alex Demo",
       display_currency: "EUR",
       ai_consent_at: new Date().toISOString(),
-      fingerprint: "Amsterdam homeowner with a Rotterdam rental, a global-index core, and a few high-conviction tech bets.",
+      fingerprint: "Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.",
       profile: {
         life_and_direction:
           "Early forties, lives in Amsterdam with a partner and two children, dual income across tech and healthcare. Owns the family apartment and a small Rotterdam rental, and wants the next decade to be about compounding quietly rather than chasing the next thing.",
         approach:
-          "Index-first. A global MSCI World position is the core, topped up through every dip. Around it sits a small sleeve of high-conviction names — NVIDIA, a SpaceX position bought at its IPO and Apple — and a deliberately tiny Bitcoin position. Property is treated as a long-term hold with leverage kept conservative.",
+          "Index-first. A global MSCI World position is the core, topped up through every dip. Around it sits a sleeve of high-conviction names — NVIDIA, Micron, Microsoft, a SpaceX position bought at its IPO, and Apple — plus a small crypto allocation split between Bitcoin and Ethereum. Property is treated as a long-term hold with leverage kept conservative, and winners are trimmed back when any one name gets too big.",
         currently_exploring:
-          "Whether to overpay the 1.9 percent home mortgage or keep investing the difference, and how much of the Rotterdam rental's cash flow to reinvest versus hold as buffer.",
+          "Whether to keep overpaying the 1.9 percent home mortgage after a first lump sum last year, or route the spare cash into the index fund instead, and how much of the Rotterdam rental's cash flow to reinvest versus hold as buffer.",
         worth_raising:
           "The Rotterdam mortgage is interest-only, so the principal needs a repayment plan before it matures. The tech sleeve has also grown faster than expected and is now a larger share of liquid assets than originally intended.",
       },
