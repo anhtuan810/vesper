@@ -7,7 +7,7 @@ import { TRIAL_DAYS, type PlanId } from "@/lib/subscription";
 
 export const runtime = "nodejs";
 
-// Starts a Stripe Checkout session for a web purchase (subscription mode, 14-day
+// Starts a Stripe Checkout session for a web purchase (subscription mode, 7-day
 // card-on-file trial). Login is required first, and the user id is stamped onto
 // both the customer (metadata) and the subscription (client_reference_id +
 // subscription_data.metadata) so the webhook can map the purchase to the account.
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       customerId = customer.id;
     }
 
-    // The 14-day free trial is granted once per account. An entitlement row exists
+    // The 7-day free trial is granted once per account. An entitlement row exists
     // only after a real subscription has been created on some platform, so its
     // presence means the user has already had their trial — a returning subscriber
     // (cancelled then re-subscribing) is charged immediately, closing the

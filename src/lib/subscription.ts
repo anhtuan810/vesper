@@ -16,7 +16,7 @@ export type SubscriptionSource = "stripe" | "app_store" | "play_store";
 
 export type PlanId = "monthly" | "annual";
 
-// The two statuses that unlock the app. The 14-day card-on-file trial counts as
+// The two statuses that unlock the app. The 7-day card-on-file trial counts as
 // access, so a trialing user is in, not gated.
 export const ENTITLED_STATUSES: ReadonlySet<SubscriptionStatus> = new Set<SubscriptionStatus>([
   "trialing",
@@ -68,9 +68,9 @@ export interface SubscriptionView {
 
 // ── Plan pricing (display copy) ────────────────────────────────────────────────
 // Amounts shown across the paywall, Profile, and marketing. These are display
-// values only — the real charge is driven by the env price IDs. 14-day trial,
+// values only — the real charge is driven by the env price IDs. 7-day trial,
 // then monthly €9.99 or annual €99.99 (annual preferred).
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 7;
 
 export const PLAN_PRICES: Record<PlanId, number> = {
   monthly: 9.99,

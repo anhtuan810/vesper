@@ -12,7 +12,7 @@ import {
 // fresh sign-in rather than resuming the demo session.
 const APP_URL = "https://app.volnar.nl/login";
 
-// Marketing pricing section: the 14-day trial and both plans, annual highlighted
+// Marketing pricing section: the 7-day trial and both plans, annual highlighted
 // with "2 months free", and a CTA into signup → the paywall. Amounts come from the
 // shared subscription constants, so they never drift from the product.
 export function Pricing() {
