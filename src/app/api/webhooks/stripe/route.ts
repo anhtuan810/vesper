@@ -17,6 +17,23 @@ export const runtime = "nodejs";
 
 type ServiceClient = ReturnType<typeof createServerSupabase>;
 
+// Whether this event was already applied-and-marked. The marker is inserted only
+// after a successful apply, so a present row means the work is done and a
+// re-delivery can be acked without reprocessing.
+async function eventAlreadyProcessed(
+  supabase: ServiceClient,
+  eventId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("billing_events")
+    .select("event_id")
+    .eq("provider", "stripe")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw new Error(`billing_events read failed: ${error.message}`);
+  return data != null;
+}
+
 // Resolves the Supabase user id for a subscription: first the metadata we stamp
 // at checkout, then a fallback lookup by Stripe customer id.
 async function resolveUserId(
@@ -32,13 +49,18 @@ async function resolveUserId(
 
 // Re-read the subscription fresh from Stripe so we always apply its CURRENT state,
 // not the (possibly stale) snapshot embedded in an out-of-order or retried event —
-// the Stripe-recommended way to stay correct without ordering bookkeeping. Falls
-// back to the event payload if the subscription can no longer be retrieved.
+// the Stripe-recommended way to stay correct without ordering bookkeeping.
 async function freshSubscription(sub: Stripe.Subscription): Promise<Stripe.Subscription> {
   try {
     return await getStripe().subscriptions.retrieve(sub.id);
   } catch (err) {
-    if ((err as { code?: string }).code === "resource_missing") return sub;
+    // The subscription no longer exists at Stripe — it is gone, so the write must
+    // map to canceled. Returning the event's (possibly still-active) snapshot
+    // unchanged could re-grant access; keep its ref ids and period fields but
+    // force the terminal status.
+    if ((err as { code?: string }).code === "resource_missing") {
+      return { ...sub, status: "canceled" };
+    }
     throw err;
   }
 }
@@ -58,7 +80,13 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
         });
         return;
       }
-      await upsertEntitlement(supabase, mapStripeSubscription(sub, userId));
+      const write = mapStripeSubscription(sub, userId);
+      // Cancellation is authoritative: a deleted subscription must always land as
+      // canceled — never re-granted by a stale or replayed snapshot — so force the
+      // status, using the re-read only for ref ids and period fields. created and
+      // updated keep the fresh-read status.
+      if (event.type === "customer.subscription.deleted") write.status = "canceled";
+      await upsertEntitlement(supabase, write);
       return;
     }
     case "checkout.session.completed": {
@@ -112,22 +140,20 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerSupabase();
   try {
-    // Idempotency: record the event id first; a re-delivery is acked without
-    // re-applying. On a handler failure we clear the marker so Stripe's retry
-    // reprocesses rather than the update being silently dropped.
-    const fresh = await markEventProcessed(supabase, "stripe", event.id);
-    if (!fresh) return NextResponse.json({ received: true, duplicate: true });
-
-    try {
-      await handleStripeEvent(supabase, event);
-    } catch (err) {
-      await supabase
-        .from("billing_events")
-        .delete()
-        .eq("provider", "stripe")
-        .eq("event_id", event.id);
-      throw err;
+    // Idempotency (at-least-once): the marker is written only AFTER a successful
+    // apply, so its presence means the work is already done — ack the re-delivery
+    // without reprocessing.
+    if (await eventAlreadyProcessed(supabase, event.id)) {
+      return NextResponse.json({ received: true, duplicate: true });
     }
+
+    // Apply first, mark second. If the function crashes or times out between the
+    // two, the marker is absent, so Stripe's retry reapplies (upsertEntitlement is
+    // idempotent on user_id) and then marks — never marked-but-unapplied. A
+    // concurrent delivery that wins the insert race shows up as 23505, which
+    // markEventProcessed reports as a non-fresh insert; either way the work is done.
+    await handleStripeEvent(supabase, event);
+    await markEventProcessed(supabase, "stripe", event.id);
 
     return NextResponse.json({ received: true });
   } catch (err) {
