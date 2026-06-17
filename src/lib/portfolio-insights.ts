@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { validateNarration, extractNumbers } from "@/lib/narrate/guardrail";
+import { ADVICE_BOUNDARY } from "./claude";
 import type { Asset } from "./supabase";
 import type { FxRates } from "./fx";
 
@@ -237,7 +238,8 @@ async function wrapWithHaiku(
         `\`title\`: a short noun phrase under ${MAX_TITLE_LEN} chars naming the topic — no numbers, no punctuation; ` +
         "may match the suggested title or rephrase it. " +
         "`detail`: under 110 chars, banker-quiet, no hedging, no exclamation marks, no emojis, completes a clear thought. " +
-        'Output a JSON array of objects {"title": string, "detail": string}, one per input object, in input order. No prose, no code fences.',
+        'Output a JSON array of objects {"title": string, "detail": string}, one per input object, in input order. No prose, no code fences.\n\n' +
+        ADVICE_BOUNDARY,
       messages: [{ role: "user", content: JSON.stringify(formatted.map((f) => ({ title: f.title, ...f.payload }))) }],
     });
     const inputTokens = response.usage.input_tokens;

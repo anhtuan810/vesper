@@ -10,6 +10,7 @@ import type { DisplayCurrency } from "@/lib/money";
 import type { SubscriptionSource, SubscriptionStatus } from "@/lib/subscription";
 import { NativeSettingsRows } from "@/components/profile/NativeSettingsRows";
 import { apiFetch } from "@/lib/api";
+import { DISCLAIMER_TEXT } from "@/lib/claude";
 
 const supabase = createBrowserSupabase();
 
@@ -453,8 +454,16 @@ export function SettingsContent() {
 
         {/* Legal note + delete */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "4px 0" }}>
-          <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", maxWidth: 320 }}>
-            Volnar provides informational portfolio observations, not investment advice.
+          <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", maxWidth: 320, lineHeight: 1.5 }}>
+            {DISCLAIMER_TEXT}{" "}
+            <a
+              href="https://volnar.nl/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--text)", textDecoration: "underline", textUnderlineOffset: 2 }}
+            >
+              Terms
+            </a>
           </div>
           {/* No account deletion on the shared demo account. */}
           {!isDemo && (

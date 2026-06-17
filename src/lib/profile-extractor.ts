@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "./supabase";
+import { ADVICE_BOUNDARY } from "./claude";
 
 const anthropic = new Anthropic();
 
@@ -70,7 +71,9 @@ FINGERPRINT FIELD (always attempt):
 - fingerprint: one sentence, 12–18 words, characterising the investor. No hedging ('seems', 'appears'). No emojis. Plain text, no quotes.
   Examples: 'A Dutch investor unwinding years of property concentration to diversify.' / 'Long-horizon equity investor with a strong semiconductor conviction.' / 'Conservative builder — steady contributions, cash buffer, no leverage.' / 'Property-focused investor with a growing public-markets position on the side.'
 ${coldStartSection}
-Return ONLY valid JSON. No markdown, no explanation.`,
+Return ONLY valid JSON. No markdown, no explanation.
+
+${ADVICE_BOUNDARY}`,
       messages: [
         {
           role: "user",

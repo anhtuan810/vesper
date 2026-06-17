@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { ADVICE_BOUNDARY } from "./claude";
 
 const anthropic = new Anthropic();
 
@@ -51,9 +52,13 @@ function buildThinPulse(
 // The [v2] marker in SYSTEM_PROMPT_ALL is intentional: it forces a fresh
 // generation whenever the system prompt changes, because the route treats any
 // cached detail that doesn't carry the PULSE_VER prefix as stale.
-const SYSTEM_PROMPT_ALL = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. CRITICAL framing rule: when concentration.value.topPositionIsRealEstate is true, the home is a STRUCTURAL ANCHOR — never a concentration risk. All concentration commentary must reference investableTopPositionPct (the investable book), not the gross figure or the home position itself. Do not use phrases like "concentration risk" or "concentrated in" in reference to the home or real estate.`;
+const SYSTEM_PROMPT_ALL = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. CRITICAL framing rule: when concentration.value.topPositionIsRealEstate is true, the home is a STRUCTURAL ANCHOR — never a concentration risk. All concentration commentary must reference investableTopPositionPct (the investable book), not the gross figure or the home position itself. Do not use phrases like "concentration risk" or "concentrated in" in reference to the home or real estate.
 
-const SYSTEM_PROMPT_LIQUID = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active investable portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. STRICT exclusion: the user has removed property from this lens. You MUST NOT mention the home, property, real estate, real-asset weight, mortgage, or leverage in any form whatsoever.`;
+${ADVICE_BOUNDARY}`;
+
+const SYSTEM_PROMPT_LIQUID = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active investable portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. STRICT exclusion: the user has removed property from this lens. You MUST NOT mention the home, property, real estate, real-asset weight, mortgage, or leverage in any form whatsoever.
+
+${ADVICE_BOUNDARY}`;
 
 // Defends the deterministic-calculates / LLM-explains contract: strips fields
 // the model must never reference. (1) A realGrowth vital with no real value/band

@@ -8,6 +8,7 @@ import { validateEnv } from "@/lib/env";
 import { getUsdRates } from "@/lib/fx";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
 import { DIARY_DAILY_LIMIT } from "@/lib/constants";
+import { ADVICE_BOUNDARY } from "@/lib/claude";
 
 validateEnv();
 
@@ -139,7 +140,9 @@ Render all currency values in ${displayCurrency}.
 Examples:
 • Shifted focus toward US tech.
 • Reduced European exposure significantly.
-• Portfolio grew despite volatile markets.`,
+• Portfolio grew despite volatile markets.
+
+${ADVICE_BOUNDARY}`,
       messages: [
         {
           role: "user",

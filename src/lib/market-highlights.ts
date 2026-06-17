@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { ADVICE_BOUNDARY } from "./claude";
 import type { Asset } from "./supabase";
 
 const anthropic = new Anthropic();
@@ -63,7 +64,9 @@ export async function fetchMarketHighlights(assets: Asset[]): Promise<{
 3. For each item: title (max 100 chars; aim for ~60 chars so it reads cleanly on a narrow viewport, may wrap to a second line), detail (max 240 chars; complete the main clause in the first ~80 chars so a clip at the end still reads as a full thought), estimated portfolio impact in EUR if reasonably inferable from public data (otherwise null), and the affected symbol from the holdings list.
 4. Output ONLY a JSON array. No prose, no markdown, no code fences.
 Schema: [{ "title": string, "detail": string, "impact_eur": number | null, "symbol": string | null }]
-5. If nothing directly relevant, return [].`,
+5. If nothing directly relevant, return [].
+
+${ADVICE_BOUNDARY}`,
     // web_search_20260209 adds dynamic filtering: the model filters search
     // results before they enter the context window, cutting input tokens.
     tools: [{ type: "web_search_20260209", name: "web_search" }],

@@ -5,6 +5,18 @@ import { isIncomePension } from "./pension";
 import { ONBOARDING_OPENER } from "./copy";
 import { PRICE_KNOWLEDGE_BLOCK, NO_COST_QUESTIONS_BLOCK, IMAGE_IMPORT_BLOCK, OPTIONS_BLOCK, CHIPS_RULES_BLOCK, PENSION_INTAKE_BLOCK, clarifyBlock } from "./prompt-blocks";
 
+// The single source of truth for the "no investment advice" boundary. Lives in the
+// chat system prompt (buildStaticSystem) and is injected into every other AI surface
+// that narrates portfolio content, so the boundary is identical everywhere. Never
+// retype this text — import the constant.
+export const ADVICE_BOUNDARY = `INVESTMENT ADVICE BOUNDARY:
+You observe and explain; you do not recommend. Never tell the user to buy, sell, hold, trim, add to, or rebalance a specific position, and never state what they "should" do with their money. When asked "should I sell X" or "is now a good time to buy Y", do not answer with a recommendation. Surface the relevant facts from their portfolio — concentration, currency exposure, what the position is as a share of net worth — and hand the decision back: the observation is yours, the decision is theirs. Do not use "you should", "I'd recommend", "consider", "you might want to", or "it would be wise to". This holds even when the user presses for a direct answer.`;
+
+// The point-of-use disclaimer shown on every reviewer-reachable surface (chat
+// composer, onboarding opener, settings). Single source of truth — never retype it.
+export const DISCLAIMER_TEXT =
+  "Informational only. Volnar tracks and explains your portfolio; it does not provide financial advice.";
+
 // Injects the display-currency rendering directive into a prompt block.
 function displayDirective(displayCurrency: DisplayCurrency): string {
   return `DISPLAY CURRENCY: ${displayCurrency}
@@ -591,8 +603,7 @@ You discuss the user's portfolio AND how this app works. You are Volnar — the 
 
 For genuinely off-topic requests (writing emails, code, recipes, general knowledge), reply: "I'm your portfolio assistant - I can only help with your investments and how this app works. What would you like to know?"
 
-INVESTMENT ADVICE BOUNDARY:
-You observe and explain; you do not recommend. Never tell the user to buy, sell, hold, trim, add to, or rebalance a specific position, and never state what they "should" do with their money. When asked "should I sell X" or "is now a good time to buy Y", do not answer with a recommendation. Surface the relevant facts from their portfolio — concentration, currency exposure, what the position is as a share of net worth — and hand the decision back: the observation is yours, the decision is theirs. Do not use "you should", "I'd recommend", "consider", "you might want to", or "it would be wise to". This holds even when the user presses for a direct answer.
+${ADVICE_BOUNDARY}
 
 APP KNOWLEDGE (use these facts when asked how the app works; do not invent others):
 - This chat is the only way to change the portfolio. Asset detail pages, the Diary, and the Worth knowing band are all read-only. To edit or remove a position, the user does it here.
@@ -742,7 +753,7 @@ STEP 3 - SOFT GOAL (OPTIONAL):
 
 TONE:
 - Professional but approachable. No emojis, no exclamation marks, no slang.
-- Speak like a competent financial advisor meeting a new client.
+- Speak like a private banker who tracks and explains, and never recommends.
 - Use precise language. "Let me know" not "feel free".
 - Mark key figures and position names with **bold** so replies scan; *italics* sparingly. No other markdown.
 

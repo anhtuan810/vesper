@@ -7,6 +7,7 @@ import {
   LockIcon, ImageIcon, PaperclipIcon, ArrowUpIcon,
   QuoteIcon, FileSpreadsheetIcon, CameraIcon,
 } from "@/components/icons/EmptyStateIcons";
+import { DISCLAIMER_TEXT } from "@/lib/claude";
 
 const pillStyle: CSSProperties = {
   display: "flex", alignItems: "center", gap: 4,
@@ -219,6 +220,15 @@ export function PortfolioEmptyState() {
         margin: "6px 0 0",
       }}>
         A sentence, a screenshot, a CSV, a photo of a statement — I&apos;ll sort it.
+      </p>
+
+      {/* Informational-only disclaimer — muted line beneath the opener */}
+      <p style={{
+        fontFamily: "system-ui, sans-serif",
+        fontSize: 11, color: "#8A948A", lineHeight: 1.45,
+        margin: "8px 0 0",
+      }}>
+        {DISCLAIMER_TEXT}
       </p>
 
       {/* ─── Section 2: Preview card ──────────────────────────────────────── */}

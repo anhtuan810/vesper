@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { computeCurrentBalance } from "./mortgage";
 import { extractNumbers } from "@/lib/narrate/guardrail";
+import { ADVICE_BOUNDARY } from "./claude";
 import type { Asset } from "./supabase";
 
 const anthropic = new Anthropic();
@@ -110,7 +111,9 @@ Good examples:
 
 Reject if "detail" merely restates "title", or if the tone slides into either advice or vague positivity ('great progress!').
 
-Output only the JSON object. No prose, no code fences.`,
+Output only the JSON object. No prose, no code fences.
+
+${ADVICE_BOUNDARY}`,
       messages: [
         {
           role: "user",

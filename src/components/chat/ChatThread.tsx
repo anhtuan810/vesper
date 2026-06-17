@@ -13,6 +13,7 @@ import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
 import { ScenarioResultCard } from "@/components/scenario/cards/ScenarioResultCard";
 import { Chip } from "@/components/chat/Chip";
 import { classifyChip, cheapHash } from "@/lib/chip-telemetry";
+import { DISCLAIMER_TEXT } from "@/lib/claude";
 import type { useChatSession } from "@/lib/use-chat-session";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
@@ -229,6 +230,16 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           </div>
         )}
       </>
+    );
+
+    // Muted point-of-use disclaimer rendered directly beneath the composer input.
+    const disclaimer = (
+      <div
+        className="text-faint text-center"
+        style={{ fontSize: 10.5, lineHeight: 1.4, paddingTop: 6 }}
+      >
+        {DISCLAIMER_TEXT}
+      </div>
     );
 
     // ── Scrollable message list (shared, presentationally parametrized) ───────
@@ -641,6 +652,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 </svg>
               </button>
             </div>
+            {disclaimer}
           </div>
         </>
       );
@@ -799,6 +811,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               </svg>
             </button>
           </div>
+          {disclaimer}
         </div>
       </>
     );
