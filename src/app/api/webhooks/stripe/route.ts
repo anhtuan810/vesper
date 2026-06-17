@@ -72,7 +72,29 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
     case "customer.subscription.deleted": {
       const sub = await freshSubscription(event.data.object as Stripe.Subscription);
       const userId = await resolveUserId(supabase, sub);
+      // TEMP ENTDBG: trace the freshly re-read subscription per event so two
+      // near-simultaneous subscription.updated deliveries can be compared in the
+      // logs. Remove once the cancel_at_period_end persistence bug is resolved.
+      console.log(
+        JSON.stringify({
+          tag: "ENTDBG/stripe-handler",
+          eventId: event.id,
+          eventType: event.type,
+          subId: sub.id,
+          freshCancelAtPeriodEnd: sub.cancel_at_period_end,
+          freshStatus: sub.status,
+          userId,
+        }),
+      );
       if (!userId) {
+        console.log(
+          JSON.stringify({
+            tag: "ENTDBG/stripe-handler",
+            eventId: event.id,
+            subId: sub.id,
+            branch: "UNMAPPED_RETURN",
+          }),
+        );
         Sentry.captureMessage("Stripe webhook: unmapped subscription", {
           level: "warning",
           tags: { route: "POST /api/webhooks/stripe", type: event.type },
@@ -86,7 +108,18 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
       // status, using the re-read only for ref ids and period fields. created and
       // updated keep the fresh-read status.
       if (event.type === "customer.subscription.deleted") write.status = "canceled";
-      await upsertEntitlement(supabase, write);
+      // TEMP ENTDBG: the mapped write that feeds the upsert.
+      console.log(
+        JSON.stringify({
+          tag: "ENTDBG/stripe-handler",
+          eventId: event.id,
+          subId: sub.id,
+          writeCancelAtPeriodEnd: write.cancelAtPeriodEnd,
+          writeStatus: write.status,
+          writeCurrentPeriodEnd: write.currentPeriodEnd,
+        }),
+      );
+      await upsertEntitlement(supabase, write, event.id);
       return;
     }
     case "checkout.session.completed": {
@@ -103,7 +136,7 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
           : session.subscription?.id;
       if (userId && subId) {
         const sub = await getStripe().subscriptions.retrieve(subId);
-        await upsertEntitlement(supabase, mapStripeSubscription(sub, userId));
+        await upsertEntitlement(supabase, mapStripeSubscription(sub, userId), event.id);
       }
       return;
     }
