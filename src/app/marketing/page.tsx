@@ -52,7 +52,7 @@ export default function MarketingPage() {
             >
               Sign in
             </a>
-            <a href="https://app.volnar.nl/login" className="mkt-btn mkt-btn-primary" style={{ minHeight: 38, padding: "8px 16px" }}>
+            <a href="#pricing" className="mkt-btn mkt-btn-primary" style={{ minHeight: 38, padding: "8px 16px" }}>
               Get started
             </a>
           </div>
