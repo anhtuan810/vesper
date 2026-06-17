@@ -13,7 +13,6 @@ import { QnA } from "@/components/sections/QnA";
 import { PullQuote } from "@/components/sections/PullQuote";
 import { Privacy } from "@/components/sections/Privacy";
 import { Pricing } from "@/components/sections/Pricing";
-import { ClosingCta } from "@/components/sections/ClosingCta";
 
 export default function MarketingPage() {
   return (
@@ -72,7 +71,6 @@ export default function MarketingPage() {
       <PullQuote />
       <Privacy />
       <Pricing />
-      <ClosingCta />
 
       {/* Footer */}
       <footer className="border-t border-border">
