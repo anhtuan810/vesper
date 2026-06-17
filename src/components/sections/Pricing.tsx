@@ -20,7 +20,7 @@ export function Pricing() {
     <>
       {/* ── Light: plan cards ── */}
       <div className="max-w-[1200px] mx-auto" id="pricing" style={{ padding: "0 var(--wrap-pad)" }}>
-        <section style={{ paddingTop: "clamp(48px,7vw,84px)", paddingBottom: "clamp(32px,5vw,56px)" }}>
+        <section style={{ paddingTop: "clamp(48px,7vw,84px)", paddingBottom: "clamp(40px,6vw,64px)" }}>
           <div className="text-center max-w-[680px] mx-auto">
             <Eyebrow n="07" center>
               Pricing
@@ -67,29 +67,7 @@ export function Pricing() {
             />
           </div>
 
-          <div className="text-center reveal reveal-delay-3" style={{ marginTop: "clamp(24px,4vw,32px)" }}>
-            <a href={APP_URL} className="mkt-btn mkt-btn-primary mkt-btn-lg">
-              Start free trial
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ width: 14, height: 14 }}
-              >
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-            </a>
-            <p
-              className="font-mono uppercase text-faint"
-              style={{ fontSize: 10, letterSpacing: "0.16em", marginTop: 14, lineHeight: 1.6 }}
-            >
-              {TRIAL_DAYS} days free &nbsp;·&nbsp; then {formatPrice(PLAN_PRICES.annual)} per year or{" "}
-              {formatPrice(PLAN_PRICES.monthly)} per month &nbsp;·&nbsp; cancel anytime
-            </p>
-          </div>
+
         </section>
       </div>
 
@@ -127,6 +105,13 @@ export function Pricing() {
                 </svg>
               </a>
             </div>
+            <p
+              className="font-mono uppercase reveal reveal-delay-3"
+              style={{ fontSize: 10, letterSpacing: "0.16em", color: "rgba(255,255,255,0.4)", marginTop: 14, lineHeight: 1.6 }}
+            >
+              {TRIAL_DAYS} days free &nbsp;·&nbsp; then {formatPrice(PLAN_PRICES.annual)} per year or{" "}
+              {formatPrice(PLAN_PRICES.monthly)} per month &nbsp;·&nbsp; cancel anytime
+            </p>
 
             <div className="reveal reveal-delay-2 flex justify-center" style={{ marginTop: "clamp(24px,4vw,32px)" }}>
               <AppStoreBadges light />
