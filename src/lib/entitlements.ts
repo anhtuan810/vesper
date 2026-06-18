@@ -171,43 +171,13 @@ function isStaleStoreEvent(existing: EntitlementRow | null, w: EntitlementWrite)
 export async function upsertEntitlement(
   supabase: ServiceClient,
   w: EntitlementWrite,
-  debugEventId?: string, // TEMP ENTDBG: correlate concurrent webhook invocations
 ): Promise<void> {
   const existing = await getEntitlement(supabase, w.userId);
   const incomingEntitled = isEntitled(w.status);
 
-  // TEMP ENTDBG: structured trace of every branch and the persisted row, keyed by
-  // the originating event so two simultaneous subscription.updated invocations can
-  // be told apart. Remove once the cancel_at_period_end persistence bug is resolved.
-  const dbg = (branch: string, extra: Record<string, unknown> = {}) =>
-    console.log(
-      JSON.stringify({
-        tag: "ENTDBG/upsert",
-        eventId: debugEventId ?? "—",
-        userId: w.userId,
-        source: w.source,
-        branch,
-        incomingCancel: w.cancelAtPeriodEnd,
-        incomingStatus: w.status,
-        existing: existing
-          ? {
-              status: existing.status,
-              source: existing.source,
-              cancel_at_period_end: existing.cancel_at_period_end,
-              revenuecat_event_at: existing.revenuecat_event_at,
-            }
-          : null,
-        ...extra,
-      }),
-    );
-  dbg("ENTER");
-
   // Ordering guard: a stale, out-of-order store event must never overwrite newer
   // state for the same user. Stripe is exempt (its webhook re-reads current state).
-  if (isStaleStoreEvent(existing, w)) {
-    dbg("RETURN_STALE_STORE_EVENT");
-    return;
-  }
+  if (isStaleStoreEvent(existing, w)) return;
 
   if (
     existing &&
@@ -217,7 +187,6 @@ export async function upsertEntitlement(
     existing.source !== w.source
   ) {
     const refs = processorRefs(w);
-    dbg("CROSS_SOURCE_REVOKE_GUARD", { refsKeys: Object.keys(refs) });
     if (Object.keys(refs).length === 0) return;
     const { error } = await supabase
       .from("entitlements")
@@ -251,13 +220,9 @@ export async function upsertEntitlement(
     updated_at: new Date().toISOString(),
   };
 
-  dbg("WRITE_UPSERT", { row });
   const { error } = await supabase
     .from("entitlements")
     .upsert(row, { onConflict: "user_id" });
-  dbg("WRITE_RESULT", {
-    error: error ? { code: (error as { code?: string }).code, message: error.message } : null,
-  });
   if (isMissingUser(error)) return;
   if (error) throw new Error(`entitlements upsert failed: ${error.message}`);
 }

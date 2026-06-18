@@ -240,8 +240,8 @@ async function main() {
   await upsertEntitlement(supabase4, mapStripeSubscription(stripeSub({}), USER));
   const cancelWrite = mapStripeSubscription(stripeSub(withPeriod(P2, { cancel_at: P2 })), USER);
   await Promise.all([
-    upsertEntitlement(supabase4, cancelWrite, "evt_A"),
-    upsertEntitlement(supabase4, cancelWrite, "evt_B"),
+    upsertEntitlement(supabase4, cancelWrite),
+    upsertEntitlement(supabase4, cancelWrite),
   ]);
   const concurrent = read(db4, USER);
   assert(db4.entitlements.size === 1, "concurrent: still exactly one row");

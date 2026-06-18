@@ -72,32 +72,7 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
     case "customer.subscription.deleted": {
       const sub = await freshSubscription(event.data.object as Stripe.Subscription);
       const userId = await resolveUserId(supabase, sub);
-      // TEMP ENTDBG: trace the freshly re-read subscription per event so two
-      // near-simultaneous subscription.updated deliveries can be compared in the
-      // logs. Remove once the cancel_at_period_end persistence bug is resolved.
-      console.log(
-        JSON.stringify({
-          tag: "ENTDBG/stripe-handler",
-          eventId: event.id,
-          eventType: event.type,
-          subId: sub.id,
-          freshCancelAtPeriodEnd: sub.cancel_at_period_end,
-          freshCancelAt: sub.cancel_at,
-          freshCanceledAt: sub.canceled_at,
-          freshCancellationDetails: sub.cancellation_details,
-          freshStatus: sub.status,
-          userId,
-        }),
-      );
       if (!userId) {
-        console.log(
-          JSON.stringify({
-            tag: "ENTDBG/stripe-handler",
-            eventId: event.id,
-            subId: sub.id,
-            branch: "UNMAPPED_RETURN",
-          }),
-        );
         Sentry.captureMessage("Stripe webhook: unmapped subscription", {
           level: "warning",
           tags: { route: "POST /api/webhooks/stripe", type: event.type },
@@ -111,18 +86,7 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
       // status, using the re-read only for ref ids and period fields. created and
       // updated keep the fresh-read status.
       if (event.type === "customer.subscription.deleted") write.status = "canceled";
-      // TEMP ENTDBG: the mapped write that feeds the upsert.
-      console.log(
-        JSON.stringify({
-          tag: "ENTDBG/stripe-handler",
-          eventId: event.id,
-          subId: sub.id,
-          writeCancelAtPeriodEnd: write.cancelAtPeriodEnd,
-          writeStatus: write.status,
-          writeCurrentPeriodEnd: write.currentPeriodEnd,
-        }),
-      );
-      await upsertEntitlement(supabase, write, event.id);
+      await upsertEntitlement(supabase, write);
       return;
     }
     case "checkout.session.completed": {
@@ -139,7 +103,7 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
           : session.subscription?.id;
       if (userId && subId) {
         const sub = await getStripe().subscriptions.retrieve(subId);
-        await upsertEntitlement(supabase, mapStripeSubscription(sub, userId), event.id);
+        await upsertEntitlement(supabase, mapStripeSubscription(sub, userId));
       }
       return;
     }
@@ -154,12 +118,6 @@ async function handleStripeEvent(supabase: ServiceClient, event: Stripe.Event): 
 // maps subscription state into the entitlement. Invalid signature or malformed
 // input is rejected.
 export async function POST(request: NextRequest) {
-  // TEMP ENTDBG: capture the true request-start wall clock (Date.now is comparable
-  // across the two parallel invocations, unlike per-process performance.now) so the
-  // two events' processing windows can be checked for overlap. Remove with the rest
-  // of the ENTDBG logs after the fix.
-  const startedAtMs = Date.now();
-  const startedAt = new Date(startedAtMs).toISOString();
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
@@ -186,31 +144,8 @@ export async function POST(request: NextRequest) {
     // apply, so its presence means the work is already done — ack the re-delivery
     // without reprocessing.
     if (await eventAlreadyProcessed(supabase, event.id)) {
-      // TEMP ENTDBG
-      console.log(
-        JSON.stringify({
-          tag: "ENTDBG/invocation",
-          phase: "DUPLICATE",
-          eventId: event.id,
-          eventType: event.type,
-          startedAt,
-          endedAt: new Date().toISOString(),
-          durationMs: Date.now() - startedAtMs,
-        }),
-      );
       return NextResponse.json({ received: true, duplicate: true });
     }
-
-    // TEMP ENTDBG: invocation start — one line per parallel delivery, keyed by eventId.
-    console.log(
-      JSON.stringify({
-        tag: "ENTDBG/invocation",
-        phase: "START",
-        eventId: event.id,
-        eventType: event.type,
-        startedAt,
-      }),
-    );
 
     // Apply first, mark second. If the function crashes or times out between the
     // two, the marker is absent, so Stripe's retry reapplies (upsertEntitlement is
@@ -220,33 +155,8 @@ export async function POST(request: NextRequest) {
     await handleStripeEvent(supabase, event);
     await markEventProcessed(supabase, "stripe", event.id);
 
-    // TEMP ENTDBG: invocation end — pair with START by eventId; compare the
-    // [startedAt, endedAt] windows of the two events to see whether they overlap.
-    console.log(
-      JSON.stringify({
-        tag: "ENTDBG/invocation",
-        phase: "END",
-        eventId: event.id,
-        eventType: event.type,
-        startedAt,
-        endedAt: new Date().toISOString(),
-        durationMs: Date.now() - startedAtMs,
-      }),
-    );
     return NextResponse.json({ received: true });
   } catch (err) {
-    // TEMP ENTDBG
-    console.log(
-      JSON.stringify({
-        tag: "ENTDBG/invocation",
-        phase: "END_ERROR",
-        eventId: event.id,
-        eventType: event.type,
-        startedAt,
-        endedAt: new Date().toISOString(),
-        durationMs: Date.now() - startedAtMs,
-      }),
-    );
     Sentry.captureException(err, {
       tags: { route: "POST /api/webhooks/stripe", type: event.type },
     });
