@@ -154,7 +154,12 @@ export function SubscriptionSection() {
             badge={STATUS_LABEL[data.status!]}
             badgeColor={statusColor(data)}
           />
-          <Row label={dateLabel(data)} value={formatRenewalDate(renewalDate(data)) ?? "—"} />
+          <Row
+            label={dateLabel(data)}
+            value={formatRenewalDate(renewalDate(data)) ?? "—"}
+            badge={data.cancelAtPeriodEnd ? "Cancels" : undefined}
+            badgeColor="var(--amber-deep, var(--negative-text))"
+          />
           {daysLeft != null && (
             <Row
               label="Trial remaining"
@@ -238,9 +243,11 @@ function renewalDate(view: SubscriptionView): string | null {
 }
 
 function dateLabel(view: SubscriptionView): string {
-  if (view.status === "trialing") return "Trial ends";
   if (view.status === "past_due") return "Payment due";
+  // A subscription set to cancel surfaces its end date — including during a trial,
+  // which would otherwise read as a plain "Trial ends" and hide the cancellation.
   if (view.cancelAtPeriodEnd) return "Access until";
+  if (view.status === "trialing") return "Trial ends";
   return "Renews";
 }
 
