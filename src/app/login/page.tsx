@@ -8,6 +8,21 @@ import { apiFetch } from "@/lib/api";
 import { signInWithGoogleNative, signInWithAppleNative } from "@/lib/native/auth-native";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
+const TERMS_URL = "https://volnar.nl/terms";
+const PRIVACY_URL = "https://volnar.nl/privacy";
+
+// Opens a legal page: a normal new-tab link on web, the system browser on native.
+async function openExternal(e: React.MouseEvent, url: string) {
+  if (!isNative()) return;
+  e.preventDefault();
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({ url });
+  } catch {
+    window.open(url, "_blank");
+  }
+}
+
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -123,99 +138,6 @@ function LoginInner() {
             Quiet confidence{" "}
             <span className="italic font-normal text-dim">over your portfolio.</span>
           </h1>
-
-          <div
-            className="mx-auto mt-7 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
-            style={{ maxWidth: 360, boxShadow: "0 1px 2px rgba(26,24,22,0.04), 0 18px 40px -20px rgba(26,24,22,0.18)" }}
-          >
-            {/* Meta row */}
-            <div className="flex items-center gap-1.5 px-4 pt-4 pb-2.5 text-[10.5px] font-medium uppercase tracking-[0.05em] text-[var(--text-dim)]">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-              Live · today
-            </div>
-
-            {/* Asset class rows */}
-            <div className="flex flex-col gap-2 px-4 pb-3">
-              {[
-                {
-                  name: "Property",
-                  change: "−0.3%",
-                  tone: "down" as const,
-                  icon: (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2V10z" />
-                    </svg>
-                  ),
-                },
-                {
-                  name: "Public markets",
-                  change: "+1.8%",
-                  tone: "up" as const,
-                  icon: (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="3 17 9 11 13 15 21 7" />
-                      <polyline points="15 7 21 7 21 13" />
-                    </svg>
-                  ),
-                },
-                {
-                  name: "Reserves",
-                  change: "0.0%",
-                  tone: "flat" as const,
-                  icon: (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="3" y="6" width="18" height="13" rx="2" />
-                      <path d="M3 10h18" />
-                    </svg>
-                  ),
-                },
-                {
-                  name: "Crypto",
-                  change: "+2.8%",
-                  tone: "up" as const,
-                  icon: (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polygon points="12 3 21 8 21 16 12 21 3 16 3 8" />
-                    </svg>
-                  ),
-                },
-              ].map((row) => (
-                <div key={row.name} className="flex items-center gap-2.5">
-                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-[var(--surface-elev)] text-[var(--text-dim)]">
-                    {row.icon}
-                  </div>
-                  <div className="flex-1 text-[13px] font-medium text-[var(--text)] text-left">{row.name}</div>
-                  <div
-                    className={`text-[13px] font-semibold tabular-nums tracking-tight ${
-                      row.tone === "up"
-                        ? "text-[var(--accent)]"
-                        : row.tone === "down"
-                        ? "text-[var(--negative-text)]"
-                        : "text-[var(--text-dim)]"
-                    }`}
-                  >
-                    {row.change}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Worth knowing band */}
-            <div className="border-t border-[var(--border)] bg-[var(--surface-elev)] px-4 py-3 text-left">
-              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--text-dim)]">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-                Worth knowing
-              </div>
-              <p className="m-0 font-serif text-[13px] italic leading-snug text-[var(--text-dim)]">
-                <strong className="font-semibold not-italic text-[var(--text)]">NVIDIA reports tonight</strong>. It&apos;s your largest holding — the AI-chip read-through everyone&apos;s watching.
-              </p>
-            </div>
-          </div>
-
-          <p className="mx-auto mt-5 max-w-[330px] text-center text-[13px] leading-snug text-[var(--text-dim)]">
-            Every asset. Every market event.{" "}
-            <strong className="font-medium text-[var(--text)]">Every reason why.</strong>
-          </p>
         </div>
 
         <div className="space-y-2.5">
@@ -293,7 +215,26 @@ function LoginInner() {
           className="text-center font-mono text-faint mt-10"
           style={{ fontSize: 10, letterSpacing: "0.04em", lineHeight: 1.6 }}
         >
-          By continuing you agree to our Terms and Privacy Policy.
+          By continuing you agree to our{" "}
+          <a
+            href={TERMS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => openExternal(e, TERMS_URL)}
+            style={{ color: "var(--text-dim)", textDecoration: "underline", textUnderlineOffset: 2 }}
+          >
+            Terms
+          </a>{" "}
+          and{" "}
+          <a
+            href={PRIVACY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => openExternal(e, PRIVACY_URL)}
+            style={{ color: "var(--text-dim)", textDecoration: "underline", textUnderlineOffset: 2 }}
+          >
+            Privacy Policy
+          </a>.
         </p>
       </div>
     </div>
