@@ -132,6 +132,8 @@ export function mapRevenueCatEvent(event: RevenueCatEvent): EntitlementWrite | n
     currentPeriodEnd: expIso,
     trialEnd: isTrial ? expIso : null,
     cancelAtPeriodEnd,
+    // When set to cancel/pause, access runs until expiration — that's the end date.
+    cancelAt: cancelAtPeriodEnd ? expIso : null,
     revenuecatAppUserId: userId,
     productId: event.product_id ?? null,
     eventAt,
@@ -159,6 +161,7 @@ export function transferRevokeWrites(event: RevenueCatEvent): EntitlementWrite[]
       currentPeriodEnd: null,
       trialEnd: null,
       cancelAtPeriodEnd: false,
+      cancelAt: null,
       revenuecatAppUserId: id,
       productId: event.product_id ?? null,
       eventAt,

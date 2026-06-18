@@ -80,8 +80,11 @@ export function SubscriptionSection() {
 
   // Days remaining in the trial — only meaningful while trialing. Computed from
   // the same date the "Trial ends" row shows, so the two never disagree.
+  // Trial countdown — only while genuinely trialing and not cancelling. A cancelling
+  // trial shows "Access until <date> · Cancels" instead, so a "7 days left" row would
+  // contradict it.
   const daysLeft =
-    hasSubscription && data && data.status === "trialing"
+    hasSubscription && data && data.status === "trialing" && !data.cancelAtPeriodEnd
       ? trialDaysLeft(data.trialEnd ?? data.currentPeriodEnd)
       : null;
 
@@ -238,6 +241,9 @@ export function SubscriptionSection() {
 }
 
 function renewalDate(view: SubscriptionView): string | null {
+  // When cancelling, the real access-end date is cancel_at (which may precede the
+  // period/trial end); fall back to the period/trial end when it isn't set.
+  if (view.cancelAtPeriodEnd && view.cancelAt) return view.cancelAt;
   if (view.status === "trialing") return view.trialEnd ?? view.currentPeriodEnd;
   return view.currentPeriodEnd;
 }

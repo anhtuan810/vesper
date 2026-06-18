@@ -87,6 +87,9 @@ export function mapStripeSubscription(sub: Stripe.Subscription, userId: string):
     // cancellation so the entitlement mirrors what Stripe actually shows; clicking
     // "Don't cancel" clears both, flipping this back to false.
     cancelAtPeriodEnd: sub.cancel_at_period_end === true || sub.cancel_at != null,
+    // The scheduled cancellation moment, when set — drives the "Access until <date>"
+    // display so it reflects the real end date, not just the period end.
+    cancelAt: toIso(sub.cancel_at),
     stripeCustomerId: customerId,
     stripeSubscriptionId: sub.id,
     productId: priceId,

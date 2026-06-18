@@ -232,6 +232,10 @@ async function main() {
     dahlia.cancel_at_period_end === true,
     "dahlia portal cancel (cancel_at set, boolean false) persists cancel_at_period_end = true",
   );
+  assert(
+    dahlia.cancel_at === P2_ISO,
+    "dahlia portal cancel persists the actual cancel_at date",
+  );
 
   // 7) Two near-simultaneous customer.subscription.updated events for the same user
   //    (the live repro emitted two ~1s apart) must converge on cancel = true.

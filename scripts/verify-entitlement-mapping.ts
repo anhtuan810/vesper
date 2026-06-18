@@ -133,6 +133,13 @@ assert(
   sNotCancelling.cancelAtPeriodEnd === false,
   "Stripe no cancel_at and boolean false -> cancelAtPeriodEnd false (don't-cancel)",
 );
+// cancelAt carries the actual end date when scheduled, else null.
+assert(
+  sCancelViaTimestamp.cancelAt === new Date(Math.floor(future / 1000) * 1000).toISOString(),
+  "Stripe cancel_at -> cancelAt ISO date",
+);
+assert(sCancelViaBoolean.cancelAt == null, "Stripe legacy boolean (no cancel_at) -> cancelAt null");
+assert(sNotCancelling.cancelAt == null, "Stripe not cancelling -> cancelAt null");
 
 assert(userIdFromStripeSubscription(stripeSub({})) === USER, "Stripe metadata user id extracted");
 assert(userIdFromStripeSubscription(stripeSub({ metadata: {} })) === null, "Stripe without metadata -> null user id");

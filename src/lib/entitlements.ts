@@ -24,6 +24,9 @@ export interface EntitlementRow {
   current_period_end: string | null;
   trial_end: string | null;
   cancel_at_period_end: boolean;
+  // The scheduled cancellation moment (Stripe `cancel_at` / store expiry when set to
+  // cancel). The actual access-end date when cancelling — may precede the period end.
+  cancel_at: string | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   revenuecat_app_user_id: string | null;
@@ -45,6 +48,8 @@ export interface EntitlementWrite {
   currentPeriodEnd: string | null;
   trialEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  // Scheduled cancellation moment (ISO), set whenever cancelAtPeriodEnd is true.
+  cancelAt?: string | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   revenuecatAppUserId?: string | null;
@@ -55,7 +60,7 @@ export interface EntitlementWrite {
 }
 
 const ENTITLEMENT_COLUMNS =
-  "user_id, status, source, plan, current_period_end, trial_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id, revenuecat_app_user_id, product_id, revenuecat_event_at, updated_at, created_at";
+  "user_id, status, source, plan, current_period_end, trial_end, cancel_at_period_end, cancel_at, stripe_customer_id, stripe_subscription_id, revenuecat_app_user_id, product_id, revenuecat_event_at, updated_at, created_at";
 
 export async function getEntitlement(
   supabase: ServiceClient,
@@ -93,6 +98,7 @@ export function toSubscriptionView(row: EntitlementRow | null): SubscriptionView
       currentPeriodEnd: null,
       trialEnd: null,
       cancelAtPeriodEnd: false,
+      cancelAt: null,
       isDemo: false,
     };
   }
@@ -104,6 +110,7 @@ export function toSubscriptionView(row: EntitlementRow | null): SubscriptionView
     currentPeriodEnd: row.current_period_end,
     trialEnd: row.trial_end,
     cancelAtPeriodEnd: row.cancel_at_period_end,
+    cancelAt: row.cancel_at,
     // The demo account is seeded with this sentinel product id (see demo-seed.ts).
     isDemo: row.product_id === "demo",
   };
@@ -205,6 +212,7 @@ export async function upsertEntitlement(
     current_period_end: w.currentPeriodEnd,
     trial_end: w.trialEnd,
     cancel_at_period_end: w.cancelAtPeriodEnd,
+    cancel_at: w.cancelAt ?? null,
     // Overwrite only this processor's ids; carry the other processor's forward.
     stripe_customer_id:
       w.source === "stripe" ? w.stripeCustomerId ?? null : existing?.stripe_customer_id ?? null,
