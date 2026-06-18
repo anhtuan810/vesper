@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -54,20 +55,33 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [optimistic, setOptimistic] = useState(false);
 
-  const fetchStatus = useCallback(async (): Promise<SubscriptionView | null> => {
-    try {
-      const res = await apiFetch("/api/subscription");
-      if (!res.ok) {
+  // Dedupe concurrent reads: focus/visibility can fire in quick succession and the
+  // checkout/native poll loops also call this — sharing one in-flight request avoids
+  // overlapping fetches and a slow earlier response landing after a newer one (which
+  // would briefly show stale state). Cleared in finally so the next call refetches.
+  const inFlight = useRef<Promise<SubscriptionView | null> | null>(null);
+
+  const fetchStatus = useCallback((): Promise<SubscriptionView | null> => {
+    if (inFlight.current) return inFlight.current;
+    const p = (async () => {
+      try {
+        const res = await apiFetch("/api/subscription");
+        if (!res.ok) {
+          setData(null);
+          return null;
+        }
+        const view = (await res.json()) as SubscriptionView;
+        setData(view);
+        return view;
+      } catch {
         setData(null);
         return null;
+      } finally {
+        inFlight.current = null;
       }
-      const view = (await res.json()) as SubscriptionView;
-      setData(view);
-      return view;
-    } catch {
-      setData(null);
-      return null;
-    }
+    })();
+    inFlight.current = p;
+    return p;
   }, []);
 
   // Load on sign-in; clear on sign-out. Optimistic unlock is reset on any user
