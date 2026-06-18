@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useProfile, useNetWorth } from "@/lib/hooks";
 import { createBrowserSupabase } from "@/lib/supabase";
@@ -51,6 +51,104 @@ function SettingsGearIcon({ size = 18 }: { size?: number }) {
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
+  );
+}
+
+// A muted placeholder bar used in the zero-data preview.
+function GhostBar({ width, height = 10 }: { width: number | string; height?: number }) {
+  return (
+    <div style={{ width, height, borderRadius: 999, background: "var(--surface-elev)" }} />
+  );
+}
+
+// Zero-data preview shown on a fresh account, where there is no Perspective (net
+// worth is 0) and the extractor hasn't noted anything yet. Rather than a near-empty
+// page, it sketches what each section will hold — the real labels with placeholder
+// bars — so a new user knows what to expect and the page doesn't feel broken. It
+// gives way to the real Perspective/Context blocks as soon as there's data.
+function ProfilePreview() {
+  const sectionLabel: CSSProperties = {
+    fontSize: 10,
+    fontWeight: 500,
+    letterSpacing: "0.18em",
+    textTransform: "uppercase",
+    color: "var(--text-faint)",
+    marginBottom: 10,
+  };
+  const card: CSSProperties = {
+    background: "var(--surface)",
+    border: "0.5px solid var(--border)",
+    borderRadius: 14,
+    overflow: "hidden",
+  };
+  const caption: CSSProperties = {
+    fontSize: 12,
+    color: "var(--text-faint)",
+    lineHeight: 1.5,
+    margin: "10px 2px 24px",
+  };
+
+  return (
+    <div>
+      {/* Intro — sets the expectation in the app's calm, serif voice. */}
+      <p style={{
+        fontFamily: "var(--font-serif)",
+        fontStyle: "italic",
+        fontSize: 15,
+        color: "var(--text-dim)",
+        lineHeight: 1.55,
+        margin: "0 0 24px",
+        fontVariationSettings: "'opsz' 16",
+      }}>
+        This page is yours. As you add holdings and talk things through, a picture of
+        where you stand and how you invest takes shape here.
+      </p>
+
+      {/* Perspective preview */}
+      <div style={sectionLabel}>Perspective</div>
+      <div style={{ ...card, padding: "16px" }}>
+        <GhostBar width={84} height={9} />
+        <div style={{ height: 14 }} />
+        <GhostBar width="52%" height={24} />
+        <div style={{ height: 16 }} />
+        <GhostBar width="100%" />
+        <div style={{ height: 8 }} />
+        <GhostBar width="78%" />
+      </div>
+      <p style={caption}>
+        Where you stand and your 12-month trajectory appear here once you&apos;ve added a
+        holding or two.
+      </p>
+
+      {/* Profile preview — the same fields the extractor fills from chat. */}
+      <div style={sectionLabel}>Profile</div>
+      <div style={card}>
+        {PROFILE_FIELDS.map(({ key, label }, idx) => (
+          <div
+            key={key}
+            style={{
+              padding: "14px 16px",
+              borderBottom: idx === PROFILE_FIELDS.length - 1 ? "none" : "0.5px solid var(--border)",
+            }}
+          >
+            <div style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: 16,
+              fontWeight: 500,
+              color: "var(--text-faint)",
+              marginBottom: 10,
+              fontVariationSettings: "'opsz' 18",
+            }}>
+              {label}
+            </div>
+            <GhostBar width={idx % 2 === 0 ? "88%" : "66%"} />
+          </div>
+        ))}
+      </div>
+      <p style={caption}>
+        Noted quietly as you chat — it stays on your device, never shared.
+      </p>
+    </div>
   );
 }
 
@@ -147,6 +245,12 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           </div>
         )}
       </div>
+
+      {/* Zero-data state: a fresh account has no Perspective and no extracted
+          context yet. Sketch what's coming so the page reads as intentional, not
+          empty. Gated on net worth being resolved (not loading) so it never flashes
+          for a user who actually has data. */}
+      {!nwLoading && !perspective && visibleFields.length === 0 && <ProfilePreview />}
 
       {/* Perspective section */}
       {perspective && (

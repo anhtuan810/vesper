@@ -184,8 +184,8 @@ export function PortfolioEmptyState() {
         .es-example { transition: border-color 0.15s; cursor: pointer; }
         .es-example:hover { border-color: rgba(58,92,58,0.22) !important; }
         .es-example:active { transform: scale(0.99); }
-        .es-input-wrap { transition: box-shadow 0.15s; }
-        .es-input-wrap:focus-within { box-shadow: 0 0 0 2px rgba(58,92,58,0.15) !important; }
+        .es-input-wrap { transition: box-shadow 0.15s, border-color 0.15s; }
+        .es-input-wrap:focus-within { border-color: rgba(58,92,58,0.5) !important; box-shadow: 0 0 0 2px rgba(58,92,58,0.18), 0 10px 28px rgba(46,110,96,0.09) !important; }
         .es-send:active { transform: scale(0.94); }
       `}</style>
 
@@ -231,82 +231,16 @@ export function PortfolioEmptyState() {
         {DISCLAIMER_TEXT}
       </p>
 
-      {/* ─── Section 2: Preview card ──────────────────────────────────────── */}
-
-      <div style={{
-        marginTop: 18,
-        background: "#FFFFFF", borderRadius: 14,
-        border: "0.5px solid rgba(0,0,0,0.06)",
-        padding: "14px 16px",
-      }}>
-        {/* Top row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{
-            fontFamily: "system-ui, sans-serif",
-            fontSize: 10, color: "#8A948A",
-            letterSpacing: "0.08em", textTransform: "uppercase",
-          }}>
-            Your Net Worth
-          </span>
-          <span style={{
-            fontFamily: "system-ui, sans-serif",
-            fontSize: 10, fontWeight: 500,
-            color: "#3A5C3A", background: "#E4EDE0",
-            padding: "2px 7px", borderRadius: 4,
-          }}>
-            Preview
-          </span>
-        </div>
-
-        {/* Amount row */}
-        <div style={{ marginTop: 4, display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{
-            fontFamily: "Georgia, serif",
-            fontSize: 26, fontWeight: 500, color: "#2C3A2C",
-            letterSpacing: "-0.02em",
-          }}>
-            $ &mdash;&thinsp;&mdash;&thinsp;&mdash;
-          </span>
-          <span style={{ fontFamily: "system-ui, sans-serif", fontSize: 11, color: "#8A948A" }}>
-            + &mdash; %
-          </span>
-        </div>
-
-        {/* Sparkline */}
-        <div style={{ marginTop: 4 }}>
-          <svg
-            width="100%"
-            height="32"
-            viewBox="0 0 280 36"
-            preserveAspectRatio="none"
-          >
-            <polyline
-              points="0,28 30,24 60,26 90,18 120,21 150,14 180,16 210,8 240,11 280,3"
-              fill="none"
-              stroke="#5C7C5C"
-              strokeWidth="1.5"
-              opacity="0.55"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-
-        {/* Hint */}
-        <p style={{ margin: "4px 0 0", fontFamily: "system-ui, sans-serif", fontSize: 12, color: "#8A948A" }}>
-          Add one thing and this comes to life.
-        </p>
-      </div>
-
-      {/* ─── Section 3: Multimodal input ─────────────────────────────────── */}
+      {/* ─── Section 2: Multimodal input — the primary action, first thing in view ─ */}
 
       <div
         className="es-input-wrap"
         style={{
-          marginTop: 18,
+          marginTop: 22,
           background: "#FFFFFF", borderRadius: 18,
-          border: "0.5px solid rgba(58,92,58,0.25)",
-          padding: "10px 10px 8px",
+          border: "1px solid rgba(58,92,58,0.38)",
+          boxShadow: "0 1px 2px rgba(20,30,25,0.04), 0 10px 28px rgba(46,110,96,0.09)",
+          padding: "12px 12px 10px",
         }}
       >
         {/* Placeholder / textarea */}
@@ -316,7 +250,7 @@ export function PortfolioEmptyState() {
             onClick={() => { setFocused(true); requestAnimationFrame(() => textareaRef.current?.focus()); }}
             style={{
               fontFamily: "var(--sans)",
-              fontSize: 15, color: "#A8B0A6",
+              fontSize: 16, color: "#A8B0A6",
               padding: "6px 6px 10px", lineHeight: 1.5,
               cursor: "text", userSelect: "none",
               opacity: showPlaceholder ? 1 : 0,
@@ -345,7 +279,7 @@ export function PortfolioEmptyState() {
               border: "none", outline: "none",
               resize: "none",
               fontFamily: "var(--sans)",
-              fontSize: 15,
+              fontSize: 16,
               color: "#2C3A2C", lineHeight: 1.5,
               padding: "6px 6px 4px",
               minHeight: 23, maxHeight: 92,
@@ -403,7 +337,7 @@ export function PortfolioEmptyState() {
         </div>
       </div>
 
-      {/* ─── Section 4: Examples list ────────────────────────────────────── */}
+      {/* ─── Section 3: Examples list ────────────────────────────────────── */}
 
       <div style={{ marginTop: 16 }}>
         <p style={{
