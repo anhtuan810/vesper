@@ -217,6 +217,39 @@ async function main() {
   assert(guarded.revenuecat_app_user_id === "rc_user_1", "cross-source guard: RC id recorded for reconciliation");
   assert(guarded.stripe_subscription_id === "sub_live", "cross-source guard: Stripe id preserved");
 
+  // 6) The reproduced production bug, end to end: a dahlia portal cancel sets a
+  //    `cancel_at` timestamp while the legacy boolean stays false. The mapped write
+  //    must persist cancel_at_period_end = true on the existing row.
+  const db3 = new FakeDb();
+  const supabase3 = fakeClient(db3);
+  await upsertEntitlement(supabase3, mapStripeSubscription(stripeSub({}), USER));
+  await upsertEntitlement(
+    supabase3,
+    mapStripeSubscription(stripeSub(withPeriod(P2, { cancel_at: P2, cancel_at_period_end: false })), USER),
+  );
+  const dahlia = read(db3, USER);
+  assert(
+    dahlia.cancel_at_period_end === true,
+    "dahlia portal cancel (cancel_at set, boolean false) persists cancel_at_period_end = true",
+  );
+
+  // 7) Two near-simultaneous customer.subscription.updated events for the same user
+  //    (the live repro emitted two ~1s apart) must converge on cancel = true.
+  const db4 = new FakeDb();
+  const supabase4 = fakeClient(db4);
+  await upsertEntitlement(supabase4, mapStripeSubscription(stripeSub({}), USER));
+  const cancelWrite = mapStripeSubscription(stripeSub(withPeriod(P2, { cancel_at: P2 })), USER);
+  await Promise.all([
+    upsertEntitlement(supabase4, cancelWrite, "evt_A"),
+    upsertEntitlement(supabase4, cancelWrite, "evt_B"),
+  ]);
+  const concurrent = read(db4, USER);
+  assert(db4.entitlements.size === 1, "concurrent: still exactly one row");
+  assert(
+    concurrent.cancel_at_period_end === true,
+    "concurrent updated events -> final persisted cancel_at_period_end = true",
+  );
+
   if (failures > 0) {
     console.error(`\n${failures} assertion(s) failed.`);
     process.exit(1);

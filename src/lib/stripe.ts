@@ -80,7 +80,13 @@ export function mapStripeSubscription(sub: Stripe.Subscription, userId: string):
     plan: planForStripePrice(priceId),
     currentPeriodEnd: toIso(periodEndUnix(sub)),
     trialEnd: toIso(sub.trial_end),
-    cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+    // "Cancel at period end" via the billing portal is represented in this Stripe
+    // API version (2026-05-27.dahlia) as a scheduled `cancel_at` timestamp, NOT the
+    // legacy `cancel_at_period_end` boolean (which stays false). The Dashboard's
+    // "Cancels <date>" badge reflects `cancel_at`. Treat either as a pending
+    // cancellation so the entitlement mirrors what Stripe actually shows; clicking
+    // "Don't cancel" clears both, flipping this back to false.
+    cancelAtPeriodEnd: sub.cancel_at_period_end === true || sub.cancel_at != null,
     stripeCustomerId: customerId,
     stripeSubscriptionId: sub.id,
     productId: priceId,

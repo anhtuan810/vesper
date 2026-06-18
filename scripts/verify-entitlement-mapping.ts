@@ -105,6 +105,35 @@ assert(sCanceled.status === "canceled", "Stripe canceled -> canceled");
 const sPastDue = mapStripeSubscription(stripeSub({ status: "past_due" }), USER);
 assert(sPastDue.status === "past_due", "Stripe past_due -> past_due");
 
+// Cancel-at-period-end. In the 2026-05-27.dahlia API the billing portal records a
+// portal cancel as a scheduled `cancel_at` timestamp (the legacy boolean stays
+// false); older flows / the API still set the boolean. Either must map to cancelling,
+// and "Don't cancel" (both cleared) must map back to false.
+const sCancelViaTimestamp = mapStripeSubscription(
+  stripeSub({ cancel_at: Math.floor(future / 1000), cancel_at_period_end: false }),
+  USER,
+);
+assert(
+  sCancelViaTimestamp.cancelAtPeriodEnd === true,
+  "Stripe cancel_at set with boolean false -> cancelAtPeriodEnd true",
+);
+const sCancelViaBoolean = mapStripeSubscription(
+  stripeSub({ cancel_at: null, cancel_at_period_end: true }),
+  USER,
+);
+assert(
+  sCancelViaBoolean.cancelAtPeriodEnd === true,
+  "Stripe legacy cancel_at_period_end true -> cancelAtPeriodEnd true",
+);
+const sNotCancelling = mapStripeSubscription(
+  stripeSub({ cancel_at: null, cancel_at_period_end: false }),
+  USER,
+);
+assert(
+  sNotCancelling.cancelAtPeriodEnd === false,
+  "Stripe no cancel_at and boolean false -> cancelAtPeriodEnd false (don't-cancel)",
+);
+
 assert(userIdFromStripeSubscription(stripeSub({})) === USER, "Stripe metadata user id extracted");
 assert(userIdFromStripeSubscription(stripeSub({ metadata: {} })) === null, "Stripe without metadata -> null user id");
 
