@@ -194,7 +194,7 @@ export function PortfolioEmptyState() {
       {/* Privacy pill */}
       <div style={{
         display: "inline-flex", alignItems: "center", gap: 5,
-        background: "#E4EDE0", color: "#3A5C3A",
+        background: "var(--accent-soft)", color: "var(--accent-text)",
         borderRadius: 999, padding: "4px 9px",
       }}>
         <LockIcon size={14} />
@@ -207,7 +207,7 @@ export function PortfolioEmptyState() {
       <h1 style={{
         fontFamily: "Georgia, \"Lora\", \"Crimson Pro\", serif",
         fontStyle: "italic", fontWeight: 400,
-        fontSize: 23, lineHeight: 1.3, color: "#2C3A2C",
+        fontSize: 23, lineHeight: 1.3, color: "var(--hero)",
         margin: "16px 0 0",
       }}>
         Throw anything at me.
@@ -216,7 +216,7 @@ export function PortfolioEmptyState() {
       {/* Sub-headline */}
       <p style={{
         fontFamily: "system-ui, sans-serif",
-        fontSize: 14, color: "#6B756B", lineHeight: 1.5,
+        fontSize: 14, color: "var(--text-dim)", lineHeight: 1.5,
         margin: "6px 0 0",
       }}>
         A sentence, a screenshot, a CSV, a photo of a statement — I&apos;ll sort it.
@@ -225,7 +225,7 @@ export function PortfolioEmptyState() {
       {/* Informational-only disclaimer — muted line beneath the opener */}
       <p style={{
         fontFamily: "system-ui, sans-serif",
-        fontSize: 11, color: "#8A948A", lineHeight: 1.45,
+        fontSize: 11, color: "var(--text-faint)", lineHeight: 1.45,
         margin: "8px 0 0",
       }}>
         {DISCLAIMER_TEXT}
@@ -342,7 +342,7 @@ export function PortfolioEmptyState() {
       <div style={{ marginTop: 16 }}>
         <p style={{
           fontFamily: "system-ui, sans-serif",
-          fontSize: 11, color: "#8A948A",
+          fontSize: 11, color: "var(--text-faint)",
           margin: "0 0 8px",
         }}>
           Try starting with —
