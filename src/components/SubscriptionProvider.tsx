@@ -92,6 +92,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     };
   }, [user, userLoading, fetchStatus]);
 
+  // Re-read the entitlement when the app regains focus / becomes visible, so a
+  // change made while the app was backgrounded — a cancel in the Stripe billing
+  // portal, a Dashboard edit, or a webhook that lands a moment later — is reflected
+  // without a manual reload. Mirrors the chart/diary focus-refresh on the dashboard.
+  // Optimistic unlock is untouched (entitled = optimistic || data.entitled), so a
+  // refetch right after a native purchase can't re-gate the user.
+  useEffect(() => {
+    if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchStatus();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user, fetchStatus]);
+
   // Native: configure RevenueCat with the Supabase user id so the paywall can
   // load offerings and purchase, and every purchase maps to the account. The SDK
   // is loaded only here (dynamic import), never in the web bundle.
