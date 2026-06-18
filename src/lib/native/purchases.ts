@@ -41,6 +41,43 @@ async function loadPurchases() {
   return mod.Purchases;
 }
 
+// Reading the current offering must never be able to hang the UI. The RevenueCat
+// bridge can stall indefinitely when the SDK can't reach StoreKit or — the case
+// that bit us — the native plugin isn't in the running binary (e.g. a JS-only OTA
+// bundle on a build that predates adding @revenuecat/purchases-capacitor). When
+// that happens the paywall's purchase await never settles and the button sits on
+// "One moment…" forever. Bounding the offering read turns that stall into a normal
+// failure the caller already handles. We deliberately bound only offering reads,
+// never `purchasePackage`, which legitimately stays pending while the user works
+// the StoreKit sheet.
+const OFFERINGS_TIMEOUT_MS = 15_000;
+
+export class PurchasesTimeoutError extends Error {
+  constructor(operation: string) {
+    super(`RevenueCat ${operation} timed out after ${OFFERINGS_TIMEOUT_MS}ms`);
+    this.name = "PurchasesTimeoutError";
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, operation: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new PurchasesTimeoutError(operation)),
+      OFFERINGS_TIMEOUT_MS,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 let configuredFor: string | null = null;
 
 // Configures the SDK once per app user. Safe to call repeatedly — reconfigures
@@ -78,7 +115,7 @@ export interface PlanPackages {
 export async function getPlanPackages(): Promise<PlanPackages | null> {
   if (!isNative()) return null;
   const Purchases = await loadPurchases();
-  const { current } = await Purchases.getOfferings();
+  const { current } = await withTimeout(Purchases.getOfferings(), "getOfferings");
   if (!current) return null;
   return { offering: current, monthly: current.monthly, annual: current.annual };
 }
