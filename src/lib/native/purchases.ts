@@ -42,16 +42,21 @@ function platformApiKey(): string {
   return key;
 }
 
-// Runtime-only load of the SDK. Never call on the web.
-async function loadPurchases() {
+// Returns the statically-imported RevenueCat plugin proxy.
+//
+// MUST stay synchronous and its result MUST NOT be awaited. The Capacitor plugin
+// proxy is a *thenable*: its `get` trap has no case for `then`, so `proxy.then`
+// returns a plugin-method wrapper. Awaiting the proxy (`await loadPurchases()`, or
+// returning it from an `async` function) makes the runtime call
+// `proxy.then(resolve, reject)`, which dispatches a bogus native `then` and never
+// calls resolve/reject — parking the caller forever. That was the real
+// "One moment…" hang. Call it without await — `const Purchases = loadPurchases();`
+// — then await only the real promises its methods return.
+function loadPurchases() {
   // The JS proxy for "Purchases" always exists (registerPlugin returns one even
-  // with no native counterpart), so if the native plugin isn't compiled into this
-  // binary, its bridge calls hang forever — no native handler ever replies — which
-  // surfaces as the paywall button stuck on "One moment…", with zero RevenueCat
-  // logs. Fail loudly instead of hanging. This almost always means the native app
-  // wasn't actually rebuilt after @revenuecat/purchases-capacitor joined the Swift
-  // package set (a stale Xcode/SPM/DerivedData build): OTA ships only JS and cannot
-  // add native code.
+  // with no native counterpart). isPluginAvailable still gates whether the native
+  // plugin is actually present; fail loudly if not, rather than dispatching to a
+  // missing native handler.
   if (!Capacitor.isPluginAvailable("Purchases")) {
     const msg =
       "RevenueCat 'Purchases' native plugin is not registered in this build — " +
@@ -59,11 +64,6 @@ async function loadPurchases() {
     console.error("[purchases]", msg);
     throw new Error(msg);
   }
-  // Statically imported (top of file) rather than dynamically imported here: the
-  // runtime `import("@revenuecat/purchases-capacitor")` never settled inside the
-  // Capacitor webview, parking configure forever. The SDK module only calls
-  // registerPlugin() at import (no browser/native globals), so it's safe in the
-  // bundle; isNative()/isPluginAvailable still gate actually calling it.
   return PurchasesSDK;
 }
 
@@ -121,8 +121,8 @@ async function doConfigure(appUserId: string): Promise<void> {
     // if it ever times out.
     await withTimeout(
       (async () => {
-        const Purchases = await loadPurchases();
-        console.log("[rc] loadPurchases resolved — calling Purchases.configure()");
+        const Purchases = loadPurchases();
+        console.log("[rc] plugin loaded — calling Purchases.configure()");
         await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
       })(),
       "configure",
@@ -155,7 +155,7 @@ export async function ensureConfigured(): Promise<void> {
 
 export async function getCustomerInfo(): Promise<CustomerInfo | null> {
   if (!isNative()) return null;
-  const Purchases = await loadPurchases();
+  const Purchases = loadPurchases();
   const { customerInfo } = await Purchases.getCustomerInfo();
   return customerInfo;
 }
@@ -177,7 +177,7 @@ export interface PlanPackages {
 
 export async function getPlanPackages(): Promise<PlanPackages | null> {
   if (!isNative()) return null;
-  const Purchases = await loadPurchases();
+  const Purchases = loadPurchases();
   const { current } = await withTimeout(Purchases.getOfferings(), "getOfferings");
   if (!current) {
     console.log("[rc] getOfferings: no current offering");
@@ -194,7 +194,7 @@ export async function getPlanPackages(): Promise<PlanPackages | null> {
 // Purchases a specific package and returns the resulting customerInfo. Throws on
 // a real failure; callers treat a user cancellation as a no-op.
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo> {
-  const Purchases = await loadPurchases();
+  const Purchases = loadPurchases();
   console.log(`[rc] purchasePackage id=${pkg.identifier}`);
   try {
     const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
@@ -215,7 +215,7 @@ export async function purchasePlan(plan: PlanId): Promise<CustomerInfo> {
 }
 
 export async function restorePurchases(): Promise<CustomerInfo> {
-  const Purchases = await loadPurchases();
+  const Purchases = loadPurchases();
   const { customerInfo } = await Purchases.restorePurchases();
   return customerInfo;
 }
