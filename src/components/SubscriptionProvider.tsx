@@ -91,13 +91,38 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (userLoading) return;
     let cancelled = false;
     (async () => {
-      setOptimistic(false);
       if (!user) {
+        setOptimistic(false);
         setData(null);
         setLoading(false);
         return;
       }
       setLoading(true);
+      // Native cold start: before clearing `loading` (which is what keeps the
+      // paywall from rendering), seed the optimistic unlock from RevenueCat's
+      // on-device entitlement. A user the SDK already reports as entitled then
+      // never sees the paywall or trial CTA while the server entitlement row is
+      // still catching up. /api/subscription stays authoritative for the
+      // status/plan/period the rest of the UI reads — this only suppresses the
+      // gate. Web (Stripe) is untouched: isNative() is false there, so optimistic
+      // stays false and behavior is unchanged.
+      let seedOptimistic = false;
+      if (isNative()) {
+        try {
+          const { configurePurchases, getCustomerInfo, isEntitledFromInfo } = await import(
+            "@/lib/native/purchases"
+          );
+          // configure (idempotent) must resolve before getCustomerInfo, or the SDK
+          // rejects with "Purchases must be configured".
+          await configurePurchases(user.id);
+          seedOptimistic = isEntitledFromInfo(await getCustomerInfo());
+        } catch (e) {
+          // Any RevenueCat failure → fall back to server truth (optimistic = false).
+          Sentry.captureException(e, { tags: { area: "revenuecat-coldstart-seed" } });
+        }
+      }
+      if (cancelled) return;
+      setOptimistic(seedOptimistic);
       await fetchStatus();
       if (!cancelled) setLoading(false);
     })();
