@@ -54,6 +54,17 @@ function restore() {
   fs.rmSync(PARK, { recursive: true, force: true });
 }
 
+// Inline the build's git SHA so the running app can prove which bundle is live
+// (surfaced on the paywall when NEXT_PUBLIC_OTA_DISABLED is set). Trimmed; falls
+// back to "local" when git isn't available (e.g. a tarball build).
+let buildSha = "local";
+try {
+  buildSha = execSync("git rev-parse --short HEAD", { cwd: ROOT }).toString().trim() || "local";
+} catch {
+  buildSha = "local";
+}
+process.env.NEXT_PUBLIC_BUILD_SHA = buildSha;
+
 park();
 try {
   execSync("npx next build", {

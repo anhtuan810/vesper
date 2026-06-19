@@ -185,6 +185,11 @@ export function Paywall() {
 
   const renewLocation = native ? "the App Store" : "your account";
 
+  // Build marker for on-device debugging — shown only when OTA is force-disabled
+  // (NEXT_PUBLIC_OTA_DISABLED), so it never appears in normal builds.
+  const otaDisabled =
+    process.env.NEXT_PUBLIC_OTA_DISABLED === "1" || process.env.NEXT_PUBLIC_OTA_DISABLED === "true";
+
   return (
     <div
       role="dialog"
@@ -362,6 +367,21 @@ export function Paywall() {
             Privacy
           </a>
         </p>
+
+        {otaDisabled && (
+          <p
+            style={{
+              fontSize: 9.5,
+              color: "var(--text-faint)",
+              textAlign: "center",
+              marginTop: 8,
+              opacity: 0.65,
+              fontFamily: "var(--font-sans)",
+            }}
+          >
+            build {process.env.NEXT_PUBLIC_BUILD_SHA}
+          </p>
+        )}
 
         <div style={{ textAlign: "center", marginTop: 18 }}>
           <button

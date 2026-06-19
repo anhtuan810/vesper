@@ -21,15 +21,35 @@ import { isNative } from "@/lib/platform";
 
 export async function installOtaUpdater(): Promise<void> {
   if (!isNative()) return;
-  // Escape hatch for native debugging. With OTA on, a previously-staged bundle
-  // keeps activating over the binary's freshly-built (cap sync) assets, so a
-  // device can run an older bundle no matter how often you rebuild in Xcode.
-  // Setting NEXT_PUBLIC_DISABLE_OTA=true pins the app to the bundled assets — and
-  // the log below doubles as proof that the latest build is actually running.
-  if (process.env.NEXT_PUBLIC_DISABLE_OTA === "true") {
-    console.log("[ota] disabled via NEXT_PUBLIC_DISABLE_OTA — running bundled assets only");
+
+  // Debug kill-switch for deterministic on-device builds. When
+  // NEXT_PUBLIC_OTA_DISABLED is truthy ("1"/"true") we skip the manifest check,
+  // download, and apply entirely, and — if an OTA bundle is currently applied —
+  // reset the active-bundle pointer back to builtin. Capgo's native boot path
+  // (CapacitorUpdaterPlugin.load → setServerBasePath) serves the binary's bundled
+  // `public/` whenever the current bundle id is "builtin", so this and every
+  // subsequent cold start run the freshly built native bundle.
+  if (
+    process.env.NEXT_PUBLIC_OTA_DISABLED === "1" ||
+    process.env.NEXT_PUBLIC_OTA_DISABLED === "true"
+  ) {
+    if (Capacitor.isPluginAvailable("CapacitorUpdater")) {
+      try {
+        const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
+        const { bundle } = await CapacitorUpdater.current();
+        // Only reset when a downloaded bundle is live: reset() reverts the
+        // pointer to builtin and reloads, so guarding on this avoids a reload
+        // loop when builtin is already active (e.g. a fresh install).
+        if (bundle.id !== "builtin") {
+          await CapacitorUpdater.reset();
+        }
+      } catch {
+        // Best-effort: the built-in bundle always works without the plugin.
+      }
+    }
     return;
   }
+
   // Binaries that predate the plugin just keep their bundled UI.
   if (!Capacitor.isPluginAvailable("CapacitorUpdater")) return;
   try {
