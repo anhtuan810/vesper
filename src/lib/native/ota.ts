@@ -21,6 +21,15 @@ import { isNative } from "@/lib/platform";
 
 export async function installOtaUpdater(): Promise<void> {
   if (!isNative()) return;
+  // Escape hatch for native debugging. With OTA on, a previously-staged bundle
+  // keeps activating over the binary's freshly-built (cap sync) assets, so a
+  // device can run an older bundle no matter how often you rebuild in Xcode.
+  // Setting NEXT_PUBLIC_DISABLE_OTA=true pins the app to the bundled assets — and
+  // the log below doubles as proof that the latest build is actually running.
+  if (process.env.NEXT_PUBLIC_DISABLE_OTA === "true") {
+    console.log("[ota] disabled via NEXT_PUBLIC_DISABLE_OTA — running bundled assets only");
+    return;
+  }
   // Binaries that predate the plugin just keep their bundled UI.
   if (!Capacitor.isPluginAvailable("CapacitorUpdater")) return;
   try {
