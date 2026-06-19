@@ -6,6 +6,7 @@ import { VolnarLogo } from "@/components/VolnarLogo";
 import { useUser, useSignOut } from "@/lib/hooks";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { apiFetch } from "@/lib/api";
+import { createBrowserSupabase } from "@/lib/supabase";
 import { isNative } from "@/lib/platform";
 import {
   ANNUAL_MONTHS_FREE,
@@ -191,6 +192,37 @@ export function Paywall() {
     }
   }
 
+  // Let an undecided visitor explore the fully populated shared demo account
+  // before committing to a trial — the same one-tap entry the login page offers.
+  // Web does a full navigation to the /demo route handler (cookie sign-in +
+  // reseed + redirect to "/"); the bundled app has no such route and can't take
+  // the cookie session, so it fetches the demo session tokens from
+  // /api/demo-session and adopts them with setSession. Inert (errors gracefully)
+  // wherever the demo credentials aren't configured.
+  async function enterDemo() {
+    setBusy(true);
+    setError(null);
+    if (!native) {
+      window.location.assign("/demo");
+      return;
+    }
+    try {
+      const res = await apiFetch("/api/demo-session", { method: "POST" });
+      if (!res.ok) throw new Error();
+      const { access_token, refresh_token } = (await res.json()) as {
+        access_token: string;
+        refresh_token: string;
+      };
+      const supabase = createBrowserSupabase();
+      const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (sessionError) throw new Error();
+      window.location.assign("/");
+    } catch {
+      setError("The demo account isn't available right now.");
+      setBusy(false);
+    }
+  }
+
   const monthlyPrice = storePrices.monthly ?? formatPrice(PLAN_PRICES.monthly);
   const annualPrice = storePrices.annual ?? formatPrice(PLAN_PRICES.annual);
 
@@ -306,6 +338,43 @@ export function Paywall() {
           }}
         >
           {busy ? "One moment…" : `Start ${TRIAL_DAYS}-day free trial`}
+        </button>
+
+        {/* Try-before-you-buy: jump into the live demo account without committing */}
+        <button
+          onClick={enterDemo}
+          disabled={busy}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            width: "100%",
+            marginTop: 10,
+            padding: "12px 18px",
+            borderRadius: 12,
+            border: "none",
+            background: "none",
+            color: "var(--accent-text)",
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: busy ? "default" : "pointer",
+            fontFamily: "var(--font-sans)",
+          }}
+        >
+          Explore the demo account first
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            style={{ width: 13, height: 13 }}
+          >
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
         </button>
 
         {native && (
