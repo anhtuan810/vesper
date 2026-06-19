@@ -58,10 +58,16 @@ export function Paywall() {
 
   // Native: surface the real StoreKit prices from the current offering.
   useEffect(() => {
-    if (!isNative()) return;
+    if (!isNative() || !user) return;
+    const userId = user.id;
     let cancelled = false;
     import("@/lib/native/purchases")
-      .then(async ({ getPlanPackages }) => {
+      .then(async ({ configurePurchases, getPlanPackages }) => {
+        // Ensure the SDK is configured before reading offerings (configurePurchases
+        // is idempotent), so we never call getOfferings pre-configure and log
+        // "Purchases must be configured". configure needs the user id — hence the
+        // user gate above.
+        await configurePurchases(userId);
         const packs = await getPlanPackages();
         if (cancelled || !packs) return;
         setStorePrices({
@@ -73,7 +79,7 @@ export function Paywall() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user]);
 
   const isPublic = pathname.startsWith("/login") || pathname.startsWith("/marketing");
 
