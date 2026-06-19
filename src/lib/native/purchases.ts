@@ -97,38 +97,71 @@ function withTimeout<T>(promise: Promise<T>, operation: string): Promise<T> {
   });
 }
 
-let configuredFor: string | null = null;
+// The SDK is configured exactly ONCE per process. After that, switching the
+// signed-in user goes through logIn/logOut — the supported identity transition —
+// never a second configure(). Re-configuring is unsupported: it logs RevenueCat's
+// "Purchases instance already set" warning and can alias/transfer subscribers
+// between accounts. This matters because native sign-out is an SPA navigation, so
+// the SDK stays in memory with the previous user's appUserID until we move it.
+let sdkConfigured = false;
+let identifiedFor: string | null = null;
 let configurePromise: Promise<void> | null = null;
 
-async function doConfigure(appUserId: string): Promise<void> {
+async function doIdentify(appUserId: string): Promise<void> {
   try {
-    // Bound the whole native init (load + configure) in one timeout so no path —
-    // not loadPurchases, not configure — can park the paywall on "One moment…"
-    // forever.
+    // Bound the whole native init (load + configure/logIn) in one timeout so no
+    // path can park the paywall on "One moment…" forever.
     await withTimeout(
       (async () => {
         const Purchases = loadPurchases();
-        await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
+        if (!sdkConfigured) {
+          // First identification this process: configure with the user id, which
+          // also identifies them immediately (no separate logIn needed).
+          await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
+          sdkConfigured = true;
+        } else {
+          // Already configured — a different account signed in without an app
+          // restart. Switch users the supported way.
+          await Purchases.logIn({ appUserID: appUserId });
+        }
       })(),
       "configure",
     );
   } catch (e) {
     console.error("[rc] configure FAILED", e);
-    if (configuredFor === appUserId) configuredFor = null; // allow a later retry
+    if (identifiedFor === appUserId) identifiedFor = null; // allow a later retry
     throw e;
   }
 }
 
-// Configures the SDK once per app user, caching the in-flight promise so it is no
-// longer silently fire-and-forget: the buy handler can await `ensureConfigured()`
-// instead of racing it. Reconfigures only when the signed-in user changes (e.g.
-// after an account switch).
+// Identifies the SDK with the app user once, caching the in-flight promise so it
+// is no longer silently fire-and-forget: the buy handler can await
+// `ensureConfigured()` instead of racing it. Re-identifies (via logIn) only when
+// the signed-in user changes (e.g. after an account switch).
 export function configurePurchases(appUserId: string): Promise<void> {
   if (!isNative()) return Promise.resolve();
-  if (configuredFor === appUserId && configurePromise) return configurePromise;
-  configuredFor = appUserId;
-  configurePromise = doConfigure(appUserId);
+  if (identifiedFor === appUserId && configurePromise) return configurePromise;
+  identifiedFor = appUserId;
+  configurePromise = doIdentify(appUserId);
   return configurePromise;
+}
+
+// Clears the RevenueCat identity on sign-out so the next account that signs in on
+// this device can't inherit the previous user's appUserID. logOut reverts the SDK
+// to an anonymous id; the next configurePurchases() then logs the new user in.
+// State is reset synchronously before the await, so a slow/failed logOut can never
+// block a later sign-in — best-effort (correctness is guaranteed by the logIn on
+// the next sign-in regardless).
+export async function logOutPurchases(): Promise<void> {
+  if (!isNative() || !sdkConfigured) return;
+  identifiedFor = null;
+  configurePromise = null;
+  try {
+    const Purchases = loadPurchases();
+    await Purchases.logOut();
+  } catch (e) {
+    console.error("[rc] logOut FAILED", e);
+  }
 }
 
 // Await the in-flight (or completed) RevenueCat configuration before purchasing,

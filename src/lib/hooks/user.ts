@@ -135,6 +135,13 @@ export function useSignOut() {
     beginSignOut();
     await supabase.auth.signOut();
     if (isNativeBuild) {
+      // Clear the RevenueCat identity so the next account signing in on this device
+      // doesn't inherit this user's appUserID (native sign-out is an SPA navigation,
+      // so the SDK stays in memory). Best-effort and non-blocking — the next sign-in
+      // re-identifies via logIn regardless, so we never make the user wait on it.
+      import("@/lib/native/purchases")
+        .then(({ logOutPurchases }) => logOutPurchases())
+        .catch(() => {});
       // SPA navigation: in the bundled app a full load of /login would be
       // served the root index.html. UserProvider purges caches on SIGNED_OUT.
       router.replace("/login");
