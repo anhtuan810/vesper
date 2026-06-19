@@ -155,19 +155,6 @@ export function SubscriptionSection() {
     }
   }
 
-  // Manual recovery while "activating": re-read the status, which self-heals from
-  // RevenueCat server-side (GET /api/subscription), so a user whose webhook is slow
-  // or dropped isn't stuck — they can deterministically pull their entitlement.
-  async function retry() {
-    setBusy(true);
-    setError(null);
-    try {
-      await refreshUntilEntitled();
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <>
       <div style={SECTION_LABEL_STYLE}>Your subscription</div>
@@ -229,27 +216,10 @@ export function SubscriptionSection() {
           >
             Subscription activating…
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: 14 }}>
-            Your purchase went through. We&apos;re finalizing your access — this usually takes a
-            few seconds. No need to buy again.
+          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55 }}>
+            Your purchase went through. We&apos;re finalizing your access — this can take a
+            moment. No need to buy again.
           </div>
-          <button
-            onClick={retry}
-            disabled={busy}
-            style={{
-              width: "100%",
-              padding: "13px 16px",
-              borderRadius: 12,
-              border: "1px solid var(--border-strong)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: busy ? "default" : "pointer",
-            }}
-          >
-            {busy ? "Checking…" : "Try again"}
-          </button>
         </div>
       ) : (
         <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>

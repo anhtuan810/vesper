@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { getEntitlement, toSubscriptionView, upsertEntitlement } from "@/lib/entitlements";
 import { findStripeEntitlement } from "@/lib/stripe";
-import { fetchRevenueCatSubscriber } from "@/lib/revenuecat";
-import { mapRevenueCatSubscriber } from "@/lib/revenuecat-webhook";
 
 export const runtime = "nodejs";
 
@@ -42,31 +40,6 @@ export async function GET(request: NextRequest) {
       } catch (err) {
         Sentry.captureException(err, {
           tags: { route: "GET /api/subscription", step: "stripe-reconcile" },
-        });
-      }
-    }
-
-    // Self-heal: same idea for mobile (RevenueCat). When still not entitled, pull
-    // the subscriber straight from RevenueCat's REST API and record any subscription
-    // that currently grants access — so a just-completed App Store purchase
-    // activates even if the webhook is delayed, dropped, or hasn't landed yet. This
-    // makes activation deterministic: the client's post-purchase poll (and the
-    // paywall's focus refresh) hit this and self-heal within seconds, instead of
-    // waiting on a pushed webhook. No-ops if REVENUECAT_SECRET_API_KEY is unset, and
-    // honors the same sandbox-isolation rule as the webhook (mapRevenueCatSubscriber).
-    if (!view.entitled) {
-      try {
-        const subscriber = await fetchRevenueCatSubscriber(
-          row?.revenuecat_app_user_id ?? user.id,
-        );
-        const write = subscriber ? mapRevenueCatSubscriber(subscriber, user.id) : null;
-        if (write) {
-          await upsertEntitlement(supabase, write);
-          view = toSubscriptionView(await getEntitlement(supabase, user.id));
-        }
-      } catch (err) {
-        Sentry.captureException(err, {
-          tags: { route: "GET /api/subscription", step: "revenuecat-reconcile" },
         });
       }
     }

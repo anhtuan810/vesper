@@ -34,7 +34,7 @@ redeploy after editing.
 | `REVENUECAT_WEBHOOK_AUTH` | Vercel (server) | Shared secret matched against the `Authorization` header on `/api/webhooks/revenuecat` |
 | `REVENUECAT_MONTHLY_PRODUCT_ID` / `REVENUECAT_ANNUAL_PRODUCT_ID` | Vercel (server) | Maps a store product to monthly/annual server-side |
 | `REVENUECAT_ALLOW_SANDBOX` | Vercel (server) | `true` **only** on staging/dev to accept SANDBOX events; never Production |
-| `REVENUECAT_SECRET_API_KEY` | Vercel (server) | Optional **secret** key; enables RevenueCat-side customer deletion on account deletion, and deterministic entitlement self-heal in `GET /api/subscription` (pulls the subscriber so a purchase activates even if the webhook is slow/dropped) |
+| `REVENUECAT_SECRET_API_KEY` | Vercel (server) | Optional **secret** key; enables RevenueCat-side customer deletion on account deletion |
 
 > ⚠️ Never put a `_SECRET_` or webhook key in a `NEXT_PUBLIC_*` var — those ship
 > in the client bundle.

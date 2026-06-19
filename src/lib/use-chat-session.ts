@@ -294,23 +294,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       setThinking(false);
 
       if (!res.ok) {
-        if (res.status === 402) {
-          // Premium gate: the server has no entitlement yet — typically a
-          // just-completed purchase whose entitlement hasn't reconciled. Kick the
-          // self-healing status read (GET /api/subscription pulls from RevenueCat)
-          // so a re-send works in a moment, instead of showing a bare
-          // "Subscription required".
-          apiFetch("/api/subscription").catch(() => {});
-          setMessages((prev) => [
-            ...prev,
-            {
-              from: "assistant",
-              text: "Just finishing activating your subscription — give it a few seconds, then send that again.",
-            },
-          ]);
-          setLoading(false);
-          return;
-        }
         const errText = res.status === 401
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
@@ -403,23 +386,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       setThinking(false);
 
       if (!res.ok) {
-        if (res.status === 402) {
-          // Premium gate: the server has no entitlement yet — typically a
-          // just-completed purchase whose entitlement hasn't reconciled. Kick the
-          // self-healing status read (GET /api/subscription pulls from RevenueCat)
-          // so a re-send works in a moment, instead of showing a bare
-          // "Subscription required".
-          apiFetch("/api/subscription").catch(() => {});
-          setMessages((prev) => [
-            ...prev,
-            {
-              from: "assistant",
-              text: "Just finishing activating your subscription — give it a few seconds, then send that again.",
-            },
-          ]);
-          setLoading(false);
-          return;
-        }
         const errText = res.status === 401
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
