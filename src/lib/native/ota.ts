@@ -22,24 +22,25 @@ import { isNative } from "@/lib/platform";
 export async function installOtaUpdater(): Promise<void> {
   if (!isNative()) return;
 
-  // Debug kill-switch for deterministic on-device builds. When
-  // NEXT_PUBLIC_OTA_DISABLED is truthy ("1"/"true") we skip the manifest check,
-  // download, and apply entirely, and — if an OTA bundle is currently applied —
-  // reset the active-bundle pointer back to builtin. Capgo's native boot path
-  // (CapacitorUpdaterPlugin.load → setServerBasePath) serves the binary's bundled
-  // `public/` whenever the current bundle id is "builtin", so this and every
-  // subsequent cold start run the freshly built native bundle.
-  if (
-    process.env.NEXT_PUBLIC_OTA_DISABLED === "1" ||
-    process.env.NEXT_PUBLIC_OTA_DISABLED === "true"
-  ) {
+  // OTA is OPT-IN and ships disabled by default, so the app runs the binary's
+  // bundled (cap sync) assets. The self-managed updater is not production-ready
+  // yet: the builtin version is always "1.0" and never equals the manifest's
+  // "<stamp>-<sha>", so the "already current" short-circuit (below) never fires
+  // and it re-downloads on every launch. Enable it with NEXT_PUBLIC_ENABLE_OTA=
+  // "true" only once that's fixed (compare against the last-applied bundle, not
+  // builtin).
+  const otaEnabled =
+    process.env.NEXT_PUBLIC_ENABLE_OTA === "1" ||
+    process.env.NEXT_PUBLIC_ENABLE_OTA === "true";
+  if (!otaEnabled) {
+    // If a previous build applied an OTA bundle, reset the active pointer back to
+    // builtin so this and the next cold start run the bundled assets. (Capgo's
+    // boot path serves the binary's `public/` when the current bundle id is
+    // "builtin".) Guard on id !== "builtin" to avoid a needless reload loop.
     if (Capacitor.isPluginAvailable("CapacitorUpdater")) {
       try {
         const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
         const { bundle } = await CapacitorUpdater.current();
-        // Only reset when a downloaded bundle is live: reset() reverts the
-        // pointer to builtin and reloads, so guarding on this avoids a reload
-        // loop when builtin is already active (e.g. a fresh install).
         if (bundle.id !== "builtin") {
           await CapacitorUpdater.reset();
         }

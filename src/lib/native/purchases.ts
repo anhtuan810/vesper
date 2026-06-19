@@ -1,8 +1,6 @@
-// Native in-app purchases via RevenueCat / StoreKit. The RevenueCat SDK is only
-// ever pulled in through a runtime `import()` inside `loadPurchases()`, behind an
-// isNative() guard — so the web bundle never imports the native purchase SDK and
-// the native app never touches the web Stripe checkout. Types are imported with
-// `import type`, which the compiler erases, so they add no runtime dependency.
+// Native in-app purchases via RevenueCat / StoreKit. The SDK is statically
+// imported and only ever exercised behind isNative() guards, so the native app
+// never touches the web Stripe checkout (and the web build never calls it).
 //
 // The appUserID is the Supabase user id, so every purchase maps to an account and
 // the RevenueCat webhook writes the entitlement keyed to that user. The server
@@ -18,11 +16,6 @@ import {
   type PurchasesPackage,
 } from "@revenuecat/purchases-capacitor";
 import type { PlanId } from "@/lib/subscription";
-
-// Module-load marker: prints when this (fresh) chunk is actually evaluated on the
-// device. If you don't see it, the running purchases chunk is stale (e.g. a
-// Turbopack persistent-cache artifact) — rebuild with the cache cleared.
-console.log("[rc] purchases module loaded");
 
 function entitlementId(): string {
   return process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || "premium";
@@ -108,26 +101,17 @@ let configuredFor: string | null = null;
 let configurePromise: Promise<void> | null = null;
 
 async function doConfigure(appUserId: string): Promise<void> {
-  const iosKeyPresent = Boolean(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
-  console.log(
-    `[rc] configure start appUserID=${appUserId} iosKeyPresent=${iosKeyPresent} entitlementId=${entitlementId()} platform=${getPlatform()} pluginAvailable=${Capacitor.isPluginAvailable(
-      "Purchases",
-    )}`,
-  );
   try {
-    // Bound the WHOLE native init (load + configure) in one timeout so no path —
+    // Bound the whole native init (load + configure) in one timeout so no path —
     // not loadPurchases, not configure — can park the paywall on "One moment…"
-    // forever. The interleaved "loadPurchases resolved" log shows which side stalls
-    // if it ever times out.
+    // forever.
     await withTimeout(
       (async () => {
         const Purchases = loadPurchases();
-        console.log("[rc] plugin loaded — calling Purchases.configure()");
         await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
       })(),
       "configure",
     );
-    console.log("[rc] configure ok");
   } catch (e) {
     console.error("[rc] configure FAILED", e);
     if (configuredFor === appUserId) configuredFor = null; // allow a later retry
@@ -179,15 +163,7 @@ export async function getPlanPackages(): Promise<PlanPackages | null> {
   if (!isNative()) return null;
   const Purchases = loadPurchases();
   const { current } = await withTimeout(Purchases.getOfferings(), "getOfferings");
-  if (!current) {
-    console.log("[rc] getOfferings: no current offering");
-    return null;
-  }
-  console.log(
-    `[rc] getOfferings offering=${current.identifier} packageCount=${current.availablePackages.length} packages=[${current.availablePackages
-      .map((p) => p.identifier)
-      .join(", ")}]`,
-  );
+  if (!current) return null;
   return { offering: current, monthly: current.monthly, annual: current.annual };
 }
 
@@ -195,10 +171,8 @@ export async function getPlanPackages(): Promise<PlanPackages | null> {
 // a real failure; callers treat a user cancellation as a no-op.
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo> {
   const Purchases = loadPurchases();
-  console.log(`[rc] purchasePackage id=${pkg.identifier}`);
   try {
     const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
-    console.log(`[rc] purchasePackage ok id=${pkg.identifier}`);
     return customerInfo;
   } catch (e) {
     console.error("[rc] purchasePackage FAILED", e);

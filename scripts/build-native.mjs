@@ -55,7 +55,7 @@ function restore() {
 }
 
 // Inline the build's git SHA so the running app can prove which bundle is live
-// (surfaced on the paywall when NEXT_PUBLIC_OTA_DISABLED is set). Trimmed; falls
+// (surfaced on the paywall when NEXT_PUBLIC_SHOW_BUILD_SHA is set). Trimmed; falls
 // back to "local" when git isn't available (e.g. a tarball build).
 let buildSha = "local";
 try {
