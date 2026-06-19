@@ -88,7 +88,17 @@ export function Paywall() {
       let purchases: typeof import("@/lib/native/purchases") | null = null;
       try {
         purchases = await import("@/lib/native/purchases");
-        const info = await purchases.purchasePlan(plan);
+        // Await configuration rather than racing the provider's fire-and-forget
+        // configure, then make sure a package exists before purchasing.
+        await purchases.ensureConfigured();
+        const packages = await purchases.getPlanPackages();
+        const pkg = plan === "annual" ? packages?.annual : packages?.monthly;
+        if (!pkg) {
+          console.log("[purchase] no packages");
+          setError("Products unavailable. Please try again later.");
+          return;
+        }
+        const info = await purchases.purchasePackage(pkg);
         if (purchases.isEntitledFromInfo(info)) markEntitledOptimistic();
         // Poll until the RevenueCat webhook has written the server entitlement, so
         // access survives the next cold start rather than relying on the optimistic
@@ -96,6 +106,7 @@ export function Paywall() {
         await refreshUntilEntitled();
       } catch (e) {
         if (!purchases || !purchases.isPurchaseCancelled(e)) {
+          console.error("[purchase] failed", e);
           setError("The purchase didn't complete. Please try again.");
         }
       } finally {

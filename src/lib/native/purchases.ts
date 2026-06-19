@@ -95,15 +95,40 @@ function withTimeout<T>(promise: Promise<T>, operation: string): Promise<T> {
 }
 
 let configuredFor: string | null = null;
+let configurePromise: Promise<void> | null = null;
 
-// Configures the SDK once per app user. Safe to call repeatedly — reconfigures
-// only when the signed-in user changes (e.g. after an account switch).
-export async function configurePurchases(appUserId: string): Promise<void> {
-  if (!isNative()) return;
-  if (configuredFor === appUserId) return;
-  const Purchases = await loadPurchases();
-  await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
+async function doConfigure(appUserId: string): Promise<void> {
+  const iosKeyPresent = Boolean(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
+  console.log(
+    `[rc] configure start appUserID=${appUserId} iosKeyPresent=${iosKeyPresent} entitlementId=${entitlementId()}`,
+  );
+  try {
+    const Purchases = await loadPurchases();
+    await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
+    console.log("[rc] configure ok");
+  } catch (e) {
+    console.error("[rc] configure FAILED", e);
+    if (configuredFor === appUserId) configuredFor = null; // allow a later retry
+    throw e;
+  }
+}
+
+// Configures the SDK once per app user, caching the in-flight promise so it is no
+// longer silently fire-and-forget: the buy handler can await `ensureConfigured()`
+// instead of racing it. Reconfigures only when the signed-in user changes (e.g.
+// after an account switch).
+export function configurePurchases(appUserId: string): Promise<void> {
+  if (!isNative()) return Promise.resolve();
+  if (configuredFor === appUserId && configurePromise) return configurePromise;
   configuredFor = appUserId;
+  configurePromise = doConfigure(appUserId);
+  return configurePromise;
+}
+
+// Await the in-flight (or completed) RevenueCat configuration before purchasing,
+// so a purchase never races an unconfigured SDK. No-op if configure never ran.
+export async function ensureConfigured(): Promise<void> {
+  if (configurePromise) await configurePromise;
 }
 
 export async function getCustomerInfo(): Promise<CustomerInfo | null> {
@@ -132,19 +157,39 @@ export async function getPlanPackages(): Promise<PlanPackages | null> {
   if (!isNative()) return null;
   const Purchases = await loadPurchases();
   const { current } = await withTimeout(Purchases.getOfferings(), "getOfferings");
-  if (!current) return null;
+  if (!current) {
+    console.log("[rc] getOfferings: no current offering");
+    return null;
+  }
+  console.log(
+    `[rc] getOfferings offering=${current.identifier} packageCount=${current.availablePackages.length} packages=[${current.availablePackages
+      .map((p) => p.identifier)
+      .join(", ")}]`,
+  );
   return { offering: current, monthly: current.monthly, annual: current.annual };
 }
 
-// Purchases the chosen plan's package and returns the resulting customerInfo.
-// Throws on a real failure; callers treat a user cancellation as a no-op.
-export async function purchasePlan(plan: PlanId): Promise<CustomerInfo> {
+// Purchases a specific package and returns the resulting customerInfo. Throws on
+// a real failure; callers treat a user cancellation as a no-op.
+export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo> {
   const Purchases = await loadPurchases();
+  console.log(`[rc] purchasePackage id=${pkg.identifier}`);
+  try {
+    const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
+    console.log(`[rc] purchasePackage ok id=${pkg.identifier}`);
+    return customerInfo;
+  } catch (e) {
+    console.error("[rc] purchasePackage FAILED", e);
+    throw e;
+  }
+}
+
+// Resolves the chosen plan's package from the current offering, then purchases it.
+export async function purchasePlan(plan: PlanId): Promise<CustomerInfo> {
   const packages = await getPlanPackages();
   const pkg = plan === "annual" ? packages?.annual : packages?.monthly;
   if (!pkg) throw new Error(`No RevenueCat package available for the ${plan} plan`);
-  const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
-  return customerInfo;
+  return purchasePackage(pkg);
 }
 
 export async function restorePurchases(): Promise<CustomerInfo> {
