@@ -10,7 +10,7 @@ export function VolnarLogo({ size = 60, className }: Props) {
       role="img"
       aria-label="Volnar"
       className={className}
-      style={{ color: "var(--text)" }}
+      style={{ color: "var(--accent-deep)" }}
       xmlns="http://www.w3.org/2000/svg"
     >
       <polygon points="4,8 16,8 30,46 44,8 56,8 33,54 27,54" fill="currentColor" />
