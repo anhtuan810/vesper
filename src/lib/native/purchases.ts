@@ -19,6 +19,11 @@ import {
 } from "@revenuecat/purchases-capacitor";
 import type { PlanId } from "@/lib/subscription";
 
+// Module-load marker: prints when this (fresh) chunk is actually evaluated on the
+// device. If you don't see it, the running purchases chunk is stale (e.g. a
+// Turbopack persistent-cache artifact) — rebuild with the cache cleared.
+console.log("[rc] purchases module loaded");
+
 function entitlementId(): string {
   return process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || "premium";
 }
@@ -110,12 +115,16 @@ async function doConfigure(appUserId: string): Promise<void> {
     )}`,
   );
   try {
-    const Purchases = await loadPurchases();
-    console.log("[rc] loadPurchases resolved — calling Purchases.configure()");
-    // Bound configure too: if the native call dispatches but never calls back,
-    // surface a timeout instead of parking the paywall on "One moment…" forever.
+    // Bound the WHOLE native init (load + configure) in one timeout so no path —
+    // not loadPurchases, not configure — can park the paywall on "One moment…"
+    // forever. The interleaved "loadPurchases resolved" log shows which side stalls
+    // if it ever times out.
     await withTimeout(
-      Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId }),
+      (async () => {
+        const Purchases = await loadPurchases();
+        console.log("[rc] loadPurchases resolved — calling Purchases.configure()");
+        await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
+      })(),
       "configure",
     );
     console.log("[rc] configure ok");
