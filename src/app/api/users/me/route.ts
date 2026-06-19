@@ -4,6 +4,7 @@ import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
 import { getEntitlement } from "@/lib/entitlements";
 import { cancelStripeSubscription, deleteStripeCustomer } from "@/lib/stripe";
+import { deleteRevenueCatCustomer } from "@/lib/revenuecat";
 
 // The Stripe SDK (used to cancel an active subscription on deletion) and the
 // Supabase admin API both require the Node runtime, not edge.
@@ -179,6 +180,12 @@ export async function DELETE(request: NextRequest) {
     if (entitlement?.stripe_customer_id) {
       await deleteStripeCustomer(entitlement.stripe_customer_id);
     }
+    // Erase the RevenueCat customer (mobile purchases) too, keyed by the Supabase
+    // user id we stamp as the appUserID. Best-effort and non-blocking: the server
+    // entitlement row is dropped below regardless, and a store subscription can
+    // only be cancelled by the user in their store settings — so this is RevenueCat
+    // housekeeping that must never fail or stall account deletion (see the helper).
+    await deleteRevenueCatCustomer(userId);
 
     // 2. Storage — user-owned property-map thumbnails (public bucket).
     await purgeUserPropertyPhotos(supabase, userId);
