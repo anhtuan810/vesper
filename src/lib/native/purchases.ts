@@ -105,11 +105,19 @@ let configurePromise: Promise<void> | null = null;
 async function doConfigure(appUserId: string): Promise<void> {
   const iosKeyPresent = Boolean(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
   console.log(
-    `[rc] configure start appUserID=${appUserId} iosKeyPresent=${iosKeyPresent} entitlementId=${entitlementId()}`,
+    `[rc] configure start appUserID=${appUserId} iosKeyPresent=${iosKeyPresent} entitlementId=${entitlementId()} platform=${getPlatform()} pluginAvailable=${Capacitor.isPluginAvailable(
+      "Purchases",
+    )}`,
   );
   try {
     const Purchases = await loadPurchases();
-    await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
+    console.log("[rc] loadPurchases resolved — calling Purchases.configure()");
+    // Bound configure too: if the native call dispatches but never calls back,
+    // surface a timeout instead of parking the paywall on "One moment…" forever.
+    await withTimeout(
+      Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId }),
+      "configure",
+    );
     console.log("[rc] configure ok");
   } catch (e) {
     console.error("[rc] configure FAILED", e);
