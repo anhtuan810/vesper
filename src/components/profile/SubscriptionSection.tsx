@@ -62,7 +62,7 @@ function statusColor(view: SubscriptionView): string {
 // was purchased, with a Manage action that routes to the correct destination per
 // source. Shows a trial CTA when there is no active subscription.
 export function SubscriptionSection() {
-  const { data, loading, refreshUntilEntitled } = useSubscription();
+  const { data, loading, entitled, refreshUntilEntitled, markEntitledOptimistic } = useSubscription();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +77,13 @@ export function SubscriptionSection() {
   // action then takes them to update their card, instead of starting a new sub.
   const hasSubscription =
     data != null && (data.status === "trialing" || data.status === "active" || data.status === "past_due");
+
+  // Bridge the window between a just-completed native purchase and the webhook
+  // writing the server entitlement: the client is optimistically entitled (set
+  // below, or by the paywall's buy handler) while `data` hasn't caught up yet.
+  // Show an "activating" state instead of the trial CTA, so a paying user never
+  // sees "Start your free trial" right after buying and re-purchases by mistake.
+  const activating = !hasSubscription && entitled;
 
   // Days remaining in the trial — only meaningful while trialing. Computed from
   // the same date the "Trial ends" row shows, so the two never disagree.
@@ -117,7 +124,10 @@ export function SubscriptionSection() {
       let purchases: typeof import("@/lib/native/purchases") | null = null;
       try {
         purchases = await import("@/lib/native/purchases");
-        await purchases.purchasePlan(plan);
+        const info = await purchases.purchasePlan(plan);
+        // Reflect the purchase immediately so the card flips to "activating" rather
+        // than showing the trial CTA again (which invited a second purchase).
+        if (purchases.isEntitledFromInfo(info)) markEntitledOptimistic();
         // Poll until the webhook writes the entitlement, so access persists past
         // the next cold start rather than depending on a single immediate read.
         await refreshUntilEntitled();
@@ -191,6 +201,25 @@ export function SubscriptionSection() {
           >
             {busy ? "Opening…" : "Manage subscription"}
           </button>
+        </div>
+      ) : activating ? (
+        <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>
+          <div
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: 17,
+              fontWeight: 500,
+              color: "var(--text)",
+              marginBottom: 6,
+              fontVariationSettings: "'opsz' 18",
+            }}
+          >
+            Subscription activating…
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55 }}>
+            Your purchase went through. We&apos;re finalizing your access — this can take a
+            moment. No need to buy again.
+          </div>
         </div>
       ) : (
         <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>

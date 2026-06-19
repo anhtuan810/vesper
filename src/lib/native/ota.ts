@@ -40,6 +40,11 @@ export async function installOtaUpdater(): Promise<void> {
     if (Capacitor.isPluginAvailable("CapacitorUpdater")) {
       try {
         const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
+        // Signal readiness even with OTA off: Capgo otherwise waits 10s for
+        // notifyAppReady and logs a (harmless) red "Semaphore wait timed out".
+        // The builtin bundle is always ready, so this just clears that noise; we
+        // still reset any applied bundle back to builtin below.
+        await CapacitorUpdater.notifyAppReady();
         const { bundle } = await CapacitorUpdater.current();
         if (bundle.id !== "builtin") {
           await CapacitorUpdater.reset();
