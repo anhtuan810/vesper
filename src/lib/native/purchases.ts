@@ -11,10 +11,11 @@
 
 import { Capacitor } from "@capacitor/core";
 import { isNative, getPlatform } from "@/lib/platform";
-import type {
-  CustomerInfo,
-  PurchasesOffering,
-  PurchasesPackage,
+import {
+  Purchases as PurchasesSDK,
+  type CustomerInfo,
+  type PurchasesOffering,
+  type PurchasesPackage,
 } from "@revenuecat/purchases-capacitor";
 import type { PlanId } from "@/lib/subscription";
 
@@ -53,8 +54,12 @@ async function loadPurchases() {
     console.error("[purchases]", msg);
     throw new Error(msg);
   }
-  const mod = await import("@revenuecat/purchases-capacitor");
-  return mod.Purchases;
+  // Statically imported (top of file) rather than dynamically imported here: the
+  // runtime `import("@revenuecat/purchases-capacitor")` never settled inside the
+  // Capacitor webview, parking configure forever. The SDK module only calls
+  // registerPlugin() at import (no browser/native globals), so it's safe in the
+  // bundle; isNative()/isPluginAvailable still gate actually calling it.
+  return PurchasesSDK;
 }
 
 // Reading the current offering must never be able to hang the UI. The RevenueCat
