@@ -105,6 +105,28 @@ function LoginInner() {
     boxShadow: "0 1px 2px rgba(26,24,22,0.04)",
   };
 
+  // Demo entry as a full-width featured button (previously a small text link) so
+  // launch visitors can jump into the live demo without signing in. Accent-tinted
+  // to read as an invitation while staying visually distinct from the white
+  // sign-in buttons; fills solid on hover (see the .demo-cta rule below).
+  const demoButtonStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    padding: "15px 22px",
+    borderRadius: 14,
+    background: "var(--accent-soft)",
+    border: "1px solid var(--accent)",
+    color: "var(--accent-text)",
+    fontSize: 14.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    minHeight: 54,
+    textDecoration: "none",
+  };
+
   return (
     <div
       className="min-h-dvh flex items-center justify-center"
@@ -181,35 +203,44 @@ function LoginInner() {
           )}
         </div>
 
-        <div className="text-center mt-7">
-          <a
-            href="/demo"
-            onClick={async (e) => {
-              // Native: /demo (cookie sign-in) doesn't exist in the bundled
-              // app — fetch the demo session tokens and adopt them instead.
-              if (!native) return;
-              e.preventDefault();
-              setError(null);
-              try {
-                const res = await apiFetch("/api/demo-session", { method: "POST" });
-                if (!res.ok) throw new Error();
-                const { access_token, refresh_token } = await res.json();
-                const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
-                if (sessionError) throw new Error();
-                window.location.assign("/");
-              } catch {
-                setError("The demo account isn't available right now.");
-              }
-            }}
-            className="inline-flex items-center gap-1.5 text-dim transition-colors hover:text-fg"
-            style={{ fontSize: 13, textDecoration: "none" }}
-          >
-            Explore a live demo account
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </a>
+        <style>{`
+          .demo-cta { transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+          .demo-cta:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+        `}</style>
+
+        <div className="flex items-center" style={{ gap: 12, margin: "20px 0 14px" }}>
+          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          <span style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>or</span>
+          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
+
+        <a
+          href="/demo"
+          onClick={async (e) => {
+            // Native: /demo (cookie sign-in) doesn't exist in the bundled
+            // app — fetch the demo session tokens and adopt them instead.
+            if (!native) return;
+            e.preventDefault();
+            setError(null);
+            try {
+              const res = await apiFetch("/api/demo-session", { method: "POST" });
+              if (!res.ok) throw new Error();
+              const { access_token, refresh_token } = await res.json();
+              const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+              if (sessionError) throw new Error();
+              window.location.assign("/");
+            } catch {
+              setError("The demo account isn't available right now.");
+            }
+          }}
+          className="demo-cta"
+          style={demoButtonStyle}
+        >
+          Explore a live demo account
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}>
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </a>
 
         <p
           className="text-center font-mono text-faint mt-10"
