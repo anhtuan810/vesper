@@ -9,6 +9,7 @@
 // remains the source of truth; the customerInfo here is only used for an instant,
 // optimistic unlock after a purchase/restore (the webhook makes it authoritative).
 
+import { Capacitor } from "@capacitor/core";
 import { isNative, getPlatform } from "@/lib/platform";
 import type {
   CustomerInfo,
@@ -37,6 +38,21 @@ function platformApiKey(): string {
 
 // Runtime-only load of the SDK. Never call on the web.
 async function loadPurchases() {
+  // The JS proxy for "Purchases" always exists (registerPlugin returns one even
+  // with no native counterpart), so if the native plugin isn't compiled into this
+  // binary, its bridge calls hang forever — no native handler ever replies — which
+  // surfaces as the paywall button stuck on "One moment…", with zero RevenueCat
+  // logs. Fail loudly instead of hanging. This almost always means the native app
+  // wasn't actually rebuilt after @revenuecat/purchases-capacitor joined the Swift
+  // package set (a stale Xcode/SPM/DerivedData build): OTA ships only JS and cannot
+  // add native code.
+  if (!Capacitor.isPluginAvailable("Purchases")) {
+    const msg =
+      "RevenueCat 'Purchases' native plugin is not registered in this build — " +
+      "rebuild the native app (clean build folder + npx cap sync). OTA cannot deliver native plugins.";
+    console.error("[purchases]", msg);
+    throw new Error(msg);
+  }
   const mod = await import("@revenuecat/purchases-capacitor");
   return mod.Purchases;
 }
