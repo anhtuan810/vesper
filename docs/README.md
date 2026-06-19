@@ -28,6 +28,7 @@ in `src/components`.
 |------|------------|
 | `RELEASING.md` | How changes reach users: web deploy, native OTA, App Store binaries. Read before any release. |
 | `technical-decisions.md` | Supabase schema, API routes, and the calculation rules (net worth, currency, mutations, pensions). |
+| `payments-setup.md` | Stripe + RevenueCat dashboard/env setup, sandbox testing, and the go-live checklist. |
 | `vitals-metrics-reference.md` | Per-vital formulas, thresholds, guards; Perspective percentiles. |
 
 Anything else (feature inventories, roadmaps, design specs, manual QA
