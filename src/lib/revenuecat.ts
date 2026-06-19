@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import type { RevenueCatSubscriber } from "@/lib/revenuecat-webhook";
 
 // Server-side RevenueCat REST helpers. These use the SECRET API key (never the
 // public SDK keys) and so must only ever run on the server.
@@ -36,5 +37,30 @@ export async function deleteRevenueCatCustomer(appUserId: string): Promise<void>
     }
   } catch (e) {
     Sentry.captureException(e, { tags: { area: "revenuecat-delete-customer" } });
+  }
+}
+
+// Fetches the subscriber from RevenueCat's REST API for on-demand entitlement
+// reconciliation (GET /api/subscription self-heal). Returns null when the secret
+// key is unset, the subscriber is unknown (404), or the call fails — callers then
+// fall back to the webhook-written state. Bounded by a 5s timeout so a slow
+// RevenueCat API can't stall the status read.
+export async function fetchRevenueCatSubscriber(
+  appUserId: string,
+): Promise<RevenueCatSubscriber | null> {
+  const key = process.env.REVENUECAT_SECRET_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      `${REVENUECAT_API}/subscribers/${encodeURIComponent(appUserId)}`,
+      { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(5000) },
+    );
+    if (res.status === 404) return null; // unknown subscriber — nothing to reconcile
+    if (!res.ok) throw new Error(`RevenueCat get subscriber failed: ${res.status}`);
+    const body = (await res.json()) as { subscriber?: RevenueCatSubscriber };
+    return body.subscriber ?? null;
+  } catch (e) {
+    Sentry.captureException(e, { tags: { area: "revenuecat-fetch-subscriber" } });
+    return null;
   }
 }
