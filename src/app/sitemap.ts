@@ -6,5 +6,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://volnar.nl/", changeFrequency: "weekly", priority: 1 },
     { url: "https://volnar.nl/privacy", changeFrequency: "monthly", priority: 0.3 },
     { url: "https://volnar.nl/terms", changeFrequency: "monthly", priority: 0.3 },
+    { url: "https://volnar.nl/support", changeFrequency: "monthly", priority: 0.3 },
   ];
 }

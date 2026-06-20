@@ -103,6 +103,7 @@ export default function MarketingPage() {
               <div className="flex flex-col gap-2 text-[13.5px]">
                 <Link href="/privacy" className="text-dim no-underline transition-colors hover:text-fg">Privacy</Link>
                 <Link href="/terms" className="text-dim no-underline transition-colors hover:text-fg">Terms</Link>
+                <Link href="/support" className="text-dim no-underline transition-colors hover:text-fg">Support</Link>
               </div>
             </div>
           </div>
