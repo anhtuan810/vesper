@@ -592,6 +592,25 @@ export async function applyPortfolioChanges({
           applyCostBasisOnly(change, historicalNative);
         }
 
+        // A unit-count change on a held tradeable (buy more, trim, or correct the
+        // count) states the new number of shares but never a value — the model has
+        // no live price. Recompute the stored value from the new units at the live
+        // price so the position value (and the mutation recorded below) stay
+        // consistent with the new count, instead of keeping the old-count value
+        // while units jump. Mirrors the value_delta path, which also sets both
+        // units and value. A failed price lookup leaves the value untouched.
+        const editChangesUnits = typeof change.units === "number";
+        if (
+          editChangesUnits && isTradeable && existing.symbol &&
+          change.value === undefined && !hasValueDelta
+        ) {
+          const priceResult = await fetchYahooPrice(normalizeCryptoSymbol(existing.symbol, existing.type));
+          if (!priceResult.error && priceResult.price && priceResult.price > 0) {
+            change.value = Math.round(change.units! * priceResult.price * 100) / 100;
+            change.currency = priceResult.nativeCurrency;
+          }
+        }
+
         // Price-freshness check for Turn-2 edit commits (resolved units + value from a prior proposal).
         const editIsTradeable = TRADEABLE_TYPES.has(existing.type);
         const editHasResolvedUnitsAndValue =
@@ -621,8 +640,15 @@ export async function applyPortfolioChanges({
         if (change.country !== undefined) updateData.country = change.country;
         if (change.symbol !== undefined) updateData.symbol = change.symbol;
         if (change.units !== undefined) updateData.units = change.units;
-        if (change.buy_price !== undefined) updateData.buy_price = change.buy_price;
-        if (change.buy_date !== undefined) updateData.buy_date = change.buy_date || null;
+        // A unit-count change is a transaction on top of the existing lot, NOT a
+        // re-acquisition: keep the position's original buy_date/buy_price anchor so
+        // the "held since" date and cost basis of the shares already held survive
+        // the new purchase. The transaction's own date is still recorded on the
+        // edit mutation (occurred_at) below. Only a pure date/basis edit (no unit
+        // change) — image-import date-fill, or an explicit "I actually bought it on
+        // <date>" correction — moves the anchor.
+        if (change.buy_price !== undefined && !editChangesUnits) updateData.buy_price = change.buy_price;
+        if (change.buy_date !== undefined && !editChangesUnits) updateData.buy_date = change.buy_date || null;
         if (change.mortgage_balance !== undefined) {
           updateData.mortgage_balance = change.mortgage_balance;
           updateData.mortgage_balance_recorded_at = new Date().toISOString();
@@ -735,7 +761,10 @@ export async function applyPortfolioChanges({
           // single-add path uses up front (line ~442) — so the period delta
           // and backfill key off when the holding was actually acquired, not
           // when the row happened to be imported.
-          if (change.buy_date) {
+          // Gated on !editChangesUnits: this only fires for a pure date-fill edit
+          // (units unchanged). A buy-more edit carries its own later transaction
+          // date, which must NOT be back-stamped onto the original acquisition.
+          if (change.buy_date && !editChangesUnits) {
             await supabase.from("mutations")
               .update({ occurred_at: change.buy_date })
               .eq("user_id", userId)

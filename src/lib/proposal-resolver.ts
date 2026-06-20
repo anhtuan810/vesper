@@ -117,6 +117,26 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
     return `Update ${existing.name}: ${derivedUnits} shares at ${cur} ${p.toFixed(2)} on ${proposal.buy_date} = ${cur} ${derivedValue.toLocaleString()}`;
   }
 
+  // A unit-count change on a held tradeable (buy more / trim / correct the count):
+  // surface the resolved share delta and the new total so the user can verify it
+  // before saving, instead of the generic "Update position" fallback. Cost basis is
+  // filled silently at commit; the position's original acquisition date is preserved.
+  if (action === "edit" && typeof proposal.units === "number" && typeof proposal.value_delta !== "number") {
+    const existing = currentAssets.find(
+      (a) => a.name.toLowerCase() === name.toLowerCase() ||
+             (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
+    );
+    if (existing && typeof existing.units === "number" && TRADEABLE_TYPES_SET.has(existing.type)) {
+      const label = existing.symbol ?? existing.name;
+      const noun = existing.type === "crypto" ? "units" : existing.type === "gold" ? "oz" : "shares";
+      const newUnits = proposal.units;
+      const delta = Math.round((newUnits - existing.units) * 1e8) / 1e8;
+      if (delta > 0) return `Buy ${delta} more ${label} ${noun}, bringing total holding to ${newUnits} ${noun}`;
+      if (delta < 0) return `Reduce ${label} by ${Math.abs(delta)} ${noun}, leaving ${newUnits} ${noun}`;
+      return `Set ${label} to ${newUnits} ${noun}`;
+    }
+  }
+
   if (action === "add") {
     // Pension: a confirmation echo of EVERY captured field for the shape. The
     // deterministic gate runs first — if any required field is missing, refuse
