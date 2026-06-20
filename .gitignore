@@ -51,3 +51,10 @@ build/
 # Apple signing/auth keys — never commit
 *.p8
 AuthKey_*
+AppStore submission/01_hero_networth.png
+AppStore submission/02_chat.png
+AppStore submission/03_diary.png
+AppStore submission/04_vitals.png
+AppStore submission/05_property.png
+AppStore submission/06_perspective.png
+AppStore submission/panorama_strip_reference.png
