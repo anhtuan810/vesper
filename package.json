@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/run-tests.mjs",
     "mobile:sync": "npm run build:native && cap sync ios",
     "mobile:open": "cap open ios",
     "mobile:run": "cap run ios",
@@ -51,6 +53,7 @@
     "patch-package": "^8.0.1",
     "playwright": "^1.60.0",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }

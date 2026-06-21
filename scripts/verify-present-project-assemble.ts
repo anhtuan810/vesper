@@ -5,6 +5,7 @@
 import type { ScenarioAsset, Modification, UsdRates } from "../src/lib/scenario/engine";
 import { computePresentComparison } from "../src/lib/scenario/present-compute";
 import { computeProjection } from "../src/lib/scenario/project-compute";
+import { projectTrajectory, ASSUMED_ANNUAL_REAL_RETURN } from "../src/lib/scenario/projection";
 
 let failures = 0;
 function check(label: string, cond: boolean, detail = "") {
@@ -60,7 +61,9 @@ console.log("Present — pay €50k off the mortgage (from cash):");
 console.log("Project — trajectory matches the engine's annuity FV:");
 {
   const assets: ScenarioAsset[] = [{ id: "x", name: "ETF", type: "etf", value: 90_000, currency: "EUR" }]; // €90k → $100k
-  // 365-day window: 100k → 110k USD ⇒ ~10% derived rate.
+  // Trajectory drives off the labelled ASSUMED rate, never a fit from the user's
+  // snapshot window. These snapshots imply a 10%/yr slope on purpose — to prove
+  // they are IGNORED and the assumed rate is used instead.
   const snapshots = [
     { date: "2025-06-02", total_value: 100_000 },
     { date: "2026-06-02", total_value: 110_000 },
@@ -70,7 +73,7 @@ console.log("Project — trajectory matches the engine's annuity FV:");
   else {
     const start = r.startUsd; // 90k EUR / 0.9 = 100k USD
     check("start = live net worth in USD (100k)", approx(start, 100_000), `${start}`);
-    check("derived rate ~10%", approx(r.rate, 0.10, 1e-3), `${(r.rate * 100).toFixed(2)}%`);
+    check("trajectory uses the assumed rate, not a snapshot fit", approx(r.rate, ASSUMED_ANNUAL_REAL_RETURN), `${(r.rate * 100).toFixed(2)}%`);
     const ppy = 12, n = 120, pr = Math.pow(1 + r.rate, 1 / ppy) - 1, growth = Math.pow(1 + pr, n);
     const expected = start * growth + 1000 * ((growth - 1) / pr);
     check("trajectory mid = closed-form annuity FV", approx(r.trajectory.mid, expected), `mid=${r.trajectory.mid.toFixed(2)} expected=${expected.toFixed(2)}`);
@@ -88,12 +91,17 @@ console.log("Project — solve-for round-trips to the target:");
   const r = computeProjection({ assets, snapshots, usdRates: RATES, now }, { mode: "solve", targetUsd: 500_000, date: "2036-12-31", frequency: "monthly" }, null);
   if (!("mode" in r) || r.mode !== "solve") { check("solve result", false); }
   else {
-    const back = computeProjection(
-      { assets, snapshots, usdRates: RATES, now },
-      { mode: "trajectory", date: "2036-12-31", contribution: { amount: r.solve.amountPerPeriod, frequency: "monthly" } },
-      null,
+    // Solve derives its rate from the snapshot window (here flat → 0%). Verify the
+    // solved contribution reproduces the target when projected at THAT rate.
+    // Trajectory MODE intentionally uses the assumed rate (a different lens), so
+    // project directly at solve's own rate to round-trip the math.
+    const back = projectTrajectory(
+      r.startUsd,
+      r.rate,
+      { amount: r.solve.amountPerPeriod, frequency: "monthly" },
+      r.solve.horizonYears,
     );
-    check("required contribution reaches target", "mode" in back && back.mode === "trajectory" && approx(back.trajectory.mid, 500_000), "mode" in back && back.mode === "trajectory" ? `mid=${back.trajectory.mid.toFixed(2)}` : "");
+    check("required contribution reaches target (at solve's rate)", approx(back.mid, 500_000), `mid=${back.mid.toFixed(2)}`);
   }
 }
 
