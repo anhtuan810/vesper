@@ -10,13 +10,12 @@ name: Demo read eval (live, end-to-end)
 # key); set the APP_BASE_URL repository variable to override the default. Skips
 # cleanly if the demo session is unavailable, and never fails on a 429.
 #
-# Separate from the model eval so it can run on its own cadence and so iterating
-# the model suite never touches the demo account's daily chat limit.
+# MANUAL-ONLY — run it from the Actions tab via the "Run workflow" button. No
+# schedule, so it never spends tokens or the demo account's daily chat budget on
+# its own. Separate from the model eval so each can be triggered independently.
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "30 7 * * *" # daily at 07:30 UTC (after the model eval)
 
 jobs:
   demo-eval:

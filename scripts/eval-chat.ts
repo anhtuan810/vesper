@@ -10,9 +10,9 @@
 //   • "must record when complete"  → asserts a <changes> commit with the right names
 // A bare <changes> on a read/ambiguous/guardrail turn is the real failure.
 //
-// Needs ANTHROPIC_API_KEY (a few cents/run, mildly non-deterministic) — runs
-// nightly + on demand via chat-eval.yml, never on per-commit CI. Skips without
-// the key. Run locally:  ANTHROPIC_API_KEY=sk-... npx tsx scripts/eval-chat.ts
+// Needs ANTHROPIC_API_KEY (a few cents/run, mildly non-deterministic) — run it
+// manually via chat-eval.yml (Actions → Run workflow), never on per-commit CI.
+// Skips without the key. Run locally: ANTHROPIC_API_KEY=sk-... npx tsx scripts/eval-chat.ts
 
 import Anthropic from "@anthropic-ai/sdk";
 import { buildOnboardingPrompt, buildStaticSystem, buildDynamicContext } from "../src/lib/claude";

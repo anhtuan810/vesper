@@ -5,14 +5,12 @@ name: Chat eval (live model)
 # asserts it makes the right decision (commit vs ask vs propose vs decline).
 #
 # This costs a few Anthropic tokens per run and is mildly non-deterministic, so
-# it does NOT run on every commit — only on demand (the "Run workflow" button)
-# and once a day. It needs an ANTHROPIC_API_KEY repository secret; without it the
-# eval skips and the job stays green.
+# it is MANUAL-ONLY — run it from the Actions tab via the "Run workflow" button.
+# No schedule, so it never spends tokens on its own. It needs an ANTHROPIC_API_KEY
+# repository secret; without it the eval skips and the job stays green.
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "0 7 * * *" # daily at 07:00 UTC
 
 jobs:
   chat-eval:
