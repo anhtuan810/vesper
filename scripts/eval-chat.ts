@@ -101,6 +101,9 @@ async function run(): Promise<void> {
       const { ok, detail } = c.expect(raw);
       if (!ok) failures++;
       console.log(`  [${ok ? "PASS" : "FAIL"}] ${c.name}  — ${detail}`);
+      // On a miss, surface what the model actually said so the failure is
+      // diagnosable from the CI log (real gap vs. a benign/ambiguous reply).
+      if (!ok) console.log(`        model said: ${raw.replace(/\s+/g, " ").trim().slice(0, 400)}`);
     } catch (err) {
       failures++;
       console.log(`  [ERROR] ${c.name}  — ${err instanceof Error ? err.message : String(err)}`);
