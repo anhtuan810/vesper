@@ -712,11 +712,21 @@ export function buildDynamicContext(
       }).join("\n")
     : "";
 
+  // Net worth, presented IN THE DISPLAY CURRENCY so the model never has to do FX
+  // arithmetic on the headline figure (it was overstating net worth for non-USD
+  // users by quoting the USD-equivalent as if it were their currency). `total` is
+  // USD; usdRates[X] is units of X per 1 USD, so total * rate = display currency.
+  const dispSym = displayCurrency === "USD" ? "$" : displayCurrency === "GBP" ? "£" : "€";
+  const dispRate = displayCurrency === "USD" ? 1 : usdRates?.[displayCurrency];
+  const netWorthLabel = dispRate
+    ? `${dispSym}${Math.round(total * dispRate).toLocaleString()}`
+    : `$${Math.round(total).toLocaleString()} USD-equivalent`;
+
   return [
     userName ? `User: ${userName}` : "",
     `Today's date: ${today}`,
-    `CURRENT PORTFOLIO (${netWorthAssets.length} positions, net worth ~$${Math.round(total).toLocaleString()} USD-equivalent):`,
-    "Note: each position value is shown in its native currency (see prefix). Render prose responses in " + displayCurrency + ".",
+    `CURRENT PORTFOLIO (${netWorthAssets.length} positions, net worth ~${netWorthLabel}):`,
+    `Note: the net worth above is already in ${displayCurrency} — quote it directly, do not convert it. Each position value is shown in its native currency (see prefix). Render prose responses in ${displayCurrency}.`,
     assetList,
     "",
     total > 0

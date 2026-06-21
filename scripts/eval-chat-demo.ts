@@ -37,7 +37,7 @@ const QUESTIONS: Q[] = [
   { name: "pension ≈ €34,000", q: "What's my workplace pension worth?", ok: (a) => /34[,. ]?000|34\s?k/i.test(a) },
   { name: "owns Amsterdam + Rotterdam property", q: "Do I own any property?", ok: (a) => /amsterdam/i.test(a) && /rotterdam/i.test(a) },
   { name: "portfolio currency is EUR", q: "What currency is my portfolio shown in?", ok: (a) => /eur|euro|€/i.test(a) },
-  { name: "net worth ≈ €330–369k", q: "What's my net worth?", ok: (a) => /3[0-6]\d[,. ]?\d{3}|3[0-6]\d\s?k/i.test(a) },
+  { name: "net worth ≈ €340–399k (deterministic ~€368k)", q: "What's my net worth?", ok: (a) => /3[4-9]\d[,. ]?\d{3}|3[4-9]\d\s?k/i.test(a) },
   { name: "biggest exposure is property", q: "What's my biggest holding?", ok: (a) => /propert|apartment|amsterdam|real[- ]?estate/i.test(a) },
 ];
 
