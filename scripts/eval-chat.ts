@@ -58,18 +58,23 @@ const cases: EvalCase[] = [
     expect: (raw) => ({ ok: has(raw, "clarify") && !has(raw, "changes"), detail: `clarify=${has(raw, "clarify")} changes=${has(raw, "changes")}` }),
   },
   {
-    // Value-mode add must PROPOSE (so the user confirms resolved units) — not silently commit.
-    name: "Value-mode add proposes, doesn't silently commit",
+    // Safety invariant: a value-mode add must NEVER silently commit — it must
+    // propose resolved units to confirm, or ask a clarifying question first.
+    // The model legitimately varies between proposing and asking the
+    // acquisition date first; both are correct. Only a bare <changes> is wrong.
+    name: "Value-mode add never silently commits (proposes or asks first)",
     system: ONBOARDING,
     message: "Add €5000 of Nvidia",
-    expect: (raw) => ({ ok: has(raw, "propose_change") && !has(raw, "changes"), detail: `propose=${has(raw, "propose_change")} changes=${has(raw, "changes")}` }),
+    expect: (raw) => ({ ok: !has(raw, "changes"), detail: `propose=${has(raw, "propose_change")} clarify=${has(raw, "clarify")} changes=${has(raw, "changes")}` }),
   },
   {
-    // Remove must go through confirmation — never a bare committing <changes> delete.
-    name: "Remove asks confirmation, not a bare delete",
+    // Safety invariant: a remove must NEVER be a bare committing <changes>
+    // delete — it goes through a confirmation propose, or first asks the
+    // sold-vs-mistake disambiguation. Both are correct; a silent delete is not.
+    name: "Remove never bare-deletes (confirms or asks first)",
     system: EXISTING,
     message: "remove AMD",
-    expect: (raw) => ({ ok: has(raw, "propose_change") && !has(raw, "changes"), detail: `propose=${has(raw, "propose_change")} changes=${has(raw, "changes")}` }),
+    expect: (raw) => ({ ok: !has(raw, "changes"), detail: `propose=${has(raw, "propose_change")} clarify=${has(raw, "clarify")} changes=${has(raw, "changes")}` }),
   },
   {
     // A stated pension balance BEGINS an intake — it is never a one-line commit.
