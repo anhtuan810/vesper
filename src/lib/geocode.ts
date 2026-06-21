@@ -70,32 +70,77 @@ function buildCanonicalAddress(result: NominatimResult): string {
   return parts.length >= 2 ? parts.join(", ") : result.display_name;
 }
 
-// Parse "Street Name 100, City, CC" into components for a structured Nominatim query.
+// Normalise a user-/model-typed address before geocoding. The model sometimes
+// re-appends the postcode when it re-states an address (e.g. the chat showed
+// "Hafenstraße 16, 18356 Barth, 18356, Germany"), and that duplicate makes the
+// geocoder fail. Drop a standalone postcode segment that already appears inside
+// another segment, and collapse exact duplicate segments. Exported for tests.
+export function cleanAddress(address: string): string {
+  const segments = address.split(",").map((s) => s.trim()).filter(Boolean);
+  const out: string[] = [];
+  for (const seg of segments) {
+    // A standalone postcode (5-digit DE / "1234 AB" NL / 4-5 digit) that already
+    // appears within a segment we've kept is a duplicate — skip it.
+    if (/^\d{4,5}(?:\s?[A-Za-z]{2})?$/.test(seg)) {
+      const token = seg.replace(/\s+/g, "").toUpperCase();
+      if (out.some((p) => p.replace(/\s+/g, "").toUpperCase().includes(token))) continue;
+    }
+    // Skip an exact (case-insensitive) duplicate of a segment already kept.
+    if (out.some((p) => p.toLowerCase() === seg.toLowerCase())) continue;
+    out.push(seg);
+  }
+  return out.join(", ");
+}
+
+// Parse "Street Name 100, City, CC" into components for a structured Nominatim
+// query. Handles the European "Street N, <postcode> City, Country" form by
+// splitting the postcode out of the city segment (German "18356 Barth", Dutch
+// "5625 NJ Eindhoven") so the structured query gets a clean city + postalcode.
 // Returns empty object when the address has fewer than 2 comma-separated parts.
-function parseAddressParts(address: string): {
+// Exported for tests.
+export function parseAddressParts(address: string): {
   street?: string;
   city?: string;
+  postcode?: string;
   countryInAddress?: string;
 } {
   const parts = address.split(",").map((s) => s.trim()).filter(Boolean);
-  if (parts.length >= 3) {
-    return { street: parts[0], city: parts[1], countryInAddress: parts[parts.length - 1] };
+  if (parts.length < 2) return {};
+
+  const countryInAddress = parts[parts.length - 1];
+  const street = parts.length >= 3 ? parts[0] : undefined;
+  const cityField = parts.length >= 3 ? parts[1] : parts[0];
+
+  // Pull a leading ("18356 Barth", "5625 NJ Eindhoven") or trailing ("Barth
+  // 18356") postcode out of the city segment.
+  let postcode: string | undefined;
+  let city: string | undefined = cityField;
+  const leading = cityField.match(/^(\d{4,5}(?:\s?[A-Za-z]{2})?)\s+(.+)$/);
+  const trailing = cityField.match(/^(.+?)\s+(\d{4,5}(?:\s?[A-Za-z]{2})?)$/);
+  if (leading) {
+    postcode = leading[1].trim();
+    city = leading[2].trim();
+  } else if (trailing) {
+    city = trailing[1].trim();
+    postcode = trailing[2].trim();
   }
-  if (parts.length === 2) {
-    return { city: parts[0], countryInAddress: parts[1] };
-  }
-  return {};
+
+  return { street, city, postcode, countryInAddress };
 }
 
 export async function geocodeAddress(
   address: string,
   country?: string | null
 ): Promise<GeocodeResult | null> {
-  const cacheKey = `${address.toLowerCase().trim()}|${(country || "").toLowerCase()}`;
+  // Normalise first: drop a duplicated postcode the model sometimes re-appends
+  // (e.g. "Hafenstraße 16, 18356 Barth, 18356, Germany") before caching/parsing.
+  const cleaned = cleanAddress(address);
+
+  const cacheKey = `${cleaned.toLowerCase().trim()}|${(country || "").toLowerCase()}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  const { street, city, countryInAddress } = parseAddressParts(address);
+  const { street, city, postcode, countryInAddress } = parseAddressParts(cleaned);
   const countryCode = country || countryInAddress;
 
   // Attempt 1: structured query — street-level precision, preferred over free-text
@@ -104,6 +149,7 @@ export async function geocodeAddress(
     params.set("city", city.trim());
     params.set("country", countryCode.trim());
     if (street) params.set("street", street.trim());
+    if (postcode) params.set("postalcode", postcode.trim());
     const structuredUrl = `https://nominatim.openstreetmap.org/search?${params}`;
 
     const data = await nominatimFetch(structuredUrl);
@@ -123,9 +169,9 @@ export async function geocodeAddress(
 
   // Attempt 2: free-text fallback (appends country when not already present in the string)
   const q =
-    countryCode && !address.toLowerCase().includes(countryCode.toLowerCase())
-      ? `${address}, ${countryCode}`
-      : address;
+    countryCode && !cleaned.toLowerCase().includes(countryCode.toLowerCase())
+      ? `${cleaned}, ${countryCode}`
+      : cleaned;
   const freeTextUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=1`;
 
   const data = await nominatimFetch(freeTextUrl);
