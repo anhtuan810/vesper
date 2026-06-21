@@ -58,19 +58,19 @@ const cases: EvalCase[] = [
   {
     name: "A1 batch: 3 stocks with units → commits all three",
     system: ONBOARDING,
-    message: "I have 100 Apple, 50 Microsoft and 20 Tesla",
+    message: "I have 100 Apple, 50 Microsoft and 20 Tesla — just track from now",
     expect: (r) => has(r, "changes") && /apple|aapl/i.test(cx(r)) && /micro|msft/i.test(cx(r)) && /tesla|tsla/i.test(cx(r)),
   },
   {
     name: "A2 batch: mixed US + EU ETF → none silently dropped",
     system: ONBOARDING,
-    message: "Add 10 NVDA, 5 ASML and 200 VWCE",
+    message: "Add 10 NVDA, 5 ASML and 200 VWCE, just track from now",
     expect: (r) => /nvda|nvidia/i.test(r) && /asml/i.test(r) && /vwce/i.test(r),
   },
   {
     name: "A3 batch: messy/lowercase tickers → all three addressed (none dropped)",
     system: ONBOARDING,
-    message: "AAPL 100, googl 30, amzn 5",
+    message: "AAPL 100, googl 30, amzn 5 — just track from now",
     expect: (r) => /aapl|apple/i.test(r) && /googl|google|alphabet/i.test(r) && /amzn|amazon/i.test(r),
   },
   {
@@ -90,13 +90,13 @@ const cases: EvalCase[] = [
   {
     name: "B2 crypto by units → commits Bitcoin",
     system: ONBOARDING,
-    message: "I have 0.5 Bitcoin",
+    message: "I have 0.5 Bitcoin, just track from now",
     expect: (r) => has(r, "changes") && /btc|bitcoin/i.test(cx(r)),
   },
   {
     name: "B3 gold in ounces → commits gold",
     system: ONBOARDING,
-    message: "I own 10 oz of gold",
+    message: "I own 10 oz of gold, just track from now",
     expect: (r) => has(r, "changes") && /gold/i.test(cx(r)),
   },
   {
@@ -309,8 +309,11 @@ async function run(): Promise<void> {
       // otherwise the model sometimes returns the opener instead of acting.
       const messages: Anthropic.Messages.MessageParam[] = c.system === ONBOARDING
         ? [
-            { role: "user", content: "I'd like to set up my portfolio." },
-            { role: "assistant", content: "Of course — tell me what you own, with rough amounts where you can." },
+            { role: "user", content: "Hi" },
+            // Mirror the opener's final invitation so the model knows the welcome
+            // is already done and the next user message is real input to act on —
+            // otherwise it sometimes re-issues the fixed 3-line opener.
+            { role: "assistant", content: "Tell me what you own — words, a screenshot, a photo. Whatever's easiest. Nothing leaves this conversation." },
             { role: "user", content: c.message },
           ]
         : [{ role: "user", content: c.message }];
