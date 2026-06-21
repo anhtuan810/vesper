@@ -10,6 +10,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/run-tests.mjs",
+    "eval:chat": "tsx scripts/eval-chat.ts",
     "mobile:sync": "npm run build:native && cap sync ios",
     "mobile:open": "cap open ios",
     "mobile:run": "cap run ios",
