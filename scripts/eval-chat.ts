@@ -62,12 +62,13 @@ const cases: EvalCase[] = [
     expect: (r) => has(r, "changes") && /apple|aapl/i.test(cx(r)) && /micro|msft/i.test(cx(r)) && /tesla|tsla/i.test(cx(r)),
   },
   {
-    name: "A2 mixed batch w/ a dual-listed ticker → clarifies the listing, doesn't silently pick",
+    name: "A2 mixed batch w/ ambiguous listings → asks which listing/venue, doesn't silently guess",
     system: ONBOARDING,
     message: "Add 10 NVDA, 5 ASML and 200 VWCE, just track from now",
-    // ASML is dual-listed; the model should ask which listing rather than guess.
-    // It may resolve that ambiguity before committing the rest — that's correct.
-    expect: (r) => /asml/i.test(r) && (has(r, "clarify") || /listing|exchange|venue|european|us ticker|amsterdam|xetra/i.test(r)),
+    // Both ASML (dual-listed) and VWCE (UCITS ETF venue) are ambiguous; the model
+    // should ask which listing/exchange rather than silently pick one. It may
+    // clarify either one first — the invariant is that it asks, not which it asks.
+    expect: (r) => has(r, "clarify") || /listing|exchange|venue|which exchange|ucits|dual-listed|xetra|amsterdam|us ticker|european/i.test(r),
   },
   {
     name: "A3 batch: messy/lowercase tickers → all three addressed (none dropped)",
