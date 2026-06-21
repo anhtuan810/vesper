@@ -46,17 +46,60 @@ function withCacheGen(path: string, init?: RequestInit): string {
   }
 }
 
-/** Drop-in replacement for fetch() on /api paths. */
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const target = withCacheGen(path, init);
-  if (!API_ORIGIN) return fetch(target, init);
+/**
+ * fetch() options plus an optional per-request timeout. When `timeoutMs` is set
+ * — and the caller hasn't supplied its own `signal` — the request aborts after
+ * that many milliseconds and rejects, so a hung connection can't leave the
+ * caller stuck. There is no default: callers opt in per request, so every
+ * existing call site (including long-running ones like /api/chat) behaves
+ * exactly as before.
+ */
+export type ApiFetchInit = RequestInit & { timeoutMs?: number };
 
-  const headers = new Headers(init?.headers);
-  try {
-    const { data: { session } } = await createBrowserSupabase().auth.getSession();
-    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
-  } catch {
-    // No session (logged out) — let the API return 401 as it would on the web.
+/** Drop-in replacement for fetch() on /api paths. */
+export async function apiFetch(path: string, init?: ApiFetchInit): Promise<Response> {
+  const { timeoutMs, ...rest } = init ?? {};
+  const target = withCacheGen(path, rest);
+
+  // Resolve the URL + options for the active delivery target: web is
+  // same-origin (session via cookies); native is cross-origin and carries the
+  // access token as a Bearer header.
+  let url: string;
+  let options: RequestInit;
+  if (!API_ORIGIN) {
+    url = target;
+    options = rest;
+  } else {
+    const headers = new Headers(rest.headers);
+    try {
+      const { data: { session } } = await createBrowserSupabase().auth.getSession();
+      if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    } catch {
+      // No session (logged out) — let the API return 401 as it would on the web.
+    }
+    url = `${API_ORIGIN}${target}`;
+    options = { ...rest, headers };
   }
-  return fetch(`${API_ORIGIN}${target}`, { ...init, headers });
+
+  // No timeout requested, or the caller manages its own cancellation: behave
+  // exactly like a plain fetch.
+  if (timeoutMs == null || rest.signal) return fetch(url, options);
+
+  // Abort once the timeout elapses so a stalled connection rejects (with a
+  // clear message) instead of hanging forever. The timer is cleared in a
+  // finally so it never leaks past the request.
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (timedOut) throw new Error("Request timed out");
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }

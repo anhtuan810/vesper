@@ -36,17 +36,23 @@ export function AiConsentGate() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await apiFetch("/api/users/ai-consent", { method: "POST" });
+      // timeoutMs guards against a stalled request: it aborts (and rejects into
+      // the catch below) so the button can never freeze on "Saving…".
+      const res = await apiFetch("/api/users/ai-consent", { method: "POST", timeoutMs: 15000 });
       if (!res.ok) {
         setError("Something went wrong. Please try again.");
-        setSubmitting(false);
         return;
       }
       const data = await res.json().catch(() => ({}));
       // Setting the local timestamp flips `open` to false and unmounts the sheet.
       markAiConsent(typeof data?.ai_consent_at === "string" ? data.ai_consent_at : undefined);
     } catch {
+      // Thrown or timed-out request: surface the error and leave the gate open
+      // so the user can retry Continue.
       setError("Something went wrong. Please try again.");
+    } finally {
+      // Reset on every settled outcome — success, non-ok, and throw/timeout
+      // alike — so a stalled request can never leave the button stuck.
       setSubmitting(false);
     }
   }, [submitting, markAiConsent]);
