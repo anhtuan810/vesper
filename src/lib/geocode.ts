@@ -44,9 +44,19 @@ async function nominatimFetch(url: string): Promise<NominatimResult[] | null> {
   }
 }
 
-// Build a compact "Road Number, Postcode, Country" string from Nominatim address fields.
-// Falls back to display_name when essential components are missing.
-function buildCanonicalAddress(result: NominatimResult): string {
+// Build a "Road Number, Postcode City, Country" string from Nominatim address
+// fields. Falls back to display_name when essential components are missing.
+//
+// CRITICAL — this string must round-trip: a property added through chat is
+// geocoded at propose time, this canonical form is shown as the "Resolved
+// address" and stored, and then it is geocoded AGAIN at commit ("Confirm and
+// save") straight from this string. The old format dropped the city and kept
+// only the postcode ("5th Avenue 350, 10118, United States"), so the second
+// pass read "10118" as the city, found no such town, and the commit failed with
+// "I couldn't find that address" — even though the first pass had resolved it.
+// Keeping the city in the locality segment makes parseAddressParts recover a
+// clean city + postcode on the way back in. Exported for tests.
+export function buildCanonicalAddress(result: NominatimResult): string {
   const addr = result.address;
   if (!addr) return result.display_name;
 
@@ -58,12 +68,12 @@ function buildCanonicalAddress(result: NominatimResult): string {
     parts.push(addr.road);
   }
 
-  if (addr.postcode) {
-    parts.push(addr.postcode);
-  } else {
-    const city = addr.city || addr.town || addr.village;
-    if (city) parts.push(city);
-  }
+  // Locality line: postcode AND city together ("10118 New York"), so the string
+  // re-parses into both fields. Never postcode-only — that is what broke the
+  // commit round-trip. Falls back to whichever component is present.
+  const city = addr.city || addr.town || addr.village || addr.municipality || addr.county;
+  const locality = [addr.postcode, city].filter(Boolean).join(" ");
+  if (locality) parts.push(locality);
 
   if (addr.country) parts.push(addr.country);
 
@@ -111,8 +121,16 @@ export function parseAddressParts(address: string): {
   const street = parts.length >= 3 ? parts[0] : undefined;
   const cityField = parts.length >= 3 ? parts[1] : parts[0];
 
-  // Pull a leading ("18356 Barth", "5625 NJ Eindhoven") or trailing ("Barth
-  // 18356") postcode out of the city segment.
+  // A city segment that is JUST a postcode ("10118") is a postcode, not a city —
+  // feed it to the structured query as the postcode and leave the city empty so
+  // we never search for a town literally named "10118" (the commit-round-trip
+  // failure on a postcode-only canonical address).
+  if (/^\d{4,5}(?:\s?[A-Za-z]{2})?$/.test(cityField)) {
+    return { street, city: undefined, postcode: cityField, countryInAddress };
+  }
+
+  // Pull a leading ("18356 Barth", "5625 NJ Eindhoven", "10118 New York") or
+  // trailing ("Barth 18356") postcode out of the city segment.
   let postcode: string | undefined;
   let city: string | undefined = cityField;
   const leading = cityField.match(/^(\d{4,5}(?:\s?[A-Za-z]{2})?)\s+(.+)$/);
@@ -143,10 +161,12 @@ export async function geocodeAddress(
   const { street, city, postcode, countryInAddress } = parseAddressParts(cleaned);
   const countryCode = country || countryInAddress;
 
-  // Attempt 1: structured query — street-level precision, preferred over free-text
-  if (city && countryCode) {
+  // Attempt 1: structured query — street-level precision, preferred over free-text.
+  // A postcode alone (with country) is enough to run it — we don't require a city,
+  // so a lossy "postcode, country" address still gets the precise structured pass.
+  if ((city || postcode) && countryCode) {
     const params = new URLSearchParams({ format: "json", limit: "1", addressdetails: "1" });
-    params.set("city", city.trim());
+    if (city) params.set("city", city.trim());
     params.set("country", countryCode.trim());
     if (street) params.set("street", street.trim());
     if (postcode) params.set("postalcode", postcode.trim());
