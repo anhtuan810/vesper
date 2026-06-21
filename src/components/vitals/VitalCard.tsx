@@ -15,6 +15,10 @@ export interface VitalCardProps {
   /** Desktop grid only: fill the row height and pin the suggestion strip to the
    *  bottom so strips align across cards with differing chart heights. */
   fillHeight?: boolean;
+  /** Legibility bump for the reading surfaces (eyebrow micro-label + suggestion
+   *  body/label). Used only by the liquidity-posture card; other cards keep the
+   *  standard compact sizes. */
+  emphasizeText?: boolean;
   children: ReactNode;
 }
 
@@ -33,6 +37,7 @@ export function VitalCard({
   benchLine,
   suggestion,
   fillHeight = false,
+  emphasizeText = false,
   children,
 }: VitalCardProps) {
   return (
@@ -60,7 +65,7 @@ export function VitalCard({
         <div>
           <div
             style={{
-              fontSize: "9.5px",
+              fontSize: emphasizeText ? "11px" : "9.5px",
               fontWeight: 500,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
@@ -175,6 +180,8 @@ export function VitalCard({
               variant={suggestion.variant}
               label={suggestion.label}
               body={suggestion.body}
+              labelFontSize={emphasizeText ? "11px" : undefined}
+              bodyFontSize={emphasizeText ? "15px" : undefined}
             />
           </div>
         ) : (
@@ -182,6 +189,8 @@ export function VitalCard({
             variant={suggestion.variant}
             label={suggestion.label}
             body={suggestion.body}
+            labelFontSize={emphasizeText ? "11px" : undefined}
+            bodyFontSize={emphasizeText ? "15px" : undefined}
           />
         )
       )}

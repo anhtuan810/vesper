@@ -273,7 +273,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {visibleFields.length > 0 && (
         <>
           <div style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
@@ -314,7 +314,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
                     }}>
                       {label}
                     </div>
-                    <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55 }}>
+                    <div style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.55 }}>
                       {value?.split(/\.\.\s*/).filter(s => s.trim()).slice(0, 2).map((sentence, i) => (
                         <div key={i} style={{ marginBottom: 5 }}>{sentence.trim()}</div>
                       ))}

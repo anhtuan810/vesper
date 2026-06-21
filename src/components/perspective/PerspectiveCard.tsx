@@ -279,7 +279,7 @@ export function PerspectiveCard({
               >
                 {formatPercentile(row.percentile)}
                 <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                  {ordinalSuffix(row.percentile)}
+                  {ordinalSuffix(Math.round(row.percentile))}
                 </span>
               </div>
               <div

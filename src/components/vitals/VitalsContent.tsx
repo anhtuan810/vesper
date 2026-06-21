@@ -599,6 +599,32 @@ function buildRealAssetCard(vital: VitalResult): CardConfig {
 
 function buildLiquidityCard(vital: VitalResult, displayCurrency: string): CardConfig {
   const v = vital.value as LiquidityPostureValue;
+
+  // Empty/thin portfolio: nothing to assess. Show a neutral hero ("—") and a calm
+  // prompt instead of a 0% reading and the red "could force selling" alarm.
+  if (v.insufficient) {
+    return {
+      props: {
+        eyebrow: "Liquidity posture",
+        heroNumber: "—",
+        heroNumberClass: "default",
+        subLine: "within 1 week",
+        rightStat: {
+          label: "Buffer target",
+          value: `${v.liquidBufferPct.toFixed(0)}%`,
+        },
+        benchLine: `target: ≥ ${v.liquidBufferPct}% deployable within 1 week`,
+        suggestion: {
+          variant: "context",
+          label: "Worth knowing",
+          body: <>Add assets to see your liquidity posture.</>,
+        },
+        emphasizeText: true,
+      },
+      chart: <LiquidityStack data={v} />,
+    };
+  }
+
   return {
     props: {
       eyebrow: "Liquidity posture",
@@ -611,6 +637,7 @@ function buildLiquidityCard(vital: VitalResult, displayCurrency: string): CardCo
       },
       benchLine: `target: ≥ ${v.liquidBufferPct}% deployable within 1 week`,
       suggestion: liquiditySuggestion(v, vital.band, displayCurrency),
+      emphasizeText: true,
     },
     chart: <LiquidityStack data={v} />,
   };

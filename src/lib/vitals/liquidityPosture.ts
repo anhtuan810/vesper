@@ -19,6 +19,11 @@ export interface LiquidityPostureValue {
   // portion of the locked tier; both come from the same eurValue sum, never invented.
   lockedEur: number;
   lockedPensionEur: number;
+  // True when there is nothing to assess — no assets, or zero/negative net worth.
+  // The card renders a neutral "add assets" state rather than a 0% liquidity alarm;
+  // an illiquid-but-populated portfolio (e.g. property-only) is NOT insufficient and
+  // keeps its real (possibly red) reading.
+  insufficient: boolean;
 }
 
 export function applies(_user: VitalUser, _assets: Asset[], _snapshots?: Snapshot[]): boolean {
@@ -36,7 +41,10 @@ export function compute(
   const assets = rawAssets.filter(a => !isIncomePension(a));
   const netWorth = computeNetWorth(assets);
 
-  if (netWorth <= 0) {
+  // Empty or thin: no owned assets, or net worth that nets to zero/negative. There's
+  // nothing to bucket, so flag insufficient and let the card show a neutral state
+  // instead of a misleading 0%-deployable "could force selling" alarm.
+  if (assets.length === 0 || netWorth <= 0) {
     return {
       deployable1wPct: 0,
       sameDayPct: 0,
@@ -47,6 +55,7 @@ export function compute(
       liquidBufferPct: liquidBufferTargetPct,
       lockedEur: 0,
       lockedPensionEur: 0,
+      insufficient: true,
     };
   }
 
@@ -82,10 +91,13 @@ export function compute(
     liquidBufferPct: liquidBufferTargetPct,
     lockedEur: locked,
     lockedPensionEur: lockedPension,
+    insufficient: false,
   };
 }
 
 export function band(value: LiquidityPostureValue): Band {
+  // Nothing to assess yet → neutral (no alarm), not a red liquidity warning.
+  if (value.insufficient) return 'green';
   if (value.deployable1wPct < value.liquidBufferPct) return 'red';
   return 'green';
 }

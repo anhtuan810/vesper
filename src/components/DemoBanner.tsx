@@ -1,31 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { useSignOut } from "@/lib/hooks";
-import { isNative } from "@/lib/platform";
 
-// Quiet banner shown only on the shared demo account (entitlement product_id
-// "demo", surfaced server-side as SubscriptionView.isDemo). On web a Subscribe
-// action signs out of the shared demo and goes to the login page, where a visitor
-// creates their own account and subscribes through the paywall; on native it is
-// just a notice. Always visible on the demo account — no dismiss — and rendered
-// nowhere else. Sits below the BottomNav (z-25 < z-30) and clears it on mobile;
-// skipped on the mobile chat route so it never covers the composer.
+// Accent-tinted banner shown only on the shared demo account (entitlement
+// product_id "demo", surfaced server-side as SubscriptionView.isDemo). Subscribe
+// signs out of the shared demo and lands on /login, where a visitor creates their
+// own account and subscribes through the in-app StoreKit/RevenueCat paywall. This
+// is the only action, on web and native alike: no external URL or web checkout is
+// ever opened on native (App Store Guideline 3.1.1) — signOut is the whole action.
+// Always visible on the demo account — no dismiss — and rendered nowhere else.
+// Sits below the BottomNav (z-25 < z-30) and clears it on mobile; skipped on the
+// mobile chat route so it never covers the composer.
 export function DemoBanner() {
   const { data } = useSubscription();
   const pathname = usePathname();
   const signOut = useSignOut();
 
-  // Resolve the platform in an effect (mirrors Paywall) so server/web render and
-  // device hydration agree on whether the Subscribe link appears.
-  const [native, setNative] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setNative(isNative()), []);
-
   if (!data?.isDemo) return null;
-  // The mobile chat composer sits where this pill would — skip it there. Also skip
+  // The mobile chat composer sits where this banner would — skip it there. Also skip
   // the login page, which a demo session can now reach (to sign in as themselves).
   if (pathname === "/chat" || pathname.startsWith("/login")) return null;
 
@@ -47,13 +41,11 @@ export function DemoBanner() {
           pointerEvents: "auto",
           display: "flex",
           alignItems: "center",
-          gap: 10,
-          padding: "7px 16px",
+          gap: 11,
+          padding: "9px 18px",
           borderRadius: 999,
-          background: "var(--nav-surface)",
-          backdropFilter: "saturate(180%) blur(20px)",
-          WebkitBackdropFilter: "saturate(180%) blur(20px)",
-          border: "0.5px solid var(--border)",
+          background: "var(--accent-soft)",
+          border: "0.5px solid var(--accent)",
           boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
           fontFamily: "var(--font-sans)",
           whiteSpace: "nowrap",
@@ -62,38 +54,35 @@ export function DemoBanner() {
         <span
           style={{
             fontFamily: "var(--font-serif)",
-            fontSize: 13,
-            color: "var(--text-dim)",
+            fontSize: 14,
+            color: "var(--accent)",
             fontVariationSettings: "'opsz' 14",
           }}
         >
-          Demo account
+          Demo account{" "}
+          <span style={{ color: "var(--text-dim)" }}>· sample data</span>
         </span>
-        {!native && (
-          <>
-            <span
-              aria-hidden="true"
-              style={{ width: "0.5px", height: 14, background: "var(--border)" }}
-            />
-            <button
-              type="button"
-              className="demo-banner-link"
-              onClick={signOut}
-              style={{
-                fontFamily: "var(--font-sans)",
-                fontSize: 13,
-                fontWeight: 500,
-                color: "var(--accent)",
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-              }}
-            >
-              Subscribe
-            </button>
-          </>
-        )}
+        <span
+          aria-hidden="true"
+          style={{ width: "0.5px", height: 15, background: "var(--accent)", opacity: 0.4 }}
+        />
+        <button
+          type="button"
+          className="demo-banner-link"
+          onClick={signOut}
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: 14,
+            fontWeight: 500,
+            color: "var(--accent)",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+          }}
+        >
+          Subscribe
+        </button>
       </div>
     </>
   );

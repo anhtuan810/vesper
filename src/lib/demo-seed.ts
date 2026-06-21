@@ -636,13 +636,13 @@ export async function seedDemoUser(userId: string): Promise<void> {
       fingerprint: "Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.",
       profile: {
         life_and_direction:
-          "Early forties, lives in Amsterdam with a partner and two children, dual income across tech and healthcare. Owns the family apartment and a small Rotterdam rental, and wants the next decade to be about compounding quietly rather than chasing the next thing.",
+          "Early forties in Amsterdam, owns the family apartment and a small Rotterdam rental, and wants the next decade to compound quietly.",
         approach:
-          "Index-first. A global MSCI World position is the core, topped up through every dip. Around it sits a sleeve of high-conviction names — NVIDIA, Micron, Microsoft, a SpaceX position bought at its IPO, and Apple — plus a small crypto allocation split between Bitcoin and Ethereum. Property is treated as a long-term hold with leverage kept conservative, and winners are trimmed back when any one name gets too big.",
+          "Index-first: a global MSCI World core, a high-conviction tech sleeve, and a small crypto position, with property held long-term and conservatively levered.",
         currently_exploring:
-          "Whether to keep overpaying the 1.9 percent home mortgage after a first lump sum last year, or route the spare cash into the index fund instead, and how much of the Rotterdam rental's cash flow to reinvest versus hold as buffer.",
+          "Whether to keep overpaying the 1.9% home mortgage after last year's lump sum, or route the spare cash into the index instead.",
         worth_raising:
-          "The Rotterdam mortgage is interest-only, so the principal needs a repayment plan before it matures. The tech sleeve has also grown faster than expected and is now a larger share of liquid assets than originally intended.",
+          "The Rotterdam mortgage is interest-only and still needs a repayment plan, and the tech sleeve has grown larger than originally intended.",
       },
     })
     .eq("id", userId);

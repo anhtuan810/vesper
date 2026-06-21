@@ -7,6 +7,9 @@ export interface SuggestionStripProps {
   label: string;
   body: ReactNode;
   icon?: ReactNode;
+  /** Optional legibility overrides (default to the standard compact sizes). */
+  labelFontSize?: string;
+  bodyFontSize?: string;
 }
 
 const VARIANT_STYLES: Record<SuggestionVariant, { bg: string; color: string }> = {
@@ -48,7 +51,14 @@ export function BulbIcon({ color }: { color: string }) {
   );
 }
 
-export function SuggestionStrip({ variant, label, body, icon }: SuggestionStripProps) {
+export function SuggestionStrip({
+  variant,
+  label,
+  body,
+  icon,
+  labelFontSize = "8.5px",
+  bodyFontSize = "11.5px",
+}: SuggestionStripProps) {
   const { bg, color } = VARIANT_STYLES[variant];
   const defaultIcon =
     variant === "context" ? <InfoCircleIcon color={color} /> : <BulbIcon color={color} />;
@@ -69,7 +79,7 @@ export function SuggestionStrip({ variant, label, body, icon }: SuggestionStripP
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: "8.5px",
+            fontSize: labelFontSize,
             fontWeight: 600,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
@@ -81,7 +91,7 @@ export function SuggestionStrip({ variant, label, body, icon }: SuggestionStripP
         >
           {label}
         </div>
-        <div style={{ fontSize: "11.5px", lineHeight: 1.42, color: "var(--text)" }}>
+        <div style={{ fontSize: bodyFontSize, lineHeight: 1.42, color: "var(--text)" }}>
           {body}
         </div>
       </div>
