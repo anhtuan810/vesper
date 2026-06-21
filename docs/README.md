@@ -27,7 +27,7 @@ in `src/components`.
 | File | What it is |
 |------|------------|
 | `RELEASING.md` | How changes reach users: web deploy, native OTA, App Store binaries. Read before any release. |
-| `technical-decisions.md` | Supabase schema, API routes, and the calculation rules (net worth, currency, mutations, pensions). |
+| `technical-decisions.md` | Supabase schema, API routes, and the calculation rules (net worth, currency, mutations, pensions). Also: the 2026-06 chat correctness audit & remediation, and the automated test/eval setup (per-commit suite + nightly model and demo behaviour evals). |
 | `payments-setup.md` | Stripe + RevenueCat dashboard/env setup, sandbox testing, and the go-live checklist. |
 | `vitals-metrics-reference.md` | Per-vital formulas, thresholds, guards; Perspective percentiles. |
 
