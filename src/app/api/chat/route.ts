@@ -988,6 +988,9 @@ export async function POST(req: NextRequest) {
             currentAssets,
             contextNote: contextRaw?.trim() || null,
             proposalTimestamp,
+            // A confirmed proposal ("Confirm and save") always re-validates the
+            // live price at commit, so a fast confirm can't store stale units.
+            confirmedProposal: isConfirmationTurn,
             displayCurrency,
           });
           portfolioChanged = changed;

@@ -153,6 +153,7 @@ export async function applyPortfolioChanges({
   currentAssets,
   contextNote,
   proposalTimestamp,
+  confirmedProposal,
   displayCurrency,
 }: {
   supabase: SupabaseClient;
@@ -161,6 +162,13 @@ export async function applyPortfolioChanges({
   currentAssets: CurrentAsset[];
   contextNote: string | null;
   proposalTimestamp?: string | null;
+  // True when this commit is the user confirming a prior proposal ("Confirm and
+  // save"). On a confirmed commit the resolved units were derived at PROPOSE
+  // time, so re-validate the live price now and reject if it moved past the
+  // threshold — closing the gap where a fast (sub-window) confirm committed
+  // stale units. Direct (non-confirmation) adds never trigger this, so a fresh
+  // Mode-3 add can't false-positive.
+  confirmedProposal?: boolean;
   // The user's display currency. Used only as the native-currency fallback for
   // non-tradeable, non-real-estate adds (cash/bonds/other/pension) when the
   // model omits currency — a EUR/GBP user saying "I have 50k in savings" should
@@ -378,8 +386,9 @@ export async function applyPortfolioChanges({
       // both units and value (the shape Claude emits on Turn 2 after confirming a proposal).
       if (
         isTradeable && effectiveSymbol && hasUnits && hasValue &&
-        proposalTimestamp &&
-        Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS
+        (confirmedProposal ||
+          (proposalTimestamp &&
+            Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS))
       ) {
         const freshPrice = await fetchYahooPrice(normalizeCryptoSymbol(effectiveSymbol, change.type));
         if (!freshPrice.error && freshPrice.price && freshPrice.price > 0) {
@@ -673,8 +682,9 @@ export async function applyPortfolioChanges({
           typeof change.units === "number" && typeof change.value === "number";
         if (
           editIsTradeable && existing.symbol && editHasResolvedUnitsAndValue &&
-          proposalTimestamp &&
-          Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS
+          (confirmedProposal ||
+            (proposalTimestamp &&
+              Date.now() - new Date(proposalTimestamp).getTime() > PRICE_FRESHNESS_WINDOW_MS))
         ) {
           const freshPrice = await fetchYahooPrice(normalizeCryptoSymbol(existing.symbol, existing.type));
           if (!freshPrice.error && freshPrice.price && freshPrice.price > 0) {
