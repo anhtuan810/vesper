@@ -48,6 +48,10 @@ export const CONFIRMATION_CHIPS: ReadonlySet<string> = new Set([
   "Today",
   "Yesterday",
   "Skip — track from today",
+  // Address-confirmation chip: advances the property flow to the price question.
+  // Without this, a re-emitted <propose_address> on the confirm turn re-renders
+  // the address card (the property-add loop the route's guard means to prevent).
+  "Yes, that's the address",
   // Pension confirmation-echo commit chip
   "Looks right, add it",
 ]);

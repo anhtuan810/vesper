@@ -13,6 +13,10 @@ export async function fetchHistoricalPrice(
     let url: string;
     if (date) {
       const d = new Date(date);
+      // An unparseable date would make every period/diff NaN and silently return
+      // a null match — bail explicitly instead so the caller knows the lookup
+      // didn't run, rather than mistaking it for "no close on file".
+      if (Number.isNaN(d.getTime())) return null;
       // Window ±4 days to catch weekends and holidays
       const period1 = Math.floor((d.getTime() - 4 * 86400_000) / 1000);
       const period2 = Math.floor((d.getTime() + 4 * 86400_000) / 1000);
@@ -32,6 +36,11 @@ export async function fetchHistoricalPrice(
 
     if (date) {
       const targetTs = new Date(date).getTime() / 1000;
+      // Only accept a close within the ±4-day request window. Without this bound
+      // a date the symbol has no data for (before its IPO, a long market gap, or
+      // a future date) would still match the nearest available bar — fabricating
+      // a "historical" price that is really today's or the listing-day close.
+      const MAX_GAP_SEC = 4 * 86400;
       let closest: number | null = null;
       let minDiff = Infinity;
       timestamps.forEach((ts, i) => {
@@ -41,7 +50,7 @@ export async function fetchHistoricalPrice(
           closest = closes[i];
         }
       });
-      if (closest === null) return null;
+      if (closest === null || minDiff > MAX_GAP_SEC) return null;
       return { price: closest, currency };
     } else {
       const price = result.meta?.regularMarketPrice;

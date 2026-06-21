@@ -712,6 +712,17 @@ export async function POST(req: NextRequest) {
     // instead of re-emitting the same proposal card (the property-add loop fix).
     const isConfirmationTurn = typeof message === "string" && CONFIRMATION_CHIPS.has(message.trim());
 
+    // ETF venue handshake Turn 2: the user replied with an exchange (or "I don't
+    // know"). On that turn the model should commit the venue-qualified <changes>,
+    // never re-emit <propose_venue> — guard the venue branch below so a re-emit
+    // can't re-render the venue card (the venue flow's stale-re-emit protection,
+    // mirroring the address/change branches' !isConfirmationTurn guard).
+    const VENUE_REPLY_CHIPS = new Set([
+      "Xetra", "Frankfurt", "Amsterdam", "London", "Paris", "Milan",
+      "Madrid", "Brussels", "Lisbon", "Swiss", "Nordic", "I don't know",
+    ]);
+    const isVenueReplyTurn = typeof message === "string" && VENUE_REPLY_CHIPS.has(message.trim());
+
     // --- Address proposal flow (real estate adds / address edits) ---
     // When Claude emits <propose_address>, geocode and return chips — no DB write this turn.
     // Skipped on a confirmation turn: address confirmation uses its own chips
@@ -763,7 +774,7 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Venue proposal flow (ETF adds) ---
-    if (proposeVenueRaw) {
+    if (proposeVenueRaw && !isVenueReplyTurn) {
       const countryCounts = new Map<string, number>();
       for (const a of currentAssets) {
         if (a.country) countryCounts.set(a.country, (countryCounts.get(a.country) ?? 0) + 1);
@@ -902,6 +913,17 @@ export async function POST(req: NextRequest) {
       try {
         const changes = JSON.parse(changesRaw.trim());
         if (Array.isArray(changes) && changes.length > 0) {
+          // Irreversible-delete guard: removal_reason "mistake" HARD-deletes the
+          // asset and ALL its history (apply-changes remove branch) — unrecoverable.
+          // The prompt routes every remove through the propose→confirm handshake,
+          // but if the model ever emits a bare <changes> mistake-delete outside a
+          // confirmation turn, downgrade it to "sold" (a recoverable soft-delete)
+          // so history is never erased without the user explicitly confirming.
+          if (!isConfirmationTurn) {
+            for (const c of changes) {
+              if (c?.action === "remove" && c?.removal_reason === "mistake") c.removal_reason = "sold";
+            }
+          }
           hasAdds = changes.some((c) => c.action === "add");
           if (isNewUser && hasAdds) {
             analyticsEvent = "first_asset_added";
@@ -966,6 +988,7 @@ export async function POST(req: NextRequest) {
             currentAssets,
             contextNote: contextRaw?.trim() || null,
             proposalTimestamp,
+            displayCurrency,
           });
           portfolioChanged = changed;
           rebuildFrom = rf;
@@ -1015,7 +1038,18 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ message: parseErr.message, assets: null, remaining: CHAT_DAILY_LIMIT - used });
         }
         if (!(parseErr instanceof SyntaxError)) throw parseErr;
+        // A truncated/garbled <changes> block (e.g. a long screenshot batch that
+        // overflowed max_tokens and cut off mid-array) was previously swallowed
+        // silently — while the model's receipt prose still claimed "Recorded N
+        // positions". That's a success message with no write. Surface an honest
+        // error and return so the user knows nothing was saved and can re-send.
         console.error("Changes parse failed:", parseErr);
+        const truncMsg = "I started saving those but the details got cut off before I could finish — nothing was saved yet. Could you send them again, ideally a few at a time?";
+        await supabase.from("messages").insert(timestampedPair(
+          { user_id: userId, role: "user", content: message || "[screenshot uploaded]" },
+          { user_id: userId, role: "assistant", content: truncMsg },
+        ));
+        return NextResponse.json({ message: truncMsg, assets: null, remaining: CHAT_DAILY_LIMIT - used });
       }
     }
 
@@ -1158,6 +1192,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: displayText || "Done.",
       assets: updatedAssets,
+      // Explicit signal for client cache invalidation. `assets` is only the
+      // re-fetched array (null when the re-fetch hiccups), so the client can't
+      // rely on its truthiness to know a mutation happened — drive off this.
+      portfolioChanged,
       remaining: CHAT_DAILY_LIMIT - used,
       suggested_replies: suggestedReplies,
       ...(analyticsEvent ? { analyticsEvent } : {}),

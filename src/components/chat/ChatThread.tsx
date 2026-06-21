@@ -273,7 +273,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 const c = classifyChip(s, { surface: "chat_empty_suggestion" });
                 return (
                   <Chip
-                    key={s}
+                    key={`${i}-${s}`}
                     label={s}
                     surface="chat_empty_suggestion"
                     chipType={c.chipType}
@@ -303,7 +303,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
             const firstAssistant = source === "portfolio" && msg.from === "assistant" && !messages.slice(0, i).some((m) => m.from === "assistant");
             return (
             <div
-              key={i}
+              key={msg.id ?? msg.localId ?? i}
               className={`chat-msg flex flex-col ${msg.from === "user" ? "items-end" : "items-start"}`}
             >
               {firstAssistant && (
@@ -370,7 +370,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                     const c = classifyChip(chip, { surface: "chat_suggested_reply" });
                     return (
                       <Chip
-                        key={chip}
+                        key={`${ci}-${chip}`}
                         label={chip}
                         surface="chat_suggested_reply"
                         chipType={c.chipType}
@@ -453,7 +453,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 const c = classifyChip(chip, { surface: "chat_seed", chipActions: seedMessage.chipActions });
                 return (
                   <Chip
-                    key={chip}
+                    key={`${ci}-${chip}`}
                     label={chip}
                     surface="chat_seed"
                     chipType={c.chipType}

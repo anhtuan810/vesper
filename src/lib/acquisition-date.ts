@@ -56,18 +56,26 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
 
   const lower = text.toLowerCase();
 
+  // An acquisition can never be in the future. A future month (a typo, or a
+  // model slip) is treated as "not a usable date" so the caller falls back to
+  // tracking from now rather than fabricating a held-since-the-future position
+  // (which would also make the historical price lookup return today's close).
+  const todayMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const notFuture = (iso: string): string | undefined =>
+    iso.slice(0, 7) <= todayMonth ? iso : undefined;
+
   // Exact ISO date — the user (or an upstream flow) gave a specific day;
   // preserve it rather than rounding away precision they actually stated.
   const isoDay = lower.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoDay) {
     const month = Number(isoDay[2]);
-    if (month >= 1 && month <= 12) return `${isoDay[1]}-${pad2(month)}-${isoDay[3]}`;
+    if (month >= 1 && month <= 12) return notFuture(`${isoDay[1]}-${pad2(month)}-${isoDay[3]}`);
   }
   // ISO month only ("2021-03")
   const isoMonth = lower.match(/^(\d{4})-(\d{2})$/);
   if (isoMonth) {
     const month = Number(isoMonth[2]);
-    if (month >= 1 && month <= 12) return `${isoMonth[1]}-${pad2(month)}-01`;
+    if (month >= 1 && month <= 12) return notFuture(`${isoMonth[1]}-${pad2(month)}-01`);
   }
 
   // "March 2021" / "around March 2021" / "in March 2021"
@@ -77,7 +85,7 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
   if (monthYear) {
     const month = MONTHS[monthYear[1]];
     const year = Number(monthYear[2]);
-    if (month) return `${year}-${pad2(month)}-01`;
+    if (month) return notFuture(`${year}-${pad2(month)}-01`);
   }
 
   // "early 2015" / "late 2015" / "mid-2015"
@@ -85,13 +93,13 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
   if (partYear) {
     const month = PART_OF_YEAR[partYear[1]];
     const year = Number(partYear[2]);
-    if (month) return `${year}-${pad2(month)}-01`;
+    if (month) return notFuture(`${year}-${pad2(month)}-01`);
   }
 
   // Bare year — "2015", "around 2015"
   const bareYear = lower.match(/\b(19|20)\d{2}\b/);
   if (bareYear) {
-    return `${bareYear[0]}-01-01`;
+    return notFuture(`${bareYear[0]}-01-01`);
   }
 
   return undefined;

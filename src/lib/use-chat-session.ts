@@ -12,6 +12,9 @@ import { apiFetch } from "@/lib/api";
 
 export interface ChatMessage {
   id?: string;
+  /** Stable client-side React key — assigned on create/load so a load-more
+   * prepend doesn't shift array indices and re-mount/re-animate the thread. */
+  localId?: string;
   from: "user" | "assistant";
   text: string;
   imagePreviews?: string[];
@@ -20,14 +23,22 @@ export interface ChatMessage {
   scenarioResult?: ScenarioResult | null;
 }
 
+// Monotonic counter backing the stable client-side message key (localId).
+let localIdSeq = 0;
+const nextLocalId = () => `m${++localIdSeq}`;
+
 interface ChatResponse {
   message?: string;
+  error?: string;
   suggested_replies?: string[] | null;
   scenarioResult?: ScenarioResult | null;
   scenarioPending?: Record<string, unknown> | null;
   remaining?: number;
   analyticsEvent?: string;
   assets?: unknown;
+  /** Explicit signal that the portfolio mutated this turn; preferred over
+   * inferring from `assets` for cache invalidation. */
+  portfolioChanged?: boolean;
 }
 
 const ROUND_AMOUNT: Record<DisplayCurrency, number> = {
@@ -82,6 +93,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreInFlight = useRef(false);
+  // Synchronous guard against a double-send race: the `loading` state is async,
+  // so two fast taps can both pass its check and fire two POSTs. This ref flips
+  // synchronously, so the second tap bails before a second request goes out.
+  const sendInFlightRef = useRef(false);
   // Free-typed scenario awaiting a [Show me] confirmation; echoed back to compute.
   const pendingScenarioRef = useRef<Record<string, unknown> | null>(null);
   // Latest messages, for callbacks that shouldn't re-create when messages change.
@@ -114,7 +129,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         const { messages: stored, ts } = JSON.parse(raw) as { messages: ChatMessage[]; ts: number };
         if (Date.now() - ts < CHAT_TTL_MS) {
           if (stored.length > 0) {
-            setMessages(stored);
+            // Backfill stable keys for cache entries written before localId
+            // existed, then advance the seq past restored ids so freshly-minted
+            // keys can't collide with them.
+            const withKeys = stored.map((m) => (m.localId ? m : { ...m, localId: nextLocalId() }));
+            setMessages(withKeys);
             hasHistory = true;
           }
         } else {
@@ -137,13 +156,14 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
               if (m.role === "assistant" && m.content.includes("\n---\n")) {
                 return m.content.split("\n---\n").map((part, i, arr) => ({
                   id: i === 0 ? m.id : undefined,
+                  localId: nextLocalId(),
                   from: "assistant" as const,
                   text: part.trim(),
                   suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
                   scenarioResult: i === arr.length - 1 ? (m.tool_result ?? null) : null,
                 }));
               }
-              return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
+              return [{ id: m.id, localId: nextLocalId(), from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
             }
           );
           setMessages(mapped);
@@ -160,7 +180,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     if (!userId) return;
     try {
       const latest = messages.slice(-CHAT_LOAD_LIMIT);
-      const stripped = latest.map(({ id, from, text, suggestedReplies, scenarioResult }) => ({ id, from, text, suggestedReplies, scenarioResult }));
+      const stripped = latest.map(({ id, localId, from, text, suggestedReplies, scenarioResult }) => ({ id, localId, from, text, suggestedReplies, scenarioResult }));
       localStorage.setItem(chatHistoryCacheKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
     } catch {}
   }, [messages, userId]);
@@ -188,13 +208,14 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
           if (m.role === "assistant" && m.content.includes("\n---\n")) {
             return m.content.split("\n---\n").map((part: string, i: number, arr: string[]) => ({
               id: i === 0 ? m.id : undefined,
+              localId: nextLocalId(),
               from: "assistant" as const,
               text: part.trim(),
               suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
               scenarioResult: i === arr.length - 1 ? (m.tool_result ?? null) : null,
             }));
           }
-          return [{ id: m.id, from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
+          return [{ id: m.id, localId: nextLocalId(), from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
         }
       );
 
@@ -257,6 +278,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const applyAssistantResponse = useCallback((data: ChatResponse) => {
     const parts = (data.message || "Done.").split("\n---\n").map((p) => p.trim()).filter(Boolean);
     const newMsgs: ChatMessage[] = parts.map((p, i) => ({
+      localId: nextLocalId(),
       from: "assistant" as const,
       text: p,
       suggestedReplies: i === parts.length - 1 && data.suggested_replies ? data.suggested_replies : null,
@@ -270,9 +292,12 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const send = useCallback(async () => {
     const text = input.trim();
     if ((!text && !imageData.length) || loading || !userId) return;
+    // Synchronous double-send guard (see sendInFlightRef).
+    if (sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
 
     const displayText = text || (imageData.length > 1 ? "Screenshots uploaded" : "Screenshot uploaded");
-    const userMsg: ChatMessage = { from: "user", text: displayText };
+    const userMsg: ChatMessage = { localId: nextLocalId(), from: "user", text: displayText };
     if (imagePreviews.length > 0) userMsg.imagePreviews = imagePreviews;
 
     setInput("");
@@ -284,72 +309,101 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     if (imageData.length > 0) payload.images = imageData;
     clearImage();
 
+    // Only fetch + parse + non-ok handling live in the try/catch. A throw from a
+    // post-success side-effect (track / cache invalidation / callback) must NOT
+    // surface a "Connection issue" bubble after the answer already rendered.
+    let data: ChatResponse;
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, fromChip: false }),
+        timeoutMs: 60000,
       });
-      const data = await res.json();
+      data = await res.json();
       setThinking(false);
 
       if (!res.ok) {
         const errText = res.status === 401
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
-        setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
-        setLoading(false);
+        if (typeof data?.remaining === "number") setRemaining(data.remaining);
+        // Restore the composer so the user's text isn't lost and can be retried,
+        // and drop the orphaned optimistic user bubble.
+        setInput(text);
+        setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
+        setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: errText }]);
         return;
       }
-
-      applyAssistantResponse(data);
-      if (data.analyticsEvent) track(data.analyticsEvent);
-      if (data.assets) {
-        if (userId) invalidateAssetsCache(userId);
-        invalidateInsightCache();
-        invalidateVitalsCache();
-        // Bump the shared revision so every mounted surface (Portfolio, Vitals,
-        // Diary, Profile) refetches without a manual refresh.
-        bumpPortfolioRevision();
-        onPortfolioUpdateRef.current?.();
-      }
-      onNewMessageRef.current?.();
     } catch {
       setThinking(false);
+      // Restore the composer so the user's text isn't lost and can be retried,
+      // and drop the orphaned optimistic user bubble.
+      setInput(text);
+      setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
       setMessages((prev) => [
         ...prev,
-        { from: "assistant", text: "Connection issue. Please try again." },
+        { localId: nextLocalId(), from: "assistant", text: "Connection issue. Please try again." },
       ]);
+      return;
+    } finally {
+      setLoading(false);
+      sendInFlightRef.current = false;
     }
-    setLoading(false);
+
+    // Success side-effects — outside the catch so a throw here can't render a
+    // spurious connection-error bubble after the answer was already shown.
+    applyAssistantResponse(data);
+    if (data.analyticsEvent) track(data.analyticsEvent);
+    if (data.portfolioChanged ?? !!data.assets) {
+      if (userId) invalidateAssetsCache(userId);
+      invalidateInsightCache();
+      invalidateVitalsCache();
+      // Bump the shared revision so every mounted surface (Portfolio, Vitals,
+      // Diary, Profile) refetches without a manual refresh.
+      bumpPortfolioRevision();
+      onPortfolioUpdateRef.current?.();
+    }
+    onNewMessageRef.current?.();
   }, [input, imageData, imagePreviews, loading, userId, clearImage, applyAssistantResponse]);
 
   // Confirm a free-typed scenario ([Show me]): echo the pending intent back so the
   // route computes and renders the card directly, skipping Claude classification.
   const sendScenarioConfirm = useCallback(async (pending: Record<string, unknown>, originalText: string) => {
     if (loading || !userId) return;
+    // Synchronous double-send guard (see sendInFlightRef).
+    if (sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
     setLoading(true);
     setThinking(true);
+
+    // Only fetch + parse + non-ok handling live in the try/catch; success
+    // side-effects run after so a throw there can't surface a connection error.
+    let data: ChatResponse;
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioConfirm: pending, message: originalText }),
+        timeoutMs: 60000,
       });
-      const data = await res.json();
+      data = await res.json();
       setThinking(false);
       if (!res.ok) {
-        setMessages((prev) => [...prev, { from: "assistant", text: data.message || "Something went wrong. Please try again." }]);
-        setLoading(false);
+        setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: data.message || "Something went wrong. Please try again." }]);
         return;
       }
-      applyAssistantResponse(data);
-      onNewMessageRef.current?.();
     } catch {
       setThinking(false);
-      setMessages((prev) => [...prev, { from: "assistant", text: "Connection issue. Please try again." }]);
+      setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: "Connection issue. Please try again." }]);
+      return;
+    } finally {
+      setLoading(false);
+      sendInFlightRef.current = false;
     }
-    setLoading(false);
+
+    applyAssistantResponse(data);
+    onNewMessageRef.current?.();
   }, [loading, userId, applyAssistantResponse]);
 
   // Send a specific text string without going through the input state — used by
@@ -368,52 +422,74 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     }
     if (pending && trimmed === "Change it") {
       pendingScenarioRef.current = null;
-      setMessages((prev) => [...prev, { from: "assistant", text: "Sure — tell me the scenario you'd like to see." }]);
+      setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: "Sure — tell me the scenario you'd like to see." }]);
       return;
     }
 
+    // Synchronous double-send guard (see sendInFlightRef).
+    if (sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
+
+    const userMsg: ChatMessage = { localId: nextLocalId(), from: "user", text: trimmed };
     setLoading(true);
     setThinking(true);
-    setMessages((prev) => [...prev, { from: "user", text: trimmed }]);
+    setMessages((prev) => [...prev, userMsg]);
 
+    // Only fetch + parse + non-ok handling live in the try/catch; success
+    // side-effects run after so a throw there can't surface a connection error.
+    let data: ChatResponse;
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, fromChip: true }),
+        timeoutMs: 60000,
       });
-      const data = await res.json();
+      data = await res.json();
       setThinking(false);
 
       if (!res.ok) {
         const errText = res.status === 401
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
-        setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
-        setLoading(false);
+        if (typeof data?.remaining === "number") setRemaining(data.remaining);
+        // Restore the composer so the chip text isn't lost, and drop the
+        // orphaned optimistic user bubble.
+        setInput(trimmed);
+        setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
+        setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: errText }]);
         return;
       }
-
-      applyAssistantResponse(data);
-      if (data.analyticsEvent) track(data.analyticsEvent);
-      if (data.assets) {
-        if (userId) invalidateAssetsCache(userId);
-        invalidateInsightCache();
-        invalidateVitalsCache();
-        // Bump the shared revision so every mounted surface (Portfolio, Vitals,
-        // Diary, Profile) refetches without a manual refresh.
-        bumpPortfolioRevision();
-        onPortfolioUpdateRef.current?.();
-      }
-      onNewMessageRef.current?.();
     } catch {
       setThinking(false);
+      // Restore the composer so the chip text isn't lost, and drop the
+      // orphaned optimistic user bubble.
+      setInput(trimmed);
+      setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
       setMessages((prev) => [
         ...prev,
-        { from: "assistant", text: "Connection issue. Please try again." },
+        { localId: nextLocalId(), from: "assistant", text: "Connection issue. Please try again." },
       ]);
+      return;
+    } finally {
+      setLoading(false);
+      sendInFlightRef.current = false;
     }
-    setLoading(false);
+
+    // Success side-effects — outside the catch so a throw here can't render a
+    // spurious connection-error bubble after the answer was already shown.
+    applyAssistantResponse(data);
+    if (data.analyticsEvent) track(data.analyticsEvent);
+    if (data.portfolioChanged ?? !!data.assets) {
+      if (userId) invalidateAssetsCache(userId);
+      invalidateInsightCache();
+      invalidateVitalsCache();
+      // Bump the shared revision so every mounted surface (Portfolio, Vitals,
+      // Diary, Profile) refetches without a manual refresh.
+      bumpPortfolioRevision();
+      onPortfolioUpdateRef.current?.();
+    }
+    onNewMessageRef.current?.();
   }, [loading, userId, applyAssistantResponse, sendScenarioConfirm]);
 
   // Scenario-narration handoff: posts the summarising user turn + the
@@ -421,39 +497,48 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   // mutation occurs (the route never enters the mutation flow).
   const sendScenario = useCallback(async (h: ScenarioHandoff) => {
     if (loading || !userId) return;
+    // Synchronous double-send guard (see sendInFlightRef).
+    if (sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
 
     setLoading(true);
     setThinking(true);
-    setMessages((prev) => [...prev, { from: "user", text: h.userMessage }]);
+    setMessages((prev) => [...prev, { localId: nextLocalId(), from: "user", text: h.userMessage }]);
 
+    // Only fetch + parse + non-ok handling live in the try/catch; success
+    // side-effects run after so a throw there can't surface a connection error.
+    let data: ChatResponse;
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioHandoff: h }),
+        timeoutMs: 60000,
       });
-      const data = await res.json();
+      data = await res.json();
       setThinking(false);
 
       if (!res.ok) {
         const errText = res.status === 401
           ? "Session expired. Please refresh the page."
           : data.message || "Something went wrong. Please try again.";
-        setMessages((prev) => [...prev, { from: "assistant", text: errText }]);
-        setLoading(false);
+        setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: errText }]);
         return;
       }
-
-      const parts = (data.message || "Done.").split("\n---\n").map((p: string) => p.trim()).filter(Boolean);
-      const newMsgs: ChatMessage[] = parts.map((p: string) => ({ from: "assistant" as const, text: p, suggestedReplies: null }));
-      setMessages((prev) => [...prev, ...newMsgs]);
-      if (typeof data.remaining === "number") setRemaining(data.remaining);
-      onNewMessageRef.current?.();
     } catch {
       setThinking(false);
-      setMessages((prev) => [...prev, { from: "assistant", text: "Connection issue. Please try again." }]);
+      setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: "Connection issue. Please try again." }]);
+      return;
+    } finally {
+      setLoading(false);
+      sendInFlightRef.current = false;
     }
-    setLoading(false);
+
+    const parts = (data.message || "Done.").split("\n---\n").map((p: string) => p.trim()).filter(Boolean);
+    const newMsgs: ChatMessage[] = parts.map((p: string) => ({ localId: nextLocalId(), from: "assistant" as const, text: p, suggestedReplies: null }));
+    setMessages((prev) => [...prev, ...newMsgs]);
+    if (typeof data.remaining === "number") setRemaining(data.remaining);
+    onNewMessageRef.current?.();
   }, [loading, userId]);
 
   return {

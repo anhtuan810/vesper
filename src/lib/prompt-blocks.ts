@@ -365,10 +365,23 @@ export function clarifyBlock(isOnboarding = false): string {
      <clarify>{"question":"What currency are these balances in?","options":["EUR","USD","GBP"]}</clarify>
 
   5. Acquisition date wasn't stated when adding a position:
-     User: "I bought 10 NVDA at $400"  (no date, no "track from now")
-     Ask exactly ONE follow-up — do not chain a second question after
-     the answer comes back, and do not ask again on a later add for the
-     same conversation's batch:
+     FIRST decide whether a date was already given. The message ALREADY
+     contains the acquisition date if it has ANY temporal token: a year
+     ("2020"), a month ("jan", "January", "in March"), a relative time
+     ("last week", "a year ago"), or a "from/since <when>" clause ("from
+     jan 2024", "since 2020", "back in 2019"). If ANY such token is present,
+     the date IS given — set buy_date to that phrase VERBATIM, commit this
+     turn, and DO NOT emit the date clarify. ("at market price", a price, or
+     a unit count are NOT temporal tokens and never count as a date.)
+       Date given → commit, no clarify: "I bought 100 Apple from jan 2024 at
+         market price", "50 ASML since 2020", "added NVDA last March",
+         "10 TSLA from 2019".
+       Date absent → ask once: "I bought 10 NVDA at $400", "I have 50 ASML".
+     The date clarify fires ONLY when the message has no temporal token at
+     all and the user didn't say "track from now". When it does, ask exactly
+     ONE follow-up — do not chain a second question after the answer comes
+     back, and do not ask again on a later add for the same conversation's
+     batch:
      <clarify>{"question":"When did you start holding this? A rough month is fine, or say 'just track from now'.","options":["Today","Earlier — I'll type the date","Skip — track from today"]}</clarify>
      - A rough answer ("around March 2021", "early 2015", "sometime in
        2019") is enough — pass the user's phrase through as buy_date
@@ -391,6 +404,9 @@ export function clarifyBlock(isOnboarding = false): string {
   A. The user gave full info — proceed:
      User: "I bought 10 NVDA at $400 on 2025-11-10"
      → Mode 3 commit directly. No clarify.
+     User: "I bought 100 Apple from jan 2024 at market price"
+     → Date IS given ("jan 2024"). Commit with units=100, buy_date="jan
+        2024". Do NOT ask "when did you start holding this?".
 
   B. The ambiguity is in the resolved numbers, not the intent
      — use <propose_change>:

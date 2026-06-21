@@ -123,11 +123,19 @@ function normalizeMaturityDate(raw: string | undefined): string | null {
 
 // USD-bridged cross-currency conversion using the app's existing FX rates.
 // rates[X] = how many X per 1 USD, so: amount_from / rates[from] * rates[to]
+// A missing rate is a hard error, not a silent 1:1 fallback: converting e.g.
+// HUF→USD at parity would derive a wildly wrong unit count and value. Surfacing
+// it asks the user to restate the amount instead of storing a corrupt position.
 async function convertCurrency(amount: number, from: string, to: string): Promise<number> {
   if (from === to) return amount;
   const rates = await getUsdRates();
-  const fromRate = from === "USD" ? 1 : (rates[from] ?? 1);
-  const toRate   = to   === "USD" ? 1 : (rates[to]   ?? 1);
+  const fromRate = from === "USD" ? 1 : rates[from];
+  const toRate   = to   === "USD" ? 1 : rates[to];
+  if (!fromRate || !toRate) {
+    throw new ValueModeError(
+      `I couldn't convert between ${from} and ${to} right now — could you state the amount in ${to}?`
+    );
+  }
   return (amount / fromRate) * toRate;
 }
 
@@ -145,6 +153,7 @@ export async function applyPortfolioChanges({
   currentAssets,
   contextNote,
   proposalTimestamp,
+  displayCurrency,
 }: {
   supabase: SupabaseClient;
   userId: string;
@@ -152,7 +161,15 @@ export async function applyPortfolioChanges({
   currentAssets: CurrentAsset[];
   contextNote: string | null;
   proposalTimestamp?: string | null;
+  // The user's display currency. Used only as the native-currency fallback for
+  // non-tradeable, non-real-estate adds (cash/bonds/other/pension) when the
+  // model omits currency — a EUR/GBP user saying "I have 50k in savings" should
+  // not be stored as USD. Tradeables still take Yahoo's native currency; real
+  // estate still derives from country. Defaults to USD when not provided (keeps
+  // the agent-loop caller, which doesn't pass it, byte-identical to before).
+  displayCurrency?: string;
 }): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string }[]; rebuildFrom: string | null }> {
+  const fallbackCurrency = displayCurrency ?? "USD";
   // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
   const usdRates = await getUsdRates();
   const toUsdSync = (amount: number, currency: string): number => {
@@ -294,9 +311,10 @@ export async function applyPortfolioChanges({
       const isRealEstate = (change.type || "other") === "real_estate";
 
       // For real estate, derive native currency from country when Claude omits it.
-      // For tradeables, Yahoo overrides this below. Other types default to USD.
+      // For tradeables, Yahoo overrides this below. Other types (cash/bonds/
+      // other/pension) fall back to the user's display currency, not USD.
       let resolvedCurrency = change.currency || (
-        isRealEstate ? countryToCurrency(change.country) : "USD"
+        isRealEstate ? countryToCurrency(change.country) : fallbackCurrency
       );
 
       if (resolvedSymbols[i]?.nativeCurrency) resolvedCurrency = resolvedSymbols[i]!.nativeCurrency;
@@ -338,6 +356,14 @@ export async function applyPortfolioChanges({
         const rawUnits = valueInYahooCurrency / priceResult.price;
         const derivedUnits = Math.round(rawUnits * Math.pow(10, decimals)) / Math.pow(10, decimals);
         const derivedValue = Math.round(derivedUnits * priceResult.price * 100) / 100;
+
+        // The stated amount is too small to buy even the smallest tracked
+        // fraction — storing it would create a 0-unit, 0-value ghost position.
+        if (derivedUnits <= 0) {
+          throw new ValueModeError(
+            `That amount is too small to record even a fraction of ${effectiveSymbol} — could you give a larger amount, or the unit count instead?`
+          );
+        }
 
         change.units = derivedUnits;
         change.value = derivedValue;
@@ -484,8 +510,6 @@ export async function applyPortfolioChanges({
         console.error("ADD ERROR:", error);
         failures.push({ name: resolvedAssetName, reason: error.message });
       } else {
-        changed = true;
-        runningTotal += toUsdSync(resolvedValue, resolvedCurrency);
         const addOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
         // A property acquisition is recorded as the PURCHASE (buy_price at buy_date),
         // not the current/indicative value — the value estimate lives on the asset
@@ -498,7 +522,10 @@ export async function applyPortfolioChanges({
             : isRealEstate && resolvedBuyPrice != null && resolvedBuyPrice > 0
               ? resolvedBuyPrice
               : resolvedValue;
-        const { data: addedMutation } = await supabase.from("mutations").insert({
+        // Only commit the running total once the mutation lands, so a failed
+        // mutation insert doesn't leave the recorded portfolio_total drifting.
+        const newRunningTotal = runningTotal + toUsdSync(resolvedValue, resolvedCurrency);
+        const { data: addedMutation, error: addMutError } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
           asset_name: resolvedAssetName,
@@ -510,11 +537,23 @@ export async function applyPortfolioChanges({
           after_units: change.units || null,
           currency: resolvedCurrency,
           personal_context: valueProvenance || change.personal_context || contextNote,
-          portfolio_total: runningTotal,
+          portfolio_total: newRunningTotal,
           occurred_at: addOccurredAt,
         }).select("id").single();
-        if (addedMutation?.id) {
-          mutationMetas.push({ id: addedMutation.id, symbol: effectiveSymbol, occurredAt: addOccurredAt, assetType: change.type || "other" });
+        if (addMutError) {
+          // Roll back the orphaned asset. The asset+mutation pair is not a DB
+          // transaction; an asset with no add-mutation corrupts the history
+          // rebuild (no acquisition anchor) and never appears in the Diary. Far
+          // safer to undo the row and report the failure than to keep a ghost.
+          if (inserted?.id) await supabase.from("assets").delete().eq("id", inserted.id);
+          console.error("ADD MUTATION ERROR (rolled back asset):", addMutError);
+          failures.push({ name: resolvedAssetName, reason: addMutError.message });
+        } else {
+          changed = true;
+          runningTotal = newRunningTotal;
+          if (addedMutation?.id) {
+            mutationMetas.push({ id: addedMutation.id, symbol: effectiveSymbol, occurredAt: addOccurredAt, assetType: change.type || "other" });
+          }
         }
       }
 
@@ -566,8 +605,25 @@ export async function applyPortfolioChanges({
           const factor = Math.pow(10, decimals);
           const unitsDelta = Math.round(rawUnitsDelta * factor) / factor;
 
+          // The stated amount is below the smallest tracked fraction at the
+          // current price — nothing to apply. Ask rather than no-op silently.
+          if (unitsDelta === 0) {
+            throw new ValueModeError(
+              `That amount is too small to change the ${existing.name} position at the current price — could you give a larger amount, or the unit count instead?`
+            );
+          }
+
           const currentUnits = typeof existing.units === "number" ? existing.units : 0;
           const newUnits = Math.round((currentUnits + unitsDelta) * factor) / factor;
+
+          // A sell larger than the holding would store a negative position. The
+          // unit-mode validator catches stated-unit oversells; this is the
+          // value-mode equivalent, which is resolved here (after validation).
+          if (newUnits < 0) {
+            throw new ValueModeError(
+              `That's more than the current ${existing.name} position — did you mean to close it out, or sell a smaller amount?`
+            );
+          }
 
           const newValue = Math.round(newUnits * priceResult.price * 100) / 100;
 
@@ -732,7 +788,7 @@ export async function applyPortfolioChanges({
           const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
           const renameNote = onlyNameChanged ? `Renamed ${existing.name} to ${change.new_name}.` : null;
           const editOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
-          const { data: editedMutation } = await supabase.from("mutations").insert({
+          const { data: editedMutation, error: editMutError } = await supabase.from("mutations").insert({
             user_id: userId,
             asset_id: existing.id,
             asset_name: change.new_name || name,
@@ -748,6 +804,10 @@ export async function applyPortfolioChanges({
             portfolio_total: runningTotal,
             occurred_at: editOccurredAt,
           }).select("id").single();
+          // The asset update already committed; a failed mutation insert leaves
+          // an audit-trail gap (no Diary row for this edit) rather than corrupt
+          // state, so surface it for monitoring but don't undo the edit.
+          if (editMutError) console.error("EDIT MUTATION ERROR (edit applied, audit row missing):", editMutError);
           if (editedMutation?.id && !onlyNameChanged) {
             mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
           }

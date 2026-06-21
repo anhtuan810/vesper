@@ -37,8 +37,15 @@ export default function ChatPopup({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
+  // Set just before a load-more prepend so the scroll-to-bottom below skips that
+  // one messages change — otherwise prepending older history yanks to bottom.
+  const isLoadMoreUpdate = useRef(false);
 
   useEffect(() => {
+    if (isLoadMoreUpdate.current) {
+      isLoadMoreUpdate.current = false;
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinking]);
 
@@ -75,7 +82,12 @@ export default function ChatPopup({
     const sentinel = sentinelRef.current;
     if (!sentinel || !hasMore) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) loadMore(); },
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) {
+          isLoadMoreUpdate.current = true;
+          loadMore();
+        }
+      },
       { threshold: 0, rootMargin: "200px 0px 0px 0px" }
     );
     observer.observe(sentinel);
