@@ -32,6 +32,11 @@ function LoginInner() {
       ? "Sign-in didn't complete. Please try again."
       : null
   );
+  // Entering the demo runs a server-side reseed (signInWithPassword +
+  // seedDemoUser) that can take several seconds before the Portfolio loads. Hold
+  // a full-screen "preparing" cover over that gap so the click isn't met with a
+  // frozen login page. Stays up through the redirect; only cleared on error.
+  const [preparingDemo, setPreparingDemo] = useState(false);
   const supabase = createBrowserSupabase();
 
   // Render-time native check must wait for mount: isNative() reads the
@@ -127,6 +132,50 @@ function LoginInner() {
     textDecoration: "none",
   };
 
+  if (preparingDemo) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Preparing your demo account"
+        className="min-h-dvh"
+        style={{
+          background: "var(--bg)",
+          backgroundImage:
+            "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(94,124,166,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(46,110,96,0.06), transparent 55%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 22,
+          padding: 24,
+          textAlign: "center",
+        }}
+      >
+        <VolnarLogo size={52} className="logo-pulse" />
+        <div style={{ fontSize: 13.5, color: "var(--text-dim)", lineHeight: 1.5, minHeight: 20 }}>
+          Preparing your demo account…
+        </div>
+        <div style={{ display: "flex", gap: 6 }} aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="loading-dot"
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "var(--accent)",
+                opacity: 0.5,
+                animationDelay: `${i * 0.18}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="min-h-dvh flex items-center justify-center"
@@ -217,11 +266,18 @@ function LoginInner() {
         <a
           href="/demo"
           onClick={async (e) => {
-            // Native: /demo (cookie sign-in) doesn't exist in the bundled
-            // app — fetch the demo session tokens and adopt them instead.
-            if (!native) return;
             e.preventDefault();
             setError(null);
+            setPreparingDemo(true);
+            if (!native) {
+              // Web: hand off to the server /demo route, which signs in and
+              // reseeds before redirecting to "/". The cover stays painted
+              // until the browser swaps documents.
+              window.location.assign("/demo");
+              return;
+            }
+            // Native: /demo (cookie sign-in) doesn't exist in the bundled
+            // app — fetch the demo session tokens and adopt them instead.
             try {
               const res = await apiFetch("/api/demo-session", { method: "POST" });
               if (!res.ok) throw new Error();
@@ -230,6 +286,7 @@ function LoginInner() {
               if (sessionError) throw new Error();
               window.location.assign("/");
             } catch {
+              setPreparingDemo(false);
               setError("The demo account isn't available right now.");
             }
           }}
