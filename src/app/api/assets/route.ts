@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse, after } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
+import { demoExpiredGate } from "@/lib/demo-session";
 import { writeSnapshot } from "@/lib/snapshot";
 import { computeNetWorth } from "@/lib/utils";
 import { getUsdRates } from "@/lib/fx";
@@ -23,6 +24,10 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Wall an expired demo turn before writing the asset + its mutation row.
+    const demoGate = await demoExpiredGate(createServerSupabase(), user.id);
+    if (demoGate) return demoGate;
 
     const body = await req.json();
 

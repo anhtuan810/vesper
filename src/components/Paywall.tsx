@@ -209,13 +209,18 @@ export function Paywall() {
     try {
       const res = await apiFetch("/api/demo-session", { method: "POST" });
       if (!res.ok) throw new Error();
-      const { access_token, refresh_token } = (await res.json()) as {
+      const { access_token, refresh_token, expires_at } = (await res.json()) as {
         access_token: string;
         refresh_token: string;
+        expires_at?: string;
       };
       const supabase = createBrowserSupabase();
       const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
       if (sessionError) throw new Error();
+      // Stash the deadline for the expiry wall (no demo_expires_at cookie on the
+      // capacitor origin). Kept outside the volnar* namespace the sign-out purge
+      // clears, so the adopt → onAuthStateChange purge can't race it away.
+      try { if (expires_at) localStorage.setItem("demo_expires_at", expires_at); } catch {}
       window.location.assign("/");
     } catch {
       setError("The demo account isn't available right now.");

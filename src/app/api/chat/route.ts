@@ -3,6 +3,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { entitledGate } from "@/lib/require-entitled";
+import { demoExpiredGate } from "@/lib/demo-session";
 import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
 import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
 import { toUsd, getUsdRates } from "@/lib/fx";
@@ -477,6 +478,12 @@ export async function POST(req: NextRequest) {
     // including the scenario-narration handoff below.
     const gate = await entitledGate(createServerSupabase(), userId);
     if (gate) return gate;
+
+    // Per-visitor demo accounts expire one hour after creation, enforced per user
+    // and server-side. Wall an expired demo turn here, before any read, write, or
+    // rate-limit increment — nothing is mutated on an expired demo turn.
+    const demoGate = await demoExpiredGate(createServerSupabase(), userId);
+    if (demoGate) return demoGate;
 
     const { message, images: rawImages, scenarioHandoff, scenarioConfirm, fromChip } = await req.json();
 

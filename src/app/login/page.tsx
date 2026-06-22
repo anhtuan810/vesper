@@ -281,9 +281,15 @@ function LoginInner() {
             try {
               const res = await apiFetch("/api/demo-session", { method: "POST" });
               if (!res.ok) throw new Error();
-              const { access_token, refresh_token } = await res.json();
+              const { access_token, refresh_token, expires_at } = await res.json();
               const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
               if (sessionError) throw new Error();
+              // Native has no demo_expires_at cookie (cookies don't cross the
+              // capacitor origin) — stash the deadline for the expiry wall. Kept
+              // outside the volnar* namespace the sign-out purge clears, so the
+              // adopt → onAuthStateChange purge can't race it away; it's overwritten
+              // on the next demo entry and only ever read when isDemo holds.
+              try { if (expires_at) localStorage.setItem("demo_expires_at", expires_at); } catch {}
               window.location.assign("/");
             } catch {
               setPreparingDemo(false);

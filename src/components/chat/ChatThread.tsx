@@ -12,6 +12,7 @@ import { FormatText } from "@/components/FormatText";
 import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
 import { ScenarioResultCard } from "@/components/scenario/cards/ScenarioResultCard";
 import { Chip } from "@/components/chat/Chip";
+import { useSubscription } from "@/components/SubscriptionProvider";
 import { classifyChip, cheapHash } from "@/lib/chip-telemetry";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 import type { useChatSession } from "@/lib/use-chat-session";
@@ -77,6 +78,11 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     };
 
     const isPage = variant === "page";
+
+    // Demo sessions get an extra point-of-use reassurance beneath the composer:
+    // anything entered is wiped when the ephemeral session ends. Inert otherwise.
+    const { data: subscription } = useSubscription();
+    const isDemo = !!subscription?.isDemo;
 
     // Composer refs — each variant renders a different element type, so keep a
     // dedicated ref per type and expose focus() to the caller via the handle.
@@ -238,6 +244,11 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         className="text-faint text-center"
         style={{ fontSize: 11, lineHeight: 1.4, paddingTop: 6 }}
       >
+        {isDemo && (
+          <div style={{ fontSize: 11, color: "var(--text-dim)", paddingBottom: 4 }}>
+            This is a demo. Anything you enter is deleted when your session ends — nothing is stored.
+          </div>
+        )}
         {DISCLAIMER_TEXT}
       </div>
     );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { demoExpiredGate } from "@/lib/demo-session";
 
 // GET /api/scenarios/[id] — fetch one saved scenario (user-scoped).
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -24,6 +25,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Wall an expired demo turn before deleting the saved scenario.
+  const demoGate = await demoExpiredGate(createServerSupabase(), user.id);
+  if (demoGate) return demoGate;
+
   const { id } = await params;
 
   const supabase = createServerSupabase();

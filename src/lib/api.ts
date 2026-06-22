@@ -56,6 +56,24 @@ function withCacheGen(path: string, init?: RequestInit): string {
  */
 export type ApiFetchInit = RequestInit & { timeoutMs?: number };
 
+/** Window event the demo expiry wall listens for (see DemoExpiryWall). */
+export const DEMO_EXPIRED_EVENT = "volnar:demo-expired";
+
+// A demo turn the server has already walled (403 { demoExpired: true }) trips the
+// client expiry wall immediately, even before the local clock crosses
+// demo_expires_at. Only 403s are inspected (cheap; real users almost never see
+// one), via a clone so the caller still reads the body normally.
+function signalDemoExpiredIfNeeded(res: Response): void {
+  if (res.status !== 403 || typeof window === "undefined") return;
+  res
+    .clone()
+    .json()
+    .then((body) => {
+      if (body && body.demoExpired) window.dispatchEvent(new CustomEvent(DEMO_EXPIRED_EVENT));
+    })
+    .catch(() => {});
+}
+
 /** Drop-in replacement for fetch() on /api paths. */
 export async function apiFetch(path: string, init?: ApiFetchInit): Promise<Response> {
   const { timeoutMs, ...rest } = init ?? {};
@@ -82,8 +100,12 @@ export async function apiFetch(path: string, init?: ApiFetchInit): Promise<Respo
   }
 
   // No timeout requested, or the caller manages its own cancellation: behave
-  // exactly like a plain fetch.
-  if (timeoutMs == null || rest.signal) return fetch(url, options);
+  // like a plain fetch (with the demo-expiry backstop layered on transparently).
+  if (timeoutMs == null || rest.signal) {
+    const res = await fetch(url, options);
+    signalDemoExpiredIfNeeded(res);
+    return res;
+  }
 
   // Abort once the timeout elapses so a stalled connection rejects (with a
   // clear message) instead of hanging forever. The timer is cleared in a
@@ -95,7 +117,9 @@ export async function apiFetch(path: string, init?: ApiFetchInit): Promise<Respo
     controller.abort();
   }, timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    signalDemoExpiredIfNeeded(res);
+    return res;
   } catch (err) {
     if (timedOut) throw new Error("Request timed out");
     throw err;

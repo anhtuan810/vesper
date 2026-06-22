@@ -33,6 +33,17 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 const daysAgo = (n: number): string =>
   new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
+// Every per-user table a demo visitor can write to. seedDemoUser wipes these on
+// entry (a no-op on a fresh anonymous user) so nothing carries across sessions,
+// and the reap-demo cron deletes the same set when an expired demo account is
+// wiped. mutations precede assets because mutations reference assets. entitlements
+// and the users/auth row are not listed here — the reaper removes the auth user
+// (which cascades them); the seed re-grants the entitlement below.
+export const DEMO_USER_TABLES = [
+  "mutations", "snapshots", "highlights", "messages",
+  "goals", "diary_summaries", "vital_snapshots", "scenarios", "assets",
+] as const;
+
 // ── Assets — current ("today") state ────────────────────────────────────────
 // service-role insert writes real columns directly (not the API allowlist), so
 // every schema column is available here.
@@ -307,10 +318,7 @@ export async function seedDemoUser(userId: string): Promise<void> {
   // leftover history with today's live tip as a bogus cliff — so fail the whole
   // seed instead, letting /demo fall back to /login rather than present a
   // half-reset account.
-  for (const table of [
-    "mutations", "snapshots", "highlights", "messages",
-    "goals", "diary_summaries", "vital_snapshots", "scenarios", "assets",
-  ]) {
+  for (const table of DEMO_USER_TABLES) {
     const { error } = await supabase.from(table).delete().eq("user_id", userId);
     if (error) throw error;
   }

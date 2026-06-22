@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { demoExpiredGate } from "@/lib/demo-session";
 import { isSupportedCurrency } from "@/lib/money";
 import { getEntitlement } from "@/lib/entitlements";
 import { cancelStripeSubscription, deleteStripeCustomer } from "@/lib/stripe";
@@ -36,6 +37,10 @@ export async function PATCH(request: NextRequest) {
   try {
     const user = await getAuthUser(request);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Wall an expired demo turn before persisting profile/currency/theme changes.
+    const demoGate = await demoExpiredGate(createServerSupabase(), user.id);
+    if (demoGate) return demoGate;
 
     const body = await request.json();
     const updateData: Record<string, unknown> = {};
