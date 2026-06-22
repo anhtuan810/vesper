@@ -278,7 +278,7 @@ export function Paywall() {
           >
             Full access to Volnar
           </h1>
-          <p style={{ fontSize: 14.5, color: "var(--text-dim)", textAlign: "center", lineHeight: 1.5, maxWidth: 320, margin: 0 }}>
+          <p style={{ fontSize: 15, color: "var(--text-dim)", textAlign: "center", lineHeight: 1.5, maxWidth: 320, margin: 0 }}>
             Start with a {TRIAL_DAYS}-day free trial. Cancel anytime before it ends and you won&apos;t be charged.
           </p>
         </div>
@@ -306,7 +306,7 @@ export function Paywall() {
         {error && (
           <div
             style={{
-              fontSize: 12.5,
+              fontSize: 13,
               color: "var(--negative-text)",
               background: "var(--negative-soft)",
               border: "1px solid var(--negative-soft)",
@@ -330,7 +330,7 @@ export function Paywall() {
             border: "none",
             background: "var(--accent)",
             color: "#fff",
-            fontSize: 15.5,
+            fontSize: 15,
             fontWeight: 600,
             cursor: busy ? "default" : "pointer",
             opacity: busy ? 0.7 : 1,
@@ -356,7 +356,7 @@ export function Paywall() {
             border: "none",
             background: "none",
             color: "var(--accent-text)",
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: 500,
             cursor: busy ? "default" : "pointer",
             fontFamily: "var(--font-sans)",
@@ -389,7 +389,7 @@ export function Paywall() {
               border: "1px solid var(--border-strong)",
               background: "var(--surface)",
               color: "var(--text)",
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: 500,
               cursor: busy ? "default" : "pointer",
             }}
@@ -410,7 +410,7 @@ export function Paywall() {
               border: "1px solid var(--border-strong)",
               background: "var(--surface)",
               color: "var(--text)",
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: 500,
               cursor: busy ? "default" : "pointer",
             }}
@@ -422,7 +422,7 @@ export function Paywall() {
         {/* Apple-required auto-renew disclosure + legal links, near the buy button */}
         <p
           style={{
-            fontSize: 11,
+            fontSize: 12,
             color: "var(--text-faint)",
             lineHeight: 1.6,
             textAlign: "center",
@@ -457,7 +457,7 @@ export function Paywall() {
         {showBuildSha && (
           <p
             style={{
-              fontSize: 9.5,
+              fontSize: 11,
               color: "var(--text-faint)",
               textAlign: "center",
               marginTop: 8,
@@ -473,7 +473,7 @@ export function Paywall() {
           <button
             onClick={signOut}
             style={{
-              fontSize: 12.5,
+              fontSize: 13,
               color: "var(--text-faint)",
               background: "none",
               border: "none",
@@ -553,7 +553,7 @@ function PlanOption({
           {highlight && (
             <span
               style={{
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
@@ -569,14 +569,14 @@ function PlanOption({
           )}
         </span>
         {note && (
-          <span style={{ display: "block", fontSize: 12.5, color: "var(--text-dim)", marginTop: 3 }}>
+          <span style={{ display: "block", fontSize: 13, color: "var(--text-dim)", marginTop: 3 }}>
             {note}
           </span>
         )}
       </span>
       <span style={{ textAlign: "right", flexShrink: 0 }}>
         <span style={{ display: "block", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{price}</span>
-        <span style={{ display: "block", fontSize: 11.5, color: "var(--text-faint)" }}>{period}</span>
+        <span style={{ display: "block", fontSize: 12, color: "var(--text-faint)" }}>{period}</span>
       </span>
     </button>
   );

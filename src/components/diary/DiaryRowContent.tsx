@@ -30,7 +30,7 @@ export function DiaryRowContent({
           </span>
           <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
             {valueNode}
-            <span style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
               {formatDate(date)}
             </span>
           </span>
@@ -52,7 +52,7 @@ export function DiaryRowContent({
           <div style={{ marginTop: personalContext ? 6 : 0, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
             <span
               className="font-mono uppercase"
-              style={{ fontSize: 10, letterSpacing: "0.14em", color: "var(--text-faint)", flexShrink: 0 }}
+              style={{ fontSize: 11, letterSpacing: "0.14em", color: "var(--text-faint)", flexShrink: 0 }}
             >
               Markets
             </span>

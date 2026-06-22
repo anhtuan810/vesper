@@ -65,7 +65,7 @@ export function VitalCard({
         <div>
           <div
             style={{
-              fontSize: emphasizeText ? "11px" : "9.5px",
+              fontSize: emphasizeText ? "12px" : "11px",
               fontWeight: 500,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
@@ -97,7 +97,7 @@ export function VitalCard({
             </div>
             <div
               style={{
-                fontSize: "10.5px",
+                fontSize: "11px",
                 color: "var(--text-dim)",
                 fontFeatureSettings: "'tnum'",
               }}
@@ -120,7 +120,7 @@ export function VitalCard({
           >
             <span
               style={{
-                fontSize: "9px",
+                fontSize: "11px",
                 color: "var(--text-faint)",
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
@@ -131,7 +131,7 @@ export function VitalCard({
             </span>
             <span
               style={{
-                fontSize: "14px",
+                fontSize: "15px",
                 fontWeight: 500,
                 color: "var(--text)",
                 fontFeatureSettings: "'tnum'",
@@ -151,7 +151,7 @@ export function VitalCard({
       {benchLine && (
         <div
           style={{
-            fontSize: "10.5px",
+            fontSize: "11px",
             color: "var(--text-dim)",
             display: "flex",
             alignItems: "center",

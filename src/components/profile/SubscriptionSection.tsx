@@ -21,7 +21,7 @@ import {
 } from "@/lib/subscription";
 
 const SECTION_LABEL_STYLE: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 11,
   fontWeight: 500,
   letterSpacing: "0.18em",
   textTransform: "uppercase",
@@ -249,7 +249,7 @@ export function SubscriptionSection() {
               border: "none",
               background: "var(--accent)",
               color: "#fff",
-              fontSize: 14.5,
+              fontSize: 15,
               fontWeight: 600,
               cursor: busy ? "default" : "pointer",
               opacity: busy ? 0.7 : 1,
@@ -261,7 +261,7 @@ export function SubscriptionSection() {
       )}
 
       {error && (
-        <div style={{ fontSize: 12, color: "var(--negative)", marginTop: -14, marginBottom: 20, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: "var(--negative)", marginTop: -14, marginBottom: 20, lineHeight: 1.5 }}>
           {error}
         </div>
       )}
@@ -309,11 +309,11 @@ function Row({
     >
       <div style={{ flex: 1, fontSize: 13, color: "var(--text-dim)" }}>{label}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{value}</span>
+        <span style={{ fontSize: 15, fontWeight: 500, color: "var(--text)" }}>{value}</span>
         {badge && (
           <span
             style={{
-              fontSize: 10.5,
+              fontSize: 11,
               fontWeight: 600,
               letterSpacing: "0.03em",
               color: badgeColor ?? "var(--accent)",

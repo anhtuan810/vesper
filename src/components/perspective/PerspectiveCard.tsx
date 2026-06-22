@@ -62,7 +62,7 @@ export function PerspectiveCard({
       <div
         style={{
           fontFamily: "var(--serif)",
-          fontSize: 15.5,
+          fontSize: 15,
           fontStyle: "italic",
           lineHeight: 1.5,
           color: "var(--text)",
@@ -98,7 +98,7 @@ export function PerspectiveCard({
       >
         <div
           style={{
-            fontSize: 9,
+            fontSize: 11,
             color: "var(--accent-deep)",
             opacity: 0.7,
             letterSpacing: "0.12em",
@@ -207,7 +207,7 @@ export function PerspectiveCard({
             <div style={{ flex: "0 0 72px" }}>
               <div
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 600,
                   color: "var(--text)",
                   letterSpacing: "0.03em",
@@ -215,7 +215,7 @@ export function PerspectiveCard({
               >
                 {row.label}
               </div>
-              <div style={{ fontSize: 9.5, color: "var(--text-dim)" }}>
+              <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
                 {row.sublabel}
               </div>
             </div>
@@ -257,7 +257,7 @@ export function PerspectiveCard({
               </div>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 11,
                   color: "var(--text-faint)",
                   marginTop: 6,
                 }}
@@ -278,13 +278,13 @@ export function PerspectiveCard({
                 }}
               >
                 {formatPercentile(row.percentile)}
-                <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
                   {ordinalSuffix(Math.round(row.percentile))}
                 </span>
               </div>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 11,
                   color: "var(--text-faint)",
                   letterSpacing: "0.04em",
                   marginTop: 2,
@@ -338,7 +338,7 @@ export function PerspectiveCard({
               )}
               {direction === "flat" && <path d="M5 12h14" />}
             </svg>
-            <span style={{ fontSize: 11, color: "var(--text)" }}>
+            <span style={{ fontSize: 12, color: "var(--text)" }}>
               {direction === "flat" ? (
                 <>No change in {data.trajectory.region} this year</>
               ) : (
@@ -359,7 +359,7 @@ export function PerspectiveCard({
       <div
         style={{
           fontFamily: "var(--serif)",
-          fontSize: 12.5,
+          fontSize: 13,
           fontStyle: "italic",
           lineHeight: 1.5,
           color: "var(--text-dim)",

@@ -68,7 +68,7 @@ function GhostBar({ width, height = 10 }: { width: number | string; height?: num
 // gives way to the real Perspective/Context blocks as soon as there's data.
 function ProfilePreview() {
   const sectionLabel: CSSProperties = {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 500,
     letterSpacing: "0.18em",
     textTransform: "uppercase",
@@ -82,7 +82,7 @@ function ProfilePreview() {
     overflow: "hidden",
   };
   const caption: CSSProperties = {
-    fontSize: 12,
+    fontSize: 13,
     color: "var(--text-faint)",
     lineHeight: 1.5,
     margin: "10px 2px 24px",
@@ -256,7 +256,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {perspective && (
         <>
           <div style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
@@ -273,7 +273,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {visibleFields.length > 0 && (
         <>
           <div style={{
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",

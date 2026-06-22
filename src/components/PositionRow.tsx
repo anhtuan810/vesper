@@ -88,7 +88,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
             {asset.name}
           </div>
           {sub && (
-            <div className="text-dim mt-0.5 truncate" style={{ fontSize: 11.5 }}>
+            <div className="text-dim mt-0.5 truncate" style={{ fontSize: 12 }}>
               {sub}
             </div>
           )}
@@ -111,7 +111,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
               {isTradeable && chg !== null && (
                 <div
                   className={`mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
-                  style={{ fontSize: 11.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
+                  style={{ fontSize: 12, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
                 >
                   {fmtPct.format(chg)}%
                 </div>
@@ -119,7 +119,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
               {isRealEstate && Number.isFinite(ownedFraction) && (
                 <div
                   className="mt-0.5 text-dim"
-                  style={{ fontSize: 11.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
+                  style={{ fontSize: 12, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}
                 >
                   {ownedFraction >= 1 ? "Owned outright" : `${Math.round(ownedFraction * 100)}% owned`}
                 </div>

@@ -282,7 +282,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               key={key}
               onClick={() => setPeriod(key)}
               style={{
-                fontSize: 12,
+                fontSize: 13,
                 padding: "4px 10px",
                 borderRadius: 999,
                 border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
@@ -353,7 +353,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
           >
             <div
               style={{
-                fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+                fontSize: 11, fontWeight: 500, letterSpacing: "0.18em",
                 textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
                 marginBottom: 6,
               }}
@@ -401,15 +401,15 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         <div className="text-center pt-16">
           {trimmedQuery ? (
             <>
-              <div style={{ fontSize: 14, color: "var(--text-dim)", marginBottom: 8 }}>
+              <div style={{ fontSize: 15, color: "var(--text-dim)", marginBottom: 8 }}>
                 No entries match &ldquo;{searchQuery.trim()}&rdquo;
               </div>
-              <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Try a different search term.</p>
+              <p style={{ fontSize: 13, color: "var(--text-faint)" }}>Try a different search term.</p>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 14, color: "var(--text-dim)", marginBottom: 8 }}>No entries for this period</div>
-              <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Try a different time range.</p>
+              <div style={{ fontSize: 15, color: "var(--text-dim)", marginBottom: 8 }}>No entries for this period</div>
+              <p style={{ fontSize: 13, color: "var(--text-faint)" }}>Try a different time range.</p>
             </>
           )}
         </div>
@@ -457,7 +457,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               >
                 {getMonthLabel(monthKey)}
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+              <div style={{ fontSize: 13, color: "var(--text-faint)" }}>
                 {monthMutations.length} {monthMutations.length === 1 ? "entry" : "entries"}
               </div>
             </div>
@@ -557,7 +557,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                           </div>
                         }
                         footer={
-                          <div style={{ marginTop: anchorContext ? 4 : 2, fontSize: 12, color: "var(--text-faint)" }}>
+                          <div style={{ marginTop: anchorContext ? 4 : 2, fontSize: 13, color: "var(--text-faint)" }}>
                             {isGroupExpanded ? "↑ Hide" : `↓ Show all ${members.length} entries`}
                           </div>
                         }
@@ -579,7 +579,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                             <span style={{ flex: 1 }}>{valueNode}</span>
                             <span
                               style={{
-                                fontSize: 12, color: "var(--text-faint)",
+                                fontSize: 13, color: "var(--text-faint)",
                                 fontFeatureSettings: '"tnum" 1', flexShrink: 0,
                               }}
                             >

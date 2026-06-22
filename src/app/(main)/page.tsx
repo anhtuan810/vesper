@@ -196,7 +196,7 @@ export default function Dashboard() {
           <button
             onClick={() => window.location.reload()}
             className="font-mono text-accent hover:underline"
-            style={{ fontSize: 12 }}
+            style={{ fontSize: 13 }}
           >
             Reload
           </button>
@@ -256,7 +256,7 @@ export default function Dashboard() {
           >
             <span
               className="leading-relaxed"
-              style={{ fontSize: 12, color: "var(--negative)" }}
+              style={{ fontSize: 13, color: "var(--negative)" }}
             >
               Live prices unavailable. Showing last known values.
             </span>
@@ -265,7 +265,7 @@ export default function Dashboard() {
               disabled={refreshing}
               className="font-mono uppercase shrink-0 ml-3"
               style={{
-                fontSize: 10,
+                fontSize: 11,
                 color: "var(--negative)",
                 letterSpacing: "0.1em",
                 background: "none",

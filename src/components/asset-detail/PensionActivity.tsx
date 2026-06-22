@@ -22,7 +22,7 @@ export function PensionActivityList({
 
   return (
     <div style={{ marginTop: 26 }}>
-      <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
         Activity
       </div>
       {mutations.map((m) => {
@@ -51,13 +51,13 @@ export function PensionActivityList({
 
         return (
           <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
-            <div style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
               {dateStr ? formatDate(dateStr) : "—"}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {delta && (
                 <div style={{
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 500,
                   color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
                   marginBottom: 2,

@@ -131,7 +131,7 @@ export function AiConsentGate() {
 
         <div
           id="ai-consent-body"
-          style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.6 }}
+          style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.6 }}
         >
           <p style={{ margin: "0 0 12px" }}>
             To power the chat assistant and insights, Volnar sends your portfolio
@@ -159,7 +159,7 @@ export function AiConsentGate() {
         </div>
 
         {error && (
-          <div style={{ fontSize: 12, color: "var(--negative)", marginTop: 14, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: "var(--negative)", marginTop: 14, lineHeight: 1.5 }}>
             {error}
           </div>
         )}

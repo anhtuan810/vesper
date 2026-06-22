@@ -110,7 +110,7 @@ export function ScenarioComparisonCard({
       {/* Net worth */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>{netWorthLabel}</div>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 4 }}>{netWorthLabel}</div>
           <div className="font-serif" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--hero)", lineHeight: 1 }}>
             {m(s.netWorthUsd)}
           </div>
@@ -144,24 +144,24 @@ export function ScenarioComparisonCard({
       {showLtvCallout && hasLeverage && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--negative-soft)" }}>
           <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>Mortgage LTV</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--negative-text)" }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--negative-text)" }}>
             {fmtPct(c.leverage!.ltvPct)} <span style={{ opacity: 0.6 }}>→</span> {fmtPct(s.leverage!.ltvPct)}
           </span>
         </div>
       )}
 
       {/* Allocation by category */}
-      <div style={{ ...eyebrowStyle, fontSize: 9, margin: `${allocationMarginTop}px 0 6px` }}>{allocationLabel}</div>
+      <div style={{ ...eyebrowStyle, fontSize: 11, margin: `${allocationMarginTop}px 0 6px` }}>{allocationLabel}</div>
 
       {/* Before/after stacked bars that visibly shift */}
       {allocationBar && (
         <div style={{ margin: "2px 0 10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-            <span style={{ width: 34, fontSize: 11, color: "var(--text-faint)" }}>Now</span>
+            <span style={{ width: 34, fontSize: 12, color: "var(--text-faint)" }}>Now</span>
             <div style={{ flex: 1 }}><AllocationBar alloc={curAlloc} /></div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 34, fontSize: 11, color: "var(--text-faint)" }}>After</span>
+            <span style={{ width: 34, fontSize: 12, color: "var(--text-faint)" }}>After</span>
             <div style={{ flex: 1 }}><AllocationBar alloc={scnAlloc} /></div>
           </div>
         </div>
@@ -180,7 +180,7 @@ export function ScenarioComparisonCard({
       {/* Contextual vitals that moved materially — before -> after */}
       {contextualVitals && contextualVitals.length > 0 && (
         <>
-          <div style={{ ...eyebrowStyle, fontSize: 9, margin: "14px 0 6px" }}>What this moves</div>
+          <div style={{ ...eyebrowStyle, fontSize: 11, margin: "14px 0 6px" }}>What this moves</div>
           {contextualVitals.map((v) => (
             <div key={v.key} style={statRowStyle}>
               <span style={{ fontSize: 13, color: "var(--text)" }}>{v.label}</span>
@@ -199,7 +199,7 @@ export function ScenarioComparisonCard({
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 11,
   fontWeight: 600,
   letterSpacing: "0.18em",
   textTransform: "uppercase",

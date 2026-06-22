@@ -126,7 +126,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
               display: "inline-flex", alignItems: "center", gap: 6,
               padding: "3px 9px", borderRadius: 999,
               background: "var(--surface-elev)", color: "var(--text-dim)",
-              fontSize: 11, fontWeight: 500, letterSpacing: "0.01em",
+              fontSize: 12, fontWeight: 500, letterSpacing: "0.01em",
             }}>
               <span style={{ width: 7, height: 7, borderRadius: 999, background: PENSION_GROWTH_COLOR }} />
               {kindPill}
@@ -136,7 +136,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
 
         {/* Guaranteed income hero */}
         <div style={{ marginBottom: 22 }}>
-          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
             Guaranteed income
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
@@ -153,7 +153,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             ≈ {formatMoney(monthly, cur, displayCurrency)} / month{accessAge != null ? `, from age ${accessAge}` : ""}
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
-            <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-sans)" }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-sans)" }}>
               Native currency: {asset.currency} · {formatMoney(annual, asset.currency, asset.currency as DisplayCurrency)} / year
             </div>
           )}
@@ -181,11 +181,11 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
               {currentAge != null && (
-                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
                   Now · age {currentAge}
                 </div>
               )}
-              <div style={{ fontSize: 12, color: "var(--text)", fontWeight: 500, textAlign: currentAge != null ? "right" : "left" }}>
+              <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, textAlign: currentAge != null ? "right" : "left" }}>
                 Income begins · age {accessAge}
               </div>
             </div>

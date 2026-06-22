@@ -76,7 +76,7 @@ export function NavBar({
         <span
           className="font-mono"
           style={{
-            fontSize: 10,
+            fontSize: 11,
             padding: "1px 6px",
             borderRadius: 999,
             background: tab === "diary" ? "rgba(255,255,255,0.12)" : "var(--surface)",
@@ -102,7 +102,7 @@ export function NavBar({
       {!empty && lastUpdated && (
         <span
           className="font-mono text-faint hidden sm:inline"
-          style={{ fontSize: 10, letterSpacing: "0.04em" }}
+          style={{ fontSize: 11, letterSpacing: "0.04em" }}
         >
           {formatRelativeTime(lastUpdated)}
         </span>

@@ -212,7 +212,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         {remaining !== null && remaining <= 10 && (
           <div
             className="font-mono text-accent text-right"
-            style={{ fontSize: 10, paddingBottom: 4 }}
+            style={{ fontSize: 11, paddingBottom: 4 }}
           >
             {remaining === 0 ? "Limit reached" : `${remaining} left today`}
           </div>
@@ -221,7 +221,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           <div
             className="font-mono"
             style={{
-              fontSize: 10,
+              fontSize: 11,
               paddingBottom: 4,
               color: input.length >= 500 ? "var(--negative)" : "var(--accent)",
             }}
@@ -236,7 +236,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     const disclaimer = (
       <div
         className="text-faint text-center"
-        style={{ fontSize: 10.5, lineHeight: 1.4, paddingTop: 6 }}
+        style={{ fontSize: 11, lineHeight: 1.4, paddingTop: 6 }}
       >
         {DISCLAIMER_TEXT}
       </div>
@@ -254,7 +254,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         {isLoadingMore && (
           <div
             className="text-center text-faint"
-            style={{ fontSize: 11, paddingBottom: 4 }}
+            style={{ fontSize: 12, paddingBottom: 4 }}
           >
             Loading older messages…
           </div>
@@ -308,7 +308,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
             >
               {firstAssistant && (
                 <div style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: 500,
                   letterSpacing: "0.18em",
                   textTransform: "uppercase",
@@ -442,7 +442,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 />
                 <div
                   className="font-serif"
-                  style={{ fontStyle: "italic", fontSize: 13.5, color: "var(--text-dim)", lineHeight: 1.5, marginTop: 10 }}
+                  style={{ fontStyle: "italic", fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5, marginTop: 10 }}
                 >
                   {seedMessage.cone.line}
                 </div>
@@ -524,7 +524,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                         width: 18, height: 18, borderRadius: "50%",
                         background: "var(--text-faint)", color: "var(--bg)",
                         border: "none", cursor: "pointer",
-                        fontSize: 10, lineHeight: "18px", textAlign: "center", padding: 0,
+                        fontSize: 11, lineHeight: "18px", textAlign: "center", padding: 0,
                       }}
                     >
                       ✕
@@ -681,7 +681,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                     width: 16, height: 16, borderRadius: "50%",
                     background: "var(--text-faint)", color: "var(--bg)",
                     border: "none", cursor: "pointer",
-                    fontSize: 9, lineHeight: "16px", textAlign: "center", padding: 0,
+                    fontSize: 11, lineHeight: "16px", textAlign: "center", padding: 0,
                   }}
                 >
                   ✕
@@ -771,7 +771,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 background: "transparent",
                 border: "none",
                 fontFamily: "var(--sans)",
-                fontSize: 14,
+                fontSize: 15,
                 color: "var(--text)",
               }}
             />

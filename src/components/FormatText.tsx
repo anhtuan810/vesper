@@ -57,7 +57,7 @@ function ChangesBlock({ content }: { content: string }) {
       <div
         style={{
           fontFamily: "var(--mono)",
-          fontSize: 9,
+          fontSize: 11,
           letterSpacing: "0.16em",
           textTransform: "uppercase",
           color: "var(--accent)",
@@ -77,7 +77,7 @@ function ChangesBlock({ content }: { content: string }) {
               alignItems: "baseline",
               padding: "3px 0",
               fontFamily: "var(--mono)",
-              fontSize: 11,
+              fontSize: 12,
             }}
           >
             <span style={{ color: "var(--text)", minWidth: 0, overflowWrap: "break-word" }}>{name?.trim()}</span>

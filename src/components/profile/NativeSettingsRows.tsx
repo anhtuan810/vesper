@@ -53,7 +53,7 @@ function Row({ label, sub, children }: { label: string; sub?: string; children: 
           {label}
         </div>
         {sub && (
-          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>{sub}</div>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>{sub}</div>
         )}
       </div>
       {children}
@@ -139,7 +139,7 @@ export function NativeSettingsRows() {
         <Toggle on={pushOn} busy={busy === "push"} onClick={togglePush} />
       </Row>
       {pushNote && (
-        <div style={{ padding: "0 16px 12px", fontSize: 11, color: "var(--text-faint)" }}>
+        <div style={{ padding: "0 16px 12px", fontSize: 12, color: "var(--text-faint)" }}>
           {pushNote}
         </div>
       )}

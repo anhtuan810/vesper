@@ -47,7 +47,7 @@ export function AppGate() {
       }}
     >
       <VolnarLogo size={52} className="logo-pulse" />
-      <div style={{ fontSize: 13.5, color: "var(--text-dim)", lineHeight: 1.5, minHeight: 20 }}>
+      <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5, minHeight: 20 }}>
         {message}
       </div>
       <div style={{ display: "flex", gap: 6 }} aria-hidden="true">

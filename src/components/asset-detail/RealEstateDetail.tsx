@@ -115,7 +115,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Equity hero */}
         <div style={{ marginBottom: hasMortgage ? 12 : 28 }}>
           <div style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
@@ -159,7 +159,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Mortgage section */}
         {hasMortgage && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Mortgage
             </div>
             {asset.mortgage_rate != null && (
@@ -177,7 +177,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Activity */}
         {mutations.length > 0 && (
           <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Activity
             </div>
             {mutations.map((m) => {
@@ -205,13 +205,13 @@ export function RealEstateDetail({ asset }: Props) {
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
-                  <div style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
                     {dateStr ? formatDate(dateStr) : "—"}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {delta && (
                       <div style={{
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: 500,
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
                         marginBottom: m.personal_context ? 2 : 0,

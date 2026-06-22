@@ -197,7 +197,7 @@ export function MortgageBlock({ asset }: Props) {
                 {row.value}
               </span>
               {row.meta && (
-                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFeatureSettings: '"tnum" 1' }}>
                   {row.meta}
                 </span>
               )}
@@ -253,7 +253,7 @@ export function MortgageBlock({ asset }: Props) {
             alignItems: "center",
             marginTop: 8,
             padding: "0 2px",
-            fontSize: 11,
+            fontSize: 12,
             color: "var(--text-faint)",
             fontFeatureSettings: '"tnum" 1',
             fontFamily: "var(--font-sans)",
@@ -277,7 +277,7 @@ export function MortgageBlock({ asset }: Props) {
                   fontWeight: 500,
                   padding: "2px 8px",
                   borderRadius: 999,
-                  fontSize: 10,
+                  fontSize: 11,
                   letterSpacing: "0.04em",
                 }}>
                   TODAY

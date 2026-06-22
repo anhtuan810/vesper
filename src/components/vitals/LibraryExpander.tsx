@@ -135,13 +135,13 @@ export function LibraryExpander({
             <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>
               Library
             </span>
-            <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+            <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
               {totalCount} vitals · {dormantVitals.length} dormant
             </span>
           </div>
           <div
             style={{
-              fontSize: 10.5,
+              fontSize: 11,
               color: "var(--text-faint)",
               marginTop: 3,
             }}
@@ -220,7 +220,7 @@ export function LibraryExpander({
                   </span>
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 12,
                       color: "var(--text-faint)",
                       fontFeatureSettings: "'tnum'",
                       flexShrink: 0,
@@ -231,7 +231,7 @@ export function LibraryExpander({
                 </div>
                 <div
                   style={{
-                    fontSize: 11.5,
+                    fontSize: 12,
                     color: "var(--text-dim)",
                     lineHeight: 1.4,
                     marginTop: 2,

@@ -37,7 +37,7 @@ export function HoldingsGroup({
         }}
       >
         <span style={{
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: 600,
           letterSpacing: "-0.01em",
           color: "var(--text)",

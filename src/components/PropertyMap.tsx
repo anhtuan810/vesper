@@ -32,7 +32,7 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
         backdropFilter: "blur(8px)",
         borderRadius: 999,
         padding: "6px 12px",
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 500,
         color: "var(--text)",
         letterSpacing: "0.02em",
@@ -100,14 +100,14 @@ export function PropertyMap({ asset }: Props) {
   if (!asset.latitude || !asset.longitude) {
     return (
       <div style={{ ...containerStyle, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.04em", textAlign: "center", padding: "0 24px", fontFamily: "var(--font-sans)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-dim)", letterSpacing: "0.04em", textAlign: "center", padding: "0 24px", fontFamily: "var(--font-sans)" }}>
           {asset.address?.trim() ? "Couldn't locate this address on the map" : "No address on file"}
         </div>
         <button
           onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Update the address for ${asset.name}`)}`)}
           style={{ background: "none", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "5px 14px", cursor: "pointer" }}
         >
-          <span style={{ fontSize: 9, color: "var(--accent)", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-sans)" }}>
+          <span style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-sans)" }}>
             {asset.address?.trim() ? "Update address" : "Add address"}
           </span>
         </button>

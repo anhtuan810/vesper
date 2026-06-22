@@ -39,7 +39,7 @@ const panelHeaderStyle: React.CSSProperties = {
   borderBottom: "0.5px solid var(--border)",
 };
 const panelLabelStyle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 11,
   fontWeight: 600,
   letterSpacing: "0.18em",
   textTransform: "uppercase",

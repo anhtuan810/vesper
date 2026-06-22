@@ -885,7 +885,7 @@ export function VitalsContent({
               border: `0.5px solid ${showProperty ? "var(--accent-soft)" : "var(--border)"}`,
               background: showProperty ? "var(--accent-soft)" : "transparent",
               color: showProperty ? "var(--accent-deep)" : "var(--text-faint)",
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 500,
               cursor: "pointer",
               transition: "background 0.15s, border-color 0.15s, color 0.15s",
@@ -936,7 +936,7 @@ export function VitalsContent({
           style={{
             fontFamily: "var(--serif)",
             fontStyle: "italic",
-            fontSize: 14.5,
+            fontSize: 15,
             color: "var(--text-dim)",
             lineHeight: 1.5,
           }}
@@ -963,7 +963,7 @@ export function VitalsContent({
           style={{
             fontFamily: "var(--serif)",
             fontStyle: "italic",
-            fontSize: 14.5,
+            fontSize: 15,
             color: "var(--text-dim)",
             lineHeight: 1.5,
             marginBottom: 20,
@@ -1117,7 +1117,7 @@ export function VitalsContent({
       {/* 3. Active vitals eyebrow */}
       <div
         style={{
-          fontSize: "9.5px",
+          fontSize: "11px",
           fontWeight: 500,
           letterSpacing: "0.18em",
           textTransform: "uppercase",

@@ -103,7 +103,7 @@ function LoginInner() {
     background: "var(--surface)",
     border: "1px solid var(--border-strong)",
     color: "var(--text)",
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: 500,
     cursor: "pointer",
     minHeight: 54,
@@ -125,7 +125,7 @@ function LoginInner() {
     background: "var(--accent-soft)",
     border: "1px solid var(--accent)",
     color: "var(--accent-text)",
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: 600,
     cursor: "pointer",
     minHeight: 54,
@@ -153,7 +153,7 @@ function LoginInner() {
         }}
       >
         <VolnarLogo size={52} className="logo-pulse" />
-        <div style={{ fontSize: 13.5, color: "var(--text-dim)", lineHeight: 1.5, minHeight: 20 }}>
+        <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5, minHeight: 20 }}>
           Preparing your demo account…
         </div>
         <div style={{ display: "flex", gap: 6 }} aria-hidden="true">
@@ -241,7 +241,7 @@ function LoginInner() {
             <div
               className="font-mono"
               style={{
-                fontSize: 11, color: "var(--negative)",
+                fontSize: 12, color: "var(--negative)",
                 padding: "10px 14px", borderRadius: 10,
                 background: "rgba(201,122,110,0.08)",
                 border: "1px solid rgba(201,122,110,0.18)",
@@ -259,7 +259,7 @@ function LoginInner() {
 
         <div className="flex items-center" style={{ gap: 12, margin: "20px 0 14px" }}>
           <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          <span style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>or</span>
+          <span style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>or</span>
           <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
 
@@ -301,7 +301,7 @@ function LoginInner() {
 
         <p
           className="text-center font-mono text-faint mt-10"
-          style={{ fontSize: 10, letterSpacing: "0.04em", lineHeight: 1.6 }}
+          style={{ fontSize: 11, letterSpacing: "0.04em", lineHeight: 1.6 }}
         >
           By continuing you agree to our{" "}
           <a

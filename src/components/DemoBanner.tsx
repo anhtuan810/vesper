@@ -54,7 +54,7 @@ export function DemoBanner() {
         <span
           style={{
             fontFamily: "var(--font-serif)",
-            fontSize: 14,
+            fontSize: 15,
             color: "var(--accent)",
             fontVariationSettings: "'opsz' 14",
           }}
@@ -72,7 +72,7 @@ export function DemoBanner() {
           onClick={signOut}
           style={{
             fontFamily: "var(--font-sans)",
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: 500,
             color: "var(--accent)",
             background: "none",

@@ -391,7 +391,7 @@ export function PortfolioTab({
           style={{
             cursor: "pointer", WebkitTapHighlightColor: "transparent",
             padding: "2px 0 0", marginBottom: 0,
-            fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+            fontSize: 11, fontWeight: 500, letterSpacing: "0.18em",
             textTransform: "uppercase", color: "var(--text-faint)",
           }}
         >
@@ -427,13 +427,13 @@ export function PortfolioTab({
             <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
               <div
                 style={{
-                  fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+                  fontSize: 11, fontWeight: 500, letterSpacing: "0.18em",
                   textTransform: "uppercase", color: "var(--text-faint)",
                 }}
               >
                 Future income
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+              <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
                 {formatMoney(
                   incomePensions.reduce((s, a) => {
                     const native = (a as { annual_income?: number | null }).annual_income ?? 0;
@@ -444,7 +444,7 @@ export function PortfolioTab({
                 )} / year
               </div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.45 }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.45 }}>
               Not part of net worth — future income you&apos;ll receive, not a holding you own today.
             </div>
             {/* Each pension renders as an INDIVIDUAL asset row — same element,

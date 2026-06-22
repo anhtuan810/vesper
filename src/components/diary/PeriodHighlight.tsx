@@ -109,7 +109,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
             </span>
           </div>
           <span
-            style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.04em" }}
+            style={{ fontSize: 13, color: "var(--text-faint)", letterSpacing: "0.04em" }}
           >
             Reading the period…
           </span>
@@ -123,7 +123,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
           {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i, arr) => (
             <li
               key={i}
-              style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 6 : 0 }}
+              style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 6 : 0 }}
             >
               {line.replace(/^•\s*/, "• ")}
             </li>

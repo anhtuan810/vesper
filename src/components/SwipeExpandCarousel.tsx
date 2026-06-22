@@ -128,13 +128,13 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
                         style={{
                           display: "block", width: "100%", textAlign: "left", marginTop: 4,
                           background: "none", border: "none", cursor: "pointer", padding: 0,
-                          fontSize: 12.5, lineHeight: 1.4, color: "var(--text)", opacity: 0.6,
+                          fontSize: 13, lineHeight: 1.4, color: "var(--text)", opacity: 0.6,
                         }}
                       >
                         {item.detail}
                       </button>
                     ) : (
-                      <div style={{ marginTop: 4, fontSize: 12.5, lineHeight: 1.4, color: "var(--text)", opacity: 0.6 }}>
+                      <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.4, color: "var(--text)", opacity: 0.6 }}>
                         {item.detail}
                       </div>
                     )

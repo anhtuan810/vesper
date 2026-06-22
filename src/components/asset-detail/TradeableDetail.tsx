@@ -38,7 +38,7 @@ function DeltaPill({ isPositive, children }: { isPositive: boolean; children: Re
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px",
-      borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFeatureSettings: '"tnum" 1',
+      borderRadius: 999, fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1',
       background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)",
       color: isPositive ? "var(--positive-text)" : "var(--negative-text)",
     }}>
@@ -55,7 +55,7 @@ function DeltaPill({ isPositive, children }: { isPositive: boolean; children: Re
 function ActivityDate({ dateStr }: { dateStr: string }) {
   return (
     <div style={{
-      fontSize: 12,
+      fontSize: 13,
       color: "var(--text-faint)",
       fontFeatureSettings: '"tnum" 1',
       width: 56,
@@ -190,7 +190,7 @@ export function TradeableDetail({ asset }: Props) {
               {asset.name}
             </div>
             {asset.units != null && (
-              <div style={{ fontSize: 12, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+              <div style={{ fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
                 {asset.units.toLocaleString("en")} {noun}
               </div>
             )}
@@ -200,7 +200,7 @@ export function TradeableDetail({ asset }: Props) {
         {/* Market price hero */}
         <div style={{ marginBottom: 20 }}>
           <div style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
@@ -236,7 +236,7 @@ export function TradeableDetail({ asset }: Props) {
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2)}%</DeltaPill>
-                  <span style={{ color: "var(--text-faint)", fontSize: 12.5 }}>{scrubInfo.label}</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{scrubInfo.label}</span>
                 </div>
               );
             }
@@ -246,7 +246,7 @@ export function TradeableDetail({ asset }: Props) {
                 const ageMs = now.getTime() - earliestBuyDate.getTime();
                 // Case C: position added today
                 if (ageMs < ONE_DAY_MS) {
-                  return <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>Just added</div>;
+                  return <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Just added</div>;
                 }
                 const chartRangeStart = rangeToStartDate(periodInfo.range);
                 const effectiveStartMs = Math.max(chartRangeStart.getTime(), earliestBuyDate.getTime());
@@ -258,7 +258,7 @@ export function TradeableDetail({ asset }: Props) {
                     : null;
                   const dateLabel = `since ${formatDate(earliestBuyDate.toISOString())}`;
                   return (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12.5, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1' }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1' }}>
                       {pct !== null && <span style={{ fontWeight: 500 }}>{pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2)}%</span>}
                       <span>{dateLabel}</span>
                     </div>
@@ -270,7 +270,7 @@ export function TradeableDetail({ asset }: Props) {
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(periodInfo.pct).toFixed(2)}%</DeltaPill>
-                  <span style={{ color: "var(--text-faint)", fontSize: 12.5 }}>{periodInfo.label}</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{periodInfo.label}</span>
                 </div>
               );
             }
@@ -281,11 +281,11 @@ export function TradeableDetail({ asset }: Props) {
                     {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), assetCur, displayCurrency)} · `}
                     {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2)}%
                   </DeltaPill>
-                  <span style={{ color: "var(--text-faint)", fontSize: 12.5 }}>today</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: 13 }}>today</span>
                 </div>
               );
             }
-            return <div style={{ fontSize: 12, color: "var(--text-faint)" }}>No live data</div>;
+            return <div style={{ fontSize: 13, color: "var(--text-faint)" }}>No live data</div>;
           })()}
         </div>
 
@@ -295,7 +295,7 @@ export function TradeableDetail({ asset }: Props) {
         {/* Your position */}
         <div style={{ marginTop: 26 }}>
           <div style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
@@ -328,7 +328,7 @@ export function TradeableDetail({ asset }: Props) {
                 </span>
                 {totalReturnAbs != null && avgBuyPrice != null && avgBuyPrice > 0 && livePrice != null && (
                   <span style={{
-                    fontSize: 11, fontWeight: 500,
+                    fontSize: 12, fontWeight: 500,
                     color: totalReturnAbs >= 0 ? "var(--positive-text)" : "var(--negative-text)",
                     letterSpacing: "0.01em",
                     fontFeatureSettings: '"tnum" 1',
@@ -346,7 +346,7 @@ export function TradeableDetail({ asset }: Props) {
                   {avgBuyPrice != null ? formatMoney(avgBuyPrice, assetCur, displayCurrency) : "—"}
                 </span>
                 {avgBuyYear && (
-                  <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em" }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em" }}>
                     since {avgBuyYear}
                   </span>
                 )}
@@ -364,7 +364,7 @@ export function TradeableDetail({ asset }: Props) {
         {mutations.length > 0 && (
           <div style={{ marginTop: 26 }}>
             <div style={{
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 500,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
@@ -411,7 +411,7 @@ export function TradeableDetail({ asset }: Props) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {delta && (
                       <div style={{
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: 500,
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
                         marginBottom: m.personal_context ? 2 : 0,

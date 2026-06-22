@@ -37,7 +37,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
       >
         <div
           style={{
-            fontSize: "9.5px",
+            fontSize: "11px",
             fontWeight: 500,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
@@ -50,7 +50,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
         {metaLabel && (
           <div
             style={{
-              fontSize: "9.5px",
+              fontSize: "11px",
               color: "var(--accent-deep)",
               opacity: 0.55,
               letterSpacing: "0.06em",
@@ -63,7 +63,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
       <div
         style={{
           fontFamily: "var(--serif)",
-          fontSize: "13.5px",
+          fontSize: "13px",
           fontStyle: "italic",
           lineHeight: 1.42,
           color: "var(--text)",

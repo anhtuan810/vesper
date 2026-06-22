@@ -11,6 +11,24 @@
   --radius-xl:  20px;
   --radius-2xl: 28px;
   --wrap-pad:   clamp(20px, 4vw, 32px);
+
+  /* Canonical type scale — the single source of truth for text sizing across the
+     app surfaces (charts and the marketing site keep their own display type).
+     The small-text band is deliberately sparse so similar elements match: don't
+     reintroduce in-between sizes (no 9.5 / 11.5 / 12.5 / 14). Floor is 11px.
+       --fs-micro    eyebrow / uppercase micro-labels
+       --fs-caption  sub-lines, secondary captions
+       --fs-meta     secondary values, tertiary body
+       --fs-body     default body, list-item titles, emphasis
+       --fs-subhead  small section headings
+       --fs-title    section titles
+     Headings/display above this (≥19px) are sized per-component. */
+  --fs-micro:   11px;
+  --fs-caption: 12px;
+  --fs-meta:    13px;
+  --fs-body:    15px;
+  --fs-subhead: 16px;
+  --fs-title:   17px;
 }
 
 :root,

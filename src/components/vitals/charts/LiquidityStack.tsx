@@ -102,7 +102,7 @@ export function LiquidityStack({ data }: Props) {
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: 9,
+              fontSize: 11,
               color: 'var(--text-faint)',
               fontFamily: 'var(--sans)',
             }}

@@ -21,7 +21,7 @@ export function DiaryMarketRow({ move }: DiaryMarketRowProps) {
           width: 28, height: 28, flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
           borderRadius: "50%", border: "1px solid var(--border)",
-          fontSize: 12, color: "var(--text-faint)",
+          fontSize: 13, color: "var(--text-faint)",
           fontFamily: "var(--font-sans)",
         }}
       >
@@ -34,7 +34,7 @@ export function DiaryMarketRow({ move }: DiaryMarketRowProps) {
             {fmtPct.format(move.pct_change)}%
           </span>
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap", flexShrink: 0 }}>
+        <span style={{ fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap", flexShrink: 0 }}>
           {formatDate(move.date)}
         </span>
       </div>

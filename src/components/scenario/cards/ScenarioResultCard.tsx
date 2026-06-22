@@ -83,7 +83,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
   if (result.kind === "hypothetical_buy") {
     return (
       <div style={cardShell}>
-        <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 8 }}>
+        <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>
           {result.amountLabel} · {fmtBuyDate(result.buyDate)}
         </div>
         <GrowthChart series={result.series} symbol={result.symbol} />
@@ -127,6 +127,6 @@ const legendRow: React.CSSProperties = {
   display: "flex",
   gap: 16,
   marginTop: 10,
-  fontSize: 12,
+  fontSize: 13,
   color: "var(--text-dim)",
 };

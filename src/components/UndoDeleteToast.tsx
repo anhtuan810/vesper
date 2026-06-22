@@ -91,7 +91,7 @@ export function UndoDeleteToast() {
         maxWidth: "calc(100vw - 32px)",
       }}
     >
-      <span className="font-mono text-dim" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+      <span className="font-mono text-dim" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
         {error ? error : `Deleted ${name}`}
       </span>
       <button
@@ -99,7 +99,7 @@ export function UndoDeleteToast() {
         disabled={restoring}
         className="font-mono uppercase text-accent hover:opacity-80 transition-opacity"
         style={{
-          fontSize: 11,
+          fontSize: 12,
           padding: "4px 10px",
           letterSpacing: "0.08em",
           background: "none",
@@ -116,7 +116,7 @@ export function UndoDeleteToast() {
         aria-label="Dismiss"
         className="text-faint hover:text-dim transition-colors"
         style={{
-          fontSize: 14,
+          fontSize: 15,
           lineHeight: 1,
           padding: "0 4px",
           background: "none",

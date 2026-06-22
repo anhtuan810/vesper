@@ -17,7 +17,7 @@ const pillStyle: CSSProperties = {
   padding: "5px 10px",
   color: "#3A5C3A",
   fontFamily: "system-ui, sans-serif",
-  fontSize: 11,
+  fontSize: 12,
   cursor: "pointer",
   minHeight: 44,
 };
@@ -56,7 +56,7 @@ function ExampleRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontFamily: "system-ui, sans-serif",
-          fontSize: 11, color: "#8A948A",
+          fontSize: 12, color: "#8A948A",
         }}>
           {label}
         </div>
@@ -198,7 +198,7 @@ export function PortfolioEmptyState() {
         borderRadius: 999, padding: "4px 9px",
       }}>
         <LockIcon size={14} />
-        <span style={{ fontFamily: "system-ui, sans-serif", fontSize: 11, fontWeight: 500 }}>
+        <span style={{ fontFamily: "system-ui, sans-serif", fontSize: 12, fontWeight: 500 }}>
           Private · stays on your device
         </span>
       </div>
@@ -216,7 +216,7 @@ export function PortfolioEmptyState() {
       {/* Sub-headline */}
       <p style={{
         fontFamily: "system-ui, sans-serif",
-        fontSize: 14, color: "var(--text-dim)", lineHeight: 1.5,
+        fontSize: 15, color: "var(--text-dim)", lineHeight: 1.5,
         margin: "6px 0 0",
       }}>
         A sentence, a screenshot, a CSV, a photo of a statement — I&apos;ll sort it.
@@ -225,7 +225,7 @@ export function PortfolioEmptyState() {
       {/* Informational-only disclaimer — muted line beneath the opener */}
       <p style={{
         fontFamily: "system-ui, sans-serif",
-        fontSize: 11, color: "var(--text-faint)", lineHeight: 1.45,
+        fontSize: 12, color: "var(--text-faint)", lineHeight: 1.45,
         margin: "8px 0 0",
       }}>
         {DISCLAIMER_TEXT}
@@ -342,7 +342,7 @@ export function PortfolioEmptyState() {
       <div style={{ marginTop: 16 }}>
         <p style={{
           fontFamily: "system-ui, sans-serif",
-          fontSize: 11, color: "var(--text-faint)",
+          fontSize: 12, color: "var(--text-faint)",
           margin: "0 0 8px",
         }}>
           Try starting with —

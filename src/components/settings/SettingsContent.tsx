@@ -27,7 +27,7 @@ const THEME_OPTIONS = [
 
 const TOAST_KEY = "volnar.currency.toastSeen";
 const SECTION_LABEL_STYLE = {
-  fontSize: 10,
+  fontSize: 11,
   fontWeight: 500,
   letterSpacing: "0.18em",
   textTransform: "uppercase" as const,
@@ -270,7 +270,7 @@ export function SettingsContent() {
                         </span>
                       </div>
                       {isLoading ? (
-                        <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Saving…</span>
+                        <span style={{ fontSize: 12, color: "var(--text-faint)" }}>Saving…</span>
                       ) : isActive ? (
                         <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />
                       ) : null}
@@ -278,7 +278,7 @@ export function SettingsContent() {
                   );
                 })}
                 {currencyError && (
-                  <div style={{ fontSize: 11, color: "var(--negative)", marginTop: 4 }}>{currencyError}</div>
+                  <div style={{ fontSize: 12, color: "var(--negative)", marginTop: 4 }}>{currencyError}</div>
                 )}
               </div>
             )}
@@ -439,7 +439,7 @@ export function SettingsContent() {
           </div>
           {aiConsentAt && (
             <div style={{
-              fontSize: 11,
+              fontSize: 12,
               color: "var(--text-faint)",
               marginTop: 8,
               display: "inline-flex",
@@ -454,7 +454,7 @@ export function SettingsContent() {
 
         {/* Legal note + delete */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "4px 0" }}>
-          <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", maxWidth: 320, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", maxWidth: 320, lineHeight: 1.5 }}>
             {DISCLAIMER_TEXT}{" "}
             <a
               href="https://volnar.nl/terms"
@@ -470,7 +470,7 @@ export function SettingsContent() {
             <button
               onClick={() => setDeleteOpen(true)}
               style={{
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 400,
                 color: "var(--text-faint)",
                 background: "none",
@@ -530,7 +530,7 @@ export function SettingsContent() {
             {deletionNotice && (
               <div
                 style={{
-                  fontSize: 12.5,
+                  fontSize: 13,
                   color: "var(--amber-deep, var(--negative-text))",
                   lineHeight: 1.5,
                   background: "rgba(201,122,110,0.08)",
@@ -561,13 +561,13 @@ export function SettingsContent() {
                 border: "1px solid var(--border)",
                 background: "var(--bg)",
                 color: "var(--text)",
-                fontSize: 14,
+                fontSize: 15,
                 fontFamily: "var(--font-sans)",
                 marginBottom: 14,
               }}
             />
             {deleteError && (
-              <div style={{ fontSize: 12, color: "var(--negative)", marginBottom: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: "var(--negative)", marginBottom: 12, lineHeight: 1.5 }}>
                 {deleteError}
               </div>
             )}
@@ -582,7 +582,7 @@ export function SettingsContent() {
                   border: "1px solid var(--border)",
                   background: "var(--bg)",
                   color: "var(--text)",
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 500,
                   cursor: deleting ? "default" : "pointer",
                   fontFamily: "var(--font-sans)",
@@ -600,7 +600,7 @@ export function SettingsContent() {
                   border: "1px solid var(--negative)",
                   background: deleteConfirmText === "DELETE" && !deleting ? "var(--negative-soft)" : "var(--bg)",
                   color: deleteConfirmText === "DELETE" && !deleting ? "var(--negative-text)" : "var(--text-faint)",
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 500,
                   cursor: deleteConfirmText === "DELETE" && !deleting ? "pointer" : "default",
                   fontFamily: "var(--font-sans)",
@@ -624,7 +624,7 @@ export function SettingsContent() {
             border: "1px solid var(--border-strong)",
             borderRadius: 10,
             padding: "10px 18px",
-            fontSize: 12,
+            fontSize: 13,
             color: "var(--text-dim)",
             whiteSpace: "nowrap",
             boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
