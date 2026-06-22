@@ -619,7 +619,6 @@ function buildLiquidityCard(vital: VitalResult, displayCurrency: string): CardCo
           label: "Worth knowing",
           body: <>Add assets to see your liquidity posture.</>,
         },
-        emphasizeText: true,
       },
       chart: <LiquidityStack data={v} />,
     };
@@ -637,7 +636,6 @@ function buildLiquidityCard(vital: VitalResult, displayCurrency: string): CardCo
       },
       benchLine: `target: ≥ ${v.liquidBufferPct}% deployable within 1 week`,
       suggestion: liquiditySuggestion(v, vital.band, displayCurrency),
-      emphasizeText: true,
     },
     chart: <LiquidityStack data={v} />,
   };

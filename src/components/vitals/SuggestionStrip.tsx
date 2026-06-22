@@ -56,8 +56,8 @@ export function SuggestionStrip({
   label,
   body,
   icon,
-  labelFontSize = "8.5px",
-  bodyFontSize = "11.5px",
+  labelFontSize = "11px",
+  bodyFontSize = "13px",
 }: SuggestionStripProps) {
   const { bg, color } = VARIANT_STYLES[variant];
   const defaultIcon =
