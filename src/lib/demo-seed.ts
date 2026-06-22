@@ -26,6 +26,13 @@ import { serializeMarketDetail } from "@/lib/market-highlights";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+// Recent-window dates anchored to the moment of reseed, so the Diary's 1W/1M/3M
+// filters are always populated no matter when a visitor enters the demo (the
+// fixed-date history below only reaches 2026-02, which would leave those ranges
+// empty).
+const daysAgo = (n: number): string =>
+  new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+
 // ── Assets — current ("today") state ────────────────────────────────────────
 // service-role insert writes real columns directly (not the API allowlist), so
 // every schema column is available here.
@@ -543,6 +550,189 @@ export async function seedDemoUser(userId: string): Promise<void> {
       40,
       "Added a little more NVIDIA. Letting a winner run, but only inside a sleeve I have sized to sleep through.",
       362000,
+    ),
+
+    // ── Recent activity, dated relative to the reseed moment ─────────────────
+    // Keeps the Diary's 1W/1M/3M ranges populated and fills the gap after the
+    // fixed-date history above. Routine, reasoning-first journal entries: a
+    // steady monthly index plan, regular pension contributions, a small active
+    // tech sleeve and one Bitcoin nibble — portfolio_total trends ~363k → ~378k
+    // in date order. No market_context: these are ordinary contributions, not
+    // entries tied to a genuine market event.
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(120),
+      30000, 30380, 320, 324,
+      "Kept the monthly index plan running and topped up the world tracker again. The most reliable thing I do is buy a little every month and ignore the noise.",
+      363000,
+    ),
+    topUp(
+      "Brand New Day DC pension",
+      daysAgo(113),
+      32600, 32900, null, null,
+      "Logged this month's workplace pension contribution. Locked until 67, but it compounds quietly in the background.",
+      363600,
+    ),
+    topUp(
+      "Micron Technology",
+      daysAgo(106),
+      2700, 3060, 30, 34,
+      "Added to Micron as the memory cycle kept turning. Still the cheapest way I have found to own the AI build-out.",
+      364200,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(99),
+      30380, 30760, 324, 328,
+      "Another automatic top-up into the MSCI World core. I would rather be consistent than clever.",
+      364800,
+    ),
+    topUp(
+      "Microsoft",
+      daysAgo(92),
+      3330, 3700, 9, 10,
+      "Added to Microsoft. The cloud and Copilot story keeps showing up in the actual revenue, not just the slides.",
+      365400,
+    ),
+    topUp(
+      "Bitcoin",
+      daysAgo(85),
+      4900, 5170, 0.07, 0.073,
+      "Made a small Bitcoin nibble on a quiet stretch. Still capped near a few percent of liquid assets, still boring on purpose.",
+      365800,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(78),
+      30760, 31140, 328, 332,
+      "Topped up the global index again. No view on the month ahead, just the same steady buying.",
+      366400,
+    ),
+    topUp(
+      "Brand New Day DC pension",
+      daysAgo(71),
+      32900, 33200, null, null,
+      "Another monthly pension contribution went in. Out of sight, but real capital adding up.",
+      366900,
+    ),
+    topUp(
+      "Apple",
+      daysAgo(64),
+      3360, 2960, 16, 14,
+      "Trimmed Apple again after another strong stretch, taking a little off the top to keep any one name in check. Not a change of view, just discipline.",
+      367200,
+    ),
+    topUp(
+      "NVIDIA",
+      daysAgo(58),
+      4800, 5350, 40, 44,
+      "Added a little more NVIDIA. Still the clearest infrastructure play on AI compute, still kept within its cap.",
+      368000,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(52),
+      31140, 31520, 332, 336,
+      "Routine monthly purchase into the world tracker. The whole point is that it requires no decision.",
+      368600,
+    ),
+    topUp(
+      "Micron Technology",
+      daysAgo(46),
+      3060, 3400, 34, 37,
+      "Topped up Micron again. The picks-and-shovels thesis behind the GPUs is playing out as I hoped.",
+      369200,
+    ),
+    topUp(
+      "Brand New Day DC pension",
+      daysAgo(40),
+      33200, 33500, null, null,
+      "Recorded the regular pension contribution. The employer match makes this the easiest return I get.",
+      369700,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(35),
+      31520, 31900, 336, 340,
+      "Added to the index core on schedule. Time in the market over timing it.",
+      370300,
+    ),
+    topUp(
+      "Microsoft",
+      daysAgo(28),
+      3700, 4070, 10, 11,
+      "Topped up Microsoft again. Enterprise AI is turning into real money, so I am happy to keep accumulating.",
+      371000,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(24),
+      31900, 32280, 340, 344,
+      "Monthly index contribution went in. I keep the core boring so the rest of the portfolio can be interesting.",
+      371600,
+    ),
+    topUp(
+      "Micron Technology",
+      daysAgo(20),
+      3400, 3740, 37, 40,
+      "Bought a little more Micron on weakness. Adding to conviction when the price cooperates.",
+      372200,
+    ),
+    topUp(
+      "Brand New Day DC pension",
+      daysAgo(16),
+      33500, 33800, null, null,
+      "Monthly pension contribution logged. Boring, automatic, and exactly how retirement saving should feel.",
+      372700,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(12),
+      32280, 32660, 344, 348,
+      "Topped up the MSCI World tracker again. Steady accumulation is the entire strategy.",
+      373400,
+    ),
+    topUp(
+      "Bitcoin",
+      daysAgo(9),
+      5170, 5360, 0.073, 0.075,
+      "Added a touch more Bitcoin. Tiny, deliberate, and sized so a drawdown can never hurt.",
+      373800,
+    ),
+    topUp(
+      "Apple",
+      daysAgo(7),
+      2960, 3320, 14, 16,
+      "Added back to Apple after the recent pullback. A cash machine with a sticky ecosystem, and I am happy to own a little more at a better price.",
+      374600,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(5),
+      32660, 33140, 348, 353,
+      "Kept the index plan going with another top-up. Consistency is the only edge I trust.",
+      375400,
+    ),
+    topUp(
+      "NVIDIA",
+      daysAgo(4),
+      5350, 5640, 44, 46,
+      "Topped up NVIDIA once more. Letting the position compound, still inside the cap I set for it.",
+      376200,
+    ),
+    topUp(
+      "Brand New Day DC pension",
+      daysAgo(3),
+      33800, 34100, null, null,
+      "Logged the regular workplace pension top-up. The match is free money, so this one is never up for debate.",
+      377000,
+    ),
+    topUp(
+      "iShares Core MSCI World",
+      daysAgo(1),
+      33140, 33640, 353, 358,
+      "Latest top-up of the cycle into the world tracker. Same plan, same discipline.",
+      378000,
     ),
   ];
 
