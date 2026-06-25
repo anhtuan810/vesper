@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { entitledGate } from "@/lib/require-entitled";
 import { validateEnv } from "@/lib/env";
 import { isSupportedCurrency } from "@/lib/money";
 import { computeAllVitals } from "@/lib/vitals/index";
@@ -20,6 +21,13 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const supabase = createServerSupabase();
+
+    // Paid-access gate (server-side enforcement, not just the client paywall): the
+    // Pulse calls Anthropic (Haiku), so a non-subscriber reaching this endpoint
+    // directly must be refused before any generation — like every other AI route.
+    const gate = await entitledGate(supabase, user.id);
+    if (gate) return gate;
+
     const nowIso = new Date().toISOString();
 
     const { user: userRow, assets, snapshots } =

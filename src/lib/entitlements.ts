@@ -188,7 +188,12 @@ export async function upsertEntitlement(
 
   if (
     existing &&
-    isEntitled(existing.status) &&
+    // Use the full access predicate, not isEntitled: a past_due subscriber still
+    // inside the period they already paid for HAS access (hasAccess), so they must
+    // be protected from a cross-source revoke exactly like an active one. isEntitled
+    // alone (trialing/active) would leave a paying-grace subscriber on one platform
+    // exposed to a lapsed/expired event from the other.
+    hasAccess(existing.status, existing.current_period_end) &&
     !incomingEntitled &&
     existing.source &&
     existing.source !== w.source

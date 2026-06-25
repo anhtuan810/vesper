@@ -217,6 +217,36 @@ async function main() {
   assert(guarded.revenuecat_app_user_id === "rc_user_1", "cross-source guard: RC id recorded for reconciliation");
   assert(guarded.stripe_subscription_id === "sub_live", "cross-source guard: Stripe id preserved");
 
+  // 5b) KEEP — a past_due subscriber still inside the period they already paid for
+  //    HAS access (dunning grace), so the cross-source guard must protect them too.
+  //    isEntitled alone (trialing/active) would miss past_due and let a non-entitling
+  //    event from the OTHER processor revoke a paying-grace subscriber mid-period; the
+  //    guard uses the full hasAccess predicate to prevent that.
+  const db2b = new FakeDb();
+  const supabase2b = fakeClient(db2b);
+  // Existing Stripe row in dunning: past_due, but current_period_end (P1) is in the
+  // future, so the gate still grants access.
+  await upsertEntitlement(
+    supabase2b,
+    mapStripeSubscription(stripeSub({ status: "past_due" }), USER),
+  );
+  const rcRevokePastDue: EntitlementWrite = {
+    userId: USER,
+    status: "expired",
+    source: "app_store",
+    plan: null,
+    currentPeriodEnd: null,
+    trialEnd: null,
+    cancelAtPeriodEnd: false,
+    revenuecatAppUserId: "rc_user_2",
+  };
+  await upsertEntitlement(supabase2b, rcRevokePastDue);
+  const guardedPastDue = read(db2b, USER);
+  assert(guardedPastDue.status === "past_due", "cross-source guard: past_due-in-grace access not revoked by RC expiry");
+  assert(guardedPastDue.source === "stripe", "cross-source guard: source stays Stripe for the paying-grace subscriber");
+  assert(guardedPastDue.current_period_end === P1_ISO, "cross-source guard: Stripe period left intact for past_due");
+  assert(guardedPastDue.revenuecat_app_user_id === "rc_user_2", "cross-source guard: RC id still recorded for past_due reconciliation");
+
   // 6) The reproduced production bug, end to end: a dahlia portal cancel sets a
   //    `cancel_at` timestamp while the legacy boolean stays false. The mapped write
   //    must persist cancel_at_period_end = true on the existing row.
