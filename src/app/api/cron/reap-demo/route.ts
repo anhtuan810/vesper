@@ -4,11 +4,11 @@ import { createServerSupabase } from "@/lib/supabase";
 import { DEMO_USER_TABLES } from "@/lib/demo-seed";
 import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS } from "@/lib/demo-session";
 
-// Reaps expired per-visitor demo accounts. Runs every 15 minutes (vercel.json),
-// but the cron cadence has no bearing on session length — that is the per-user
-// TTL the chat/mutation guards enforce. Here we only delete accounts already well
-// past their hour (TTL + grace), so a request landing at the boundary is walled,
-// not served against half-deleted data.
+// Reaps expired per-visitor demo accounts. Runs daily (vercel.json), but the cron
+// cadence has no bearing on session length — that is the per-user TTL the
+// chat/mutation guards enforce. Here we only delete accounts already well past
+// their hour (TTL + grace), so a request landing at the boundary is walled, not
+// served against half-deleted data.
 //
 // Safety invariant: the reaper ONLY ever deletes uids present in demo_users. It
 // never enumerates auth.users, so a real account can never be caught up in a reap.
@@ -16,6 +16,13 @@ export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // The per-visitor demo only mints demo_users rows when it's switched on, so the
+  // reaper is a clean no-op while DEMO_ENABLED is off — it never touches demo_users
+  // (which may not exist yet until the migration is applied).
+  if (process.env.DEMO_ENABLED !== "true") {
+    return NextResponse.json({ ok: true, skipped: true });
   }
 
   const supabase = createServerSupabase();

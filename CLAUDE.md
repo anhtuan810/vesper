@@ -2,15 +2,18 @@
 
 ## Working agreement (since 2026-06-24)
 
-- **Active branch is `v1.1`.** All ongoing development happens here. Commit
-  directly to `v1.1` and push after each change — no pull requests.
-- **`main` is the released-production line** for the shipped App Store build
-  (v1.0). Do NOT commit feature work to `main`, and do not deploy `main`'s
-  in-progress work to production, until a matching App Store binary is live. The
-  ephemeral per-visitor demo feature lives on `v1.1` for exactly this reason.
-- **The maintainer is non-technical and does not write or run code.** Claude
-  makes all code changes, runs all commands (git, build, tests), and explains
-  decisions in plain language rather than handing over steps to run.
-- When work on `v1.1` is ready to ship, it is paired with a new binary: submit
-  the binary, and only once it is approved and live do we deploy `v1.1` to
-  production (and flip `DEMO_ENABLED` for the demo feature).
+- **Develop directly on `main`.** Commit straight to `main` and push after each
+  change — no pull requests, no long-lived feature branches.
+- **`main` is production** (the website, and the API the iOS app calls). Keep it
+  deployable at all times.
+- **The per-visitor demo ships dormant.** It is gated behind `DEMO_ENABLED`, which
+  stays unset/false in production. While it's off, the demo entry points
+  (`/demo`, `/api/demo-session`) fall back to the existing shared-account demo, so
+  the released App Store build's demo button keeps working.
+- **Do NOT set `DEMO_ENABLED=true` in production until a matching App Store binary
+  is live.** The per-visitor demo's wall/expiry UI ships inside the binary, so
+  enabling it server-side first would wall users with no UI to catch them. Test it
+  on a Vercel **Preview** (with `DEMO_ENABLED=true` scoped to Preview) instead.
+- **The maintainer is non-technical and does not write or run code.** Claude makes
+  all code changes, runs all commands (git, build, tests), and explains decisions
+  in plain language rather than handing over steps to run.
