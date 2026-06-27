@@ -203,7 +203,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       {/* Change pill — compact tinted, mirrors the asset-detail delta pill */}
       {formattedAbs != null && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 999, fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1', background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)", color: isPositive ? "var(--positive-text)" : "var(--negative-text)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 999, fontSize: 13, fontWeight: 500, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)", color: isPositive ? "var(--positive-text)" : "var(--negative-text)" }}>
             <svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
               {isPositive ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" /> : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}
             </svg>

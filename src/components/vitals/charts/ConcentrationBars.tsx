@@ -212,6 +212,7 @@ export function ConcentrationBars({ positions }: Props) {
                       flexShrink: 0,
                       textAlign: "left",
                       fontSize: 11,
+                      fontFamily: "var(--mono)",
                       color: "var(--text-dim)",
                       fontFeatureSettings: "'tnum'",
                       lineHeight: 1,

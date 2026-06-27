@@ -131,6 +131,7 @@ export function VitalCard({
               style={{
                 fontSize: "15px",
                 fontWeight: 500,
+                fontFamily: "var(--mono)",
                 color: "var(--text)",
                 fontFeatureSettings: "'tnum'",
                 lineHeight: 1,

@@ -73,6 +73,7 @@ export function HoldingsGroup({
         <span style={{
           fontSize: 15,
           fontWeight: 500,
+          fontFamily: "var(--mono)",
           fontVariantNumeric: "tabular-nums",
           color: "var(--text)",
           flexShrink: 0,
