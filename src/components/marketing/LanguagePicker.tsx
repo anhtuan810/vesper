@@ -1,19 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LANGS, useI18n } from "./i18n";
 
-const LANGS: ReadonlyArray<readonly [string, string]> = [
-  ["EN", "English"],
-  ["NL", "Nederlands"],
-  ["DE", "Deutsch"],
-  ["FR", "Français"],
-];
-
-// Visual-only language picker, matching the mockup: it swaps the shown code but
-// performs no real i18n (the page ships a single static locale).
+// Switches the page language live (via the i18n context) — no reload, so the
+// theme and scroll position are preserved. Language names stay as endonyms.
 export function LanguagePicker() {
+  const { lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
-  const [cur, setCur] = useState("EN");
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +40,7 @@ export function LanguagePicker() {
           <path d="M3 12h18" />
           <path d="M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18" />
         </svg>
-        <span className="lang-cur">{cur}</span>
+        <span className="lang-cur">{lang}</span>
         <svg className="lang-car" viewBox="0 0 24 24">
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -57,11 +51,11 @@ export function LanguagePicker() {
             key={code}
             type="button"
             role="option"
-            aria-selected={cur === code}
-            className={cur === code ? "on" : undefined}
+            aria-selected={lang === code}
+            className={lang === code ? "on" : undefined}
             onClick={(ev) => {
               ev.stopPropagation();
-              setCur(code);
+              setLang(code);
               setOpen(false);
             }}
           >

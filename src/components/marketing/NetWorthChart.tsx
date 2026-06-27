@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CHART_AREAS, CHART_LINE, MARKERS } from "./_chart-geometry";
-import { ENTRIES, GENERIC_CHAT, GENERIC_MARKET, SYMBOL_COLORS } from "./_chart-data";
+import { ENTRY_META, SYMBOL_COLORS, GENERIC_CHAT_SYM } from "./_chart-data";
+import { useI18n } from "./i18n";
 
-const LAST = ENTRIES.length - 1;
+const LAST = ENTRY_META.length - 1;
 const AUTOPLAY_MS = 3200;
 
 type PopPos = { left: number; top: number; dir: "up" | "down"; arrow: number };
 
 export function NetWorthChart() {
+  const { m } = useI18n();
+  const M = m.mech;
+
   const [cur, setCur] = useState(LAST);
   const [touched, setTouched] = useState(false);
   const [reduced, setReduced] = useState(false);
@@ -18,23 +22,20 @@ export function NetWorthChart() {
   const chartRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
-  // Honour prefers-reduced-motion: no autoplay (and the CSS stills the rest).
   useEffect(() => {
-    const m = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(m.matches);
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(mq.matches);
     sync();
-    m.addEventListener("change", sync);
-    return () => m.removeEventListener("change", sync);
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Cycle through the entries until the visitor takes control.
   useEffect(() => {
     if (touched || reduced) return;
-    const id = setInterval(() => setCur((c) => (c + 1) % ENTRIES.length), AUTOPLAY_MS);
+    const id = setInterval(() => setCur((c) => (c + 1) % ENTRY_META.length), AUTOPLAY_MS);
     return () => clearInterval(id);
   }, [touched, reduced]);
 
-  // Position the marker popover relative to the chart, flipping above/below.
   const reposition = useCallback(() => {
     if (popIndex == null) return;
     const chart = chartRef.current;
@@ -42,9 +43,9 @@ export function NetWorthChart() {
     if (!chart || !pop) return;
     const W = chart.clientWidth;
     const H = chart.clientHeight;
-    const m = MARKERS[popIndex];
-    const px = (m.cx / 520) * W;
-    const py = (m.cy / 200) * H;
+    const mk = MARKERS[popIndex];
+    const px = (mk.cx / 520) * W;
+    const py = (mk.cy / 200) * H;
     const bw = pop.offsetWidth;
     const bh = pop.offsetHeight;
     const left = Math.max(4, Math.min(px - bw / 2, W - bw - 4));
@@ -71,7 +72,6 @@ export function NetWorthChart() {
     return () => window.removeEventListener("resize", onResize);
   }, [reposition]);
 
-  // Any click outside a marker/stepper dismisses the popover.
   useEffect(() => {
     const close = () => setPopIndex(null);
     document.addEventListener("click", close);
@@ -86,32 +86,28 @@ export function NetWorthChart() {
 
   function step(delta: number) {
     setTouched(true);
-    setCur((c) => (c + delta + ENTRIES.length) % ENTRIES.length);
+    setCur((c) => (c + delta + ENTRY_META.length) % ENTRY_META.length);
     setPopIndex(null);
   }
 
-  const e = ENTRIES[cur];
-  const isUser = e.tag === "user";
+  const e = M.entries[cur];
+  const meta = ENTRY_META[cur];
+  const isUser = meta.tag === "user";
   const chat = isUser
-    ? { say: e.say!, read: e.read!, readsrc: e.readsrc!, wrote: e.wrote!, sym: e.sym! }
-    : GENERIC_CHAT;
+    ? { say: e.say, read: e.read, readsrc: e.readsrc, wrote: e.wrote, sym: meta.sym }
+    : { ...M.genericChat, sym: GENERIC_CHAT_SYM };
   const market = !isUser
-    ? {
-        trig: e.trig!,
-        trigsrc: e.trigsrc ?? null,
-        detect: e.detect!,
-        logged: e.logged!,
-        head: e.mkthead ?? "From market to journal",
-      }
-    : GENERIC_MARKET;
+    ? { trig: e.trig, trigsrc: e.trigsrc, detect: e.detect, logged: e.logged, head: e.mkthead || M.market.header }
+    : { ...M.genericMarket };
   const tagLabel = isUser
-    ? "Decision"
-    : e.kind === "milestone"
-      ? "Automatic · Milestone"
-      : "Automatic · Market move";
+    ? M.tag.decision
+    : meta.kind === "milestone"
+      ? M.tag.autoMilestone
+      : M.tag.autoMarket;
   const sel = MARKERS[cur];
   const chipColor = SYMBOL_COLORS[chat.sym] ?? "#117A52";
-  const pop = popIndex != null ? ENTRIES[popIndex] : null;
+  const pop = popIndex != null ? M.entries[popIndex] : null;
+  const popDn = popIndex != null && ENTRY_META[popIndex].impc === "dn";
 
   return (
     <div className="mech-grid">
@@ -120,11 +116,11 @@ export function NetWorthChart() {
         <div className="st-head">
           <div>
             <div className="st-l">
-              Net worth · as of <span className="as-of">{e.date}</span>
+              {M.netWorthAsOf} <span className="as-of">{e.date}</span>
             </div>
-            <div className="st-nw disp">{e.nw}</div>
+            <div className="st-nw disp">{meta.nw}</div>
           </div>
-          <span className="st-badge">▲ +71% since 2021</span>
+          <span className="st-badge">{M.badge}</span>
         </div>
 
         <div className="st-chart" ref={chartRef}>
@@ -136,17 +132,17 @@ export function NetWorthChart() {
               <path className="line" d={CHART_LINE} />
             </g>
             <line className="guide" x1={sel.cx} y1={sel.cy} x2={sel.cx} y2={196} />
-            {MARKERS.map((m, i) => (
+            {MARKERS.map((mk, i) => (
               <g key={i}>
                 <circle
                   className="hit"
-                  cx={m.cx}
-                  cy={m.cy}
+                  cx={mk.cx}
+                  cy={mk.cy}
                   r={13}
                   fill="transparent"
                   tabIndex={0}
                   role="button"
-                  aria-label={`Entry ${i + 1}: ${ENTRIES[i].title}`}
+                  aria-label={`${i + 1}: ${M.entries[i].title}`}
                   onClick={(ev) => {
                     ev.stopPropagation();
                     selectEntry(i);
@@ -158,7 +154,7 @@ export function NetWorthChart() {
                     }
                   }}
                 />
-                <circle className={`mk${cur === i ? " on" : ""}`} cx={m.cx} cy={m.cy} r={4} />
+                <circle className={`mk${cur === i ? " on" : ""}`} cx={mk.cx} cy={mk.cy} r={4} />
               </g>
             ))}
           </svg>
@@ -171,7 +167,7 @@ export function NetWorthChart() {
             <span className="gpop-arr" style={popPos ? { left: popPos.arrow } : undefined} />
             <div className="gpop-d">{pop?.date ?? ""}</div>
             <div className="gpop-t disp">{pop?.title ?? ""}</div>
-            <div className={`gpop-v${pop?.impc === "dn" ? " dn" : ""}`}>{pop?.imp ?? ""}</div>
+            <div className={`gpop-v${popDn ? " dn" : ""}`}>{pop?.imp ?? ""}</div>
           </div>
         </div>
 
@@ -181,25 +177,25 @@ export function NetWorthChart() {
           <span>2023</span>
           <span>2024</span>
           <span>2025</span>
-          <span>now</span>
+          <span>{M.axisNow}</span>
         </div>
 
         <div className="st-legend">
           <span className="lg">
             <span className="sw" style={{ background: "#3F7CA8" }} />
-            Property
+            {M.legend.property}
           </span>
           <span className="lg">
             <span className="sw" style={{ background: "#A89968" }} />
-            Reserves
+            {M.legend.reserves}
           </span>
           <span className="lg">
             <span className="sw" style={{ background: "#E0922A" }} />
-            Crypto
+            {M.legend.crypto}
           </span>
           <span className="lg">
             <span className="sw" style={{ background: "#117A52" }} />
-            Public markets
+            {M.legend.publicMarkets}
           </span>
         </div>
 
@@ -216,9 +212,9 @@ export function NetWorthChart() {
             ‹
           </button>
           <div className="stp-mid">
-            <span className="stp-lbl">Replay</span>
+            <span className="stp-lbl">{M.replay}</span>
             <span className="stp-pos">
-              <b className="stp-i">{cur + 1}</b> / {ENTRIES.length}
+              <b className="stp-i">{cur + 1}</b> / {ENTRY_META.length}
             </span>
             <span className="stp-date">{e.date}</span>
           </div>
@@ -243,12 +239,12 @@ export function NetWorthChart() {
           <div className="cr-title disp">{e.title}</div>
           <div className="cr-ctx">{e.ctx}</div>
           <div className="cr-text">{e.why}</div>
-          <div className={`cr-imp${e.impc === "dn" ? " dn" : ""}`}>{e.imp}</div>
+          <div className={`cr-imp${meta.impc === "dn" ? " dn" : ""}`}>{e.imp}</div>
           <a className="cr-ask" href="#whatif">
             <svg className="ic">
               <use href="#i-msg" />
             </svg>
-            <span className="cr-ask-t">{e.ask}</span>
+            <span className="cr-ask-t">{e.ask || M.askFallback}</span>
           </a>
         </div>
       </div>
@@ -263,7 +259,7 @@ export function NetWorthChart() {
             <svg className="ic">
               <use href="#i-msg" />
             </svg>
-            From chat to journal
+            {M.chat.header}
           </div>
           <div className="pwrap">
             <div className="pstep">
@@ -273,7 +269,7 @@ export function NetWorthChart() {
                 </svg>
               </div>
               <div className="pbody">
-                <div className="plbl">You say</div>
+                <div className="plbl">{M.chat.step1}</div>
                 <div className="pcard you">
                   <div className="txt">{chat.say}</div>
                 </div>
@@ -286,7 +282,7 @@ export function NetWorthChart() {
                 </svg>
               </div>
               <div className="pbody">
-                <div className="plbl">It reads your portfolio + that day</div>
+                <div className="plbl">{M.chat.step2}</div>
                 <div className="pcard">
                   <div className="txt">
                     <span>{chat.read}</span>
@@ -302,7 +298,7 @@ export function NetWorthChart() {
                 </svg>
               </div>
               <div className="pbody">
-                <div className="plbl">Writes the entry</div>
+                <div className="plbl">{M.chat.step3}</div>
                 <div className="pc-mini">
                   <span className="pe-chip" style={{ background: chipColor }}>
                     {chat.sym || "·"}
@@ -323,7 +319,7 @@ export function NetWorthChart() {
               <use href="#i-radar" />
             </svg>
             <span className="pc-h-mkt">{market.head}</span>
-            <span className="auto">automatic</span>
+            <span className="auto">{M.market.auto}</span>
           </div>
           <div className="pwrap">
             <div className="pstep">
@@ -333,7 +329,7 @@ export function NetWorthChart() {
                 </svg>
               </div>
               <div className="pbody">
-                <div className="plbl">The market moves</div>
+                <div className="plbl">{M.market.step1}</div>
                 <div className="pcard">
                   <div className="txt">
                     <span>{market.trig}</span>
@@ -349,7 +345,7 @@ export function NetWorthChart() {
                 </svg>
               </div>
               <div className="pbody">
-                <div className="plbl">It sees the hit to your holdings</div>
+                <div className="plbl">{M.market.step2}</div>
                 <div className="pcard">
                   <div className="txt">{market.detect}</div>
                 </div>
@@ -362,7 +358,7 @@ export function NetWorthChart() {
                 </svg>
               </div>
               <div className="pbody">
-                <div className="plbl">Logs it for you</div>
+                <div className="plbl">{M.market.step3}</div>
                 <div className="pc-mini auto-mini">{market.logged}</div>
               </div>
             </div>

@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-// The "On this day" memory notification cycles through a few recollections.
-const MEMORIES: ReadonlyArray<readonly [string, string, string]> = [
-  ["On this day · 1 year ago", "You crossed €1.000.000", "A year on, you sit at €1.290.083."],
-  ["On this day · 2 years ago", "You bought the 2022 bottom", "What you added that week is up €120.000."],
-  ["On this day · 1 month ago", "You trimmed Bitcoin at its record", "+€34.000 realised — the core still runs."],
-];
+import { useI18n } from "./i18n";
 
 export function MemoryBanner() {
+  const { m } = useI18n();
+  const memories = m.notif.memories;
   const [i, setI] = useState(0);
   const [shown, setShown] = useState(true);
 
@@ -18,7 +14,7 @@ export function MemoryBanner() {
     const id = setInterval(() => {
       setShown(false);
       swap = setTimeout(() => {
-        setI((p) => (p + 1) % MEMORIES.length);
+        setI((p) => (p + 1) % memories.length);
         setShown(true);
       }, 300);
     }, 4200);
@@ -26,9 +22,9 @@ export function MemoryBanner() {
       clearInterval(id);
       clearTimeout(swap);
     };
-  }, []);
+  }, [memories.length]);
 
-  const [when, title, sub] = MEMORIES[i];
+  const [when, title, sub] = memories[i % memories.length];
 
   return (
     <div className="nb mem">
@@ -40,7 +36,7 @@ export function MemoryBanner() {
       <div className="nb-b nb-fade" style={{ opacity: shown ? 1 : 0 }}>
         <div className="nb-top">
           <span className="nb-app">{when}</span>
-          <span className="nb-time">memory</span>
+          <span className="nb-time">{m.notif.memoryTime}</span>
         </div>
         <div className="nb-t">{title}</div>
         <div className="nb-s">{sub}</div>

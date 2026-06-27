@@ -5,15 +5,15 @@ import { useState } from "react";
 export type LedgerEntry = {
   date: string;
   title: string;
-  tag: "user" | "auto";
+  tag: string; // "user" | "auto"
   why: string;
   impact: string;
-  dir: "up" | "dn";
+  dir: string; // "up" | "dn"
 };
 
 // A single journal row: collapsed to its title line, expands on click / Enter /
 // Space with the chevron rotating.
-export function LedgerRow({ entry }: { entry: LedgerEntry }) {
+export function LedgerRow({ entry, tagLabel }: { entry: LedgerEntry; tagLabel: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -35,11 +35,11 @@ export function LedgerRow({ entry }: { entry: LedgerEntry }) {
         <div className="led-l1">
           <span className="led-date">{entry.date}</span>
           <span className="led-title">{entry.title}</span>
-          <span className={`led-tag ${entry.tag}`}>{entry.tag === "user" ? "You" : "Auto"}</span>
+          <span className={`led-tag ${entry.tag === "user" ? "user" : "auto"}`}>{tagLabel}</span>
         </div>
         <div className="led-exp">
           <div className="led-why">{entry.why}</div>
-          <div className={`led-impx ${entry.dir}`}>{entry.impact}</div>
+          <div className={`led-impx ${entry.dir === "dn" ? "dn" : "up"}`}>{entry.impact}</div>
         </div>
       </div>
       <svg className="led-chev" viewBox="0 0 24 24">
