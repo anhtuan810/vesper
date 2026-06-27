@@ -58,7 +58,7 @@ function ChangesBlock({ content }: { content: string }) {
         style={{
           fontFamily: "var(--mono)",
           fontSize: 11,
-          letterSpacing: "0.16em",
+          letterSpacing: "var(--tracking-label)",
           textTransform: "uppercase",
           color: "var(--accent)",
           marginBottom: 8,

@@ -201,7 +201,7 @@ export function ScenarioComparisonCard({
 const eyebrowStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 600,
-  letterSpacing: "0.18em",
+  letterSpacing: "var(--tracking-label)",
   textTransform: "uppercase",
   color: "var(--text-faint)",
 };

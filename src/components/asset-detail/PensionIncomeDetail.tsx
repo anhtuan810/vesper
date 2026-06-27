@@ -136,7 +136,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
 
         {/* Guaranteed income hero */}
         <div style={{ marginBottom: 22 }}>
-          <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
             Guaranteed income
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>

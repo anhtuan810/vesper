@@ -560,7 +560,7 @@ function PlanOption({
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                letterSpacing: "0.04em",
+                letterSpacing: "var(--tracking-label)",
                 textTransform: "uppercase",
                 color: "var(--accent-text)",
                 background: "var(--surface)",

@@ -151,7 +151,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   return (
     <div>
       <div style={{
-        fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase",
+        fontSize: 10, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase",
         color: "var(--text-faint)", marginBottom: 6,
       }}>
         Indicative value

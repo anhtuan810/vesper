@@ -202,7 +202,7 @@ export function TradeableDetail({ asset }: Props) {
           <div style={{
             fontSize: 11,
             fontWeight: 500,
-            letterSpacing: "0.18em",
+            letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--text-faint)",
             marginBottom: 8,
@@ -297,7 +297,7 @@ export function TradeableDetail({ asset }: Props) {
           <div style={{
             fontSize: 11,
             fontWeight: 500,
-            letterSpacing: "0.18em",
+            letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--text-faint)",
             marginBottom: 12,
@@ -366,7 +366,7 @@ export function TradeableDetail({ asset }: Props) {
             <div style={{
               fontSize: 11,
               fontWeight: 500,
-              letterSpacing: "0.18em",
+              letterSpacing: "var(--tracking-label)",
               textTransform: "uppercase",
               color: "var(--text-faint)",
               marginBottom: 12,

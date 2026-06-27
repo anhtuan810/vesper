@@ -321,7 +321,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 <div style={{
                   fontSize: 11,
                   fontWeight: 500,
-                  letterSpacing: "0.18em",
+                  letterSpacing: "var(--tracking-label)",
                   textTransform: "uppercase",
                   color: "var(--accent-text)",
                   opacity: 0.7,

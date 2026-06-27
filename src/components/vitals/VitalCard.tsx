@@ -18,10 +18,13 @@ export interface VitalCardProps {
   children: ReactNode;
 }
 
+// Stat numbers stay a single ink tone for a calm, uniform read; only a genuine
+// negative reads red. ("Positive/healthy" status is still conveyed by the
+// card's bands, sub-line and suggestion strip — not by recoloring the number.)
 const HERO_COLOR: Record<HeroClass, string> = {
   default:  "var(--hero)",
   negative: "var(--negative)",
-  positive: "var(--accent-deep)",
+  positive: "var(--hero)",
 };
 
 export function VitalCard({
@@ -62,7 +65,7 @@ export function VitalCard({
             style={{
               fontSize: "11px",
               fontWeight: 500,
-              letterSpacing: "0.18em",
+              letterSpacing: "var(--tracking-label)",
               textTransform: "uppercase",
               color: "var(--text-faint)",
             }}
@@ -117,7 +120,7 @@ export function VitalCard({
               style={{
                 fontSize: "11px",
                 color: "var(--text-faint)",
-                letterSpacing: "0.12em",
+                letterSpacing: "var(--tracking-label)",
                 textTransform: "uppercase",
                 lineHeight: 1,
               }}

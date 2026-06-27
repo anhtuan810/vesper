@@ -39,7 +39,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
           style={{
             fontSize: "11px",
             fontWeight: 500,
-            letterSpacing: "0.18em",
+            letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--accent-deep)",
             opacity: 0.75,

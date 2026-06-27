@@ -117,7 +117,7 @@ export function RealEstateDetail({ asset }: Props) {
           <div style={{
             fontSize: 11,
             fontWeight: 500,
-            letterSpacing: "0.18em",
+            letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--text-faint)",
             marginBottom: 6,
@@ -159,7 +159,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Mortgage section */}
         {hasMortgage && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Mortgage
             </div>
             {asset.mortgage_rate != null && (
@@ -177,7 +177,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Activity */}
         {mutations.length > 0 && (
           <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
               Activity
             </div>
             {mutations.map((m) => {

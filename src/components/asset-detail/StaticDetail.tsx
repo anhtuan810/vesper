@@ -132,7 +132,7 @@ export function StaticDetail({ asset }: Props) {
           <div style={{
             fontSize: 11,
             fontWeight: 500,
-            letterSpacing: "0.18em",
+            letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--text-faint)",
             marginBottom: 8,
@@ -190,7 +190,7 @@ export function StaticDetail({ asset }: Props) {
         {/* Activity */}
         {mutations.length > 0 && (
           <div style={{ marginTop: asset.type === "bonds" ? 0 : 4 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
               Activity
             </div>
             {mutations.map((m) => {

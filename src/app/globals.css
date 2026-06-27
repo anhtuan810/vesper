@@ -36,6 +36,11 @@
   --fs-body:    15px;
   --fs-subhead: 16px;
   --fs-title:   17px;
+
+  /* Canonical tracking for uppercase micro-labels (eyebrows, section headers,
+     chip labels). One value everywhere so every label tracks identically —
+     tuned tight for a clean, modern read with Geist. */
+  --tracking-label: 0.12em;
 }
 
 :root,

@@ -29,7 +29,7 @@ const TOAST_KEY = "volnar.currency.toastSeen";
 const SECTION_LABEL_STYLE = {
   fontSize: 11,
   fontWeight: 500,
-  letterSpacing: "0.18em",
+  letterSpacing: "var(--tracking-label)",
   textTransform: "uppercase" as const,
   color: "var(--text-faint)",
   marginBottom: 10,

@@ -1117,7 +1117,7 @@ export function VitalsContent({
         style={{
           fontSize: "11px",
           fontWeight: 500,
-          letterSpacing: "0.18em",
+          letterSpacing: "var(--tracking-label)",
           textTransform: "uppercase",
           color: "var(--text-faint)",
           marginBottom: 12,

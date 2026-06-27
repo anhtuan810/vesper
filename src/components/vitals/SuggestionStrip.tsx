@@ -81,7 +81,7 @@ export function SuggestionStrip({
           style={{
             fontSize: labelFontSize,
             fontWeight: 600,
-            letterSpacing: "0.16em",
+            letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             opacity: 0.82,
             marginBottom: 3,
