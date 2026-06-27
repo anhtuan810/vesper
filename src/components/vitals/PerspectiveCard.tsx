@@ -73,7 +73,7 @@ export function PerspectiveCard({
         style={{
           background:
             "linear-gradient(180deg, var(--perspective-card-grad-start) 0%, var(--perspective-card-grad-end) 100%)",
-          border: "0.5px solid rgba(74,124,94,0.20)",
+          border: "0.5px solid rgba(151,112,61,0.20)",
           borderRadius: 14,
           padding: "20px 18px 18px",
           marginBottom: 18,
@@ -153,10 +153,10 @@ export function PerspectiveCard({
           >
             <defs>
               <linearGradient id="dens3" x1="0" x2="1" y1="0" y2="0">
-                <stop offset="0%" stopColor="#4A7C5E" stopOpacity="0.05" />
-                <stop offset="50%" stopColor="#4A7C5E" stopOpacity="0.10" />
-                <stop offset="80%" stopColor="#4A7C5E" stopOpacity="0.16" />
-                <stop offset="100%" stopColor="#4A7C5E" stopOpacity="0.04" />
+                <stop offset="0%" stopColor="#97703D" stopOpacity="0.05" />
+                <stop offset="50%" stopColor="#97703D" stopOpacity="0.10" />
+                <stop offset="80%" stopColor="#97703D" stopOpacity="0.16" />
+                <stop offset="100%" stopColor="#97703D" stopOpacity="0.04" />
               </linearGradient>
             </defs>
             {/* Density fill */}
@@ -238,7 +238,7 @@ export function PerspectiveCard({
                 display: "flex",
                 alignItems: "center",
                 padding: "11px 0",
-                borderTop: "0.5px solid rgba(74,124,94,0.16)",
+                borderTop: "0.5px solid rgba(151,112,61,0.16)",
               }}
             >
               {/* Left block */}
@@ -262,7 +262,7 @@ export function PerspectiveCard({
                 <div
                   style={{
                     height: 3,
-                    background: "rgba(74,124,94,0.18)",
+                    background: "rgba(151,112,61,0.18)",
                     borderRadius: 999,
                     position: "relative",
                   }}
@@ -289,7 +289,7 @@ export function PerspectiveCard({
                       background: "var(--accent)",
                       border: "2px solid var(--perspective-dot-border)",
                       transform: "translateX(-50%)",
-                      boxShadow: "0 0 0 0.5px rgba(74,124,94,0.3)",
+                      boxShadow: "0 0 0 0.5px rgba(151,112,61,0.3)",
                     }}
                   />
                 </div>
@@ -403,7 +403,7 @@ export function PerspectiveCard({
             color: "var(--text-dim)",
             marginTop: 16,
             paddingTop: 14,
-            borderTop: "0.5px solid rgba(74,124,94,0.16)",
+            borderTop: "0.5px solid rgba(151,112,61,0.16)",
           }}
         >
           Most of the world manages without an investment portfolio at all.

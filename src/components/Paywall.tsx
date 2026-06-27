@@ -255,7 +255,7 @@ export function Paywall() {
         zIndex: 9000,
         background: "var(--bg)",
         backgroundImage:
-          "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(94,124,166,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(46,110,96,0.06), transparent 55%)",
+          "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(143,168,194,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(151,112,61,0.06), transparent 55%)",
         overflowY: "auto",
         display: "flex",
         flexDirection: "column",

@@ -10,9 +10,9 @@ export const TYPE_LABEL: Record<string, string> = {
 };
 
 export const ACTION_STYLE: Record<string, { label: string; color: string; bg: string }> = {
-  add: { label: "ADD", color: "#6BAA75", bg: "rgba(107,170,117,0.12)" },
-  edit: { label: "EDIT", color: "#D4A574", bg: "rgba(212,165,116,0.12)" },
-  remove: { label: "DEL", color: "#C97A6E", bg: "rgba(201,122,110,0.12)" },
+  add: { label: "ADD", color: "#5E6A4A", bg: "rgba(94,106,74,0.14)" },
+  edit: { label: "EDIT", color: "#B07A2E", bg: "rgba(176,122,46,0.14)" },
+  remove: { label: "DEL", color: "#AF5530", bg: "rgba(175,85,48,0.14)" },
 };
 
 const CURRENCY_SYMBOL: Record<string, string> = {

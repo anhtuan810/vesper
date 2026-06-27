@@ -33,139 +33,140 @@
 
 :root,
 [data-theme="light"] {
-  /* "Cool Paper" — a cool, neutral paper ground (replacing the warm cream) so
-     the steel-blue markets hue belongs instead of clashing; greens shift toward
-     teal, ink cools, and reserves gold is greyed a touch. */
-  --bg:            #EEF0EC;
-  --surface:       #FBFCFB;
-  --surface-elev:  #E1E5DF;
+  /* "Twilight" — the warm-paper + gold ground ported from the marketing site:
+     a cream page, near-black warm ink, and a single gold brand accent (gains
+     read in gold too). Markets keep a steel-blue lane, property an olive lane,
+     so the categorical chart palette stays legible against the gold. */
+  --bg:            #F3ECE0;
+  --surface:       #FCF8F0;
+  --surface-elev:  #F2ECDF;
   /* Lighter center/elevated column surface — the desktop focal area sits on this,
      a hair brighter than the paper page and lifted off it. */
-  --surface-center: #F6F8F5;
-  /* Steel used by data bars. */
-  --data-bar:      #5E7CA6;
-  --border:        rgba(30, 40, 38, 0.08);
-  --border-strong: rgba(30, 40, 38, 0.15);
-  --text:          #232826;
-  --text-dim:      #6A736E;
-  --text-faint:    #97A09A;
-  --hero:          #131816;
-  --accent:        #2E6E60;
-  --accent-soft:   #D7E6E0;
-  --accent-text:   #235048;
-  --positive:      #2E6E60;
-  --positive-soft: #D7E6E0;
-  --positive-text: #235048;
-  --negative:      #B5635A;
-  --negative-soft: #F1DDD9;
-  --negative-text: #8E463C;
+  --surface-center: #FBF6EC;
+  /* Gold used by data bars. */
+  --data-bar:      #8F6A38;
+  --border:        rgba(34, 30, 38, 0.08);
+  --border-strong: rgba(34, 30, 38, 0.13);
+  --text:          #221E26;
+  --text-dim:      #7C7268;
+  --text-faint:    #8C8478;
+  --hero:          #1A1A24;
+  --accent:        #97703D;
+  --accent-soft:   #EBDFCB;
+  --accent-text:   #8F6A38;
+  --positive:      #97703D;
+  --positive-soft: #EBDFCB;
+  --positive-text: #8F6A38;
+  --negative:      #AF5530;
+  --negative-soft: #EDD9CC;
+  --negative-text: #8A3F22;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
-  --nav-surface:   rgba(238, 240, 236, 0.82);
-  --category-public-markets: #3D6A8A;
-  --category-reserves:       #9C8A63;
-  --category-property:       #2E6E60;
-  --category-crypto:         #6B6391;
-  --surface-deep:  #D5DAD3;
-  --accent-deep:   #214E45;
-  --negative-deep: #7A3D33;
-  --amber:         #C4A06B;
-  --amber-deep:    #7A5E3C;
-  --amber-soft:    rgba(196, 160, 107, 0.13);
-  --bg-deep:           #E5E8E2;
-  --cat-property:      #4C7268;
-  --cat-property-soft: #DBE6E1;
-  --cat-markets:       #6B8AA6;
-  --cat-markets-soft:  #DDE5ED;
-  --cat-reserves:      #9C8A63;
-  --cat-reserves-soft: #E7E7DC;
-  --cat-crypto:        #B5564B;
-  --cat-crypto-soft:   #F4DDD9;
+  --nav-surface:   rgba(243, 236, 224, 0.85);
+  --category-public-markets: #5E7488;
+  --category-reserves:       #97703D;
+  --category-property:       #5E6A4A;
+  --category-crypto:         #7A5C8C;
+  --surface-deep:  #E7DFD0;
+  --accent-deep:   #6F5226;
+  --negative-deep: #7E3A1F;
+  --amber:         #B07A2E;
+  --amber-deep:    #8A5E22;
+  --amber-soft:    rgba(176, 122, 46, 0.13);
+  --bg-deep:           #EAE2D4;
+  --cat-property:      #5E6A4A;
+  --cat-property-soft: #E3E4D6;
+  --cat-markets:       #5E7488;
+  --cat-markets-soft:  #DEE3E8;
+  --cat-reserves:      #97703D;
+  --cat-reserves-soft: #EBDFCB;
+  --cat-crypto:        #B0552F;
+  --cat-crypto-soft:   #EFDDD2;
   --cat-tangible:      #8C7B5E;
   --cat-tangible-soft: #E8E1D2;
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band:  #3F6B5A;
-  --cat-property-edge:  #2E5246;
-  --cat-markets-band:   #4E7E9A;
-  --cat-markets-edge:   #3A6076;
-  --cat-reserves-band:  #CFC09C;
-  --cat-reserves-edge:  #B6A576;
-  --cat-crypto-band:    #C79A4E;
-  --cat-crypto-edge:    #A87E36;
+  --cat-property-band:  #5E6A4A;
+  --cat-property-edge:  #47503A;
+  --cat-markets-band:   #5E7488;
+  --cat-markets-edge:   #475968;
+  --cat-reserves-band:  #C7A86E;
+  --cat-reserves-edge:  #A8854A;
+  --cat-crypto-band:    #C06A44;
+  --cat-crypto-edge:    #9E5234;
   --cat-tangible-band:  #BCAE94;
   --cat-tangible-edge:  #7E6F54;
   /* PerspectiveCard translucent surfaces — light values */
   --perspective-card-grad-start: var(--accent-soft);
-  --perspective-card-grad-end:   rgba(220, 229, 210, 0.42);
-  --perspective-panel:           rgba(248, 244, 236, 0.50);
-  --perspective-chip-bg:         rgba(248, 244, 236, 0.65);
-  --perspective-dot-border:      #F8F4EC;
+  --perspective-card-grad-end:   rgba(151, 112, 61, 0.10);
+  --perspective-panel:           rgba(252, 248, 240, 0.55);
+  --perspective-chip-bg:         rgba(252, 248, 240, 0.65);
+  --perspective-dot-border:      #FCF8F0;
 }
 
 [data-theme="dark"] {
-  --bg:            #14110D;
-  --surface:       #1E1B17;
-  --surface-elev:  #2A2620;
-  --surface-center: #221E19;
-  --data-bar:      #7AAFD4;
-  --border:        rgba(250, 246, 235, 0.08);
-  --border-strong: rgba(250, 246, 235, 0.14);
-  --text:          #FAF6EB;
-  --text-dim:      #9B9486;
-  --text-faint:    #6B6557;
+  --bg:            #14141E;
+  --surface:       #1D1D29;
+  --surface-elev:  #21212F;
+  --surface-center: #191925;
+  --data-bar:      #D8BC82;
+  --border:        rgba(236, 231, 220, 0.10);
+  --border-strong: rgba(236, 231, 220, 0.16);
+  --text:          #ECE7DC;
+  --text-dim:      #9E99A8;
+  --text-faint:    #827E90;
   --hero:          #FFFCF2;
-  --accent:        #6FAD8A;
-  --accent-soft:   rgba(111, 173, 138, 0.16);
-  --accent-text:   #8FCAA8;
-  --positive:      #6FAD8A;
-  --positive-soft: rgba(111, 173, 138, 0.16);
-  --positive-text: #8FCAA8;
-  --negative:      #D88A7E;
-  --negative-soft: rgba(216, 138, 126, 0.14);
-  --negative-text: #ECA59B;
+  --accent:        #CBAA6C;
+  --accent-soft:   rgba(203, 170, 108, 0.16);
+  --accent-text:   #D8BC82;
+  --positive:      #CBAA6C;
+  --positive-soft: rgba(203, 170, 108, 0.16);
+  --positive-text: #D8BC82;
+  --negative:      #DB9070;
+  --negative-soft: rgba(219, 144, 112, 0.14);
+  --negative-text: #ECB199;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
-  --nav-surface:   rgba(14, 14, 12, 0.82);
-  --category-public-markets: #7AAFD4;
-  --category-reserves:       #C9A87A;
-  --category-property:       #6FAD8A;
-  --category-crypto:         #9B92BC;
-  --surface-deep:  rgba(255, 250, 240, 0.06);
-  --accent-deep:   #A8C9B2;
-  --negative-deep: #E0A599;
-  --amber:         #C4A06B;
-  --amber-deep:    #D4B484;
-  --amber-soft:    rgba(196, 160, 107, 0.18);
-  --bg-deep:           #1A1610;
-  --cat-property:      #6FAD8A;
-  --cat-property-soft: rgba(111, 173, 138, 0.14);
-  --cat-markets:       #7AAFD4;
-  --cat-markets-soft:  rgba(122, 175, 212, 0.14);
-  --cat-reserves:      #C9A87A;
-  --cat-reserves-soft: rgba(201, 168, 122, 0.14);
-  --cat-crypto:        #E89086;
-  --cat-crypto-soft:   rgba(232, 144, 134, 0.14);
+  --nav-surface:   rgba(18, 18, 28, 0.82);
+  --category-public-markets: #8FA8C2;
+  --category-reserves:       #CBAA6C;
+  --category-property:       #A2C2A2;
+  --category-crypto:         #B79ECC;
+  --surface-deep:  rgba(255, 255, 255, 0.06);
+  --accent-deep:   #E0C88A;
+  --negative-deep: #E6AE92;
+  --amber:         #D9A24A;
+  --amber-deep:    #E6BE7A;
+  --amber-soft:    rgba(217, 162, 74, 0.18);
+  --bg-deep:           #101019;
+  --cat-property:      #A2C2A2;
+  --cat-property-soft: rgba(146, 172, 146, 0.14);
+  --cat-markets:       #8FA8C2;
+  --cat-markets-soft:  rgba(143, 168, 194, 0.14);
+  --cat-reserves:      #CBAA6C;
+  --cat-reserves-soft: rgba(203, 170, 108, 0.14);
+  --cat-crypto:        #D97A6A;
+  --cat-crypto-soft:   rgba(217, 122, 106, 0.14);
   --cat-tangible:      #B5A48A;
   --cat-tangible-soft: rgba(181, 164, 138, 0.14);
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band: #3F6B5A;
-  --cat-property-edge: #2E5246;
-  --cat-markets-band:  #4E7E9A;
-  --cat-markets-edge:  #3A6076;
-  --cat-reserves-band: #CFC09C;
-  --cat-reserves-edge: #B6A576;
-  --cat-crypto-band:   #C79A4E;
-  --cat-crypto-edge:   #A87E36;
+  --cat-property-band: #5E6A4A;
+  --cat-property-edge: #47503A;
+  --cat-markets-band:  #5E7488;
+  --cat-markets-edge:  #475968;
+  --cat-reserves-band: #C7A86E;
+  --cat-reserves-edge: #A8854A;
+  --cat-crypto-band:   #C06A44;
+  --cat-crypto-edge:   #9E5234;
   --cat-tangible-band: rgba(181, 164, 138, 0.30);
   --cat-tangible-edge: #B5A48A;
   /* PerspectiveCard translucent surfaces — dark values */
-  --perspective-card-grad-start: rgba(111, 173, 138, 0.22);
-  --perspective-card-grad-end:   rgba(111, 173, 138, 0.07);
-  --perspective-panel:           rgba(255, 250, 240, 0.06);
-  --perspective-chip-bg:         rgba(255, 250, 240, 0.08);
-  --perspective-dot-border:      #1E1B17;
+  --perspective-card-grad-start: rgba(203, 170, 108, 0.22);
+  --perspective-card-grad-end:   rgba(203, 170, 108, 0.07);
+  --perspective-panel:           rgba(236, 231, 220, 0.06);
+  --perspective-chip-bg:         rgba(236, 231, 220, 0.08);
+  --perspective-dot-border:      #1D1D29;
 }
 
 @theme inline {

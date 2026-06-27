@@ -142,7 +142,7 @@ function LoginInner() {
         style={{
           background: "var(--bg)",
           backgroundImage:
-            "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(94,124,166,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(46,110,96,0.06), transparent 55%)",
+            "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(143,168,194,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(151,112,61,0.06), transparent 55%)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -182,7 +182,7 @@ function LoginInner() {
       style={{
         background: "var(--bg)",
         backgroundImage:
-          "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(94,124,166,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(46,110,96,0.06), transparent 55%)",
+          "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(143,168,194,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(151,112,61,0.06), transparent 55%)",
         padding: "clamp(24px,6vw,56px) 24px",
       }}
     >
@@ -243,8 +243,8 @@ function LoginInner() {
               style={{
                 fontSize: 12, color: "var(--negative)",
                 padding: "10px 14px", borderRadius: 10,
-                background: "rgba(201,122,110,0.08)",
-                border: "1px solid rgba(201,122,110,0.18)",
+                background: "rgba(175,85,48,0.08)",
+                border: "1px solid rgba(175,85,48,0.18)",
               }}
             >
               {error}

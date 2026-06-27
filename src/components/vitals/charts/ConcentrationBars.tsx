@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { AssetLogo } from "@/components/AssetLogo";
 
 const ASSET_COLOR: Record<string, string> = {
-  real_estate: '#7A9C7F',
-  crypto:      '#C47B5A',
-  pension:     '#C4A86E',
-  cash:        '#888780',
-  stocks:      '#6B82A8',
-  etf:         '#6B82A8',
-  bonds:       '#C4A86E',
-  gold:        '#C4A86E',
-  other:       '#B4B2A9',
+  real_estate: '#5E6A4A',
+  crypto:      '#B0552F',
+  pension:     '#7A8C6A',
+  cash:        '#9A8F82',
+  stocks:      '#5E7488',
+  etf:         '#7E92A6',
+  bonds:       '#8C7B5E',
+  gold:        '#97703D',
+  other:       '#A89F90',
 };
 
 function colorFor(type: string): string {

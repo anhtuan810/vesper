@@ -29,9 +29,9 @@ export function RealGrowthDualLine({ data }: Props) {
         </defs>
         <line x1={0} y1={64} x2={W} y2={64} stroke="rgba(28,28,24,0.10)" strokeWidth={0.5} strokeDasharray="2 3" />
         <line x1={0} y1={40} x2={W} y2={40} stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" />
-        <line x1={0} y1={40} x2={W} y2={40} stroke="#8FA994" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" />
+        <line x1={0} y1={40} x2={W} y2={40} stroke="#7A8C6A" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" />
         <circle cx={W} cy={40} r={3.8} fill="var(--accent)" stroke="var(--surface)" strokeWidth={1.5} />
-        <circle cx={W} cy={40} r={3.2} fill="#8FA994" stroke="var(--surface)" strokeWidth={1.5} />
+        <circle cx={W} cy={40} r={3.2} fill="#7A8C6A" stroke="var(--surface)" strokeWidth={1.5} />
         <text x={0} y={82} fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">—</text>
         <text x={W} y={82} textAnchor="end" fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">today</text>
       </svg>
@@ -105,11 +105,11 @@ export function RealGrowthDualLine({ data }: Props) {
       <path d={nomPath} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 
       {/* Real line (dashed) */}
-      <path d={realPath} fill="none" stroke="#8FA994" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={realPath} fill="none" stroke="#7A8C6A" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
 
       {/* End-point dots */}
       <circle cx={nomEndX} cy={nomEndY} r={3.8} fill="var(--accent)" stroke="var(--surface)" strokeWidth={1.5} />
-      <circle cx={realEndX} cy={realEndY} r={3.2} fill="#8FA994" stroke="var(--surface)" strokeWidth={1.5} />
+      <circle cx={realEndX} cy={realEndY} r={3.2} fill="#7A8C6A" stroke="var(--surface)" strokeWidth={1.5} />
 
       {/* Pill labels near right edge */}
       <rect x={262} y={9} width={48} height={13} rx={6.5} fill="var(--surface-elev)" />
@@ -118,7 +118,7 @@ export function RealGrowthDualLine({ data }: Props) {
       </text>
 
       <rect x={262} y={33} width={48} height={13} rx={6.5} fill="var(--surface-elev)" />
-      <text x={286} y={42} textAnchor="middle" fontSize={9} fill="#6B8473" fontWeight={500} fontFamily="system-ui">
+      <text x={286} y={42} textAnchor="middle" fontSize={9} fill="#7C7268" fontWeight={500} fontFamily="system-ui">
         real
       </text>
 

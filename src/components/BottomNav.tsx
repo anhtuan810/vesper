@@ -118,7 +118,7 @@ export function BottomNav() {
                   height: 40,
                   borderRadius: "50%",
                   border: "1.5px solid var(--accent)",
-                  background: "rgba(74,124,94,0.07)",
+                  background: "rgba(151,112,61,0.10)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

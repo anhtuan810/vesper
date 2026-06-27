@@ -19,7 +19,7 @@ export default function Icon() {
       >
         <svg viewBox="0 0 60 60" width="20" height="20" fill="none">
           <polygon points="4,8 16,8 30,46 44,8 56,8 33,54 27,54" fill="#F5F1EA" />
-          <polygon points="18,10 42,10 30,42" fill="#4A7C5E" />
+          <polygon points="18,10 42,10 30,42" fill="#CBAA6C" />
         </svg>
       </div>
     ),

@@ -189,8 +189,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
     <>
       <style>{`
         @keyframes diaryHighlight {
-          0%   { outline: 2px solid rgba(212,165,116,0.75); outline-offset: 2px; border-radius: 6px; }
-          100% { outline: 2px solid rgba(212,165,116,0);    outline-offset: 2px; border-radius: 6px; }
+          0%   { outline: 2px solid rgba(176,122,46,0.75); outline-offset: 2px; border-radius: 6px; }
+          100% { outline: 2px solid rgba(176,122,46,0);    outline-offset: 2px; border-radius: 6px; }
         }
         .diary-row { cursor: pointer; }
         .diary-row:hover { background-color: var(--surface-elev); }

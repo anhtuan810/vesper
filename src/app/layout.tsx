@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Source_Serif_4, Albert_Sans, Geist_Mono } from "next/font/google";
+import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -18,22 +18,27 @@ import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
 import { PreloadResources } from "@/components/PreloadResources";
 
-const sourceSerif = Source_Serif_4({
+// Webfonts ported from the marketing "Twilight" theme — Fraunces (serif
+// display), Inter (sans body), IBM Plex Mono — exposed under the same
+// --font-serif / --font-sans / --font-mono variables the whole app references,
+// so every surface adopts the marketing typography without touching markup.
+const fraunces = Fraunces({
   subsets: ["latin"],
   axes: ["opsz"],
   variable: "--font-serif",
   display: "swap",
 });
 
-const albertSans = Albert_Sans({
+const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
+const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
   variable: "--font-mono",
   display: "swap",
 });
@@ -55,9 +60,12 @@ export const viewport: Viewport = {
   // Extend the layout into the safe-area insets so env(safe-area-inset-*)
   // resolves to real values (needed by the bottom nav on notched iOS devices).
   viewportFit: "cover",
-  // Native WebView background fallback (light mode). Dark-mode parity comes
-  // with @capacitor/status-bar in a later phase. Matches --bg (cool paper).
-  themeColor: "#EEF0EC",
+  // Native WebView background fallback / browser chrome tint. Matches --bg
+  // (twilight paper light / near-black indigo dark).
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F3ECE0" },
+    { media: "(prefers-color-scheme: dark)", color: "#14141E" },
+  ],
 };
 
 type ThemeMode = "light" | "dark";
@@ -92,7 +100,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className={`${sourceSerif.variable} ${albertSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning={isNativeBuild}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">

@@ -12,11 +12,11 @@ import { DISCLAIMER_TEXT } from "@/lib/claude";
 const pillStyle: CSSProperties = {
   display: "flex", alignItems: "center", gap: 4,
   background: "transparent",
-  border: "0.5px solid rgba(58,92,58,0.18)",
+  border: "0.5px solid rgba(151,112,61,0.18)",
   borderRadius: 999,
   padding: "5px 10px",
-  color: "#3A5C3A",
-  fontFamily: "system-ui, sans-serif",
+  color: "#97703D",
+  fontFamily: "var(--sans)",
   fontSize: 12,
   cursor: "pointer",
   minHeight: 44,
@@ -36,7 +36,7 @@ function ExampleRow({
       onClick={onClick}
       style={{
         display: "flex", alignItems: "center", gap: 12,
-        background: "#FFFFFF",
+        background: "#FCF8F0",
         border: "0.5px solid rgba(0,0,0,0.06)",
         borderRadius: 12,
         padding: "10px 12px",
@@ -47,23 +47,23 @@ function ExampleRow({
     >
       <div style={{
         width: 32, height: 32, borderRadius: 8,
-        background: "#E4EDE0",
+        background: "#EBDFCB",
         display: "flex", alignItems: "center", justifyContent: "center",
-        flexShrink: 0, color: "#3A5C3A",
+        flexShrink: 0, color: "#97703D",
       }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: "system-ui, sans-serif",
-          fontSize: 12, color: "#8A948A",
+          fontFamily: "var(--sans)",
+          fontSize: 12, color: "#7C7268",
         }}>
           {label}
         </div>
         <div style={{
-          fontFamily: "Georgia, \"Lora\", serif",
+          fontFamily: "var(--serif)",
           fontStyle: "italic", fontSize: 13,
-          color: "#2C3A2C", lineHeight: 1.3,
+          color: "#6F5226", lineHeight: 1.3,
           marginTop: 1,
         }}>
           {example}
@@ -179,13 +179,13 @@ export function PortfolioEmptyState() {
     >
       <style>{`
         .es-pill { transition: background 0.12s, transform 0.1s; }
-        .es-pill:hover { background: rgba(58,92,58,0.07) !important; }
+        .es-pill:hover { background: rgba(151,112,61,0.07) !important; }
         .es-pill:active { transform: scale(0.97); }
         .es-example { transition: border-color 0.15s; cursor: pointer; }
-        .es-example:hover { border-color: rgba(58,92,58,0.22) !important; }
+        .es-example:hover { border-color: rgba(151,112,61,0.22) !important; }
         .es-example:active { transform: scale(0.99); }
         .es-input-wrap { transition: box-shadow 0.15s, border-color 0.15s; }
-        .es-input-wrap:focus-within { border-color: rgba(58,92,58,0.5) !important; box-shadow: 0 0 0 2px rgba(58,92,58,0.18), 0 10px 28px rgba(46,110,96,0.09) !important; }
+        .es-input-wrap:focus-within { border-color: rgba(151,112,61,0.5) !important; box-shadow: 0 0 0 2px rgba(151,112,61,0.18), 0 10px 28px rgba(151,112,61,0.09) !important; }
         .es-send:active { transform: scale(0.94); }
       `}</style>
 
@@ -198,14 +198,14 @@ export function PortfolioEmptyState() {
         borderRadius: 999, padding: "4px 9px",
       }}>
         <LockIcon size={14} />
-        <span style={{ fontFamily: "system-ui, sans-serif", fontSize: 12, fontWeight: 500 }}>
+        <span style={{ fontFamily: "var(--sans)", fontSize: 12, fontWeight: 500 }}>
           Private · stays on your device
         </span>
       </div>
 
       {/* Headline */}
       <h1 style={{
-        fontFamily: "Georgia, \"Lora\", \"Crimson Pro\", serif",
+        fontFamily: "var(--serif)",
         fontStyle: "italic", fontWeight: 400,
         fontSize: 23, lineHeight: 1.3, color: "var(--hero)",
         margin: "16px 0 0",
@@ -215,7 +215,7 @@ export function PortfolioEmptyState() {
 
       {/* Sub-headline */}
       <p style={{
-        fontFamily: "system-ui, sans-serif",
+        fontFamily: "var(--sans)",
         fontSize: 15, color: "var(--text-dim)", lineHeight: 1.5,
         margin: "6px 0 0",
       }}>
@@ -224,7 +224,7 @@ export function PortfolioEmptyState() {
 
       {/* Informational-only disclaimer — muted line beneath the opener */}
       <p style={{
-        fontFamily: "system-ui, sans-serif",
+        fontFamily: "var(--sans)",
         fontSize: 12, color: "var(--text-faint)", lineHeight: 1.45,
         margin: "8px 0 0",
       }}>
@@ -237,9 +237,9 @@ export function PortfolioEmptyState() {
         className="es-input-wrap"
         style={{
           marginTop: 22,
-          background: "#FFFFFF", borderRadius: 18,
-          border: "1px solid rgba(58,92,58,0.38)",
-          boxShadow: "0 1px 2px rgba(20,30,25,0.04), 0 10px 28px rgba(46,110,96,0.09)",
+          background: "#FCF8F0", borderRadius: 18,
+          border: "1px solid rgba(151,112,61,0.38)",
+          boxShadow: "0 1px 2px rgba(20,30,25,0.04), 0 10px 28px rgba(151,112,61,0.09)",
           padding: "12px 12px 10px",
         }}
       >
@@ -250,7 +250,7 @@ export function PortfolioEmptyState() {
             onClick={() => { setFocused(true); requestAnimationFrame(() => textareaRef.current?.focus()); }}
             style={{
               fontFamily: "var(--sans)",
-              fontSize: 16, color: "#A8B0A6",
+              fontSize: 16, color: "#8C8478",
               padding: "6px 6px 10px", lineHeight: 1.5,
               cursor: "text", userSelect: "none",
               opacity: showPlaceholder ? 1 : 0,
@@ -280,7 +280,7 @@ export function PortfolioEmptyState() {
               resize: "none",
               fontFamily: "var(--sans)",
               fontSize: 16,
-              color: "#2C3A2C", lineHeight: 1.5,
+              color: "#6F5226", lineHeight: 1.5,
               padding: "6px 6px 4px",
               minHeight: 23, maxHeight: 92,
               overflowY: "hidden",
@@ -322,9 +322,9 @@ export function PortfolioEmptyState() {
             disabled={!hasContent}
             style={{
               width: 32, height: 32, borderRadius: "50%",
-              background: hasContent ? "#3A5C3A" : "#C5CCC4",
+              background: hasContent ? "#97703D" : "#D8CFC0",
               border: "none",
-              color: hasContent ? "#F5EDE0" : "#FFFFFF",
+              color: hasContent ? "#FBF7EF" : "#FCF8F0",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: hasContent ? "pointer" : "default",
               transition: "background 0.15s, transform 0.1s",
@@ -341,7 +341,7 @@ export function PortfolioEmptyState() {
 
       <div style={{ marginTop: 16 }}>
         <p style={{
-          fontFamily: "system-ui, sans-serif",
+          fontFamily: "var(--sans)",
           fontSize: 12, color: "var(--text-faint)",
           margin: "0 0 8px",
         }}>

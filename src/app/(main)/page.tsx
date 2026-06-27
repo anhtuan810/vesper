@@ -230,7 +230,7 @@ export default function Dashboard() {
       className="min-h-screen bg-bg"
       style={isEmpty ? {
         backgroundImage:
-          "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(212,165,116,0.05), transparent 50%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(107,170,117,0.03), transparent 50%)",
+          "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(151,112,61,0.06), transparent 50%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(94,106,74,0.04), transparent 50%)",
       } : undefined}
     >
       <NavBar

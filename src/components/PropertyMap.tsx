@@ -88,7 +88,7 @@ export function PropertyMap({ asset }: Props) {
           width: 20, height: 20, borderRadius: "50%",
           background: "var(--accent)",
           border: "3px solid rgba(255,255,255,0.9)",
-          boxShadow: "0 0 0 4px rgba(74, 124, 94, 0.25), 0 2px 6px rgba(0,0,0,0.25)",
+          boxShadow: "0 0 0 4px rgba(151, 112, 61, 0.25), 0 2px 6px rgba(0,0,0,0.25)",
           pointerEvents: "none",
         }} />
         <OpenInMapsOverlay asset={asset} />
@@ -163,7 +163,7 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
         width: 20px; height: 20px; border-radius: 50%;
         background: var(--accent);
         border: 3px solid rgba(255,255,255,0.9);
-        box-shadow: 0 0 0 4px rgba(74, 124, 94, 0.25), 0 2px 6px rgba(0,0,0,0.25);
+        box-shadow: 0 0 0 4px rgba(151, 112, 61, 0.25), 0 2px 6px rgba(0,0,0,0.25);
       `;
       new ml.Marker({ element: el })
         .setLngLat([asset.longitude!, asset.latitude!])

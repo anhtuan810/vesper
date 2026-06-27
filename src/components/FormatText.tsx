@@ -50,7 +50,7 @@ function ChangesBlock({ content }: { content: string }) {
         marginTop: 10,
         padding: 12,
         background: "var(--accent-soft)",
-        border: "1px solid rgba(212,165,116,0.18)",
+        border: "1px solid rgba(176,122,46,0.18)",
         borderRadius: 12,
       }}
     >

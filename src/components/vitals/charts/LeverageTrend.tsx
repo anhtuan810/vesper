@@ -75,9 +75,9 @@ export function LeverageTrend({ data }: Props) {
     <div style={{ position: 'relative' }}>
       <svg viewBox="0 0 320 78" style={{ width: '100%', height: 78, display: 'block' }}>
         {/* Risk zone bands */}
-        <rect x={0} y={0}  width={320} height={12} fill="rgba(184,92,74,0.09)" />
-        <rect x={0} y={12} width={320} height={14} fill="rgba(196,160,107,0.09)" />
-        <rect x={0} y={26} width={320} height={50} fill="rgba(74,124,94,0.06)" />
+        <rect x={0} y={0}  width={320} height={12} fill="rgba(176,85,47,0.09)" />
+        <rect x={0} y={12} width={320} height={14} fill="rgba(176,122,46,0.09)" />
+        <rect x={0} y={26} width={320} height={50} fill="rgba(46,139,94,0.06)" />
 
         {/* Zone labels */}
         <text x={315} y={9}  textAnchor="end" fontSize={8} fill="var(--text-faint)" fontFamily="system-ui">75%</text>

@@ -26,7 +26,7 @@ const config: CapacitorConfig = {
     // Native WebView background fallback (light mode). Prevents a white flash
     // behind the web content before/around paint. Dark-mode parity comes with
     // @capacitor/status-bar in a later phase.
-    backgroundColor: "#FAF6EB",
+    backgroundColor: "#F3ECE0",
     // NOTE: limitsNavigationsToAppBoundDomains was removed with the move to
     // bundled assets — the webview now serves capacitor://localhost, which an
     // app-bound-domains allowlist would lock out. OAuth/magic-link still run

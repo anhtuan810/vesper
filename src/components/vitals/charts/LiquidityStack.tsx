@@ -3,7 +3,7 @@ import type { LiquidityPostureValue } from '@/lib/vitals/liquidityPosture';
 // Fixed tier colors — constant across themes
 const TIER_COLORS = {
   sameDay:     'var(--accent)',
-  market1w:    '#7AB395',
+  market1w:    '#6E9478',
   slow1mo:     '#C4A86E',
   sixMonthPlus: '#A89F84',
   locked:      '#5E5A52',

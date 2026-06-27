@@ -14,7 +14,7 @@ interface Props {
   birthYear: number | null;
 }
 
-const PENSION_GROWTH_COLOR = "#7A9E8B";
+const PENSION_GROWTH_COLOR = "#7A8C6A";
 
 function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; fromCurrency: string; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
   const parts = formatMoneyParts(amount, fromCurrency, displayCurrency);

@@ -11,7 +11,7 @@
     {
       "id": "background",
       "type": "background",
-      "paint": { "background-color": "#0A0A0B" }
+      "paint": { "background-color": "#14141E" }
     },
     {
       "id": "water",

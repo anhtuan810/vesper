@@ -139,7 +139,7 @@ export default function ChatPopup({
         className="fixed bottom-8 right-8 flex items-center justify-center text-bg bg-accent hover:opacity-90 transition-opacity"
         style={{
           width: 52, height: 52, borderRadius: 16,
-          boxShadow: "0 8px 24px rgba(74,124,94,0.3)",
+          boxShadow: "0 8px 24px rgba(151,112,61,0.3)",
           fontSize: 18,
         }}
       >
