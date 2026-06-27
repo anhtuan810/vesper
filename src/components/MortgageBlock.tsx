@@ -193,11 +193,11 @@ export function MortgageBlock({ asset }: Props) {
           }}>
             <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-              <span style={{ fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18", lineHeight: 1.1 }}>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1 }}>
                 {row.value}
               </span>
               {row.meta && (
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
                   {row.meta}
                 </span>
               )}
@@ -256,7 +256,7 @@ export function MortgageBlock({ asset }: Props) {
             fontSize: 12,
             color: "var(--text-faint)",
             fontFeatureSettings: '"tnum" 1',
-            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--mono)",
           }}>
             {scrubI !== null ? (
               <>

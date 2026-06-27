@@ -170,6 +170,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "4px 10px", borderRadius: 999, fontSize: 13, fontWeight: 500,
+                fontFamily: "var(--mono)",
                 fontFeatureSettings: '"tnum" 1',
                 background: thisYearDelta >= 0 ? "var(--positive-soft)" : "var(--negative-soft)",
                 color: thisYearDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)",
@@ -208,7 +209,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
                 gap: 14,
               }}>
                 <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
-                <span style={{ fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18", lineHeight: 1.1, textAlign: "right" }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1, textAlign: "right" }}>
                   {row.value}
                 </span>
               </div>

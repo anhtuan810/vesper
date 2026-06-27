@@ -307,7 +307,7 @@ export function PerspectiveCard({
               <div style={{ flex: "0 0 54px", textAlign: "right" }}>
                 <div
                   style={{
-                    fontFamily: "var(--serif)",
+                    fontFamily: "var(--mono)",
                     fontSize: 19,
                     fontWeight: 600,
                     color: "var(--hero)",

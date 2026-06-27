@@ -74,19 +74,18 @@ export function BondBlock({ asset }: Props) {
                 color: "var(--text-dim)",
                 letterSpacing: "0.02em",
               } : {
-                fontFamily: "var(--font-serif)",
+                fontFamily: "var(--mono)",
                 fontSize: 16,
                 fontWeight: 500,
                 color: "var(--hero)",
                 letterSpacing: "-0.005em",
                 fontFeatureSettings: '"tnum" 1',
-                fontVariationSettings: "'opsz' 18",
                 lineHeight: 1.1,
               }}>
                 {row.value}
               </span>
               {row.meta && (
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
                   {row.meta}
                 </span>
               )}

@@ -160,7 +160,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
       <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: 16 }}>
         {/* Header: latest indicative value (or the scrubbed point) */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 12 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: 18, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.01em", fontFeatureSettings: '"tnum" 1' }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 18, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.01em", fontFeatureSettings: '"tnum" 1' }}>
             {money(scrub ? scrub.value : latest.value)}
             <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-faint)", marginLeft: 6, fontFamily: "var(--font-sans)" }}>
               {scrub ? scrub.year : latest.year}
@@ -205,7 +205,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
         </div>
 
         {/* X axis: purchase year … latest */}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1' }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
           <span>{xMin}</span>
           <span>{xMax}</span>
         </div>

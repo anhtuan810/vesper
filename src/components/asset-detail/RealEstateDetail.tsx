@@ -141,7 +141,7 @@ export function RealEstateDetail({ asset }: Props) {
           {/* Compact metadata line: value · size · owned since · years */}
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
             {currencyLoaded ? [
-              <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500 }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
+              <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500, fontFamily: "var(--mono)" }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
               asset.size_sqm ? <span key="size">{asset.size_sqm} m²</span> : null,
               ownedSinceLabel ? <span key="since">owned since {ownedSinceLabel}</span> : null,
               yearsOwned ? <span key="yrs">{yearsOwned} yrs</span> : null,
@@ -205,7 +205,7 @@ export function RealEstateDetail({ asset }: Props) {
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
-                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
                     {dateStr ? formatDate(dateStr) : "—"}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -213,6 +213,7 @@ export function RealEstateDetail({ asset }: Props) {
                       <div style={{
                         fontSize: 15,
                         fontWeight: 500,
+                        fontFamily: "var(--mono)",
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
                         marginBottom: m.personal_context ? 2 : 0,
                       }}>

@@ -116,13 +116,13 @@ export function ScenarioComparisonCard({
           </div>
         </div>
         <div style={{ textAlign: "right", fontSize: 13 }}>
-          <div style={{ color: "var(--text-faint)" }}>{m(c.netWorthUsd)} now</div>
+          <div style={{ color: "var(--text-faint)", fontFamily: "var(--mono)" }}>{m(c.netWorthUsd)} now</div>
           {deltaStyle === "drop" ? (
-            <div style={{ fontWeight: 500, color: "var(--negative-text)", marginTop: 2 }}>
+            <div style={{ fontWeight: 500, color: "var(--negative-text)", marginTop: 2, fontFamily: "var(--mono)" }}>
               −{m(Math.abs(nwDelta))} ({fmtPct(Math.abs(dropPct))})
             </div>
           ) : (
-            <div style={{ fontWeight: 500, color: nwDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)", marginTop: 2 }}>
+            <div style={{ fontWeight: 500, color: nwDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)", marginTop: 2, fontFamily: "var(--mono)" }}>
               {nwDelta >= 0 ? "+" : "−"}{m(Math.abs(nwDelta))}
             </div>
           )}
@@ -133,7 +133,7 @@ export function ScenarioComparisonCard({
       {showConcentration && (
         <div style={statRowStyle}>
           <span style={{ fontSize: 13, color: "var(--text)" }}>Single-name concentration</span>
-          <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+          <span style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
             {fmtPct(c.topSingleNameConcentrationPct)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
             <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(s.topSingleNameConcentrationPct)}</span>
           </span>
@@ -144,7 +144,7 @@ export function ScenarioComparisonCard({
       {showLtvCallout && hasLeverage && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--negative-soft)" }}>
           <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>Mortgage LTV</span>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--negative-text)" }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--negative-text)", fontFamily: "var(--mono)" }}>
             {fmtPct(c.leverage!.ltvPct)} <span style={{ opacity: 0.6 }}>→</span> {fmtPct(s.leverage!.ltvPct)}
           </span>
         </div>
@@ -170,7 +170,7 @@ export function ScenarioComparisonCard({
       {allocCats.map((cat) => (
         <div key={cat} style={statRowStyle}>
           <span style={{ fontSize: 13, color: "var(--text)" }}>{CATEGORY_LABEL[cat] ?? cat}</span>
-          <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+          <span style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
             {fmtPct(curAlloc.get(cat)?.pct ?? 0)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
             <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(scnAlloc.get(cat)?.pct ?? 0)}</span>
           </span>
@@ -184,7 +184,7 @@ export function ScenarioComparisonCard({
           {contextualVitals.map((v) => (
             <div key={v.key} style={statRowStyle}>
               <span style={{ fontSize: 13, color: "var(--text)" }}>{v.label}</span>
-              <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+              <span style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
                 {v.before} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
                 <span style={{ fontWeight: 600, color: BAND_COLOR[v.afterBand] ?? "var(--text)" }}>{v.after}</span>
               </span>

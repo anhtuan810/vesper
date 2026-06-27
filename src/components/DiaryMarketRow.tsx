@@ -30,11 +30,11 @@ export function DiaryMarketRow({ move }: DiaryMarketRowProps) {
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-dim)" }}>
           {move.index_label}{" "}
-          <span style={{ color: positive ? "var(--positive-text)" : "var(--negative-text)" }}>
+          <span style={{ color: positive ? "var(--positive-text)" : "var(--negative-text)", fontFamily: "var(--mono)" }}>
             {fmtPct.format(move.pct_change)}%
           </span>
         </span>
-        <span style={{ fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap", flexShrink: 0 }}>
+        <span style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap", flexShrink: 0 }}>
           {formatDate(move.date)}
         </span>
       </div>

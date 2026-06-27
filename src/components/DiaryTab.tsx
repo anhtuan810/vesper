@@ -32,7 +32,7 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
   if (isUnitEligible) {
     if (m.action === "add" && m.after_units != null) {
       return (
-        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
+        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--positive-text)" }}>
           +{m.after_units.toLocaleString()} {noun}
         </span>
       );
@@ -40,14 +40,14 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
     if (m.action === "edit") {
       const delta = (m.after_units ?? 0) - (m.before_units ?? 0);
       if (delta !== 0) return (
-        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: delta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
+        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: delta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
           {delta >= 0 ? "+" : ""}{delta.toLocaleString()} {noun}
         </span>
       );
     }
     if (m.action === "remove" && m.before_units != null) {
       return (
-        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
+        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--negative-text)", textDecoration: "line-through" }}>
           {m.before_units.toLocaleString()} {noun}
         </span>
       );
@@ -57,7 +57,7 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
   const cur = m.currency || "USD";
   if (m.action === "add" && m.after_value != null) {
     return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--positive-text)" }}>
         +{formatMoney(m.after_value, cur, displayCurrency)}
       </span>
     );
@@ -65,19 +65,19 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
   if (m.action === "edit") {
     const valDelta = m.before_value != null && m.after_value != null ? m.after_value - m.before_value : null;
     if (valDelta !== null && valDelta !== 0) return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: valDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
         {valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, cur, displayCurrency)}
       </span>
     );
     if (m.after_value != null) return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--text-dim)" }}>
         {formatMoney(m.after_value, cur, displayCurrency)}
       </span>
     );
   }
   if (m.action === "remove" && m.before_value != null) {
     return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
+      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--negative-text)", textDecoration: "line-through" }}>
         {formatMoney(m.before_value, cur, displayCurrency)}
       </span>
     );
@@ -457,7 +457,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               >
                 {getMonthLabel(monthKey)}
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-faint)" }}>
+              <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)" }}>
                 {monthMutations.length} {monthMutations.length === 1 ? "entry" : "entries"}
               </div>
             </div>
@@ -580,6 +580,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                             <span
                               style={{
                                 fontSize: 13, color: "var(--text-faint)",
+                                fontFamily: "var(--mono)",
                                 fontFeatureSettings: '"tnum" 1', flexShrink: 0,
                               }}
                             >

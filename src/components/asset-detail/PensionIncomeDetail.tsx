@@ -149,7 +149,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             </span>
             <span style={{ fontSize: 16, fontWeight: 500, color: "var(--text-faint)" }}>/ year</span>
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
             ≈ {formatMoney(monthly, cur, displayCurrency)} / month{accessAge != null ? `, from age ${accessAge}` : ""}
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
@@ -203,10 +203,10 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             }}>
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
               <span style={{
-                fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 500,
+                fontFamily: "var(--mono)", fontSize: 16, fontWeight: 500,
                 color: row.muted ? "var(--text-faint)" : "var(--hero)",
                 fontStyle: row.muted ? "italic" : "normal",
-                letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', fontVariationSettings: "'opsz' 18", lineHeight: 1.1, textAlign: "right",
+                letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1, textAlign: "right",
               }}>
                 {row.value}
               </span>
