@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Schibsted_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -18,32 +18,17 @@ import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
 import { PreloadResources } from "@/components/PreloadResources";
 
-// App typography on the Twilight theme: Fraunces (serif display) and IBM Plex
-// Mono (figures) from the marketing site, paired with Schibsted Grotesk as the
-// body sans — a warmer, more editorial grotesque than the marketing site's
-// Inter, chosen so the dense app UI reads designed rather than default. All
-// three are exposed under the same --font-serif / --font-sans / --font-mono
-// variables the whole app references, so every surface adopts them without
-// touching markup. (The marketing landing page keeps Inter via its own scoped
-// --mkt-sans, so this change is confined to the app.)
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  axes: ["opsz"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
-const schibsted = Schibsted_Grotesk({
+// One unified, modern typeface for the entire app. Geist is loaded once into
+// --font-sans; globals.css aliases the serif and mono roles to the same
+// variable, so every surface — the big hero numbers, body copy, and the
+// uppercase/numeric labels that used to be serif or monospace — now renders in
+// a single clean sans. Tabular figures (set on body) keep columns aligned
+// without a separate monospace face. The marketing landing page is unaffected:
+// it sets its own scoped --mkt-* fonts inside the .tw wrapper.
+const geist = Geist({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-mono",
   display: "swap",
 });
 
@@ -104,7 +89,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className={`${fraunces.variable} ${schibsted.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${geist.variable} h-full antialiased`}
       suppressHydrationWarning={isNativeBuild}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">

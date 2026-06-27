@@ -1,10 +1,17 @@
 @import "tailwindcss";
 
-/* Font stacks — theme-independent, reference Next.js-injected CSS vars */
+/* Typography — ONE unified, modern family across the whole app. layout.tsx
+   loads a single sans (Geist) into --font-sans; the serif and mono roles are
+   aliased to that same variable, so every surface — hero numbers, body copy,
+   and the uppercase/numeric labels that used to be serif or monospace — renders
+   in one font. Tabular figures (set on body below) keep numbers column-aligned
+   without a separate monospace face. */
 :root {
-  --serif: var(--font-serif), Georgia, serif;
+  --font-serif: var(--font-sans);
+  --font-mono:  var(--font-sans);
+  --serif: var(--font-sans), system-ui, sans-serif;
   --sans:  var(--font-sans), system-ui, sans-serif;
-  --mono:  var(--font-mono), "SF Mono", monospace;
+  --mono:  var(--font-sans), system-ui, sans-serif;
   --nav-height: 56px;
   --radius-md:  10px;
   --radius-lg:  14px;

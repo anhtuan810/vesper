@@ -28,9 +28,9 @@ export const tokens = {
   amberDeep:    "#8A5E22",
   amberSoft:    "rgba(176, 122, 46, 0.13)",
 
-  serif: "Fraunces",
-  sans:  "Schibsted Grotesk",
-  mono:  "IBM Plex Mono",
+  serif: "Geist",
+  sans:  "Geist",
+  mono:  "Geist",
 } as const;
 
 export type TokenKey = keyof typeof tokens;

@@ -159,7 +159,7 @@ export function CashWaterfall({ data }: Props) {
             fontSize={14}
             fill="var(--negative)"
             fontWeight={700}
-            fontFamily="Georgia,serif"
+            fontFamily="system-ui"
             style={{ fontFeatureSettings: "'tnum'" }}
           >
             {fmtPct(realYieldPct)}
