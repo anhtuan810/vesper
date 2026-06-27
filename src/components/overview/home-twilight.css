@@ -223,6 +223,39 @@
 .vhome .pf-settings:hover{background:var(--surface2)}
 .vhome .pf-settings svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7}
 
+/* ── settings page ── */
+.vhome .st-wrap{max-width:680px}
+.vhome .st-card{background:var(--soft);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:24px}
+.vhome .st-row{width:100%;display:flex;align-items:center;gap:12px;padding:15px 20px;background:transparent;border:0;border-top:1px solid var(--line2);cursor:pointer;text-align:left;font-family:inherit}
+.vhome .st-card > .st-row:first-child,.vhome .st-card > .st-acct:first-child{border-top:0}
+.vhome .st-name{flex:1;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink)}
+.vhome .st-val{font-size:13px;color:var(--muted);font-weight:500}
+.vhome .st-chev{width:14px;height:14px;fill:none;stroke:var(--faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.vhome .st-exp{padding:0 20px 14px}
+.vhome .st-opt{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;margin-bottom:7px;text-align:left;font-family:inherit;color:var(--ink);font-size:13px}
+.vhome .st-opt.on{border-color:var(--green);background:var(--mint);color:var(--gb)}
+.vhome .st-opt .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.vhome .st-acct{padding:15px 20px;border-top:1px solid var(--line2);font-size:13px;color:var(--muted);line-height:1.55}
+.vhome .st-signout{width:100%;padding:15px 20px;text-align:left;background:transparent;border:0;border-top:1px solid var(--line2);cursor:pointer;font-size:15px;font-weight:500;color:var(--neg);font-family:var(--sans)}
+.vhome .st-signout.accent{color:var(--green);font-weight:600}
+.vhome .st-legal{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0 4px;max-width:680px}
+.vhome .st-legal .note{font-size:12px;color:var(--faint);text-align:center;max-width:340px;line-height:1.5}
+.vhome .st-del{font-size:13px;color:var(--faint);background:none;border:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-family:var(--sans)}
+.vhome a.st-link{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+.vhome .st-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+.vhome .st-modal-box{width:100%;max-width:400px;background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:24px 22px 20px}
+.vhome .st-modal-box h3{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--ink);margin-bottom:10px}
+.vhome .st-modal-box .desc{font-size:13.5px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.vhome .st-modal-warn{font-size:13px;color:var(--neg);background:rgba(175,85,48,.08);border:1px solid rgba(175,85,48,.18);border-radius:10px;padding:10px 12px;margin-bottom:16px;line-height:1.5}
+.vhome .st-modal-box input{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;font-family:var(--sans);margin-bottom:14px;box-sizing:border-box}
+.vhome .st-modal-err{font-size:13px;color:var(--neg);margin-bottom:12px;line-height:1.5}
+.vhome .st-modal-btns{display:flex;gap:10px}
+.vhome .st-modal-btns button{flex:1;padding:11px 0;border-radius:10px;font-size:15px;font-weight:500;font-family:var(--sans)}
+.vhome .st-cancel{border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.vhome .st-confirm{border:1px solid var(--neg);background:var(--bg);color:var(--faint);cursor:default}
+.vhome .st-confirm.armed{background:var(--surface2);color:var(--neg);cursor:pointer}
+.vhome .st-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--muted);box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:50}
+
 /* dark trust band */
 .vhome .trust{background:var(--dark);color:var(--darkfg);border-radius:18px;padding:24px 30px;display:flex;align-items:center;gap:26px;flex-wrap:wrap}
 .vhome .trust .t{font-family:var(--serif);font-size:19px;font-weight:500}
