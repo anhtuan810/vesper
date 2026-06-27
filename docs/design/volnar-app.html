@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Volnar — Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#F3ECE0;--soft:#FCF8F0;--surface2:#FBF6EC;--chip:#F2ECDF;
+--ink:#221E26;--body:#46423C;--muted:#7C7268;--faint:#8C8478;
+--green:#97703D;--gb:#8F6A38;--mint:#EBDFCB;--mint2:#F0E6D5;
+--line:rgba(34,30,38,.13);--line2:rgba(34,30,38,.07);--track:#E7DFD0;
+--dark:#1A1A24;--darkfg:#ECE7DC;--darkmuted:#B7B2A6;--btnfg:#FBF7EF;--neg:#AF5530;
+--navbg:rgba(243,236,224,.85);--glow:rgba(151,112,61,.07);
+--ok:#2E8B5E;--okbg:#DCEBE2;--warn:#B07A2E;--warnbg:#F0E4CE;--bad:#B0552F;--badbg:#EDD9CC;
+--eq:#117A52;--prop:#3F7CA8;--res:#A89968;--cry:#E0922A;
+--serif:'Fraunces',Georgia,serif;--sans:'Inter',system-ui,sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+html,body{height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--body);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.6}
+.eyebrow{display:inline-block;font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--green)}
+.disp{font-family:var(--serif)}
+h2{font-family:var(--serif);font-size:clamp(27px,3vw,37px);line-height:1.08;letter-spacing:-.03em;font-weight:600;color:var(--ink);margin-top:13px}
+h2 .g{color:var(--green)}
+.sub{font-size:16px;color:var(--muted);margin-top:12px;max-width:560px;line-height:1.55}
+a{color:inherit}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:30;background:var(--navbg);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav-in{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 32px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .wm{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.tabs{display:flex;gap:4px}
+.tab{font-size:14.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:8px 14px;border-radius:10px;transition:.15s}
+.tab:hover{background:var(--mint2);color:var(--ink)}
+.tab.on{color:var(--gb);background:var(--mint)}
+.nav-r{display:flex;align-items:center;gap:14px}
+.priv{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.03em}
+.priv .ic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
+.av{width:36px;height:36px;border-radius:11px;background:linear-gradient(140deg,#A9824B,#6F5026);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:14px;cursor:pointer}
+
+.wrap{max-width:1120px;margin:0 auto;padding:36px 32px 150px;position:relative}
+body::before{content:"";position:fixed;top:0;right:0;width:900px;height:480px;background:radial-gradient(760px 380px at 84% -12%,var(--glow),transparent 62%);pointer-events:none;z-index:0}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:30px}
+.hello{font-family:var(--serif);font-size:25px;font-weight:500;color:var(--ink);margin-top:10px}
+.head .date{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+
+/* dashboard card */
+.dash{background:var(--soft);border:1px solid var(--line);border-radius:20px;padding:28px 30px;margin-bottom:56px;position:relative;z-index:1}
+.dash-h{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:999px;padding:6px 13px;letter-spacing:.02em}
+.nwnum{font-family:var(--serif);font-size:clamp(40px,5vw,54px);font-weight:600;letter-spacing:-.02em;color:var(--ink);line-height:1;margin-top:10px}
+.nwbasis{font-size:14px;color:var(--muted);margin-top:11px}
+.range{display:flex;gap:3px;background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:3px}
+.range button{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);border:0;background:transparent;padding:6px 13px;border-radius:999px;cursor:pointer;transition:.15s}
+.range button:hover{color:var(--ink)}
+.range button.on{background:var(--soft);color:var(--gb);box-shadow:0 1px 2px rgba(34,30,38,.07)}
+.chartbox{margin:22px 0 8px}
+.nw{width:100%;height:auto;display:block;overflow:visible}
+.nw .g{stroke:var(--line2);stroke-width:1}
+.nw .yl,.nw .xl{fill:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.03em}
+.nw .ar{fill:url(#fill)}
+.nw .ln{fill:none;stroke:var(--green);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+.nw .mk .d{fill:var(--soft);stroke:var(--green);stroke-width:2.6;cursor:pointer;transition:r .15s}
+.nw .mk.dn .d{stroke:var(--neg)}
+.nw .mk:hover .d{r:6}
+.nw .today-h{fill:rgba(151,112,61,.18)}
+.nw .today{fill:var(--green);stroke:var(--soft);stroke-width:2}
+.nw .pop{opacity:0;transition:opacity .15s;pointer-events:none}
+.nw .mk:hover .pop{opacity:1}
+.nw .pop rect{fill:var(--ink)}
+.nw .pd{fill:rgba(255,255,255,.62);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em}
+.nw .pt{fill:#fff;font-family:var(--serif);font-size:13px;font-weight:600}
+.nw .pi{font-family:var(--mono);font-size:11.5px;font-weight:600}
+.nw .pi.up{fill:#E7C98C}.nw .pi.dn{fill:#E9A48C}
+.drs{margin-top:18px;padding-top:20px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:14px}
+.dr{display:grid;grid-template-columns:128px 1fr auto;gap:16px;align-items:center}
+.dr-n{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);font-weight:500}
+.dr-n i{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.dr-bar{height:8px;border-radius:5px;background:var(--track);overflow:hidden}
+.dr-bar span{display:block;height:100%;border-radius:5px}
+.dr-v{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap}
+.dr-v small{color:var(--muted);font-weight:400;margin-left:8px;font-size:11.5px}
+.dash-foot{display:flex;align-items:center;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.02em}
+.dots{display:inline-flex;gap:5px}
+.dots i{width:8px;height:8px;border-radius:99px;background:var(--ok)}
+.dots i.w{background:var(--warn)}
+
+/* section */
+.sec{margin-bottom:56px;position:relative;z-index:1}
+.sec-top{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:22px}
+.lk{font-family:var(--mono);font-size:12.5px;color:var(--gb);text-decoration:none;letter-spacing:.03em;white-space:nowrap}
+.lk:hover{color:var(--green)}
+
+/* vitals */
+.vrow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.vital{background:var(--soft);border:1px solid var(--line);border-left:3px solid var(--ok);border-radius:14px;padding:16px 18px}
+.vital.warn{border-left-color:var(--warn)}.vital.bad{border-left-color:var(--bad)}
+.vt-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}
+.vt-name{font-size:14.5px;font-weight:600;color:var(--ink)}
+.vt-band{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--okbg);color:var(--ok)}
+.vital.warn .vt-band{background:var(--warnbg);color:var(--warn)}.vital.bad .vt-band{background:var(--badbg);color:var(--bad)}
+.vt-val{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.vt-val span{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0}
+.vc{width:100%;height:auto;display:block;margin:12px 0 11px;overflow:visible}
+.vc-ok{fill:var(--ok)}.vc-okm{fill:var(--ok);opacity:.4}.vc-bad{fill:var(--bad)}.vc-warn{fill:var(--warn)}.vc-sec{fill:var(--track)}
+.vc-ok-s{fill:none;stroke:var(--ok);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.vc-mut-s{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.6;vector-effect:non-scaling-stroke}
+.vc-thr{stroke:var(--muted);stroke-width:1;stroke-dasharray:2.5 2.5;opacity:.5;vector-effect:non-scaling-stroke}
+.vc-base{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.vc-lbl{fill:var(--muted);font-family:var(--mono);font-size:5.5px;letter-spacing:.02em}
+.vt-read{font-size:13px;color:var(--muted);line-height:1.45}
+
+/* ledger */
+.ledger{background:var(--soft);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.led{display:grid;grid-template-columns:11px 92px 1fr auto;gap:16px;align-items:start;padding:16px 22px;border-bottom:1px solid var(--line2)}
+.led:last-child{border-bottom:0}
+.led:hover{background:var(--surface2)}
+.led-dot{width:9px;height:9px;border-radius:99px;background:var(--green);margin-top:6px}
+.led-dot.dn{background:var(--neg)}
+.led-date{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
+.led-l1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.led-title{font-family:var(--serif);font-weight:600;font-size:16px;color:var(--ink)}
+.led-tag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:3px 7px;border-radius:5px;background:var(--mint);color:var(--gb)}
+.led-tag.auto{background:var(--surface2);color:var(--ok);border:1px solid var(--line2)}
+.led-why{font-size:13.5px;color:var(--muted);line-height:1.45;margin-top:5px}
+.led-imp{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--gb);white-space:nowrap;text-align:right;margin-top:3px}
+.led-imp.dn{color:var(--neg)}
+
+/* dark trust band */
+.trust{background:var(--dark);color:var(--darkfg);border-radius:18px;padding:24px 30px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;position:relative;z-index:1}
+.trust .t{font-family:var(--serif);font-size:19px;font-weight:500}
+.trust .items{display:flex;gap:24px;flex-wrap:wrap;margin-left:auto}
+.trust .it{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--darkmuted)}
+.trust .it .ic{width:16px;height:16px;fill:none;stroke:var(--green);stroke-width:1.8}
+
+/* dock composer */
+.dock{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:0 32px 26px;pointer-events:none;background:linear-gradient(to top,var(--bg) 46%,transparent);z-index:40}
+.dock-in{width:100%;max-width:780px;pointer-events:auto}
+.logged{display:flex;justify-content:center;margin-bottom:12px}
+.logged .pill{display:inline-flex;align-items:center;gap:9px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--muted);box-shadow:0 6px 20px rgba(34,30,38,.07)}
+.logged .pill b{color:var(--gb);font-weight:600}
+.logged .pill .d{width:6px;height:6px;border-radius:99px;background:var(--ok)}
+.composer{display:flex;align-items:center;gap:12px;background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:10px 10px 10px 18px;box-shadow:0 16px 44px rgba(34,30,38,.11)}
+.composer .ci{width:20px;height:20px;fill:none;stroke:var(--green);stroke-width:1.8;flex:0 0 auto}
+.composer input{flex:1;border:0;background:transparent;font-family:var(--sans);font-size:15px;color:var(--ink);outline:none}
+.composer input::placeholder{color:var(--faint)}
+.send{width:40px;height:40px;border-radius:12px;border:0;background:var(--green);color:var(--btnfg);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:.15s}
+.send:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.send .ic{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.disc{text-align:center;font-size:12.5px;color:var(--muted);margin-top:11px}
+.scroll::-webkit-scrollbar{width:10px}.scroll::-webkit-scrollbar-thumb{background:rgba(34,30,38,.14);border-radius:10px;border:2px solid var(--bg)}
+@media(max-width:920px){.vrow{grid-template-columns:1fr 1fr}.tabs{display:none}}
+
+/* stacked chart */
+.nw .ab{opacity:.9}
+.nw .totln{fill:none;stroke:var(--green);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;opacity:.85}
+.nw .mk{fill:var(--soft);stroke:var(--green);stroke-width:2.2;cursor:pointer;transition:r .14s,fill .14s}
+.nw .mk:hover{r:6.5}
+.nw .mk.sel{fill:var(--green);r:6.5}
+.nw .g{stroke:var(--line2);stroke-width:1}
+.nw .yl,.nw .xl{fill:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.03em}
+/* selected entry panel (inside dashboard card, under the chart) */
+.ep-inline{border-top:1px solid var(--line);margin-top:18px;padding-top:20px}
+.ep-cue{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:13px}
+.ep-cue svg{width:14px;height:14px;fill:none;stroke:var(--green);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ep-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:11px}
+.ep-date{font-family:var(--mono);font-size:13px;color:var(--muted);letter-spacing:.04em}
+.ep-kind{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;padding:4px 10px;border-radius:6px;background:var(--mint);color:var(--gb)}
+.ep-kind.market{background:var(--surface2);color:var(--muted);border:1px solid var(--line2)}
+.ep-kind.milestone{background:var(--okbg);color:var(--ok)}
+.ep-title{font-family:var(--serif);font-size:25px;font-weight:600;letter-spacing:-.015em;color:var(--ink);line-height:1.12;margin:0 0 13px}
+.ep-ctx{font-style:italic;font-size:15.5px;color:var(--ink);line-height:1.5;margin:0 0 11px}
+.ep-why{font-size:15.5px;color:var(--body);line-height:1.6;margin:0 0 17px;max-width:680px}
+.ep-foot{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.ep-imp{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:9px;padding:9px 14px}
+.ep-imp.dn{color:var(--neg);background:var(--surface2)}
+.ep-ask{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--green);border:1px dashed #CDB994;border-radius:999px;padding:8px 15px;cursor:pointer;transition:background .15s}
+.ep-ask svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ep-ask:hover{background:var(--mint2)}
+/* expandable holdings */
+.holds{border-top:1px solid var(--line);margin-top:20px;padding-top:6px}
+.hg{border-bottom:1px solid var(--line2)}
+.hg:last-child{border-bottom:0}
+.hg-h{width:100%;display:grid;grid-template-columns:128px 1fr auto 18px;gap:16px;align-items:center;padding:14px 4px;background:transparent;border:0;cursor:pointer;text-align:left;transition:background .15s;border-radius:8px}
+.hg-h:hover{background:var(--surface2)}
+.hg-chev{width:16px;height:16px;fill:none;stroke:var(--faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s,stroke .2s}
+.hg.open .hg-chev{transform:rotate(180deg);stroke:var(--green)}
+.hg-pos{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.pos{display:grid;grid-template-columns:42px 1fr auto auto;gap:15px;align-items:center;padding:12px 4px 12px 18px;border-top:1px solid var(--line2)}
+.plogo{width:42px;height:42px;border-radius:11px;border:1.5px solid;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;font-size:13px}
+.plogo svg{width:20px;height:20px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pos-m{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pos-n{font-size:15px;font-weight:600;color:var(--ink)}
+.pos-sub{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+.spark{width:80px;height:28px}
+.spark polyline{fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.spark.up polyline{stroke:var(--ok)}.spark.dn polyline{stroke:var(--neg)}
+.pos-v{text-align:right;display:flex;flex-direction:column;gap:2px;min-width:88px}
+.pos-val{font-family:var(--mono);font-size:14.5px;font-weight:600;color:var(--ink)}
+.pos-chg{font-family:var(--mono);font-size:12px;font-weight:500}
+.pos-chg.up{color:var(--ok)}.pos-chg.dn{color:var(--neg)}
+.pos-own{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+@media(max-width:720px){.hg-h{grid-template-columns:1fr auto 18px}.hg-h .dr-bar{display:none}.pos{grid-template-columns:42px 1fr auto}.spark{display:none}}
+
+/* ---- capped two-column shell + persistent chat rail ---- */
+.nav-in{max-width:1280px}
+.shell{max-width:1280px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;align-items:start}
+.content{min-width:0;padding:36px 0 64px;position:relative}
+.chatrail{position:sticky;top:78px;height:calc(100vh - 100px);margin-top:36px;background:var(--soft);border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;overflow:hidden}
+.cr-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line2)}
+.cr-title{display:flex;align-items:center;gap:9px;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink)}
+.cr-dot{width:7px;height:7px;border-radius:99px;background:var(--ok)}
+.cr-sub{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.cr-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+.cr-note{font-size:13.5px;color:var(--body);line-height:1.55;background:var(--surface2);border:1px solid var(--line2);border-radius:12px;padding:13px 15px}
+.cr-loglist{display:flex;flex-direction:column;gap:9px}
+.cr-log{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 13px;line-height:1.4}
+.cr-log b{color:var(--gb);font-weight:600}
+.cr-log .d{width:6px;height:6px;border-radius:99px;background:var(--ok);flex:0 0 auto}
+.cr-foot{border-top:1px solid var(--line2);padding:14px 16px 16px}
+.cr-foot .composer{box-shadow:none}
+.cr-foot .disc{margin-top:10px;text-align:center}
+/* dock composer only appears when the rail can't fit */
+.dock{display:none}
+@media(max-width:1100px){
+  .shell{grid-template-columns:1fr;padding:0 28px}
+  .chatrail{display:none}
+  .content{padding-bottom:150px}
+  .dock{display:flex}
+}
+</style>
+</head>
+<body>
+<nav class="nav"><div class="nav-in">
+  <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="var(--green)"/><circle cx="9" cy="9" r="2.4" fill="#fff"/><rect x="13.5" y="7.7" width="6.6" height="2.6" rx="1.3" fill="#fff" opacity=".92"/><rect x="6.6" y="15" width="13.4" height="2.6" rx="1.3" fill="#fff" opacity=".55"/></svg><span class="wm">Volnar</span></div>
+  <div class="tabs"><a class="tab on" href="#">Overview</a><a class="tab" href="#">Journal</a><a class="tab" href="#">Vitals</a><a class="tab" href="#">Holdings</a></div>
+  <div class="nav-r"><span class="priv"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Private · EU</span><span class="av">AT</span></div>
+</div></nav>
+
+<div class="shell"><main class="content scroll">
+  <div class="head">
+    <div><span class="eyebrow">Overview</span><div class="hello">Good afternoon, Anh Tuan.</div></div>
+    <div class="date">Saturday · 27 June 2026</div>
+  </div>
+
+  <section class="dash">
+    <div class="dash-h">
+      <div><span class="eyebrow">Net worth</span><div class="nwnum">€1.290.083</div><div class="nwbasis">Equity basis — property shown net of mortgage. <span class="badge" style="margin-left:6px">▲ +71% since 2021</span></div></div>
+      <div class="range"><button>1M</button><button>3M</button><button>6M</button><button class="on">1Y</button><button>5Y</button><button>Max</button></div>
+    </div>
+    <div class="chartbox"><svg class="nw" viewBox="0 0 980 300" role="img" aria-label="Net worth by asset class 2021 to 2026"><line class="g" x1="8" y1="122.4" x2="972" y2="122.4"/><text class="yl" x="972" y="116.4" text-anchor="end">€800k</text><line class="g" x1="8" y1="85.0" x2="972" y2="85.0"/><text class="yl" x="972" y="79.0" text-anchor="end">€1 mln</text><line class="g" x1="8" y1="47.7" x2="972" y2="47.7"/><text class="yl" x="972" y="41.7" text-anchor="end">€1,2 mln</text><polygon class="ab" fill="#3F7CA8" points="8.0,201.9 12.8,201.9 17.7,201.9 22.5,201.9 27.4,201.9 32.2,201.9 37.1,201.9 41.9,201.9 46.8,201.9 51.6,201.9 56.4,201.9 61.3,201.9 66.1,201.9 71.0,201.9 75.8,201.9 80.7,201.9 85.5,201.9 90.4,201.9 95.2,201.9 100.0,201.9 104.9,201.9 109.7,201.9 114.6,201.9 119.4,201.8 124.3,201.6 129.1,201.4 133.9,201.1 138.8,200.8 143.6,200.4 148.5,199.9 153.3,199.4 158.2,199.0 163.0,198.5 167.9,197.9 172.7,197.4 177.5,196.9 182.4,196.4 187.2,196.0 192.1,195.5 196.9,195.1 201.8,194.8 206.6,194.5 211.5,194.2 216.3,194.1 221.1,194.0 226.0,193.9 230.8,193.6 235.7,193.1 240.5,193.0 245.4,193.0 250.2,193.0 255.1,193.0 259.9,193.1 264.7,193.1 269.6,193.1 274.4,193.1 279.3,193.2 284.1,193.2 289.0,193.2 293.8,193.3 298.7,193.3 303.5,193.4 308.3,193.4 313.2,193.4 318.0,193.5 322.9,193.5 327.7,193.5 332.6,193.5 337.4,193.6 342.3,193.6 347.1,193.6 351.9,193.6 356.8,193.6 361.6,193.7 366.5,193.7 371.3,193.9 376.2,194.0 381.0,194.2 385.8,194.4 390.7,194.6 395.5,194.8 400.4,195.0 405.2,195.2 410.1,195.3 414.9,195.5 419.8,195.6 424.6,195.7 429.4,195.8 434.3,195.8 439.1,195.8 444.0,195.8 448.8,195.8 453.7,195.8 458.5,195.9 463.4,195.9 468.2,195.9 473.0,195.9 477.9,195.9 482.7,195.9 487.6,195.9 492.4,195.9 497.3,195.9 502.1,195.8 507.0,195.8 511.8,195.8 516.6,195.7 521.5,195.6 526.3,195.6 531.2,195.5 536.0,195.4 540.9,195.3 545.7,195.3 550.6,195.2 555.4,195.1 560.2,195.0 565.1,194.9 569.9,194.8 574.8,194.7 579.6,194.7 584.5,194.6 589.3,194.5 594.2,194.4 599.0,194.4 603.8,194.3 608.7,194.2 613.5,194.2 618.4,194.1 623.2,194.1 628.1,194.1 632.9,194.0 637.7,194.0 642.6,194.0 647.4,194.0 652.3,193.9 657.1,193.8 662.0,193.8 666.8,193.7 671.7,193.7 676.5,193.6 681.3,193.6 686.2,193.6 691.0,193.5 695.9,193.5 700.7,193.4 705.6,193.3 710.4,193.2 715.3,193.1 720.1,193.1 724.9,193.0 729.8,193.0 734.6,192.9 739.5,192.9 744.3,192.9 749.2,192.9 754.0,192.8 758.9,192.8 763.7,192.7 768.5,192.6 773.4,192.5 778.2,192.5 783.1,192.5 787.9,192.5 792.8,192.5 797.6,192.4 802.5,192.4 807.3,192.4 812.1,192.4 817.0,192.3 821.8,192.3 826.7,192.3 831.5,192.2 836.4,192.2 841.2,192.2 846.1,192.2 850.9,192.2 855.7,192.2 860.6,192.1 865.4,192.1 870.3,192.1 875.1,192.1 880.0,192.0 884.8,192.0 889.6,192.0 894.5,191.9 899.3,191.9 904.2,191.8 909.0,191.8 913.9,191.7 918.7,191.7 923.6,191.6 928.4,191.6 933.2,191.6 938.1,191.5 942.9,191.5 947.8,191.4 952.6,191.4 957.5,191.4 962.3,191.4 967.2,191.4 972.0,191.4 972.0,272.0 8.0,272.0"/><polygon class="ab" fill="#A89968" points="8.0,183.3 12.8,183.3 17.7,183.3 22.5,183.3 27.4,183.3 32.2,183.3 37.1,183.3 41.9,183.3 46.8,183.3 51.6,183.3 56.4,183.3 61.3,183.3 66.1,183.3 71.0,183.3 75.8,183.3 80.7,183.3 85.5,183.3 90.4,183.3 95.2,183.3 100.0,183.3 104.9,183.3 109.7,183.3 114.6,183.3 119.4,183.2 124.3,183.0 129.1,182.6 133.9,182.2 138.8,181.7 143.6,181.1 148.5,180.4 153.3,179.7 158.2,179.0 163.0,178.2 167.9,177.5 172.7,176.7 177.5,176.0 182.4,175.2 187.2,174.5 192.1,173.9 196.9,173.3 201.8,172.8 206.6,172.3 211.5,172.0 216.3,171.7 221.1,171.6 226.0,171.5 230.8,171.0 235.7,170.5 240.5,170.3 245.4,170.3 250.2,170.3 255.1,170.3 259.9,170.2 264.7,170.2 269.6,170.2 274.4,170.1 279.3,170.0 284.1,170.0 289.0,169.9 293.8,169.9 298.7,169.8 303.5,169.7 308.3,169.7 313.2,169.6 318.0,169.6 322.9,169.5 327.7,169.5 332.6,169.4 337.4,169.4 342.3,169.4 347.1,169.3 351.9,169.3 356.8,169.4 361.6,169.5 366.5,169.8 371.3,170.2 376.2,170.6 381.0,171.1 385.8,171.7 390.7,172.2 395.5,172.8 400.4,173.4 405.2,173.9 410.1,174.4 414.9,174.8 419.8,175.2 424.6,175.4 429.4,175.6 434.3,175.6 439.1,175.5 444.0,175.4 448.8,175.1 453.7,174.9 458.5,174.7 463.4,174.4 468.2,174.2 473.0,174.1 477.9,174.0 482.7,174.0 487.6,173.9 492.4,173.8 497.3,173.7 502.1,173.5 507.0,173.3 511.8,173.1 516.6,172.9 521.5,172.6 526.3,172.3 531.2,172.0 536.0,171.6 540.9,171.3 545.7,170.9 550.6,170.5 555.4,170.2 560.2,169.8 565.1,169.4 569.9,169.0 574.8,168.6 579.6,168.3 584.5,167.9 589.3,167.6 594.2,167.2 599.0,166.9 603.8,166.6 608.7,166.4 613.5,166.1 618.4,165.9 623.2,165.7 628.1,165.6 632.9,165.5 637.7,165.4 642.6,165.4 647.4,165.3 652.3,165.0 657.1,164.6 662.0,164.2 666.8,163.9 671.7,163.7 676.5,163.7 681.3,163.5 686.2,163.3 691.0,163.1 695.9,162.7 700.7,162.4 705.6,162.0 710.4,161.6 715.3,161.2 720.1,160.9 724.9,160.6 729.8,160.4 734.6,160.3 739.5,160.2 744.3,160.2 749.2,160.2 754.0,160.1 758.9,160.0 763.7,160.0 768.5,159.9 773.4,159.8 778.2,159.8 783.1,159.8 787.9,159.7 792.8,159.7 797.6,159.7 802.5,159.7 807.3,159.7 812.1,159.6 817.0,159.6 821.8,159.6 826.7,159.6 831.5,159.5 836.4,159.5 841.2,159.5 846.1,159.5 850.9,159.5 855.7,159.5 860.6,159.4 865.4,159.4 870.3,159.3 875.1,159.3 880.0,159.2 884.8,159.1 889.6,159.0 894.5,158.9 899.3,158.8 904.2,158.7 909.0,158.5 913.9,158.4 918.7,158.3 923.6,158.2 928.4,158.1 933.2,158.0 938.1,157.9 942.9,157.8 947.8,157.7 952.6,157.6 957.5,157.6 962.3,157.5 967.2,157.5 972.0,157.5 972.0,191.4 967.2,191.4 962.3,191.4 957.5,191.4 952.6,191.4 947.8,191.4 942.9,191.5 938.1,191.5 933.2,191.6 928.4,191.6 923.6,191.6 918.7,191.7 913.9,191.7 909.0,191.8 904.2,191.8 899.3,191.9 894.5,191.9 889.6,192.0 884.8,192.0 880.0,192.0 875.1,192.1 870.3,192.1 865.4,192.1 860.6,192.1 855.7,192.2 850.9,192.2 846.1,192.2 841.2,192.2 836.4,192.2 831.5,192.2 826.7,192.3 821.8,192.3 817.0,192.3 812.1,192.4 807.3,192.4 802.5,192.4 797.6,192.4 792.8,192.5 787.9,192.5 783.1,192.5 778.2,192.5 773.4,192.5 768.5,192.6 763.7,192.7 758.9,192.8 754.0,192.8 749.2,192.9 744.3,192.9 739.5,192.9 734.6,192.9 729.8,193.0 724.9,193.0 720.1,193.1 715.3,193.1 710.4,193.2 705.6,193.3 700.7,193.4 695.9,193.5 691.0,193.5 686.2,193.6 681.3,193.6 676.5,193.6 671.7,193.7 666.8,193.7 662.0,193.8 657.1,193.8 652.3,193.9 647.4,194.0 642.6,194.0 637.7,194.0 632.9,194.0 628.1,194.1 623.2,194.1 618.4,194.1 613.5,194.2 608.7,194.2 603.8,194.3 599.0,194.4 594.2,194.4 589.3,194.5 584.5,194.6 579.6,194.7 574.8,194.7 569.9,194.8 565.1,194.9 560.2,195.0 555.4,195.1 550.6,195.2 545.7,195.3 540.9,195.3 536.0,195.4 531.2,195.5 526.3,195.6 521.5,195.6 516.6,195.7 511.8,195.8 507.0,195.8 502.1,195.8 497.3,195.9 492.4,195.9 487.6,195.9 482.7,195.9 477.9,195.9 473.0,195.9 468.2,195.9 463.4,195.9 458.5,195.9 453.7,195.8 448.8,195.8 444.0,195.8 439.1,195.8 434.3,195.8 429.4,195.8 424.6,195.7 419.8,195.6 414.9,195.5 410.1,195.3 405.2,195.2 400.4,195.0 395.5,194.8 390.7,194.6 385.8,194.4 381.0,194.2 376.2,194.0 371.3,193.9 366.5,193.7 361.6,193.7 356.8,193.6 351.9,193.6 347.1,193.6 342.3,193.6 337.4,193.6 332.6,193.5 327.7,193.5 322.9,193.5 318.0,193.5 313.2,193.4 308.3,193.4 303.5,193.4 298.7,193.3 293.8,193.3 289.0,193.2 284.1,193.2 279.3,193.2 274.4,193.1 269.6,193.1 264.7,193.1 259.9,193.1 255.1,193.0 250.2,193.0 245.4,193.0 240.5,193.0 235.7,193.1 230.8,193.6 226.0,193.9 221.1,194.0 216.3,194.1 211.5,194.2 206.6,194.5 201.8,194.8 196.9,195.1 192.1,195.5 187.2,196.0 182.4,196.4 177.5,196.9 172.7,197.4 167.9,197.9 163.0,198.5 158.2,199.0 153.3,199.4 148.5,199.9 143.6,200.4 138.8,200.8 133.9,201.1 129.1,201.4 124.3,201.6 119.4,201.8 114.6,201.9 109.7,201.9 104.9,201.9 100.0,201.9 95.2,201.9 90.4,201.9 85.5,201.9 80.7,201.9 75.8,201.9 71.0,201.9 66.1,201.9 61.3,201.9 56.4,201.9 51.6,201.9 46.8,201.9 41.9,201.9 37.1,201.9 32.2,201.9 27.4,201.9 22.5,201.9 17.7,201.9 12.8,201.9 8.0,201.9"/><polygon class="ab" fill="#E0922A" points="8.0,177.4 12.8,177.4 17.7,177.4 22.5,177.4 27.4,177.4 32.2,177.4 37.1,177.4 41.9,177.4 46.8,177.4 51.6,177.4 56.4,177.4 61.3,177.4 66.1,177.4 71.0,177.4 75.8,177.4 80.7,177.4 85.5,177.4 90.4,177.4 95.2,177.4 100.0,177.4 104.9,177.4 109.7,177.4 114.6,177.4 119.4,177.3 124.3,177.0 129.1,176.6 133.9,176.1 138.8,175.6 143.6,174.9 148.5,174.2 153.3,173.5 158.2,172.7 163.0,171.9 167.9,171.1 172.7,170.2 177.5,169.4 182.4,168.6 187.2,167.9 192.1,167.2 196.9,166.5 201.8,165.9 206.6,165.5 211.5,165.1 216.3,164.8 221.1,164.7 226.0,164.5 230.8,163.6 235.7,162.5 240.5,162.1 245.4,162.2 250.2,162.2 255.1,162.3 259.9,162.5 264.7,162.6 269.6,162.8 274.4,163.0 279.3,163.2 284.1,163.4 289.0,163.6 293.8,163.9 298.7,164.1 303.5,164.4 308.3,164.6 313.2,164.8 318.0,165.0 322.9,165.2 327.7,165.4 332.6,165.6 337.4,165.7 342.3,165.8 347.1,165.8 351.9,165.9 356.8,165.9 361.6,166.0 366.5,166.2 371.3,166.5 376.2,166.9 381.0,167.2 385.8,167.7 390.7,168.1 395.5,168.5 400.4,169.0 405.2,169.4 410.1,169.8 414.9,170.1 419.8,170.4 424.6,170.6 429.4,170.7 434.3,170.7 439.1,170.6 444.0,170.4 448.8,170.1 453.7,169.8 458.5,169.4 463.4,169.1 468.2,168.9 473.0,168.6 477.9,168.5 482.7,168.5 487.6,168.4 492.4,168.3 497.3,168.1 502.1,167.8 507.0,167.4 511.8,167.1 516.6,166.6 521.5,166.1 526.3,165.6 531.2,165.1 536.0,164.5 540.9,163.9 545.7,163.2 550.6,162.6 555.4,161.9 560.2,161.3 565.1,160.6 569.9,160.0 574.8,159.3 579.6,158.7 584.5,158.1 589.3,157.5 594.2,156.9 599.0,156.4 603.8,155.9 608.7,155.4 613.5,155.0 618.4,154.6 623.2,154.3 628.1,154.1 632.9,153.9 637.7,153.8 642.6,153.8 647.4,153.6 652.3,153.3 657.1,152.8 662.0,152.4 666.8,152.0 671.7,151.8 676.5,151.8 681.3,151.6 686.2,151.4 691.0,151.1 695.9,150.7 700.7,150.3 705.6,149.9 710.4,149.4 715.3,149.0 720.1,148.6 724.9,148.3 729.8,148.1 734.6,147.9 739.5,147.9 744.3,147.6 749.2,147.1 754.0,146.3 758.9,145.5 763.7,144.5 768.5,143.6 773.4,142.7 778.2,142.1 783.1,141.6 787.9,141.5 792.8,141.4 797.6,141.2 802.5,140.8 807.3,140.4 812.1,139.9 817.0,139.4 821.8,138.9 826.7,138.4 831.5,137.9 836.4,137.5 841.2,137.2 846.1,137.0 850.9,136.9 855.7,137.0 860.6,137.1 865.4,137.3 870.3,137.5 875.1,137.8 880.0,138.1 884.8,138.5 889.6,138.9 894.5,139.4 899.3,139.8 904.2,140.3 909.0,140.8 913.9,141.3 918.7,141.8 923.6,142.3 928.4,142.7 933.2,143.2 938.1,143.6 942.9,143.9 947.8,144.3 952.6,144.6 957.5,144.8 962.3,145.0 967.2,145.1 972.0,145.1 972.0,157.5 967.2,157.5 962.3,157.5 957.5,157.6 952.6,157.6 947.8,157.7 942.9,157.8 938.1,157.9 933.2,158.0 928.4,158.1 923.6,158.2 918.7,158.3 913.9,158.4 909.0,158.5 904.2,158.7 899.3,158.8 894.5,158.9 889.6,159.0 884.8,159.1 880.0,159.2 875.1,159.3 870.3,159.3 865.4,159.4 860.6,159.4 855.7,159.5 850.9,159.5 846.1,159.5 841.2,159.5 836.4,159.5 831.5,159.5 826.7,159.6 821.8,159.6 817.0,159.6 812.1,159.6 807.3,159.7 802.5,159.7 797.6,159.7 792.8,159.7 787.9,159.7 783.1,159.8 778.2,159.8 773.4,159.8 768.5,159.9 763.7,160.0 758.9,160.0 754.0,160.1 749.2,160.2 744.3,160.2 739.5,160.2 734.6,160.3 729.8,160.4 724.9,160.6 720.1,160.9 715.3,161.2 710.4,161.6 705.6,162.0 700.7,162.4 695.9,162.7 691.0,163.1 686.2,163.3 681.3,163.5 676.5,163.7 671.7,163.7 666.8,163.9 662.0,164.2 657.1,164.6 652.3,165.0 647.4,165.3 642.6,165.4 637.7,165.4 632.9,165.5 628.1,165.6 623.2,165.7 618.4,165.9 613.5,166.1 608.7,166.4 603.8,166.6 599.0,166.9 594.2,167.2 589.3,167.6 584.5,167.9 579.6,168.3 574.8,168.6 569.9,169.0 565.1,169.4 560.2,169.8 555.4,170.2 550.6,170.5 545.7,170.9 540.9,171.3 536.0,171.6 531.2,172.0 526.3,172.3 521.5,172.6 516.6,172.9 511.8,173.1 507.0,173.3 502.1,173.5 497.3,173.7 492.4,173.8 487.6,173.9 482.7,174.0 477.9,174.0 473.0,174.1 468.2,174.2 463.4,174.4 458.5,174.7 453.7,174.9 448.8,175.1 444.0,175.4 439.1,175.5 434.3,175.6 429.4,175.6 424.6,175.4 419.8,175.2 414.9,174.8 410.1,174.4 405.2,173.9 400.4,173.4 395.5,172.8 390.7,172.2 385.8,171.7 381.0,171.1 376.2,170.6 371.3,170.2 366.5,169.8 361.6,169.5 356.8,169.4 351.9,169.3 347.1,169.3 342.3,169.4 337.4,169.4 332.6,169.4 327.7,169.5 322.9,169.5 318.0,169.6 313.2,169.6 308.3,169.7 303.5,169.7 298.7,169.8 293.8,169.9 289.0,169.9 284.1,170.0 279.3,170.0 274.4,170.1 269.6,170.2 264.7,170.2 259.9,170.2 255.1,170.3 250.2,170.3 245.4,170.3 240.5,170.3 235.7,170.5 230.8,171.0 226.0,171.5 221.1,171.6 216.3,171.7 211.5,172.0 206.6,172.3 201.8,172.8 196.9,173.3 192.1,173.9 187.2,174.5 182.4,175.2 177.5,176.0 172.7,176.7 167.9,177.5 163.0,178.2 158.2,179.0 153.3,179.7 148.5,180.4 143.6,181.1 138.8,181.7 133.9,182.2 129.1,182.6 124.3,183.0 119.4,183.2 114.6,183.3 109.7,183.3 104.9,183.3 100.0,183.3 95.2,183.3 90.4,183.3 85.5,183.3 80.7,183.3 75.8,183.3 71.0,183.3 66.1,183.3 61.3,183.3 56.4,183.3 51.6,183.3 46.8,183.3 41.9,183.3 37.1,183.3 32.2,183.3 27.4,183.3 22.5,183.3 17.7,183.3 12.8,183.3 8.0,183.3"/><polygon class="ab" fill="#117A52" points="8.0,130.9 12.8,130.9 17.7,130.9 22.5,130.9 27.4,130.9 32.2,130.9 37.1,130.9 41.9,130.9 46.8,130.9 51.6,130.9 56.4,130.9 61.3,130.9 66.1,130.9 71.0,130.9 75.8,130.9 80.7,130.9 85.5,130.9 90.4,130.9 95.2,130.9 100.0,130.9 104.9,130.9 109.7,130.9 114.6,130.9 119.4,130.7 124.3,130.3 129.1,129.7 133.9,128.9 138.8,128.0 143.6,127.0 148.5,125.9 153.3,124.7 158.2,123.5 163.0,122.2 167.9,120.9 172.7,119.6 177.5,118.3 182.4,117.0 187.2,115.8 192.1,114.7 196.9,113.7 201.8,112.8 206.6,112.0 211.5,111.4 216.3,111.0 221.1,110.8 226.0,110.7 230.8,110.2 235.7,109.7 240.5,109.5 245.4,109.7 250.2,110.0 255.1,110.5 259.9,111.2 264.7,112.0 269.6,113.0 274.4,114.0 279.3,115.1 284.1,116.3 289.0,117.5 293.8,118.8 298.7,120.1 303.5,121.3 308.3,122.6 313.2,123.7 318.0,124.9 322.9,125.9 327.7,126.8 332.6,127.6 337.4,128.3 342.3,128.8 347.1,129.2 351.9,129.3 356.8,129.3 361.6,129.0 366.5,128.5 371.3,127.9 376.2,127.2 381.0,126.3 385.8,125.4 390.7,124.5 395.5,123.5 400.4,122.5 405.2,121.6 410.1,120.8 414.9,120.1 419.8,119.5 424.6,119.1 429.4,118.8 434.3,118.7 439.1,118.2 444.0,117.1 448.8,115.8 453.7,114.2 458.5,112.5 463.4,111.0 468.2,109.6 473.0,108.5 477.9,107.9 482.7,107.8 487.6,107.6 492.4,107.2 497.3,106.7 502.1,106.0 507.0,105.2 511.8,104.2 516.6,103.1 521.5,101.9 526.3,100.6 531.2,99.2 536.0,97.7 540.9,96.2 545.7,94.6 550.6,93.0 555.4,91.3 560.2,89.7 565.1,88.0 569.9,86.4 574.8,84.7 579.6,83.1 584.5,81.6 589.3,80.1 594.2,78.6 599.0,77.3 603.8,76.0 608.7,74.9 613.5,73.9 618.4,72.9 623.2,72.2 628.1,71.6 632.9,71.1 637.7,70.8 642.6,70.8 647.4,69.6 652.3,67.1 657.1,63.7 662.0,60.2 666.8,57.3 671.7,55.8 676.5,55.7 681.3,55.7 686.2,55.8 691.0,55.9 695.9,55.9 700.7,56.0 705.6,56.1 710.4,56.2 715.3,56.3 720.1,56.4 724.9,56.5 729.8,56.6 734.6,56.6 739.5,56.6 744.3,56.3 749.2,55.6 754.0,54.6 758.9,53.4 763.7,52.1 768.5,50.8 773.4,49.7 778.2,48.8 783.1,48.2 787.9,48.1 792.8,48.1 797.6,48.1 802.5,48.0 807.3,48.0 812.1,48.0 817.0,48.0 821.8,48.0 826.7,47.9 831.5,47.9 836.4,47.9 841.2,47.9 846.1,47.9 850.9,47.9 855.7,47.8 860.6,47.5 865.4,47.2 870.3,46.7 875.1,46.1 880.0,45.4 884.8,44.6 889.6,43.7 894.5,42.8 899.3,41.8 904.2,40.8 909.0,39.8 913.9,38.8 918.7,37.8 923.6,36.8 928.4,35.8 933.2,34.9 938.1,34.1 942.9,33.3 947.8,32.6 952.6,32.0 957.5,31.5 962.3,31.1 967.2,30.9 972.0,30.8 972.0,145.1 967.2,145.1 962.3,145.0 957.5,144.8 952.6,144.6 947.8,144.3 942.9,143.9 938.1,143.6 933.2,143.2 928.4,142.7 923.6,142.3 918.7,141.8 913.9,141.3 909.0,140.8 904.2,140.3 899.3,139.8 894.5,139.4 889.6,138.9 884.8,138.5 880.0,138.1 875.1,137.8 870.3,137.5 865.4,137.3 860.6,137.1 855.7,137.0 850.9,136.9 846.1,137.0 841.2,137.2 836.4,137.5 831.5,137.9 826.7,138.4 821.8,138.9 817.0,139.4 812.1,139.9 807.3,140.4 802.5,140.8 797.6,141.2 792.8,141.4 787.9,141.5 783.1,141.6 778.2,142.1 773.4,142.7 768.5,143.6 763.7,144.5 758.9,145.5 754.0,146.3 749.2,147.1 744.3,147.6 739.5,147.9 734.6,147.9 729.8,148.1 724.9,148.3 720.1,148.6 715.3,149.0 710.4,149.4 705.6,149.9 700.7,150.3 695.9,150.7 691.0,151.1 686.2,151.4 681.3,151.6 676.5,151.8 671.7,151.8 666.8,152.0 662.0,152.4 657.1,152.8 652.3,153.3 647.4,153.6 642.6,153.8 637.7,153.8 632.9,153.9 628.1,154.1 623.2,154.3 618.4,154.6 613.5,155.0 608.7,155.4 603.8,155.9 599.0,156.4 594.2,156.9 589.3,157.5 584.5,158.1 579.6,158.7 574.8,159.3 569.9,160.0 565.1,160.6 560.2,161.3 555.4,161.9 550.6,162.6 545.7,163.2 540.9,163.9 536.0,164.5 531.2,165.1 526.3,165.6 521.5,166.1 516.6,166.6 511.8,167.1 507.0,167.4 502.1,167.8 497.3,168.1 492.4,168.3 487.6,168.4 482.7,168.5 477.9,168.5 473.0,168.6 468.2,168.9 463.4,169.1 458.5,169.4 453.7,169.8 448.8,170.1 444.0,170.4 439.1,170.6 434.3,170.7 429.4,170.7 424.6,170.6 419.8,170.4 414.9,170.1 410.1,169.8 405.2,169.4 400.4,169.0 395.5,168.5 390.7,168.1 385.8,167.7 381.0,167.2 376.2,166.9 371.3,166.5 366.5,166.2 361.6,166.0 356.8,165.9 351.9,165.9 347.1,165.8 342.3,165.8 337.4,165.7 332.6,165.6 327.7,165.4 322.9,165.2 318.0,165.0 313.2,164.8 308.3,164.6 303.5,164.4 298.7,164.1 293.8,163.9 289.0,163.6 284.1,163.4 279.3,163.2 274.4,163.0 269.6,162.8 264.7,162.6 259.9,162.5 255.1,162.3 250.2,162.2 245.4,162.2 240.5,162.1 235.7,162.5 230.8,163.6 226.0,164.5 221.1,164.7 216.3,164.8 211.5,165.1 206.6,165.5 201.8,165.9 196.9,166.5 192.1,167.2 187.2,167.9 182.4,168.6 177.5,169.4 172.7,170.2 167.9,171.1 163.0,171.9 158.2,172.7 153.3,173.5 148.5,174.2 143.6,174.9 138.8,175.6 133.9,176.1 129.1,176.6 124.3,177.0 119.4,177.3 114.6,177.4 109.7,177.4 104.9,177.4 100.0,177.4 95.2,177.4 90.4,177.4 85.5,177.4 80.7,177.4 75.8,177.4 71.0,177.4 66.1,177.4 61.3,177.4 56.4,177.4 51.6,177.4 46.8,177.4 41.9,177.4 37.1,177.4 32.2,177.4 27.4,177.4 22.5,177.4 17.7,177.4 12.8,177.4 8.0,177.4"/><polyline class="totln" points="112.1,130.9 223.9,110.7 239.4,109.5 353.1,129.3 432.2,118.8 480.4,107.8 642.3,70.8 673.2,55.7 738.7,56.6 786.9,48.1 850.5,47.9 972.0,30.8"/><circle class="mk" data-i="0" cx="112.1" cy="130.9" r="4.5"/><circle class="mk" data-i="1" cx="223.9" cy="110.7" r="4.5"/><circle class="mk" data-i="2" cx="239.4" cy="109.5" r="4.5"/><circle class="mk" data-i="3" cx="353.1" cy="129.3" r="4.5"/><circle class="mk" data-i="4" cx="432.2" cy="118.8" r="4.5"/><circle class="mk" data-i="5" cx="480.4" cy="107.8" r="4.5"/><circle class="mk" data-i="6" cx="642.3" cy="70.8" r="4.5"/><circle class="mk" data-i="7" cx="673.2" cy="55.7" r="4.5"/><circle class="mk" data-i="8" cx="738.7" cy="56.6" r="4.5"/><circle class="mk" data-i="9" cx="786.9" cy="48.1" r="4.5"/><circle class="mk" data-i="10" cx="850.5" cy="47.9" r="4.5"/><circle class="mk" data-i="11" cx="972.0" cy="30.8" r="4.5"/><text class="xl" x="8.0" y="291" text-anchor="start">2021</text><text class="xl" x="200.8" y="291" text-anchor="middle">2022</text><text class="xl" x="393.6" y="291" text-anchor="middle">2023</text><text class="xl" x="586.4" y="291" text-anchor="middle">2024</text><text class="xl" x="779.2" y="291" text-anchor="middle">2025</text><text class="xl" x="972.0" y="291" text-anchor="end">2026</text></svg></div>
+    <div class="ep-inline"><div class="ep-cue"><svg viewBox="0 0 24 24"><path d="M12 4v12M6 12l6 6 6-6"/></svg>The decision behind the selected point — tap any dot on the line</div><div class="ep-top"><span class="ep-date" id="ep-date">2026</span><span class="ep-kind" id="ep-kind">Market</span></div><h3 class="ep-title" id="ep-title"></h3><p class="ep-ctx" id="ep-ctx"></p><p class="ep-why" id="ep-why"></p><div class="ep-foot"><span class="ep-imp" id="ep-imp"></span><span class="ep-ask"><svg viewBox="0 0 24 24"><path d="M8 10h8M8 14h5M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4Z"/></svg><span id="ep-ask"></span></span></div></div><div class="holds"><div class="hg"><button class="hg-h" type="button"><span class="dr-n"><i style="background:var(--eq)"></i>Public markets</span><span class="dr-bar"><span style="width:47%;background:var(--eq)"></span></span><span class="dr-v">€611.505<small>47%</small></span><svg class="hg-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><div class="hg-pos"><div class="pos"><span class="plogo" style="border-color:#117A52;color:#117A52">NV</span><div class="pos-m"><span class="pos-n">NVIDIA</span><span class="pos-sub">NVDA · 40 shares</span></div><svg class="spark up" viewBox="0 0 80 28"><polyline points="0,20 16,16 32,18 48,10 64,12 80,5"/></svg><div class="pos-v"><span class="pos-val">€372.000</span><span class="pos-chg up">+1,2%</span></div></div><div class="pos"><span class="plogo" style="border-color:#117A52;color:#117A52">AS</span><div class="pos-m"><span class="pos-n">ASML</span><span class="pos-sub">ASML · 30 shares</span></div><svg class="spark dn" viewBox="0 0 80 28"><polyline points="0,8 16,12 32,9 48,15 64,13 80,20"/></svg><div class="pos-v"><span class="pos-val">€92.505</span><span class="pos-chg dn">−0,4%</span></div></div><div class="pos"><span class="plogo" style="border-color:#117A52;color:#117A52">IW</span><div class="pos-m"><span class="pos-n">iShares Core MSCI World</span><span class="pos-sub">IWDA · 320 shares</span></div><svg class="spark up" viewBox="0 0 80 28"><polyline points="0,18 16,20 32,13 48,15 64,9 80,7"/></svg><div class="pos-v"><span class="pos-val">€70.000</span><span class="pos-chg up">+0,3%</span></div></div><div class="pos"><span class="plogo" style="border-color:#117A52;color:#117A52">AP</span><div class="pos-m"><span class="pos-n">Apple</span><span class="pos-sub">AAPL · 90 shares</span></div><svg class="spark up" viewBox="0 0 80 28"><polyline points="0,20 16,16 32,18 48,10 64,12 80,5"/></svg><div class="pos-v"><span class="pos-val">€34.000</span><span class="pos-chg up">+0,8%</span></div></div><div class="pos"><span class="plogo" style="border-color:#117A52;color:#117A52">MS</span><div class="pos-m"><span class="pos-n">Microsoft</span><span class="pos-sub">MSFT · 40 shares</span></div><svg class="spark dn" viewBox="0 0 80 28"><polyline points="0,9 16,7 32,13 48,11 64,17 80,21"/></svg><div class="pos-v"><span class="pos-val">€28.000</span><span class="pos-chg dn">−0,2%</span></div></div><div class="pos"><span class="plogo" style="border-color:#117A52;color:#117A52">MU</span><div class="pos-m"><span class="pos-n">Micron</span><span class="pos-sub">MU · 90 shares</span></div><svg class="spark dn" viewBox="0 0 80 28"><polyline points="0,8 16,12 32,9 48,15 64,13 80,20"/></svg><div class="pos-v"><span class="pos-val">€15.000</span><span class="pos-chg dn">−1,6%</span></div></div></div></div><div class="hg"><button class="hg-h" type="button"><span class="dr-n"><i style="background:var(--prop)"></i>Property</span><span class="dr-bar"><span style="width:33%;background:var(--prop)"></span></span><span class="dr-v">€431.323<small>33%</small></span><svg class="hg-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><div class="hg-pos"><div class="pos"><span class="plogo" style="border-color:#3F7CA8"><svg viewBox="0 0 24 24" style="stroke:#3F7CA8"><path d="M4 11l8-6 8 6M6 10v9h12v-9"/></svg></span><div class="pos-m"><span class="pos-n">Apartment — Amsterdam</span><span class="pos-sub">NL · primary residence</span></div><div class="pos-v"><span class="pos-val">€311.323</span><span class="pos-own">38% owned</span></div></div><div class="pos"><span class="plogo" style="border-color:#3F7CA8"><svg viewBox="0 0 24 24" style="stroke:#3F7CA8"><path d="M4 11l8-6 8 6M6 10v9h12v-9"/></svg></span><div class="pos-m"><span class="pos-n">Rental — Rotterdam</span><span class="pos-sub">NL · buy-to-let</span></div><div class="pos-v"><span class="pos-val">€120.000</span><span class="pos-own">24% owned</span></div></div></div></div><div class="hg"><button class="hg-h" type="button"><span class="dr-n"><i style="background:var(--res)"></i>Reserves</span><span class="dr-bar"><span style="width:14%;background:var(--res)"></span></span><span class="dr-v">€181.110<small>14%</small></span><svg class="hg-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><div class="hg-pos"><div class="pos"><span class="plogo" style="border-color:#A89968;color:#A89968">€</span><div class="pos-m"><span class="pos-n">Cash</span><span class="pos-sub">EUR · instant access</span></div><div class="pos-v"><span class="pos-val">€121.110</span></div></div><div class="pos"><span class="plogo" style="border-color:#A89968;color:#A89968">Au</span><div class="pos-m"><span class="pos-n">Gold</span><span class="pos-sub">XAU · 18 oz</span></div><svg class="spark up" viewBox="0 0 80 28"><polyline points="0,18 16,20 32,13 48,15 64,9 80,7"/></svg><div class="pos-v"><span class="pos-val">€40.000</span><span class="pos-chg up">+0,5%</span></div></div><div class="pos"><span class="plogo" style="border-color:#A89968;color:#A89968">MM</span><div class="pos-m"><span class="pos-n">Money-market fund</span><span class="pos-sub">EUR · t+1</span></div><div class="pos-v"><span class="pos-val">€20.000</span></div></div></div></div><div class="hg"><button class="hg-h" type="button"><span class="dr-n"><i style="background:var(--cry)"></i>Crypto</span><span class="dr-bar"><span style="width:5%;background:var(--cry)"></span></span><span class="dr-v">€66.145<small>5%</small></span><svg class="hg-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><div class="hg-pos"><div class="pos"><span class="plogo" style="border-color:#E0922A;color:#E0922A">₿</span><div class="pos-m"><span class="pos-n">Bitcoin</span><span class="pos-sub">BTC · 0,71</span></div><svg class="spark dn" viewBox="0 0 80 28"><polyline points="0,9 16,7 32,13 48,11 64,17 80,21"/></svg><div class="pos-v"><span class="pos-val">€66.145</span><span class="pos-chg dn">−2,1%</span></div></div></div></div></div>
+    <div class="dash-foot"><span class="dots"><i></i><i></i><i></i><i></i><i class="w"></i><i class="w"></i></span>Vitals · 4 healthy · 2 to watch · every dot on the line is a journal entry</div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-top"><div><span class="eyebrow">Vitals</span><h2>Not just what you own — <span class="g">how well it's built.</span></h2></div><a class="lk" href="#">See all Vitals →</a></div>
+    <div class="vrow"><div class="vital warn"><div class="vt-top"><span class="vt-name">Concentration</span><span class="vt-band">Watch</span></div><div class="vt-val">38%<span> · NVIDIA</span></div><svg class="vc" viewBox="0 0 100 24"><rect class="vc-sec" x="0" y="9" width="100" height="7" rx="2.5"/><rect class="vc-warn" x="0" y="9" width="38" height="7" rx="2.5"/><line class="vc-thr" x1="35" y1="4.5" x2="35" y2="20.5"/><text class="vc-lbl" x="35" y="3" text-anchor="middle">35%</text></svg><div class="vt-read">Above the 35% line — one position drives a lot of the book.</div></div><div class="vital ok"><div class="vt-top"><span class="vt-name">Liquidity</span><span class="vt-band">Healthy</span></div><div class="vt-val">54%<span> in a week</span></div><svg class="vc" viewBox="0 0 100 24"><rect class="vc-sec" x="0" y="9" width="100" height="7" rx="2.5"/><rect class="vc-ok" x="0" y="9" width="54" height="7" rx="2.5"/><rect class="vc-okm" x="54.5" y="9" width="7" height="7"/><line class="vc-thr" x1="15" y1="4.5" x2="15" y2="20.5"/><text class="vc-lbl" x="15" y="3" text-anchor="middle">15%</text></svg><div class="vt-read">Over half your wealth is reachable within seven days.</div></div><div class="vital ok"><div class="vt-top"><span class="vt-name">Leverage</span><span class="vt-band">Healthy</span></div><div class="vt-val">28%<span> LTV</span></div><svg class="vc" viewBox="0 0 100 24"><rect class="vc-sec" x="0" y="9" width="100" height="7" rx="2.5"/><rect class="vc-ok" x="0" y="9" width="28" height="7" rx="2.5"/><line class="vc-thr" x1="50" y1="4.5" x2="50" y2="20.5"/><line class="vc-thr" x1="75" y1="4.5" x2="75" y2="20.5"/><text class="vc-lbl" x="50" y="3" text-anchor="middle">50</text><text class="vc-lbl" x="75" y="3" text-anchor="middle">75</text></svg><div class="vt-read">The mortgage is modest, and the rate is fixed.</div></div><div class="vital ok"><div class="vt-top"><span class="vt-name">Drawdown</span><span class="vt-band">Healthy</span></div><div class="vt-val">−23%<span> 2008-style</span></div><svg class="vc" viewBox="0 0 100 24"><rect class="vc-sec" x="0" y="9" width="100" height="7" rx="2.5"/><rect class="vc-ok" x="0" y="9" width="77" height="7" rx="2.5"/><rect class="vc-bad" x="77" y="9" width="23" height="7" rx="2.5"/><line class="vc-thr" x1="75" y1="4.5" x2="75" y2="20.5"/><text class="vc-lbl" x="75" y="3" text-anchor="middle">−25%</text></svg><div class="vt-read">A simultaneous crash would cut about a quarter — survivable.</div></div><div class="vital warn"><div class="vt-top"><span class="vt-name">Cash yield</span><span class="vt-band">Watch</span></div><div class="vt-val">−1,3%<span> real</span></div><svg class="vc" viewBox="0 0 100 24"><line class="vc-base" x1="0" y1="11" x2="100" y2="11"/><rect class="vc-ok" x="8" y="3.2" width="15" height="7.8"/><rect class="vc-bad" x="30" y="3.2" width="15" height="8.5"/><rect class="vc-bad" x="52" y="11.7" width="15" height="2.3"/><rect class="vc-warn" x="74" y="11" width="17" height="3"/></svg><div class="vt-read">Cash is quietly losing to inflation and tax.</div></div><div class="vital ok"><div class="vt-top"><span class="vt-name">Real growth</span><span class="vt-band">Healthy</span></div><div class="vt-val">+8,3%<span> past year</span></div><svg class="vc" viewBox="0 0 100 24"><polyline class="vc-mut-s" points="0,18 9,17 18,17.4 27,16 36,15 45,14.4 55,12 64,11 73,9.4 82,8 91,6.4 100,5"/><polyline class="vc-ok-s" points="0,18 9,17.3 18,18 27,16.8 36,16 45,15.6 55,13.4 64,12.6 73,11 82,9.8 91,8.6 100,8"/></svg><div class="vt-read">Net worth is growing ahead of inflation.</div></div></div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-top"><div><span class="eyebrow">Decision journal</span><h2>Every change, <span class="g">with the reason.</span></h2></div><a class="lk" href="#">All 12 entries →</a></div>
+    <div class="ledger"><div class="led"><span class="led-dot dn"></span><span class="led-date">2026</span><div class="led-m"><div class="led-l1"><span class="led-title">Crypto sold off hard</span><span class="led-tag auto">Auto</span></div><div class="led-why">Bitcoin fell hard across the market. Your core thesis held, so you stayed put.</div></div><span class="led-imp dn">−€33.000</span></div><div class="led"><span class="led-dot"></span><span class="led-date">May 2025</span><div class="led-m"><div class="led-l1"><span class="led-title">Trimmed Bitcoin at the record</span><span class="led-tag ">You</span></div><div class="led-why">Took the original stake off the table near the all-time high.</div></div><span class="led-imp ">+€34.000</span></div><div class="led"><span class="led-dot"></span><span class="led-date">Jan 2025</span><div class="led-m"><div class="led-l1"><span class="led-title">Crossed €1.000.000</span><span class="led-tag auto">Auto</span></div><div class="led-why">A milestone, carried there largely by the NVIDIA run.</div></div><span class="led-imp ">+€245.000</span></div><div class="led"><span class="led-dot"></span><span class="led-date">Oct 2024</span><div class="led-m"><div class="led-l1"><span class="led-title">Rebalanced after NVIDIA run</span><span class="led-tag ">You</span></div><div class="led-why">The position pushed above your 35% comfort line, so you trimmed.</div></div><span class="led-imp ">€96.000 locked</span></div><div class="led"><span class="led-dot"></span><span class="led-date">Jun 2023</span><div class="led-m"><div class="led-l1"><span class="led-title">Locked the mortgage</span><span class="led-tag ">You</span></div><div class="led-why">Chose certainty over a few basis points of rate.</div></div><span class="led-imp ">€8.400 saved</span></div><div class="led"><span class="led-dot"></span><span class="led-date">Oct 2022</span><div class="led-m"><div class="led-l1"><span class="led-title">Bought the bottom</span><span class="led-tag ">You</span></div><div class="led-why">Bought when it hurt — near the 2022 low.</div></div><span class="led-imp ">+€120.000</span></div></div>
+  </section>
+
+  <section class="sec" style="margin-bottom:0">
+    <div class="trust">
+      <span class="t">Private by design.</span>
+      <div class="items">
+        <span class="it"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>EU-hosted</span>
+        <span class="it"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2Z"/><path d="M9 9h6"/></svg>Append-only journal</span>
+        <span class="it"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>No broker sync</span>
+      </div>
+    </div>
+  </section>
+</main>
+  <aside class="chatrail">
+    <div class="cr-head"><span class="cr-title"><span class="cr-dot"></span>Volnar</span><span class="cr-sub">Single thread</span></div>
+    <div class="cr-body">
+      <div class="cr-note">Tell Volnar what changed — it logs the decision and updates the numbers. This is the only way to change your portfolio.</div>
+      <div class="cr-loglist">
+        <div class="cr-log"><span class="d"></span>Logged · <b>Trimmed NVIDIA</b> · concentration 41% → 38%</div>
+        <div class="cr-log"><span class="d"></span>Logged · <b>Trimmed Bitcoin</b> · +€34.000 realised</div>
+        <div class="cr-log"><span class="d"></span>Logged · <b>Locked the mortgage</b> · €8.400 saved</div>
+      </div>
+    </div>
+    <div class="cr-foot">
+      <div class="composer">
+        <svg class="ci" viewBox="0 0 24 24"><path d="M12 3v18M3 8l4-4 4 4M21 16l-4 4-4-4"/></svg>
+        <input placeholder="Tell Volnar what changed…"/>
+        <button class="send"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </div>
+      <div class="disc">Records and explains decisions — not financial advice.</div>
+    </div>
+  </aside>
+</div>
+
+<div class="dock">
+  <div class="dock-in">
+    <div class="logged"><span class="pill"><span class="d"></span>Logged · <b>Trimmed NVIDIA</b> · concentration 41% → 38%</span></div>
+    <div class="composer">
+      <svg class="ci" viewBox="0 0 24 24"><path d="M12 3v18M3 8l4-4 4 4M21 16l-4 4-4-4"/></svg>
+      <input placeholder="Tell Volnar what changed…"/>
+      <button class="send"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="disc">The only way to change your portfolio. Volnar records and explains decisions — it does not give financial advice.</div>
+  </div>
+</div>
+<script>
+var EP_ENTRIES=[{"date": "Jul 2021", "kind": "Milestone", "kc": "milestone", "title": "Opened the journal", "ctx": "The starting line — €754.000 across a flat, a portfolio and a little crypto.", "why": "Day one. From here on, every move gets a reason attached, so future-me sees the why, not just the what.", "imp": "€754.000 · starting point", "impc": "up", "ask": "What would €754.000 be today in just an index fund?"}, {"date": "Feb 2022", "kind": "Market", "kc": "market", "title": "War broke out in Ukraine", "ctx": "Equities fell hard and energy spiked the week the invasion began.", "why": "Property is the biggest exposure, so the hit was cushioned. Flagged automatically — no action, you sat still.", "imp": "−€38.000 that week · recovered", "impc": "dn", "ask": "What if I'd sold everything that week?"}, {"date": "Mar 2022", "kind": "Decision", "kc": "", "title": "Raised cash before the drop", "ctx": "The Fed signalled its first hikes; equities had grown to 64% of net worth.", "why": "De-risking before the cycle turns. Moving to cash now so a forced sale later never has to happen.", "imp": "avoided ≈ €40.000 of the 2022 drop", "impc": "up", "ask": "What if I'd stayed fully invested instead?"}, {"date": "Oct 2022", "kind": "Decision", "kc": "", "title": "Bought the bottom", "ctx": "Fear peaked and markets bottomed that October.", "why": "Buying when it hurt. I can't call the exact low, but this is close enough — the reason is conviction, not timing.", "imp": "≈ €120.000 up since", "impc": "up", "ask": "What if I'd waited six more months to buy?"}, {"date": "Mar 2023", "kind": "Market", "kc": "market", "title": "A US bank failed (SVB)", "ctx": "A US bank (SVB) failed; equities wobbled, then steadied within days.", "why": "Your banks aren't exposed and cash is spread thin. Logged, watched, left alone — recovered inside a week.", "imp": "−€12.000 that week · recovered", "impc": "dn", "ask": "What if I'd pulled out when the bank failed?"}, {"date": "Jun 2023", "kind": "Decision", "kc": "", "title": "Locked the mortgage", "ctx": "The ECB raised +25bps with mortgage rates still climbing.", "why": "Locking the rate. Certainty over chasing a few basis points — I'd rather sleep than optimise.", "imp": "≈ €8.400 saved in interest", "impc": "up", "ask": "What if I'd stayed on a variable rate?"}, {"date": "Apr 2024", "kind": "Market", "kc": "market", "title": "NVIDIA fell ~12% in a day", "ctx": "NVIDIA fell ~12% in a single session on no real news.", "why": "Your largest single position, €34.000 on paper. A wobble, not a thesis change — you held, and it was back within six weeks.", "imp": "−€34.000 on paper · recovered", "impc": "dn", "ask": "What if I'd sold NVIDIA on the drop?"}, {"date": "Jun 2024", "kind": "Market", "kc": "market", "title": "ECB cut rates", "ctx": "The ECB cut rates for the first time in years; bonds ticked up.", "why": "The mortgage is already fixed, so the cut only helps the bond sleeve. Noted for you, nothing to do.", "imp": "+€3.200 · bonds", "impc": "up", "ask": "What if I'd moved more into bonds then?"}, {"date": "Oct 2024", "kind": "Decision", "kc": "", "title": "Rebalanced after NVIDIA run", "ctx": "NVIDIA earnings beat, the stock rose 8%, pushing it to 41% of the book.", "why": "Above my 35% comfort line. Banking some gains, staying invested — trimming the risk, not the conviction.", "imp": "€96.000 locked in · 41% → 28%", "impc": "up", "ask": "What if I hadn't trimmed NVIDIA?"}, {"date": "Jan 2025", "kind": "Milestone", "kc": "milestone", "title": "Crossed €1.000.000", "ctx": "The NVIDIA run carried total net worth past seven figures.", "why": "A threshold worth marking — €245.000 above where this journal began in 2021. Saved on its own.", "imp": "€1.000.000 · up €245.000", "impc": "up", "ask": "At this pace, when do I reach €2.000.000?"}, {"date": "May 2025", "kind": "Decision", "kc": "", "title": "Trimmed Bitcoin at the record", "ctx": "Bitcoin printed a new all-time high.", "why": "Taking the original stake off the table so the rest plays with house money. The core keeps running.", "imp": "+€34.000 realised · core runs", "impc": "up", "ask": "What if I'd held the whole Bitcoin stake?"}, {"date": "2026", "kind": "Market", "kc": "market", "title": "Crypto sold off hard", "ctx": "Bitcoin fell ~30% across the year.", "why": "Down €33.000 on the year, but only the trimmed remainder is exposed. The core thesis is intact — you held.", "imp": "−€33.000 on the year · core intact", "impc": "dn", "ask": "What if I'd sold the core before the selloff?"}];
+(function(){
+  var mks=document.querySelectorAll('.nw .mk');
+  var g=function(id){return document.getElementById(id);};
+  var d=g('ep-date'),k=g('ep-kind'),t=g('ep-title'),c=g('ep-ctx'),w=g('ep-why'),im=g('ep-imp'),as=g('ep-ask');
+  if(!t) return;
+  function show(i){
+    var e=EP_ENTRIES[i]; if(!e) return;
+    d.textContent=e.date; k.textContent=e.kind; k.className='ep-kind'+(e.kc?' '+e.kc:'');
+    t.textContent=e.title; c.textContent=e.ctx; w.textContent=e.why;
+    im.textContent=(e.impc==='dn'?'▼ ':'▲ ')+e.imp; im.className='ep-imp'+(e.impc==='dn'?' dn':'');
+    as.textContent='Ask: '+e.ask;
+    mks.forEach(function(m,j){m.classList.toggle('sel',j===i);});
+  }
+  mks.forEach(function(m){m.addEventListener('click',function(){show(+m.getAttribute('data-i'));});});
+  show(EP_ENTRIES.length-1);
+})();
+(function(){
+  document.querySelectorAll('.hg').forEach(function(grp){
+    var h=grp.querySelector('.hg-h'), pos=grp.querySelector('.hg-pos');
+    h.addEventListener('click',function(){
+      var open=grp.classList.toggle('open');
+      pos.style.maxHeight=open?pos.scrollHeight+'px':'0px';
+    });
+  });
+})();
+</script>
+</body>
+</html>

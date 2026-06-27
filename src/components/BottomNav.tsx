@@ -79,7 +79,9 @@ const STATIC_TABS = [
 export function BottomNav() {
   const pathname = usePathname();
 
-  if (pathname === "/login" || pathname.startsWith("/marketing")) return null;
+  // /overview is a self-contained full-screen port with its own top nav and its
+  // own docked composer at the bottom — the app tab bar would double up with it.
+  if (pathname === "/login" || pathname.startsWith("/marketing") || pathname.startsWith("/overview")) return null;
 
   const assetIdMatch = pathname.match(/^\/asset\/([^/]+)$/);
   const chatHref = assetIdMatch ? `/chat?seed=asset&key=${assetIdMatch[1]}` : "/chat";
