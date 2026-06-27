@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Libre_Franklin } from "next/font/google";
-import localFont from "next/font/local";
+import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -19,30 +18,30 @@ import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
 import { PreloadResources } from "@/components/PreloadResources";
 
-// Premium editorial pairing for the whole app. Libre Caslon Display (a Caslon)
-// takes the display role — the big money figures and headings that read through
-// var(--serif) / font-serif. Libre Franklin (a Franklin Gothic — the narrow,
-// highly legible workhorse newspapers use for dense text) is the body + label
-// sans, also feeding the numeric-label (mono) role. globals.css maps the roles
-// to these two variables, so every surface adopts the pairing without touching
-// markup. The marketing landing page is unaffected — it sets its own scoped
-// --mkt-* fonts inside the .tw wrapper.
-// Self-hosted so it can be declared over a wide weight range: Caslon Display
-// ships a single master, and declaring weight "100 900" makes the browser treat
-// any requested weight as real — so the big display numbers render at Caslon's
-// true, elegant weight instead of a synthetic faux-bold when components ask for
-// 600/700. (font-synthesis: none does NOT reliably prevent that in Chromium.)
-const libreCaslon = localFont({
-  src: "./fonts/libre-caslon-display.woff2",
-  weight: "100 900",
+// Brand typography, shared with the marketing landing page so the app and the
+// page read as one continuous brand: Fraunces (serif display — the big money
+// figures and headings via var(--serif)/font-serif), Inter (body via --sans),
+// and IBM Plex Mono (the numeric/label detail via --mono). globals.css maps the
+// roles to these three variables, so every surface adopts them without touching
+// markup. The marketing page declares the same trio under its scoped --mkt-*.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  axes: ["opsz"],
   variable: "--font-serif",
   display: "swap",
 });
 
-const libreFranklin = Libre_Franklin({
+const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -103,7 +102,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className={`${libreCaslon.variable} ${libreFranklin.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning={isNativeBuild}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">

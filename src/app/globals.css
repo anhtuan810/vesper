@@ -1,18 +1,14 @@
 @import "tailwindcss";
 
-/* Typography — a premium editorial pairing applied across the whole app.
-   layout.tsx loads Libre Caslon Display into --font-serif (the display role: big
-   money figures and headings) and Libre Franklin into --font-sans (body + label
-   text). The mono role is aliased to the sans, so small numeric labels stay in
-   Franklin; tabular figures (set on body below) keep them column-aligned. Caslon
-   is self-hosted (src/app/fonts) and declared over a wide weight range, so the
-   big display numbers render at its true elegant weight rather than a faux-bold
-   when components ask for 600/700. */
+/* Typography — the brand trio shared with the marketing landing page, so the
+   app and the page read as one continuous brand. layout.tsx loads Fraunces into
+   --font-serif (display: big money figures + headings), Inter into --font-sans
+   (body + labels) and IBM Plex Mono into --font-mono (numeric/label detail).
+   Each role below references its own font variable with a graceful fallback. */
 :root {
-  --font-mono:  var(--font-sans);
   --serif: var(--font-serif), Georgia, serif;
   --sans:  var(--font-sans), system-ui, sans-serif;
-  --mono:  var(--font-sans), system-ui, sans-serif;
+  --mono:  var(--font-mono), "SF Mono", monospace;
   --nav-height: 56px;
   --radius-md:  10px;
   --radius-lg:  14px;
