@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { DesktopShell } from "@/components/desktop/DesktopShell";
+import { HomeShell } from "@/components/desktop/HomeShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
 // Shared layout for the three center views (Portfolio /, Diary, Profile). At lg/xl
@@ -23,6 +24,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     : pathname.startsWith("/profile")
     ? "profile"
     : "portfolio";
+
+  // The home tab uses the new Twilight two-column Overview shell; Diary/Profile
+  // keep the existing three-column DesktopShell.
+  if (tab === "portfolio") return <HomeShell>{children}</HomeShell>;
 
   return <DesktopShell tab={tab}>{children}</DesktopShell>;
 }

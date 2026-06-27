@@ -6,6 +6,7 @@ import { useUser, useAssets, useDisplayCurrencyState, primeInsightCache, usePort
 import ChatPopup from "@/components/ChatPopup";
 import { NavBar } from "@/components/NavBar";
 import { PortfolioTab } from "@/components/PortfolioTab";
+import { OverviewContent } from "@/components/overview/OverviewContent";
 import { PortfolioEmptyState } from "@/components/PortfolioEmptyState";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -207,20 +208,18 @@ export default function Dashboard() {
 
   const isEmpty = assets.length === 0;
 
-  // Desktop web: the (main) layout provides the persistent three-column shell
-  // (Vitals rail + chat rail); this route only supplies the center content.
+  // Desktop web: the (main) layout provides the new Twilight two-column home
+  // shell (content + chat rail); this route supplies the Overview content.
   if (isDesktop) {
     return isEmpty ? (
       <PortfolioEmptyState />
     ) : (
-      <PortfolioTab
+      <OverviewContent
         assets={assets as LiveAsset[]}
-        grossTotal={grossTotal}
         netTotal={netTotal}
         initialSnapshots={initialSnapshots}
         valuesSettled={valuesSettled}
         mutations={mutations}
-        marketHighlights={marketHighlights}
       />
     );
   }

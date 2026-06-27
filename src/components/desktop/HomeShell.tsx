@@ -1,0 +1,163 @@
+"use client";
+
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import Link from "next/link";
+import { VolnarLogo } from "@/components/VolnarLogo";
+import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
+import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
+import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
+import { takeHandoff } from "@/lib/scenario/handoff";
+import { EXPLORE_EVENT, buildExploreSeed } from "@/lib/scenario/explore";
+import { WHATIF_EVENT, takeWhatIfSeed } from "@/lib/scenario/whatif";
+import type { ChatSeed } from "@/lib/chat-seeds";
+import "@/components/overview/home-twilight.css";
+
+function initials(user: { user_metadata?: Record<string, unknown>; email?: string } | null | undefined): string {
+  const meta = user?.user_metadata ?? {};
+  const full = (meta.full_name || meta.name) as string | undefined;
+  if (full) {
+    const parts = full.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "·";
+  }
+  return (user?.email?.[0] ?? "·").toUpperCase();
+}
+
+const TABS = [
+  { label: "Overview", href: "/", on: true },
+  { label: "Journal", href: "/diary", on: false },
+  { label: "Vitals", href: "/vitals", on: false },
+  { label: "Holdings", href: "#holdings", on: false },
+];
+
+/**
+ * Desktop web layout for the home tab (route "/"). Replaces the 3-column
+ * DesktopShell with the approved Twilight two-column design: a top nav, the
+ * scrolling Overview content (children), and the persistent chat rail. The chat
+ * machinery is the same working session/thread DesktopShell uses. Forced light
+ * (the approved design is light-only); the rest of the app keeps its theme.
+ * Only mounts on desktop web for the portfolio tab — mobile/native never reach it.
+ */
+export function HomeShell({ children }: { children: ReactNode }) {
+  const { user } = useUser();
+  const displayCurrency = useDisplayCurrency();
+  const { assets } = useAssets(user?.id);
+  const hasPortfolio = assets.length > 0;
+  const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
+
+  const session = useChatSession({ userId: user?.id });
+  const { messages, thinking, loadMore, hasMore, isLoadingMore } = session;
+
+  // ── Scenario seeds (explore / what-if) → the mounted rail ──────────────────
+  const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
+  const [seedBase, setSeedBase] = useState(0);
+  const assetsRef = useRef(assets);
+  const messagesRef = useRef(messages);
+  useEffect(() => { assetsRef.current = assets; }, [assets]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => {
+    const handler = () => {
+      buildExploreSeed(assetsRef.current, displayCurrency).then((seed) => {
+        setSeedBase(messagesRef.current.length);
+        setSeedMessage(seed);
+      }).catch(() => {});
+    };
+    window.addEventListener(EXPLORE_EVENT, handler);
+    return () => window.removeEventListener(EXPLORE_EVENT, handler);
+  }, [displayCurrency]);
+  useEffect(() => {
+    const handler = () => {
+      const seed = takeWhatIfSeed();
+      if (seed) { setSeedBase(messagesRef.current.length); setSeedMessage(seed); }
+    };
+    window.addEventListener(WHATIF_EVENT, handler);
+    return () => window.removeEventListener(WHATIF_EVENT, handler);
+  }, []);
+  const visibleSeed = seedMessage && messages.length <= seedBase ? seedMessage : null;
+
+  const threadRef = useRef<ChatThreadHandle>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolled = useRef(false);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, thinking]);
+
+  // Scenario → chat handoff (consumed once the user is known).
+  const handoffDone = useRef(false);
+  useEffect(() => {
+    if (handoffDone.current || !user?.id) return;
+    handoffDone.current = true;
+    const h = takeHandoff();
+    if (h) session.sendScenario(h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) loadMore(); },
+      { threshold: 0, rootMargin: "200px 0px 0px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, loadMore]);
+
+  return (
+    <div className="vhome" data-theme="light">
+      <style>{`
+        @keyframes up { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+        @keyframes blink { 0%,100%{opacity:0.2}50%{opacity:1} }
+        .vhome .chat-msg { animation: up 0.25s ease forwards; }
+        .vhome .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 1.2s ease infinite;margin:0 2px; }
+        .vhome .chat-dot:nth-child(2){animation-delay:.2s}.vhome .chat-dot:nth-child(3){animation-delay:.4s}
+      `}</style>
+
+      <nav className="vh-nav">
+        <div className="vh-nav-in">
+          <span className="vh-brand"><VolnarLogo size={26} /><span className="wm">Volnar</span></span>
+          <div className="vh-tabs">
+            {TABS.map((t) => (
+              <Link key={t.label} href={t.href} className={`vh-tab${t.on ? " on" : ""}`} aria-current={t.on ? "page" : undefined}>
+                {t.label}
+              </Link>
+            ))}
+          </div>
+          <div className="vh-nav-r">
+            <span className="vh-priv">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+              Private · EU
+            </span>
+            <Link href="/profile" className="vh-av" aria-label="Account">{initials(user)}</Link>
+          </div>
+        </div>
+      </nav>
+
+      <div className="vh-shell">
+        <main className="vh-content">{children}</main>
+
+        <aside className="vh-rail" aria-label="Volnar assistant">
+          <div className="vh-rail-head">
+            <span className="vh-rail-title"><span className="vh-rail-dot" />Volnar</span>
+            <span className="vh-rail-sub">Single thread</span>
+          </div>
+          <ChatThread
+            variant="popup"
+            session={session}
+            seedMessage={visibleSeed}
+            chatSuggestions={chatSuggestions}
+            hasPortfolio={hasPortfolio}
+            composerBg="var(--surface)"
+            scrollContainerRef={scrollContainerRef}
+            sentinelRef={sentinelRef}
+            bottomRef={bottomRef}
+            onScroll={(e) => { if (e.currentTarget.scrollTop > 0) hasScrolled.current = true; }}
+            ref={threadRef}
+          />
+        </aside>
+      </div>
+    </div>
+  );
+}
