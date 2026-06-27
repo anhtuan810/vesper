@@ -1,4 +1,304 @@
-import { en } from "./en";
+export const nl = {
+  nav: {
+    how: "Hoe het werkt",
+    why: "Waarom Volnar",
+    pricing: "Prijzen",
+    signIn: "Inloggen",
+    getStarted: "Aan de slag",
+  },
 
-// Placeholder — replaced with the real nl translation. Mirrors the English shape.
-export const nl = en;
+  hero: {
+    pill: "Privé · EU-gehost · geen bankkoppeling",
+    h1: [["Volg wat je bezit."], ["Onthoud ", { acc: "waarom je het bezit" }, "."]],
+    lead: [
+      "Jij legt de ",
+      { b: "waarom" },
+      " vast in één zin. Wanneer de markt je geld beweegt, legt Volnar dat zelf vast.",
+    ],
+    seeDemo: "Bekijk de live demo",
+    howItWorks: "Hoe het werkt",
+    store: { download: "Download in de", appStore: "App Store", soon: "Binnenkort in", googlePlay: "Google Play" },
+  },
+
+  mech: {
+    eyebrow: "Twee manieren waarop een notitie ontstaat",
+    sub: "Jij spreekt — of de markt doet het.",
+    cap: ["Echte koersen. Elke markering is een notitie. ", { b: "Niets anders schrijft de notities van de markt voor je." }],
+    netWorthAsOf: "Vermogen · per",
+    badge: "▲ +71% sinds 2021",
+    legend: { property: "Vastgoed", reserves: "Reserves", crypto: "Crypto", publicMarkets: "Beursmarkten" },
+    axisNow: "nu",
+    replay: "Opnieuw afspelen",
+    tag: { decision: "Beslissing", autoMilestone: "Automatisch · Mijlpaal", autoMarket: "Automatisch · Marktbeweging" },
+    askFallback: "Stel Volnar een wat-als over deze dag",
+    chat: {
+      header: "Van chat naar dagboek",
+      step1: "Jij zegt",
+      step2: "Het leest je portefeuille + die dag",
+      step3: "Schrijft de notitie",
+    },
+    market: {
+      header: "Van markt naar dagboek",
+      auto: "automatisch",
+      step1: "De markt beweegt",
+      step2: "Het ziet de klap voor je bezit",
+      step3: "Legt het voor je vast",
+    },
+    // Generic fill for whichever pipeline is not the active entry's source.
+    genericChat: { say: "Vandaag 80 NVIDIA verkocht.", read: "Grootste positie, 41% · cijfers, +8%", readsrc: "Cijfers", wrote: "NVIDIA afgebouwd · €96.000 vastgezet" },
+    genericMarket: { trig: "NVIDIA −12% op één dag.", trigsrc: "Markten", detect: "Je grootste positie — €34.000 op papier.", logged: "Gemarkeerd · geen actie · je hield vast", head: "Van markt naar dagboek" },
+    // The 12 chart entries. say/read/readsrc/wrote apply to "you" decisions;
+    // trig/trigsrc/detect/logged/mkthead apply to "automatic" entries; the
+    // unused set is "" on each entry. Geometry, up/dn and the symbol live in code.
+    entries: [
+      {
+        date: "jul 2021", title: "Het dagboek geopend", imp: "€754.000 · startpunt",
+        ctx: "De startstreep — €754.000 verdeeld over een appartement, een portefeuille en wat crypto.",
+        why: "Dag één. Vanaf nu krijgt elke beweging een reden mee, zodat ik later het waarom zie, niet alleen het wat.",
+        ask: "Vraag: wat zou €754.000 vandaag waard zijn in alleen een indexfonds?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Je opende het dagboek", trigsrc: "", detect: "De basis waar alles aan wordt afgemeten", logged: "Basis vastgelegd · €754.000", mkthead: "Van dag één naar dagboek",
+      },
+      {
+        date: "feb 2022", title: "Oorlog brak uit in Oekraïne", imp: "−€38.000 die week · over het jaar hersteld",
+        ctx: "Aandelen vielen hard en energie schoot omhoog in de week dat de invasie begon.",
+        why: "Vastgoed is de grootste blootstelling, dus de klap werd gedempt. Automatisch gemarkeerd — geen actie, je bleef zitten.",
+        ask: "Vraag: wat als ik die week alles had verkocht?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Oorlog brak uit in Oekraïne", trigsrc: "Markten", detect: "Aandelen vielen scherp; energie schoot omhoog", logged: "−€38.000 die week · je hield vast", mkthead: "",
+      },
+      {
+        date: "mrt 2022", title: "Cash opgebouwd vóór de daling", imp: "≈ €40.000 van de daling in 2022 vermeden",
+        ctx: "De Fed kondigde haar eerste renteverhogingen aan; aandelen waren tot 64% van het vermogen gegroeid.",
+        why: "Risico afbouwen voordat de cyclus draait. Nu naar cash, zodat een gedwongen verkoop later nooit hoeft.",
+        ask: "Vraag: wat als ik volledig belegd was gebleven?",
+        say: "Naar cash voordat de Fed begint met verhogen.", read: "Fed kondigde renteverhogingen aan · aandelen 64% van vermogen", readsrc: "Markten", wrote: "Cash opgebouwd · risico cyclus afgebouwd",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "okt 2022", title: "De bodem gekocht", imp: "≈ €120.000 erbij sindsdien",
+        ctx: "De angst piekte en de markten bodemden uit die oktober.",
+        why: "Kopen wanneer het pijn deed. Ik kan de exacte bodem niet timen, maar dit is dichtbij genoeg — de reden is overtuiging, geen timing.",
+        ask: "Vraag: wat als ik zes maanden langer had gewacht met kopen?",
+        say: "Weer instappen — dit voelt als de bodem.", read: "Markten bodemden uit toen de angst piekte", readsrc: "Markten", wrote: "De dip gekocht · dicht bij de bodem",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "mrt 2023", title: "Een Amerikaanse bank viel om (SVB)", imp: "−€12.000 die week · volledig hersteld",
+        ctx: "Een Amerikaanse bank (SVB) viel om; aandelen wankelden en stabiliseerden binnen dagen.",
+        why: "Je banken hebben geen blootstelling en cash is gespreid. Vastgelegd, gevolgd, met rust gelaten — binnen een week hersteld.",
+        ask: "Vraag: wat als ik eruit was gestapt toen de bank omviel?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Een Amerikaanse bank viel om (SVB)", trigsrc: "Markten", detect: "Aandelen wankelden en stabiliseerden in dagen", logged: "−€12.000 · hersteld, geen actie", mkthead: "",
+      },
+      {
+        date: "jun 2023", title: "De hypotheek vastgezet", imp: "≈ €8.400 aan rente bespaard tot nu toe",
+        ctx: "De ECB verhoogde +25bps terwijl de hypotheekrentes nog opliepen.",
+        why: "De rente vastzetten. Zekerheid boven het najagen van een paar basispunten — ik slaap liever dan dat ik optimaliseer.",
+        ask: "Vraag: wat als ik een variabele rente had aangehouden?",
+        say: "De hypotheekrente vastzetten voordat de ECB beweegt.", read: "ECB verhoogde +25bps", readsrc: "ECB", wrote: "Hypotheek vastgezet · zekerheid boven basispunten",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "apr 2024", title: "NVIDIA viel ~12% op één dag", imp: "−€34.000 op papier · binnen zes weken hersteld",
+        ctx: "NVIDIA viel ~12% in één sessie zonder echt nieuws.",
+        why: "Je grootste enkele positie, €34.000 op papier. Een schommeling, geen verandering van de stelling — je hield vast, en binnen zes weken was het terug.",
+        ask: "Vraag: wat als ik NVIDIA bij de daling had verkocht?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "NVIDIA viel ~12% op één dag", trigsrc: "Markten", detect: "Je grootste positie — €34.000 op papier", logged: "Gemarkeerd · geen actie · je hield vast", mkthead: "",
+      },
+      {
+        date: "jun 2024", title: "ECB verlaagde de rente", imp: "+€3.200 · obligaties",
+        ctx: "De ECB verlaagde de rente voor het eerst in jaren; obligaties stegen wat.",
+        why: "De hypotheek staat al vast, dus de verlaging helpt alleen het obligatiedeel. Voor je genoteerd, niets te doen.",
+        ask: "Vraag: wat als ik toen meer in obligaties had gestopt?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "ECB verlaagde de rente", trigsrc: "ECB", detect: "Eerste verlaging in jaren; obligaties stegen wat", logged: "+€3.200 · hypotheek staat al vast", mkthead: "",
+      },
+      {
+        date: "okt 2024", title: "Geherbalanceerd na de NVIDIA-rally", imp: "€96.000 vastgezet · 41% → 28%",
+        ctx: "NVIDIA-cijfers vielen mee, het aandeel steeg 8% en kwam daarmee op 41% van de portefeuille.",
+        why: "Boven mijn comfortgrens van 35%. Wat winst veiligstellen, belegd blijven — het risico afbouwen, niet de overtuiging.",
+        ask: "Vraag: wat als ik NVIDIA niet had afgebouwd?",
+        say: "NVIDIA afbouwen — het is te groot geworden.", read: "NVIDIA-cijfers +8% · positie op 41%", readsrc: "Cijfers", wrote: "NVIDIA afgebouwd · €96.000 vastgezet, 41%→28%",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "jan 2025", title: "Vermogen passeerde €1.000.000", imp: "€1.000.000 · €245.000 erbij sinds 2021",
+        ctx: "De NVIDIA-rally tilde het totale vermogen voorbij de zeven cijfers.",
+        why: "Een drempel die het markeren waard is — €245.000 boven waar dit dagboek in 2021 begon. Vanzelf opgeslagen.",
+        ask: "Vraag: bereik ik in dit tempo €2.000.000?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Vermogen passeerde €1.000.000", trigsrc: "", detect: "Een drempel die het markeren waard is", logged: "Mijlpaal · €245.000 erbij sinds 2021", mkthead: "Van mijlpaal naar dagboek",
+      },
+      {
+        date: "mei 2025", title: "Bitcoin afgebouwd op het record", imp: "+€34.000 gerealiseerd · de kern loopt nog",
+        ctx: "Bitcoin zette een nieuwe recordstand neer.",
+        why: "De oorspronkelijke inleg van tafel halen, zodat de rest met winst van het huis speelt. De kern blijft lopen.",
+        ask: "Vraag: wat als ik de hele Bitcoin-positie had gehouden?",
+        say: "Mijn oorspronkelijke Bitcoin-inleg van tafel halen.", read: "Bitcoin zette een nieuwe recordstand neer", readsrc: "Crypto", wrote: "Bitcoin afgebouwd · +€34.000 gerealiseerd",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "2026", title: "Crypto verkocht hard af", imp: "−€33.000 over het jaar · kern intact",
+        ctx: "Bitcoin viel ~30% over het jaar.",
+        why: "€33.000 lager over het jaar, maar alleen het afgebouwde restant heeft blootstelling. De kernstelling is intact — je hield vast.",
+        ask: "Vraag: wat als ik de kern vóór de verkoopgolf had verkocht?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Bitcoin viel ~30% over het jaar", trigsrc: "Crypto", detect: "Je hield de kern erdoorheen vast", logged: "−€33.000 over het jaar · kern intact", mkthead: "",
+      },
+    ],
+  },
+
+  band: {
+    eyebrow: "Waarom een dagboek",
+    h2: [["Een jaar later weet je niet meer ", { g: "waarom." }]],
+    youHead: "Herinnering, een jaar later",
+    youPre: "NVIDIA verkocht omdat ",
+    youForget: "het 41% van alles was en de cijfers net waren omhooggeschoten.",
+    youQ: "…waarom verkocht ik ook alweer?",
+    volHead: "In Volnar",
+    volNote: "NVIDIA verkocht omdat het 41% van alles was en de cijfers net waren omhooggeschoten.",
+    volDate: "12 okt 2024 · nog steeds hier",
+  },
+
+  how: {
+    eyebrow: "Het beslissingsdagboek",
+    h2: [["Elk moment op de grafiek, ", { g: "vastgelegd." }]],
+    body: ["Elke markering op de grafiek is een notitie — je reden en het getal, naast elkaar. De ", { auto: "automatische" }, " schreven zichzelf."],
+    tagYou: "Jij",
+    tagAuto: "Auto",
+    cap: "Twaalf notities en het lopen er meer — elke markering op de grafiek heeft er een.",
+    entries: [
+      { date: "okt 2022", title: "De bodem gekocht", tag: "user", why: "Kopen toen het pijn deed — de bodem van 2022.", impact: "+€120.000", dir: "up" },
+      { date: "jan 2025", title: "€1.000.000 gepasseerd", tag: "auto", why: "Een mijlpaal in de NVIDIA-rally.", impact: "+€245.000", dir: "up" },
+      { date: "okt 2024", title: "Geherbalanceerd na de NVIDIA-rally", tag: "user", why: "Boven mijn comfortgrens van 35%.", impact: "€96.000 vastgezet", dir: "up" },
+      { date: "apr 2024", title: "NVIDIA −12% op één dag", tag: "auto", why: "Grootste positie. Je hield vast.", impact: "−€34.000", dir: "dn" },
+      { date: "mrt 2022", title: "Cash opgebouwd vóór de daling", tag: "user", why: "Risico afbouwen voordat de cyclus draaide.", impact: "€40.000 vermeden", dir: "up" },
+      { date: "jun 2023", title: "De hypotheek vastgezet", tag: "user", why: "Zekerheid boven een paar basispunten.", impact: "€8.400 bespaard", dir: "up" },
+      { date: "mei 2025", title: "Bitcoin afgebouwd op het record", tag: "user", why: "Oorspronkelijke inleg van tafel.", impact: "+€34.000", dir: "up" },
+      { date: "2026", title: "Crypto verkocht hard af", tag: "auto", why: "Kernstelling intact. Je hield vast.", impact: "−€33.000", dir: "dn" },
+    ],
+  },
+
+  notif: {
+    eyebrow: "Meldingen",
+    h2: [["Het vertelt je wanneer iets ", { g: "beweegt." }]],
+    body: "Een rustig duwtje wanneer de markt raakt wat je bezit — of je een mijlpaal bereikt. De meldingen die ertoe doen, schrijven zichzelf in het dagboek.",
+    memoryTime: "herinnering",
+    memories: [
+      ["Op deze dag · 1 jaar geleden", "Je passeerde €1.000.000", "Een jaar later sta je op €1.290.083."],
+      ["Op deze dag · 2 jaar geleden", "Je kocht de bodem van 2022", "Wat je die week toevoegde, staat €120.000 hoger."],
+      ["Op deze dag · 1 maand geleden", "Je bouwde Bitcoin af op het record", "+€34.000 gerealiseerd — de kern loopt nog."],
+    ],
+    banners: [
+      { app: "ECB · let op", time: "nu", t: "Rente +25 bps — raakt je hypotheek", s: "De jouwe staat vast. Voor je vastgelegd." },
+      { app: "NVIDIA · cijfers mee", time: "8m", t: "+€8.300 op je NVIDIA-positie", s: "Overtrof de verwachtingen na slot." },
+      { app: "Bitcoin · momentum", time: "1u", t: "Boven het record — +€4.100", s: "Wil je een beslissing vastleggen nu het vers is?" },
+    ],
+  },
+
+  privacy: {
+    eyebrow: "Privé van opzet",
+    h2: [["Geen bankkoppeling. Geen advies. ", { g: "Met opzet." }]],
+    body: "Jij vertelt het wat er gebeurd is. Het verkoopt je nooit advies. Het verantwoordt zich alleen aan jou.",
+    chips: ["Geen brokerkoppelingen", "Geen aanbevelingen", "EU-gehost & alleen-lezen"],
+  },
+
+  whatif: {
+    eyebrow: "Wat-als · in chat",
+    h2: [["Zie het ", { g: "voordat" }, " je beslist."]],
+    body: "Vraag het in gewone taal. Volnar rekent het door — deterministisch — en toont het effect. Er verandert niets totdat jij beslist.",
+    placeholder: "Stel een wat-als…",
+    foot: "Gesimuleerd in chat · deterministische rekenkunde · niets beweegt totdat jij beslist",
+    scenarios: {
+      a: {
+        label: "Appartement verkopen → wereldindex",
+        q: "Wat als ik het appartement verkoop en een wereldindex koop?",
+        rows: [
+          ["Vermogen vandaag", "Ongewijzigd", ""],
+          ["Verloren huurinkomsten", "−€1.500 / mnd", "dn"],
+          ["Aandelenconcentratie", "32% → 71%", ""],
+          ["Verwacht 10-jr · 6%/jr*", "≈ €734.000", "up"],
+        ],
+      },
+      b: {
+        label: "Alles houden zoals het is",
+        q: "Wat als ik gewoon alles houd zoals het is?",
+        rows: [
+          ["Vermogen vandaag", "Ongewijzigd", ""],
+          ["Cash dat niets opbrengt", "−€2.100 / jr", "dn"],
+          ["Aandelenconcentratie", "32% · ongewijzigd", ""],
+          ["Verwacht 10-jr · 6%/jr*", "≈ €690.000", "up"],
+        ],
+      },
+    },
+  },
+
+  vitals: {
+    eyebrow: "Dashboard · Vitals",
+    h2: [["Niet alleen wat je bezit — ", { g: "hoe goed het gebouwd is." }]],
+    body: "Een live dashboard van elk bezit, en zeven Vitals die de kwaliteit van je vermogen beoordelen — concentratie, liquiditeit, hefboom, drawdownrisico, reëel rendement, groei. Elk staat groen, oranje of rood, op het moment dat er iets verschuift.",
+    dashLabel: "Portefeuille · vandaag",
+    dashBadge: "▲ +71% sinds 2021",
+    dashRows: [
+      { name: "Beursmarkten", value: "€611.505" },
+      { name: "Vastgoed", value: "€431.323" },
+      { name: "Reserves", value: "€181.110" },
+      { name: "Crypto", value: "€66.145" },
+    ],
+    dashFoot: "Vitals · 4 gezond · 2 in de gaten",
+    bandWatch: "In de gaten",
+    bandHealthy: "Gezond",
+    cards: [
+      { name: "Concentratie", band: "warn", valSuffix: " · NVIDIA", read: "Boven de grens van 35% — één positie stuurt een groot deel van de portefeuille." },
+      { name: "Liquiditeit", band: "ok", valSuffix: " in een week", read: "Meer dan de helft van je vermogen is binnen zeven dagen bereikbaar." },
+      { name: "Hefboom", band: "ok", valSuffix: " LTV", read: "De hypotheek is bescheiden, en de rente staat vast." },
+      { name: "Drawdown", band: "ok", valSuffix: " 2008-stijl", read: "Een gelijktijdige crash zou ongeveer een kwart afsnijden — overleefbaar." },
+      { name: "Cashrendement", band: "warn", valSuffix: " reëel", read: "Cash verliest stilletjes aan inflatie en belasting." },
+      { name: "Reële groei", band: "ok", valSuffix: " afgelopen jaar", read: "Het vermogen groeit harder dan de inflatie." },
+    ],
+    ticker: [
+      { code: "NV", name: "NVIDIA", color: "#117A52" },
+      { code: "AS", name: "ASML", color: "#0B5AA6" },
+      { code: "Au", name: "Goud", color: "#C9A227" },
+      { code: "₿", name: "Bitcoin", color: "#E0922A" },
+      { code: "€", name: "Cash", color: "#C9C3B4" },
+      { code: "RE", name: "Vastgoed", color: "#3F7CA8" },
+    ],
+  },
+
+  compare: {
+    eyebrow: "Waarom Volnar, en niet de rest",
+    h2: [["Een compleet andere ", { g: "as" }, "."]],
+    rows: [
+      { l: "Aggregators koppelen je bank", r: ["Volnar ", { g: "niet" }, " — zodat elke verandering je reden behoudt"] },
+      { l: "AI-adviseurs vertellen je wat te doen", r: ["Volnar ", { g: "adviseert nooit" }, " — het legt vast wat jij koos"] },
+      { l: "Meldingen piepen één keer en verdwijnen", r: ["Volnar ", { g: "bewaart de notities van de markt" }] },
+    ],
+  },
+
+  pricing: {
+    eyebrow: "Prijzen",
+    h2: [["Eén product. Eén prijs."]],
+    monthly: { name: "Maandelijks", amount: "€9,99", per: " / mnd", features: ["Volledig beslissingsdagboek", "Automatisch marktdagboek", "Wat-als-simulaties"] },
+    annual: { name: "Jaarlijks", amount: "€99,99", per: " / jr", badge: "Bespaar 17%", features: ["Alles uit Maandelijks", "Dagboek voorgoed bewaard", "iPhone & web"] },
+    cta: "Start de demo",
+    micro: "Indicatieve prijzen · demo van 14 dagen, geen kaart nodig.",
+  },
+
+  close: {
+    h2: [["Het ", { g: "wat" }, " is makkelijk."], ["Het ", { g: "waarom" }, " is het deel dat het bewaren waard is."]],
+    cta: "Begin je dagboek",
+  },
+
+  footer: {
+    tagline: "Een privé beslissingsdagboek voor je vermogen.",
+    productHead: "Product",
+    product: { liveDemo: "Live demo", how: "Hoe het werkt", pricing: "Prijzen" },
+    companyHead: "Bedrijf",
+    company: { privacy: "Privacy", terms: "Voorwaarden", support: "Support" },
+    copyright: "© 2026 Volnar · NovaHub B.V.",
+    disclaimer: "EU-gehost · voorbeeldportefeuille · koersen zijn echte historische marktdata · *projecties illustratief",
+  },
+};

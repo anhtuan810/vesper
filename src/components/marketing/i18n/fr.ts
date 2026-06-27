@@ -1,4 +1,304 @@
-import { en } from "./en";
+export const fr = {
+  nav: {
+    how: "Comment ça marche",
+    why: "Pourquoi Volnar",
+    pricing: "Tarifs",
+    signIn: "Se connecter",
+    getStarted: "Commencer",
+  },
 
-// Placeholder — replaced with the real fr translation. Mirrors the English shape.
-export const fr = en;
+  hero: {
+    pill: "Privé · hébergé dans l’UE · sans synchro bancaire",
+    h1: [["Suivez ce que vous possédez."], ["Souvenez-vous ", { acc: "pourquoi vous le possédez" }, "."]],
+    lead: [
+      "Vous notez le ",
+      { b: "pourquoi" },
+      " en une phrase. Quand le marché fait bouger votre argent, Volnar le note de lui-même.",
+    ],
+    seeDemo: "Voir la démo en direct",
+    howItWorks: "Comment ça marche",
+    store: { download: "Télécharger sur l’", appStore: "App Store", soon: "Bientôt sur", googlePlay: "Google Play" },
+  },
+
+  mech: {
+    eyebrow: "Deux façons d’écrire une entrée",
+    sub: "Vous parlez — ou le marché parle.",
+    cap: ["Des prix réels. Chaque repère est une entrée. ", { b: "Rien d’autre n’écrit pour vous les entrées du marché." }],
+    netWorthAsOf: "Patrimoine net · au",
+    badge: "▲ +71% depuis 2021",
+    legend: { property: "Immobilier", reserves: "Réserves", crypto: "Crypto", publicMarkets: "Marchés cotés" },
+    axisNow: "auj.",
+    replay: "Rejouer",
+    tag: { decision: "Décision", autoMilestone: "Automatique · Jalon", autoMarket: "Automatique · Mouvement de marché" },
+    askFallback: "Posez à Volnar un scénario sur ce jour-là",
+    chat: {
+      header: "Du chat au journal",
+      step1: "Vous dites",
+      step2: "Il lit votre portefeuille + ce jour-là",
+      step3: "Écrit l’entrée",
+    },
+    market: {
+      header: "Du marché au journal",
+      auto: "automatique",
+      step1: "Le marché bouge",
+      step2: "Il voit l’impact sur vos positions",
+      step3: "Le consigne pour vous",
+    },
+    // Generic fill for whichever pipeline is not the active entry's source.
+    genericChat: { say: "J’ai vendu 80 NVIDIA aujourd’hui.", read: "Plus grosse position, 41% · résultats, +8%", readsrc: "Résultats", wrote: "NVIDIA allégée · €96.000 sécurisés" },
+    genericMarket: { trig: "NVIDIA −12% en une journée.", trigsrc: "Marchés", detect: "Votre plus grosse position — €34.000 sur le papier.", logged: "Signalé · sans action · vous avez tenu", head: "Du marché au journal" },
+    // The 12 chart entries. say/read/readsrc/wrote apply to "you" decisions;
+    // trig/trigsrc/detect/logged/mkthead apply to "automatic" entries; the
+    // unused set is "" on each entry. Geometry, up/dn and the symbol live in code.
+    entries: [
+      {
+        date: "juil. 2021", title: "Ouverture du journal", imp: "€754.000 · point de départ",
+        ctx: "La ligne de départ — €754.000 répartis entre un appartement, un portefeuille et un peu de crypto.",
+        why: "Jour un. À partir d’ici, chaque mouvement reçoit une raison, pour que le moi futur voie le pourquoi, pas seulement le quoi.",
+        ask: "Demandez : que vaudraient €754.000 aujourd’hui dans un simple fonds indiciel ?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Vous avez ouvert le journal", trigsrc: "", detect: "La base à partir de laquelle tout est mesuré", logged: "Base établie · €754.000", mkthead: "Du jour un au journal",
+      },
+      {
+        date: "févr. 2022", title: "La guerre a éclaté en Ukraine", imp: "−€38.000 cette semaine · récupéré sur l’année",
+        ctx: "Les actions ont fortement chuté et l’énergie a flambé la semaine où l’invasion a commencé.",
+        why: "L’immobilier est la plus grande exposition, le choc a donc été amorti. Signalé automatiquement — aucune action, vous êtes resté immobile.",
+        ask: "Demandez : et si j’avais tout vendu cette semaine-là ?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "La guerre a éclaté en Ukraine", trigsrc: "Marchés", detect: "Les actions ont fortement chuté ; l’énergie a flambé", logged: "−€38.000 cette semaine · vous avez tenu", mkthead: "",
+      },
+      {
+        date: "mars 2022", title: "Renforcement des liquidités avant la baisse", imp: "évité ≈ €40.000 de la baisse de 2022",
+        ctx: "La Fed a annoncé ses premières hausses ; les actions avaient atteint 64% du patrimoine net.",
+        why: "Réduire le risque avant que le cycle ne tourne. Passer aux liquidités maintenant pour qu’une vente forcée plus tard n’arrive jamais.",
+        ask: "Demandez : et si j’étais resté pleinement investi à la place ?",
+        say: "Je passe aux liquidités avant que la Fed ne commence à relever.", read: "La Fed a annoncé des hausses · actions à 64% du patrimoine net", readsrc: "Marchés", wrote: "Liquidités renforcées · risque du cycle réduit",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "oct. 2022", title: "Achat au plus bas", imp: "≈ €120.000 de hausse depuis",
+        ctx: "La peur a culminé et les marchés ont touché le fond en octobre.",
+        why: "Acheter quand ça fait mal. Je ne peux pas viser le creux exact, mais c’est assez proche — la raison est la conviction, pas le timing.",
+        ask: "Demandez : et si j’avais attendu six mois de plus pour acheter ?",
+        say: "Je rentre à nouveau — on dirait le point bas.", read: "Les marchés ont touché le fond quand la peur a culminé", readsrc: "Marchés", wrote: "Achat dans la baisse · proche du creux",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "mars 2023", title: "Une banque américaine a fait faillite (SVB)", imp: "−€12.000 cette semaine · entièrement récupéré",
+        ctx: "Une banque américaine (SVB) a fait faillite ; les actions ont vacillé, puis se sont stabilisées en quelques jours.",
+        why: "Vos banques ne sont pas exposées et les liquidités sont bien réparties. Consigné, surveillé, laissé tel quel — récupéré en moins d’une semaine.",
+        ask: "Demandez : et si je m’étais retiré quand la banque a fait faillite ?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Une banque américaine a fait faillite (SVB)", trigsrc: "Marchés", detect: "Les actions ont vacillé, puis se sont stabilisées en quelques jours", logged: "−€12.000 · récupéré, aucune action", mkthead: "",
+      },
+      {
+        date: "juin 2023", title: "Taux du prêt immobilier fixé", imp: "≈ €8.400 d’intérêts économisés à ce jour",
+        ctx: "La BCE a relevé de +25bps, les taux immobiliers continuant de grimper.",
+        why: "Fixer le taux. La certitude plutôt que la course à quelques points de base — je préfère dormir qu’optimiser.",
+        ask: "Demandez : et si j’étais resté à taux variable ?",
+        say: "Je fixe le taux du prêt avant que la BCE ne bouge.", read: "La BCE a relevé de +25bps", readsrc: "BCE", wrote: "Prêt à taux fixe · la certitude plutôt que les points de base",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "avr. 2024", title: "NVIDIA a chuté d’environ 12% en une journée", imp: "−€34.000 sur le papier · récupéré en six semaines",
+        ctx: "NVIDIA a chuté d’environ 12% en une seule séance sans réelle nouvelle.",
+        why: "Votre plus grosse position unique, €34.000 sur le papier. Un soubresaut, pas un changement de thèse — vous avez tenu, et c’était revenu en six semaines.",
+        ask: "Demandez : et si j’avais vendu NVIDIA dans la baisse ?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "NVIDIA a chuté d’environ 12% en une journée", trigsrc: "Marchés", detect: "Votre plus grosse position — €34.000 sur le papier", logged: "Signalé · sans action · vous avez tenu", mkthead: "",
+      },
+      {
+        date: "juin 2024", title: "La BCE a baissé ses taux", imp: "+€3.200 · obligations",
+        ctx: "La BCE a baissé ses taux pour la première fois depuis des années ; les obligations ont progressé.",
+        why: "Le prêt est déjà à taux fixe, la baisse ne profite donc qu’à la poche obligataire. Noté pour vous, rien à faire.",
+        ask: "Demandez : et si j’avais alors renforcé les obligations ?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "La BCE a baissé ses taux", trigsrc: "BCE", detect: "Première baisse depuis des années ; les obligations ont progressé", logged: "+€3.200 · prêt déjà à taux fixe", mkthead: "",
+      },
+      {
+        date: "oct. 2024", title: "Rééquilibrage après la flambée NVIDIA", imp: "€96.000 sécurisés · 41% → 28%",
+        ctx: "Les résultats de NVIDIA ont dépassé les attentes, le titre a gagné 8%, le portant à 41% du portefeuille.",
+        why: "Au-dessus de ma limite de confort de 35%. Encaisser des gains, rester investi — alléger le risque, pas la conviction.",
+        ask: "Demandez : et si je n’avais pas allégé NVIDIA ?",
+        say: "J’allège NVIDIA — c’est devenu trop gros.", read: "Résultats NVIDIA +8% · position à 41%", readsrc: "Résultats", wrote: "NVIDIA allégée · €96.000 sécurisés, 41%→28%",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "janv. 2025", title: "Le patrimoine net a franchi €1.000.000", imp: "€1.000.000 · en hausse de €245.000 depuis 2021",
+        ctx: "La flambée de NVIDIA a porté le patrimoine net total au-delà des sept chiffres.",
+        why: "Un seuil qui mérite d’être marqué — €245.000 au-dessus du point où ce journal a commencé en 2021. Enregistré tout seul.",
+        ask: "Demandez : à ce rythme, quand vais-je atteindre €2.000.000 ?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Le patrimoine net a franchi €1.000.000", trigsrc: "", detect: "Un seuil qui mérite d’être marqué", logged: "Jalon · en hausse de €245.000 depuis 2021", mkthead: "Du jalon au journal",
+      },
+      {
+        date: "mai 2025", title: "Bitcoin allégé au record", imp: "+€34.000 réalisés · le cœur continue de courir",
+        ctx: "Bitcoin a inscrit un nouveau sommet historique.",
+        why: "Retirer la mise initiale de la table pour que le reste joue avec l’argent de la maison. Le cœur continue de courir.",
+        ask: "Demandez : et si j’avais conservé toute la position Bitcoin ?",
+        say: "Je retire de la table ma mise initiale en Bitcoin.", read: "Bitcoin a inscrit un nouveau sommet historique", readsrc: "Crypto", wrote: "Bitcoin allégé · +€34.000 réalisés",
+        trig: "", trigsrc: "", detect: "", logged: "", mkthead: "",
+      },
+      {
+        date: "2026", title: "La crypto a fortement chuté", imp: "−€33.000 sur l’année · cœur intact",
+        ctx: "Bitcoin a chuté d’environ 30% sur l’année.",
+        why: "En baisse de €33.000 sur l’année, mais seul le reliquat allégé est exposé. La thèse de fond est intacte — vous avez tenu.",
+        ask: "Demandez : et si j’avais vendu le cœur avant la chute ?",
+        say: "", read: "", readsrc: "", wrote: "",
+        trig: "Bitcoin a chuté d’environ 30% sur l’année", trigsrc: "Crypto", detect: "Vous avez tenu le cœur tout du long", logged: "−€33.000 sur l’année · cœur intact", mkthead: "",
+      },
+    ],
+  },
+
+  band: {
+    eyebrow: "Pourquoi un journal",
+    h2: [["Un an plus tard, vous ne vous souviendrez plus ", { g: "du pourquoi." }]],
+    youHead: "Souvenir, un an plus tard",
+    youPre: "NVIDIA vendue parce que ",
+    youForget: "c’était 41% de tout et les résultats venaient de bondir.",
+    youQ: "…pourquoi ai-je vendu, déjà ?",
+    volHead: "Dans Volnar",
+    volNote: "NVIDIA vendue parce que c’était 41% de tout et les résultats venaient de bondir.",
+    volDate: "12 oct. 2024 · toujours là",
+  },
+
+  how: {
+    eyebrow: "Le journal de décisions",
+    h2: [["Chaque moment sur le graphique, ", { g: "consigné." }]],
+    body: ["Chaque repère sur le graphique est une entrée — votre raison et le chiffre, côte à côte. Les ", { auto: "automatiques" }, " se sont écrites toutes seules."],
+    tagYou: "Vous",
+    tagAuto: "Auto",
+    cap: "Douze entrées et ça continue — chaque repère sur le graphique en a une.",
+    entries: [
+      { date: "oct. 2022", title: "Achat au plus bas", tag: "user", why: "Acheter quand ça fait mal — le creux de 2022.", impact: "+€120.000", dir: "up" },
+      { date: "janv. 2025", title: "A franchi €1.000.000", tag: "auto", why: "Un jalon dans la flambée NVIDIA.", impact: "+€245.000", dir: "up" },
+      { date: "oct. 2024", title: "Rééquilibrage après la flambée NVIDIA", tag: "user", why: "Au-dessus de ma limite de confort de 35%.", impact: "€96.000 sécurisés", dir: "up" },
+      { date: "avr. 2024", title: "NVIDIA −12% en une journée", tag: "auto", why: "Plus grosse position. Vous avez tenu.", impact: "−€34.000", dir: "dn" },
+      { date: "mars 2022", title: "Renforcement des liquidités avant la baisse", tag: "user", why: "Réduire le risque avant que le cycle ne tourne.", impact: "évité €40.000", dir: "up" },
+      { date: "juin 2023", title: "Taux du prêt immobilier fixé", tag: "user", why: "La certitude plutôt que quelques points de base.", impact: "€8.400 économisés", dir: "up" },
+      { date: "mai 2025", title: "Bitcoin allégé au record", tag: "user", why: "Mise initiale retirée de la table.", impact: "+€34.000", dir: "up" },
+      { date: "2026", title: "La crypto a fortement chuté", tag: "auto", why: "Thèse de fond intacte. Vous avez tenu.", impact: "−€33.000", dir: "dn" },
+    ],
+  },
+
+  notif: {
+    eyebrow: "Notifications",
+    h2: [["Il vous prévient quand quelque chose ", { g: "bouge." }]],
+    body: "Un signal discret quand le marché touche ce que vous détenez — ou quand vous atteignez un jalon. Celles qui comptent s’écrivent d’elles-mêmes dans le journal.",
+    memoryTime: "souvenir",
+    memories: [
+      ["Ce jour-là · il y a 1 an", "Vous avez franchi €1.000.000", "Un an plus tard, vous êtes à €1.290.083."],
+      ["Ce jour-là · il y a 2 ans", "Vous avez acheté au plus bas de 2022", "Ce que vous avez ajouté cette semaine-là est en hausse de €120.000."],
+      ["Ce jour-là · il y a 1 mois", "Vous avez allégé Bitcoin à son record", "+€34.000 réalisés — le cœur continue de courir."],
+    ],
+    banners: [
+      { app: "BCE · attention", time: "auj.", t: "Taux +25 bps — affecte votre prêt immobilier", s: "Le vôtre est à taux fixe. Consigné pour vous." },
+      { app: "NVIDIA · résultats au-dessus", time: "8 min", t: "+€8.300 sur votre position NVIDIA", s: "A dépassé les estimations après la clôture." },
+      { app: "Bitcoin · dynamique", time: "1 h", t: "Au-dessus de son record — +€4.100", s: "Envie de consigner une décision tant que c’est frais ?" },
+    ],
+  },
+
+  privacy: {
+    eyebrow: "Privé par conception",
+    h2: [["Pas de synchro bancaire. Pas de conseils. ", { g: "Volontairement." }]],
+    body: "Vous lui dites ce qui s’est passé. Il ne vous vend jamais de conseils. Il ne répond qu’à vous.",
+    chips: ["Aucune connexion à un courtier", "Aucune recommandation", "Hébergé dans l’UE et en lecture seule"],
+  },
+
+  whatif: {
+    eyebrow: "Scénario · dans le chat",
+    h2: [["Voyez-le ", { g: "avant" }, " de vous engager."]],
+    body: "Demandez en langage clair. Volnar fait les calculs — de façon déterministe — et montre l’impact. Rien ne change tant que vous n’avez pas décidé.",
+    placeholder: "Posez un scénario…",
+    foot: "Simulé dans le chat · calculs déterministes · rien ne bouge tant que vous n’avez pas décidé",
+    scenarios: {
+      a: {
+        label: "Vendre l’appartement → indice mondial",
+        q: "Et si je vendais l’appartement pour acheter un indice mondial ?",
+        rows: [
+          ["Patrimoine net aujourd’hui", "Inchangé", ""],
+          ["Revenu locatif perdu", "−€1.500 / mois", "dn"],
+          ["Concentration actions", "32% → 71%", ""],
+          ["Projection à 10 ans · 6%/yr*", "≈ €734.000", "up"],
+        ],
+      },
+      b: {
+        label: "Tout conserver tel quel",
+        q: "Et si je conservais simplement tout tel quel ?",
+        rows: [
+          ["Patrimoine net aujourd’hui", "Inchangé", ""],
+          ["Liquidités ne rapportant rien", "−€2.100 / an", "dn"],
+          ["Concentration actions", "32% · inchangée", ""],
+          ["Projection à 10 ans · 6%/yr*", "≈ €690.000", "up"],
+        ],
+      },
+    },
+  },
+
+  vitals: {
+    eyebrow: "Tableau de bord · Indicateurs",
+    h2: [["Pas seulement ce que vous possédez — ", { g: "sa solidité." }]],
+    body: "Un tableau de bord en direct de chaque actif, et sept indicateurs qui notent la qualité de votre patrimoine — concentration, liquidité, levier, risque de baisse, rendement réel, croissance. Chacun s’affiche en vert, orange ou rouge, dès que quelque chose glisse.",
+    dashLabel: "Portefeuille · aujourd’hui",
+    dashBadge: "▲ +71% depuis 2021",
+    dashRows: [
+      { name: "Marchés cotés", value: "€611.505" },
+      { name: "Immobilier", value: "€431.323" },
+      { name: "Réserves", value: "€181.110" },
+      { name: "Crypto", value: "€66.145" },
+    ],
+    dashFoot: "Indicateurs · 4 sains · 2 à surveiller",
+    bandWatch: "À surveiller",
+    bandHealthy: "Sain",
+    cards: [
+      { name: "Concentration", band: "warn", valSuffix: " · NVIDIA", read: "Au-dessus de la limite de 35% — une seule position pèse lourd dans le portefeuille." },
+      { name: "Liquidité", band: "ok", valSuffix: " en une semaine", read: "Plus de la moitié de votre patrimoine est accessible en sept jours." },
+      { name: "Levier", band: "ok", valSuffix: " LTV", read: "Le prêt immobilier est modéré, et le taux est fixe." },
+      { name: "Risque de baisse", band: "ok", valSuffix: " façon 2008", read: "Un krach simultané amputerait environ un quart — supportable." },
+      { name: "Rendement des liquidités", band: "warn", valSuffix: " réel", read: "Les liquidités perdent discrètement face à l’inflation et à l’impôt." },
+      { name: "Croissance réelle", band: "ok", valSuffix: " année écoulée", read: "Le patrimoine net croît plus vite que l’inflation." },
+    ],
+    ticker: [
+      { code: "NV", name: "NVIDIA", color: "#117A52" },
+      { code: "AS", name: "ASML", color: "#0B5AA6" },
+      { code: "Au", name: "Or", color: "#C9A227" },
+      { code: "₿", name: "Bitcoin", color: "#E0922A" },
+      { code: "€", name: "Liquidités", color: "#C9C3B4" },
+      { code: "RE", name: "Immobilier", color: "#3F7CA8" },
+    ],
+  },
+
+  compare: {
+    eyebrow: "Pourquoi Volnar, pas les autres",
+    h2: [["Un ", { g: "axe" }, " entièrement différent."]],
+    rows: [
+      { l: "Les agrégateurs synchronisent votre banque", r: ["Volnar ", { g: "ne le fait pas" }, " — pour que chaque changement garde votre raison"] },
+      { l: "Les conseillers IA vous disent quoi faire", r: ["Volnar ", { g: "ne conseille jamais" }, " — il consigne ce que vous avez choisi"] },
+      { l: "Les alertes vibrent une fois et disparaissent", r: ["Volnar ", { g: "garde les entrées du marché" }] },
+    ],
+  },
+
+  pricing: {
+    eyebrow: "Tarifs",
+    h2: [["Un produit. Un prix."]],
+    monthly: { name: "Mensuel", amount: "€9,99", per: " / mois", features: ["Journal de décisions complet", "Journalisation automatique du marché", "Simulations de scénarios"] },
+    annual: { name: "Annuel", amount: "€99,99", per: " / an", badge: "Économisez 17%", features: ["Tout ce qu’il y a dans Mensuel", "Journal conservé à vie", "iPhone et web"] },
+    cta: "Démarrer la démo",
+    micro: "Tarifs indicatifs · démo de 14 jours, sans carte requise.",
+  },
+
+  close: {
+    h2: [["Le ", { g: "quoi" }, " est facile."], ["Le ", { g: "pourquoi" }, " est ce qui vaut la peine d’être gardé."]],
+    cta: "Démarrez votre journal",
+  },
+
+  footer: {
+    tagline: "Un journal de décisions privé pour votre patrimoine.",
+    productHead: "Produit",
+    product: { liveDemo: "Démo en direct", how: "Comment ça marche", pricing: "Tarifs" },
+    companyHead: "Entreprise",
+    company: { privacy: "Confidentialité", terms: "Conditions", support: "Assistance" },
+    copyright: "© 2026 Volnar · NovaHub B.V.",
+    disclaimer: "Hébergé dans l’UE · portefeuille d’exemple · les prix sont des données de marché historiques réelles · *projections illustratives",
+  },
+};
