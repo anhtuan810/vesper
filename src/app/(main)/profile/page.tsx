@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/hooks";
 import { NavBar } from "@/components/NavBar";
 import { ProfileContent } from "@/components/profile/ProfileContent";
+import { DesktopProfile } from "@/components/overview/DesktopProfile";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { createBrowserSupabase } from "@/lib/supabase";
 
@@ -33,9 +34,9 @@ export default function ProfilePage() {
     );
   }
 
-  // Desktop: the (main) layout provides the shell; supply center content only.
+  // Desktop: the (main) layout provides the WebShell; supply the Twilight content.
   if (isDesktop) {
-    return <ProfileContent fillWidth />;
+    return <DesktopProfile />;
   }
 
   const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {
