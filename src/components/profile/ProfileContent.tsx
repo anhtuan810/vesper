@@ -70,7 +70,7 @@ function ProfilePreview() {
   const sectionLabel: CSSProperties = {
     fontSize: 11,
     fontWeight: 500,
-    letterSpacing: "var(--tracking-label)",
+    fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
     textTransform: "uppercase",
     color: "var(--text-faint)",
     marginBottom: 10,
@@ -258,7 +258,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           <div style={{
             fontSize: 11,
             fontWeight: 500,
-            letterSpacing: "var(--tracking-label)",
+            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--text-faint)",
             marginBottom: 10,
@@ -275,7 +275,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           <div style={{
             fontSize: 12,
             fontWeight: 500,
-            letterSpacing: "var(--tracking-label)",
+            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--text-faint)",
             marginBottom: 10,

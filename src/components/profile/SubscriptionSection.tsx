@@ -23,7 +23,7 @@ import {
 const SECTION_LABEL_STYLE: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 500,
-  letterSpacing: "var(--tracking-label)",
+  fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
   textTransform: "uppercase",
   color: "var(--text-faint)",
   marginBottom: 10,

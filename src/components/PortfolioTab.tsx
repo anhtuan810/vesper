@@ -391,7 +391,7 @@ export function PortfolioTab({
           style={{
             cursor: "pointer", WebkitTapHighlightColor: "transparent",
             padding: "2px 0 0", marginBottom: 0,
-            fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)",
+            fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase", color: "var(--text-faint)",
           }}
         >
@@ -427,7 +427,7 @@ export function PortfolioTab({
             <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
               <div
                 style={{
-                  fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)",
+                  fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
                   textTransform: "uppercase", color: "var(--text-faint)",
                 }}
               >

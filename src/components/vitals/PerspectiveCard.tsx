@@ -58,7 +58,7 @@ export function PerspectiveCard({
           style={{
             fontSize: 11,
             fontWeight: 500,
-            letterSpacing: "var(--tracking-label)",
+            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             color: "var(--text-faint)",
           }}
@@ -86,7 +86,7 @@ export function PerspectiveCard({
               fontSize: 11,
               color: "var(--accent-deep)",
               opacity: 0.72,
-              letterSpacing: "var(--tracking-label)",
+              fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
               textTransform: "uppercase",
               marginBottom: 5,
             }}
@@ -139,7 +139,7 @@ export function PerspectiveCard({
               fontSize: 11,
               color: "var(--accent-deep)",
               opacity: 0.7,
-              letterSpacing: "var(--tracking-label)",
+              fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
               textTransform: "uppercase",
               marginBottom: 10,
               padding: "0 6px",

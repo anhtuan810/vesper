@@ -353,7 +353,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
           >
             <div
               style={{
-                fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)",
+                fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
                 textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
                 marginBottom: 6,
               }}

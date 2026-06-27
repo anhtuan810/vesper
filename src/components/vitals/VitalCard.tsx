@@ -65,7 +65,7 @@ export function VitalCard({
             style={{
               fontSize: "11px",
               fontWeight: 500,
-              letterSpacing: "var(--tracking-label)",
+              fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
               textTransform: "uppercase",
               color: "var(--text-faint)",
             }}
@@ -120,7 +120,7 @@ export function VitalCard({
               style={{
                 fontSize: "11px",
                 color: "var(--text-faint)",
-                letterSpacing: "var(--tracking-label)",
+                fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
                 textTransform: "uppercase",
                 lineHeight: 1,
               }}

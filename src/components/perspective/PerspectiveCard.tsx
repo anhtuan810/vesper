@@ -101,7 +101,7 @@ export function PerspectiveCard({
             fontSize: 11,
             color: "var(--accent-deep)",
             opacity: 0.7,
-            letterSpacing: "var(--tracking-label)",
+            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
             textTransform: "uppercase",
             marginBottom: 10,
             padding: "0 6px",

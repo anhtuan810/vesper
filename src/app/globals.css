@@ -293,6 +293,15 @@ body {
   scrollbar-gutter: stable;
 }
 
+/* SVG chart labels (axis numbers, percentile ticks) pick up the brand mono,
+   matching the marketing charts. A CSS rule outranks the SVG `font-family`
+   presentation attribute, so the per-element fontFamily="system-ui" fallbacks
+   adopt this without editing every chart. Marketing scopes its own SVG label
+   fonts at higher specificity (.tw .vc-lbl), so it is unaffected. */
+svg text {
+  font-family: var(--mono);
+}
+
 /* Native app shell only (html.native-app is set by NativeBootstrap inside the
    Capacitor webview; plain browsers are unaffected). Suppress the browser-y
    long-press behaviors: the iOS callout sheet on links/images and the

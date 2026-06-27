@@ -53,7 +53,7 @@ export function BondBlock({ asset }: Props) {
 
   return (
     <div style={{ marginBottom: 26 }}>
-      <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
         Bond details
       </div>
       <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
