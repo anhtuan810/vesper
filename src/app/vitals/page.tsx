@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/NavBar";
 import { VitalsContent } from "@/components/vitals/VitalsContent";
+import { DesktopVitals } from "@/components/overview/DesktopVitals";
 import { WebShell } from "@/components/desktop/WebShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
@@ -20,7 +21,7 @@ export default function VitalsPage() {
   if (isDesktop) {
     return (
       <WebShell tab="vitals">
-        <VitalsContent />
+        <DesktopVitals />
       </WebShell>
     );
   }
