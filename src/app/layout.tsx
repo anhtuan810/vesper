@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Fraunces, Schibsted_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -18,10 +18,14 @@ import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
 import { PreloadResources } from "@/components/PreloadResources";
 
-// Webfonts ported from the marketing "Twilight" theme — Fraunces (serif
-// display), Inter (sans body), IBM Plex Mono — exposed under the same
-// --font-serif / --font-sans / --font-mono variables the whole app references,
-// so every surface adopts the marketing typography without touching markup.
+// App typography on the Twilight theme: Fraunces (serif display) and IBM Plex
+// Mono (figures) from the marketing site, paired with Schibsted Grotesk as the
+// body sans — a warmer, more editorial grotesque than the marketing site's
+// Inter, chosen so the dense app UI reads designed rather than default. All
+// three are exposed under the same --font-serif / --font-sans / --font-mono
+// variables the whole app references, so every surface adopts them without
+// touching markup. (The marketing landing page keeps Inter via its own scoped
+// --mkt-sans, so this change is confined to the app.)
 const fraunces = Fraunces({
   subsets: ["latin"],
   axes: ["opsz"],
@@ -29,7 +33,7 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-const inter = Inter({
+const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
@@ -100,7 +104,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${schibsted.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning={isNativeBuild}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
