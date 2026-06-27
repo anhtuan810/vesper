@@ -1,22 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/NavBar";
 import { VitalsContent } from "@/components/vitals/VitalsContent";
+import { WebShell } from "@/components/desktop/WebShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
 export default function VitalsPage() {
   const router = useRouter();
   const isDesktop = useIsDesktop();
 
-  // Desktop folds Vitals into the Portfolio surface; this route only exists on mobile.
-  useEffect(() => {
-    if (isDesktop) router.replace("/");
-  }, [isDesktop, router]);
-
-  if (isDesktop !== false) {
+  // Neutral background until the device class is known — avoids a hydration flash.
+  if (isDesktop === undefined) {
     return <div className="min-h-screen bg-bg" />;
+  }
+
+  // Desktop web: a real Vitals page inside the new Twilight WebShell (the new nav
+  // links here). Mobile/native keep the single-column NavBar layout.
+  if (isDesktop) {
+    return (
+      <WebShell tab="vitals">
+        <VitalsContent />
+      </WebShell>
+    );
   }
 
   const setTab = (t: "portfolio" | "diary" | "profile" | "vitals") => {

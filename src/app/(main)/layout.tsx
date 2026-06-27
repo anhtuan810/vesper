@@ -1,16 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { DesktopShell } from "@/components/desktop/DesktopShell";
-import { HomeShell } from "@/components/desktop/HomeShell";
+import { WebShell, type WebTab } from "@/components/desktop/WebShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 
-// Shared layout for the three center views (Portfolio /, Diary, Profile). At lg/xl
-// it mounts the persistent three-column shell ONCE — left Vitals rail, right
-// Assistant/Chat rail, center = the active route's children. Because this layout
-// persists across navigations within the group, the rails and the chat thread
-// never unmount or reset; only the center swaps. Below lg it is a pass-through:
-// each page renders its own mobile single-column layout exactly as before.
+// Shared layout for the three center views (Portfolio /, Diary, Profile). On
+// desktop web it mounts the new Twilight two-column WebShell ONCE — the top nav,
+// the active route's content (children), and the persistent chat rail. Because
+// this layout persists across navigations within the group, the rail and chat
+// thread never unmount or reset; only the content swaps. Below lg it is a
+// pass-through: each page renders its own mobile single-column layout as before.
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const isDesktop = useIsDesktop();
   const pathname = usePathname();
@@ -19,15 +18,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   if (isDesktop === undefined) return <div className="min-h-screen bg-bg" />;
   if (!isDesktop) return <>{children}</>;
 
-  const tab = pathname.startsWith("/diary")
-    ? "diary"
+  const tab: WebTab = pathname.startsWith("/diary")
+    ? "journal"
     : pathname.startsWith("/profile")
     ? "profile"
-    : "portfolio";
+    : "overview";
 
-  // The home tab uses the new Twilight two-column Overview shell; Diary/Profile
-  // keep the existing three-column DesktopShell.
-  if (tab === "portfolio") return <HomeShell>{children}</HomeShell>;
-
-  return <DesktopShell tab={tab}>{children}</DesktopShell>;
+  return <WebShell tab={tab}>{children}</WebShell>;
 }

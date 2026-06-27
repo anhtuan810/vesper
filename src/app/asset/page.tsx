@@ -12,7 +12,7 @@ import { TradeableDetail } from "@/components/asset-detail/TradeableDetail";
 import { RealEstateDetail } from "@/components/asset-detail/RealEstateDetail";
 import { StaticDetail } from "@/components/asset-detail/StaticDetail";
 import { PensionDetail } from "@/components/asset-detail/PensionDetail";
-import { DesktopFrame } from "@/components/desktop/DesktopFrame";
+import { WebFrame } from "@/components/desktop/WebFrame";
 import type { Asset, TradeableAsset, RealEstateAsset, StaticAsset, BondsAsset } from "@/lib/supabase";
 
 type LoadState =
@@ -84,9 +84,9 @@ function AssetDetailInner() {
 
   if (!detail) notFound();
 
-  // Desktop web adopts the three-pane shell (Vitals + content + chat);
+  // Desktop web adopts the new Twilight WebShell (nav + content + chat rail);
   // mobile and native render the detail unchanged.
-  return <DesktopFrame tab="portfolio">{detail}</DesktopFrame>;
+  return <WebFrame tab="asset">{detail}</WebFrame>;
 }
 
 export default function AssetPage() {

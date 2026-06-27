@@ -12,6 +12,8 @@ import { WHATIF_EVENT, takeWhatIfSeed } from "@/lib/scenario/whatif";
 import type { ChatSeed } from "@/lib/chat-seeds";
 import "@/components/overview/home-twilight.css";
 
+export type WebTab = "overview" | "journal" | "vitals" | "profile" | "settings" | "asset";
+
 function initials(user: { user_metadata?: Record<string, unknown>; email?: string } | null | undefined): string {
   const meta = user?.user_metadata ?? {};
   const full = (meta.full_name || meta.name) as string | undefined;
@@ -22,22 +24,23 @@ function initials(user: { user_metadata?: Record<string, unknown>; email?: strin
   return (user?.email?.[0] ?? "·").toUpperCase();
 }
 
-const TABS = [
-  { label: "Overview", href: "/", on: true },
-  { label: "Journal", href: "/diary", on: false },
-  { label: "Vitals", href: "/vitals", on: false },
-  { label: "Holdings", href: "#holdings", on: false },
+const NAV = [
+  { label: "Overview", href: "/", tab: "overview" as const },
+  { label: "Journal", href: "/diary", tab: "journal" as const },
+  { label: "Vitals", href: "/vitals", tab: "vitals" as const },
+  { label: "Holdings", href: "/#holdings", tab: null },
 ];
 
 /**
- * Desktop web layout for the home tab (route "/"). Replaces the 3-column
- * DesktopShell with the approved Twilight two-column design: a top nav, the
- * scrolling Overview content (children), and the persistent chat rail. The chat
- * machinery is the same working session/thread DesktopShell uses. Forced light
- * (the approved design is light-only); the rest of the app keeps its theme.
- * Only mounts on desktop web for the portfolio tab — mobile/native never reach it.
+ * Desktop web layout shell — the approved Twilight two-column design: a top nav,
+ * the scrolling page content (children), and the persistent chat rail. Used by
+ * every authenticated desktop web page (home, journal, vitals, profile, settings,
+ * asset detail). `tab` drives the nav's active state. The chat rail reuses the
+ * working session/thread machinery. Forced light (the design is light-only); the
+ * rest of the app keeps its theme. Only mounts on desktop web — mobile/native
+ * never reach it.
  */
-export function HomeShell({ children }: { children: ReactNode }) {
+export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }) {
   const { user } = useUser();
   const displayCurrency = useDisplayCurrency();
   const { assets } = useAssets(user?.id);
@@ -84,7 +87,6 @@ export function HomeShell({ children }: { children: ReactNode }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinking]);
 
-  // Scenario → chat handoff (consumed once the user is known).
   const handoffDone = useRef(false);
   useEffect(() => {
     if (handoffDone.current || !user?.id) return;
@@ -119,18 +121,21 @@ export function HomeShell({ children }: { children: ReactNode }) {
         <div className="vh-nav-in">
           <span className="vh-brand"><VolnarLogo size={26} /><span className="wm">Volnar</span></span>
           <div className="vh-tabs">
-            {TABS.map((t) => (
-              <Link key={t.label} href={t.href} className={`vh-tab${t.on ? " on" : ""}`} aria-current={t.on ? "page" : undefined}>
-                {t.label}
-              </Link>
-            ))}
+            {NAV.map((t) => {
+              const on = t.tab != null && t.tab === tab;
+              return (
+                <Link key={t.label} href={t.href} className={`vh-tab${on ? " on" : ""}`} aria-current={on ? "page" : undefined}>
+                  {t.label}
+                </Link>
+              );
+            })}
           </div>
           <div className="vh-nav-r">
             <span className="vh-priv">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
               Private · EU
             </span>
-            <Link href="/profile" className="vh-av" aria-label="Account">{initials(user)}</Link>
+            <Link href="/profile" className="vh-av" aria-label="Account" aria-current={tab === "profile" ? "page" : undefined}>{initials(user)}</Link>
           </div>
         </div>
       </nav>
