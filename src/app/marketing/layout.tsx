@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-const TITLE = "Volnar — Wealth. Watched over.";
+const TITLE = "Volnar — A decision journal for your wealth";
 const DESCRIPTION =
-  "Everything you own — property, stocks, pensions, crypto — in one calm place, " +
-  "with a quiet eye on the market events that move it. Private by design, EU-hosted.";
+  "A private decision journal for your wealth. You record why you bought in one " +
+  "sentence; when the market moves your money, Volnar records that itself. " +
+  "EU-hosted, no bank sync, no advice.";
 
 // Marketing pages are served at volnar.nl via the middleware rewrite, so
 // absolute URLs (canonical, og:image) must resolve against the marketing
