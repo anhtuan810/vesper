@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
-/* Typography — ONE unified, modern family across the whole app. layout.tsx
-   loads a single sans (Geist) into --font-sans; the serif and mono roles are
-   aliased to that same variable, so every surface — hero numbers, body copy,
-   and the uppercase/numeric labels that used to be serif or monospace — renders
-   in one font. Tabular figures (set on body below) keep numbers column-aligned
-   without a separate monospace face. */
+/* Typography — a premium editorial pairing applied across the whole app.
+   layout.tsx loads Libre Caslon Display into --font-serif (the display role: big
+   money figures and headings) and Libre Franklin into --font-sans (body + label
+   text). The mono role is aliased to the sans, so small numeric labels stay in
+   Franklin; tabular figures (set on body below) keep them column-aligned. Caslon
+   is self-hosted (src/app/fonts) and declared over a wide weight range, so the
+   big display numbers render at its true elegant weight rather than a faux-bold
+   when components ask for 600/700. */
 :root {
-  --font-serif: var(--font-sans);
   --font-mono:  var(--font-sans);
-  --serif: var(--font-sans), system-ui, sans-serif;
+  --serif: var(--font-serif), Georgia, serif;
   --sans:  var(--font-sans), system-ui, sans-serif;
   --mono:  var(--font-sans), system-ui, sans-serif;
   --nav-height: 56px;

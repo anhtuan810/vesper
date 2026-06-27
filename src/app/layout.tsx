@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Libre_Franklin } from "next/font/google";
+import localFont from "next/font/local";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -18,14 +19,27 @@ import { NativeBootstrap } from "@/components/NativeBootstrap";
 import { AppLock } from "@/components/AppLock";
 import { PreloadResources } from "@/components/PreloadResources";
 
-// One unified, modern typeface for the entire app. Geist is loaded once into
-// --font-sans; globals.css aliases the serif and mono roles to the same
-// variable, so every surface — the big hero numbers, body copy, and the
-// uppercase/numeric labels that used to be serif or monospace — now renders in
-// a single clean sans. Tabular figures (set on body) keep columns aligned
-// without a separate monospace face. The marketing landing page is unaffected:
-// it sets its own scoped --mkt-* fonts inside the .tw wrapper.
-const geist = Geist({
+// Premium editorial pairing for the whole app. Libre Caslon Display (a Caslon)
+// takes the display role — the big money figures and headings that read through
+// var(--serif) / font-serif. Libre Franklin (a Franklin Gothic — the narrow,
+// highly legible workhorse newspapers use for dense text) is the body + label
+// sans, also feeding the numeric-label (mono) role. globals.css maps the roles
+// to these two variables, so every surface adopts the pairing without touching
+// markup. The marketing landing page is unaffected — it sets its own scoped
+// --mkt-* fonts inside the .tw wrapper.
+// Self-hosted so it can be declared over a wide weight range: Caslon Display
+// ships a single master, and declaring weight "100 900" makes the browser treat
+// any requested weight as real — so the big display numbers render at Caslon's
+// true, elegant weight instead of a synthetic faux-bold when components ask for
+// 600/700. (font-synthesis: none does NOT reliably prevent that in Chromium.)
+const libreCaslon = localFont({
+  src: "./fonts/libre-caslon-display.woff2",
+  weight: "100 900",
+  variable: "--font-serif",
+  display: "swap",
+});
+
+const libreFranklin = Libre_Franklin({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
@@ -89,7 +103,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className={`${geist.variable} h-full antialiased`}
+      className={`${libreCaslon.variable} ${libreFranklin.variable} h-full antialiased`}
       suppressHydrationWarning={isNativeBuild}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
