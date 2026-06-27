@@ -192,7 +192,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
             </span>
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-sans)" }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--mono)" }}>
               Native currency: {asset.currency} · {formatMoney(asset.value, asset.currency, asset.currency as DisplayCurrency)}
             </div>
           )}

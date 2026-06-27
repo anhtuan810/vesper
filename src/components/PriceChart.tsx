@@ -354,6 +354,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
                   top: `${(1 - (value - niceMin) / (niceMax - niceMin)) * 100}%`,
                   transform: "translateY(-50%)",
                   right: 0,
+                  fontFamily: "var(--mono)",
                   fontSize: 11,
                   color: "var(--text-faint)",
                   textAlign: "right",

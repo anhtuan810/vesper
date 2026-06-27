@@ -153,7 +153,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             ≈ {formatMoney(monthly, cur, displayCurrency)} / month{accessAge != null ? `, from age ${accessAge}` : ""}
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-sans)" }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--mono)" }}>
               Native currency: {asset.currency} · {formatMoney(annual, asset.currency, asset.currency as DisplayCurrency)} / year
             </div>
           )}
@@ -181,11 +181,11 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
               {currentAge != null && (
-                <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
                   Now · age {currentAge}
                 </div>
               )}
-              <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, textAlign: currentAge != null ? "right" : "left" }}>
+              <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, textAlign: currentAge != null ? "right" : "left", fontFamily: "var(--mono)" }}>
                 Income begins · age {accessAge}
               </div>
             </div>

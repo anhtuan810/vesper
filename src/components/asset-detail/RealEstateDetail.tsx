@@ -142,9 +142,9 @@ export function RealEstateDetail({ asset }: Props) {
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
             {currencyLoaded ? [
               <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500, fontFamily: "var(--mono)" }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
-              asset.size_sqm ? <span key="size">{asset.size_sqm} m²</span> : null,
-              ownedSinceLabel ? <span key="since">owned since {ownedSinceLabel}</span> : null,
-              yearsOwned ? <span key="yrs">{yearsOwned} yrs</span> : null,
+              asset.size_sqm ? <span key="size" style={{ fontFamily: "var(--mono)" }}>{asset.size_sqm} m²</span> : null,
+              ownedSinceLabel ? <span key="since" style={{ fontFamily: "var(--mono)" }}>owned since {ownedSinceLabel}</span> : null,
+              yearsOwned ? <span key="yrs" style={{ fontFamily: "var(--mono)" }}>{yearsOwned} yrs</span> : null,
             ].filter(Boolean).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep${i}`} style={{ color: "var(--text-faint)" }}> · </span>, el], []) : null}
           </div>
         </div>

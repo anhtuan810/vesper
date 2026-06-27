@@ -88,7 +88,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
             {asset.name}
           </div>
           {sub && (
-            <div className="text-dim mt-0.5 truncate" style={{ fontSize: 12 }}>
+            <div className="text-dim mt-0.5 truncate" style={{ fontSize: 12, fontFamily: "var(--mono)" }}>
               {sub}
             </div>
           )}

@@ -552,7 +552,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         personalContext={anchorContext}
                         marketContext={null}
                         subtitle={
-                          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.3, marginBottom: anchorContext ? 2 : 0 }}>
+                          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.3, marginBottom: anchorContext ? 2 : 0, fontFamily: "var(--mono)" }}>
                             · {members.length} {verb}
                           </div>
                         }

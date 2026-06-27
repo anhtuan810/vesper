@@ -119,9 +119,9 @@ export function LeverageTrend({ data }: Props) {
           fontFeatureSettings: "'tnum'",
         }}
       >
-        <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{pastLabel}</span>
-        <span style={{ fontSize: 11, color: 'var(--accent-deep)', fontWeight: 600 }}>{todayLabel}</span>
-        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic' }}>{projLabel}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: "var(--mono)" }}>{pastLabel}</span>
+        <span style={{ fontSize: 11, color: 'var(--accent-deep)', fontWeight: 600, fontFamily: "var(--mono)" }}>{todayLabel}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic', fontFamily: "var(--mono)" }}>{projLabel}</span>
       </div>
     </div>
   );

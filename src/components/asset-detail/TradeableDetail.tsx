@@ -237,7 +237,7 @@ export function TradeableDetail({ asset }: Props) {
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2)}%</DeltaPill>
-                  <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{scrubInfo.label}</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: 13, fontFamily: "var(--mono)" }}>{scrubInfo.label}</span>
                 </div>
               );
             }

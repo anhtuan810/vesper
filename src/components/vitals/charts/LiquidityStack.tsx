@@ -104,7 +104,7 @@ export function LiquidityStack({ data }: Props) {
               gap: 4,
               fontSize: 11,
               color: 'var(--text-faint)',
-              fontFamily: 'var(--sans)',
+              fontFamily: 'var(--mono)',
             }}
           >
             <span

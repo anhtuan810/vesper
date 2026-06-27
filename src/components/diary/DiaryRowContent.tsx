@@ -30,7 +30,7 @@ export function DiaryRowContent({
           </span>
           <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
             {valueNode}
-            <span style={{ fontSize: 13, color: "var(--text-faint)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
               {formatDate(date)}
             </span>
           </span>

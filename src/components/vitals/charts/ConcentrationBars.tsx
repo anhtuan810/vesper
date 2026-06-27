@@ -235,6 +235,7 @@ export function ConcentrationBars({ positions }: Props) {
             paddingLeft: LABEL_W,
             fontSize: 11,
             color: "var(--text-faint)",
+            fontFamily: "var(--mono)",
             fontFeatureSettings: "'tnum'",
             lineHeight: 1,
           }}

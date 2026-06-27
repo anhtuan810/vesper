@@ -433,7 +433,7 @@ export function PortfolioTab({
               >
                 Future income
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+              <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
                 {formatMoney(
                   incomePensions.reduce((s, a) => {
                     const native = (a as { annual_income?: number | null }).annual_income ?? 0;
@@ -466,7 +466,7 @@ export function PortfolioTab({
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-fg" style={{ fontSize: 13, fontWeight: 500, fontFeatureSettings: '"tnum" 1' }}>
+                      <div className="text-fg" style={{ fontSize: 13, fontWeight: 500, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
                         {formatMoney((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD", displayCurrency)} / year
                       </div>
                     </div>

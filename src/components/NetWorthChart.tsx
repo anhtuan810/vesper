@@ -460,11 +460,11 @@ export function NetWorthChart(props: Props) {
                 <circle cx={20} cy={20} r={4} fill={strokeColor} />
               </svg>
               {currentValue != null && (
-                <div style={{ fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--text-dim)", fontFeatureSettings: '"tnum" 1' }}>
                   {fmtYLabel(currentValue, displayCurrency)}
                 </div>
               )}
-              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-faint)" }}>
                 Tracking since {formatDate(trackingSinceDate ?? new Date().toISOString().slice(0, 10))}
               </div>
             </div>
@@ -568,7 +568,7 @@ export function NetWorthChart(props: Props) {
                       {CATEGORY_LABEL_SHORT[category]}
                     </span>
                   </div>
-                  <span style={{ fontFamily: "var(--font-serif)", fontSize: 12, color: "var(--text)", fontFeatureSettings: '"tnum" 1', marginLeft: 8 }}>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--text)", fontFeatureSettings: '"tnum" 1', marginLeft: 8 }}>
                     {formatMoney(value, displayCurrency, displayCurrency)}
                   </span>
                 </div>
@@ -588,6 +588,7 @@ export function NetWorthChart(props: Props) {
                   top: `${(1 - (value - niceMin) / (niceMax - niceMin)) * 100}%`,
                   transform: "translateY(-50%)",
                   right: 0,
+                  fontFamily: "var(--mono)",
                   fontSize: 11,
                   color: "var(--text-faint)",
                   textAlign: "right",
