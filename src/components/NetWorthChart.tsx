@@ -568,7 +568,17 @@ export function NetWorthChart(props: Props) {
               </div>
             </div>
           ) : loading ? (
-            <div style={{ height: H }} />
+            // Calm skeleton at the same geometry — a faint baseline and a quiet
+            // pre-baked curve — so the chart doesn't snap-pop the layout on load.
+            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block" }} aria-hidden>
+              {[0.3, 0.55, 0.8].map((f) => (
+                <line key={f} x1={0} y1={H * f} x2={drawW} y2={H * f} stroke="var(--border)" strokeWidth={1} opacity={0.35} />
+              ))}
+              <path
+                d={`M 0 ${(H * 0.64).toFixed(1)} L ${(drawW * 0.34).toFixed(1)} ${(H * 0.56).toFixed(1)} L ${(drawW * 0.67).toFixed(1)} ${(H * 0.42).toFixed(1)} L ${drawW.toFixed(1)} ${(H * 0.34).toFixed(1)}`}
+                fill="none" stroke="var(--text-faint)" strokeWidth={2} strokeOpacity={0.3} strokeLinecap="round" strokeLinejoin="round"
+              />
+            </svg>
           ) : (
             <svg
               viewBox={`0 0 ${W} ${H}`}
@@ -610,11 +620,14 @@ export function NetWorthChart(props: Props) {
                   <path d={areaPath} fill="url(#liquid-area-grad)" stroke="none" />
                 </>
               )}
+              {/* Soft same-hue glow under the trajectory, then the line itself —
+                  thicker than the band edges so the net-worth path owns the silhouette. */}
+              <path d={line} fill="none" stroke={strokeColor} strokeWidth={3.5} strokeOpacity={0.12} strokeLinecap="round" strokeLinejoin="round" />
               <path
                 d={line}
                 fill="none"
                 stroke={strokeColor}
-                strokeWidth={1}
+                strokeWidth={1.75}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -666,8 +679,12 @@ export function NetWorthChart(props: Props) {
                       </>
                     ) : hov ? (
                       <circle cx={dot.x} cy={dot.y} r={4.5} fill={dotColor} stroke="var(--surface)" strokeWidth={1.5} />
+                    ) : dot.kind === "market" ? (
+                      // Auto market-swing entries stay quiet — a small faint dot — so
+                      // the user's own decisions (accent rings) own the line.
+                      <circle cx={dot.x} cy={dot.y} r={1.7} fill="var(--text-faint)" opacity={0.55} />
                     ) : (
-                      <circle cx={dot.x} cy={dot.y} r={2.6} fill="var(--surface)" stroke={dotColor} strokeWidth={1.4} strokeOpacity={0.75} />
+                      <circle cx={dot.x} cy={dot.y} r={2.8} fill="var(--surface)" stroke={dotColor} strokeWidth={1.5} strokeOpacity={0.85} />
                     )}
                   </g>
                 );
