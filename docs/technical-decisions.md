@@ -153,6 +153,18 @@ Global cache of daily index % moves (Yahoo closes), used to anchor deterministic
 APNs device tokens for push notifications. Written via POST /api/push/register, read by the market-highlights cron sender (src/lib/apns.ts → pushToUser). Service-role only: RLS enabled, no policies. Migration `20260617_device_tokens.sql`.
 - `user_id` (uuid, FK → users, ON DELETE CASCADE), `token` (text), `platform` (text, check in ('ios')), `updated_at`. PK (user_id, token).
 
+### market_swings
+Per-user precomputed "market swing" journal entries — big index moves enriched with the user's *real* portfolio impact that day (display currency). Generated in the background (`generateMarketSwings`/`storeMarketSwings` via Next `after()` on data entry + the daily cron) and served fast-path by `GET /api/diary/market-moves`; the read path falls back to computing on the fly (`getDiaryMarketMoves`) and persisting after, so it is safe before the migration is applied. `getStoredMarketSwings` backfills each mover's `assetId` (by symbol → the user's current asset) at read time so older rows still deep-link. Service-role only: RLS enabled, no policies. Migration `20260628_market_swings.sql`.
+- `user_id` (uuid, FK → users implied), `date`, `index_symbol`, `index_label`, `pct_change`, `total` (net portfolio day-change, display currency), `currency`, `movers` (jsonb — `[{symbol,label,impact,pct,assetId?}]`), `expanded` (bool — full card vs compact row), `computed_at`. PK (user_id, date). Length/cadence governed by `MARKET_SWING_*` constants in `src/lib/diary-market-moves.ts`.
+
+### demo_users
+Per-visitor ephemeral demo accounts (only minted when `DEMO_ENABLED === "true"`). One row per anonymous Supabase user written with the service role on demo entry (`/demo` web, `/api/demo-session` native); `created_at` starts the hard one-hour session clock (`demoExpiredGate`), and the reap-demo cron deletes rows past TTL + grace. Service-role only: RLS enabled, no policies. Migrations `20260622_demo_users.sql` (table) and `20260628_demo_visitor_trial.sql` (adds `visitor_id`).
+- `user_id` (uuid, PK, FK → users ON DELETE CASCADE), `created_at`, `visitor_id` (uuid, nullable — links the anon user to its browser; null for native, which keeps the per-user clock).
+
+### demo_visitors
+Anchors the per-visitor demo trial to the **browser** so re-entering the demo (e.g. after bailing out of Subscribe) never resets the clock. A persistent httpOnly `demo_visitor` cookie (UUID, 7-day life) survives sign-out; `first_seen` records the browser's first entry and the trial deadline is `first_seen + TTL` for every re-entry. `demoExpiredGate` enforces that same deadline server-side for users with a `visitor_id`. A long-lived tombstone — pruned by the reaper only well past the cookie's life (`DEMO_VISITOR_RETENTION_MS`), so the lockout outlives the per-user data cleanup. Service-role only: RLS enabled, no policies. Migration `20260628_demo_visitor_trial.sql`.
+- `visitor_id` (uuid, PK), `first_seen` (timestamptz).
+
 ## Cron Jobs
 
 Configured in `vercel.json`:
