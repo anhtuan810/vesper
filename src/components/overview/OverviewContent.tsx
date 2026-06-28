@@ -298,7 +298,14 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     // Newest first; on a tie, decisions before market rows.
     return rows.sort((a, b) => b.date.localeCompare(a.date) || (a.kind === b.kind ? 0 : a.kind === "market" ? 1 : -1));
   }, [sortedMutations, moves]);
-  const journalPreview = useMemo(() => entries.slice(0, 7), [entries]);
+  // Entries within the selected chart range — the navigator, counter, chart dots
+  // and journal preview all scope to this, so stepping never leaves the visible
+  // window. "All" (no window start) keeps every entry.
+  const navEntries = useMemo(() => {
+    const start = rangeStartDate(range);
+    return start ? entries.filter((e) => e.date >= start) : entries;
+  }, [entries, range]);
+  const journalPreview = useMemo(() => navEntries.slice(0, 7), [navEntries]);
 
   // "On this day, N years ago you…" — the most resonant proof this is a journal.
   // Find a past entry sharing today's day+month; clicking it rewinds the card.
@@ -329,15 +336,15 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   // the muted "market" colour. Each carries the short content the chart shows on
   // hover; hovering previews, clicking commits the selection (drives the page).
   const markers = useMemo(
-    () => entries.map((e) => e.kind === "decision"
+    () => navEntries.map((e) => e.kind === "decision"
       ? { id: e.id, date: e.date, kind: "you" as const, title: decisionTitle(e.m), sub: shortDate(e.date), value: impact(e.m, displayCurrency)?.text }
       : { id: e.id, date: e.date, kind: "market" as const, title: `${e.mv.index_label} ${e.mv.pct_change >= 0 ? "+" : "−"}${fmtPct(Math.abs(e.mv.pct_change), 1)}%`, sub: shortDate(e.date), value: marketImpactText(e.mv) }),
-    [entries, displayCurrency],
+    [navEntries, displayCurrency],
   );
 
-  // Navigation order: Today (null) first, then entries newest→oldest. ← steps
-  // older, → steps newer (back toward Today).
-  const navIds = useMemo<(string | null)[]>(() => [null, ...entries.map((e) => e.id)], [entries]);
+  // Navigation order: Today (null) first, then in-range entries newest→oldest. ←
+  // steps older, → steps newer (back toward Today).
+  const navIds = useMemo<(string | null)[]>(() => [null, ...navEntries.map((e) => e.id)], [navEntries]);
   const navIndex = navIds.indexOf(selectedId);
   const goOlder = () => setSelectedId(navIds[Math.min(navIndex + 1, navIds.length - 1)] ?? null);
   const goNewer = () => setSelectedId(navIds[Math.max(navIndex - 1, 0)] ?? null);
@@ -382,6 +389,17 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isToday, navIndex, navIds]);
+
+  // Changing the period rescopes the navigator. If the selected entry falls
+  // outside the new window, snap back to Today so the navigator and chart agree.
+  const handleRangeChange = (r: Range) => {
+    setRange(r);
+    const start = rangeStartDate(r);
+    if (selectedId && start) {
+      const e = entries.find((x) => x.id === selectedId);
+      if (e && e.date < start) setSelectedId(null);
+    }
+  };
 
   // The snapshot on/before the selected entry's date — anchors both the headline
   // and the holdings to the same point in time so they reconcile with the chart.
@@ -573,7 +591,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         </div>
 
         {isToday && onThisDay && (
-          <button type="button" className="onthisday" onClick={() => setSelectedId(onThisDay.id)}>
+          <button type="button" className="onthisday" onClick={() => { setRange("All"); setSelectedId(onThisDay.id); }}>
             <span className="otd-eyebrow">On this day · {onThisDay.years} {onThisDay.years === 1 ? "year" : "years"} ago</span>
             <span className="otd-text">{onThisDay.title}</span>
           </button>
@@ -582,7 +600,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         <div style={{ margin: "18px 0 4px" }}>
           <NetWorthChart
             range={range}
-            onRangeChange={setRange}
+            onRangeChange={handleRangeChange}
             series={series}
             loading={loading}
             valuesSettled={valuesSettled}
@@ -596,7 +614,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
 
         {/* Name the scrub: teach that the line is a walkable timeline of entries.
             Shown at rest (Today); once scrubbing, the nav row carries the cue. */}
-        {isToday && entries.length > 0 && (
+        {isToday && navEntries.length > 0 && (
           <div className="chart-legend">
             <span className="cl-item"><span className="cl-dot you" aria-hidden="true" /> Your decisions</span>
             <span className="cl-item"><span className="cl-dot mkt" aria-hidden="true" /> Market swings</span>
@@ -618,7 +636,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
             {!isToday && (
-              <span className="ep-pos">{navIndex} of {entries.length}</span>
+              <span className="ep-pos">{navIndex} of {navEntries.length}</span>
             )}
             {!isToday && (
               <span className="ep-hint" aria-hidden="true">← → to step · Esc for today</span>
