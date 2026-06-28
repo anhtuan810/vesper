@@ -70,7 +70,6 @@
 
 /* ── head ── */
 .vhome .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:26px}
-.vhome .hello{font-family:var(--serif);font-size:24px;font-weight:500;color:var(--ink);margin-top:8px}
 .vhome .head .date{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
 
 /* ── dashboard card ── */
@@ -87,7 +86,7 @@
 .vhome .ep-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:11px}
 .vhome .ep-date{font-family:var(--mono);font-size:13px;color:var(--muted);letter-spacing:.04em}
 .vhome .ep-kind{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;padding:4px 10px;border-radius:6px;background:var(--mint);color:var(--gb)}
-.vhome .ep-kind.market{background:var(--surface2);color:var(--muted);border:1px solid var(--line2)}
+.vhome .ep-kind.market{background:var(--surface2);color:var(--res);border:1px solid var(--line2)}
 .vhome .ep-kind.milestone{background:var(--okbg);color:var(--ok)}
 .vhome .ep-title{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:-.015em;color:var(--ink);line-height:1.12;margin:0 0 13px}
 .vhome .ep-ctx{font-style:italic;font-size:15.5px;color:var(--ink);line-height:1.5;margin:0 0 11px}
@@ -97,11 +96,19 @@
 .vhome .ep-imp{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:9px;padding:9px 14px}
 .vhome .ep-imp.dn{color:var(--neg);background:var(--surface2)}
 .vhome .ep-stat{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--body);background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:9px 13px}
+/* auto-generated (market) entry — gold accent + tint, like the Journal's market rows */
+.vhome .ep-market{border-top:0;margin-top:18px;padding:18px 20px;border-radius:12px;background:linear-gradient(90deg,var(--surface2),transparent 72%);box-shadow:inset 3px 0 0 var(--res)}
 
-/* property lens toggle (sits in the net-worth header) */
-.vhome .nwlens{flex:0 0 auto;height:30px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;white-space:nowrap;transition:.15s}
-.vhome .nwlens:hover{border-color:var(--green);color:var(--ink)}
-.vhome .nwlens.on{background:var(--mint);border-color:var(--mint);color:var(--gb)}
+/* property lens — inline word toggle in the eyebrow slot, mirroring the phone's
+   "Net worth · Liquid". Active word = green (like the eyebrow), inactive = faint. */
+.vhome .nwsel{display:inline-flex;align-items:center;gap:9px}
+/* Active word carries TWO non-color cues (weight + underline) so the selected
+   lens is perceivable without relying on hue. Inactive uses --muted (not the
+   fainter --faint) for legibility. */
+.vhome .nwsel-opt{background:none;border:0;padding:0;cursor:pointer;font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);transition:color .15s}
+.vhome .nwsel-opt:hover{color:var(--ink)}
+.vhome .nwsel-opt.on{color:var(--green);font-weight:700;text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:4px}
+.vhome .nwsel-dot{width:3px;height:3px;border-radius:999px;background:var(--faint);opacity:.6}
 
 /* prev / next / today entry navigation */
 .vhome .ep-nav{display:flex;align-items:center;gap:8px;margin-bottom:15px}
@@ -109,8 +116,8 @@
 .vhome .ep-step svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .vhome .ep-step:hover:not(:disabled){border-color:var(--green);color:var(--green)}
 .vhome .ep-step:disabled{opacity:.4;cursor:default}
-.vhome .ep-pos{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em}
-.vhome .ep-today{margin-left:auto;height:30px;padding:0 15px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:.15s}
+.vhome .ep-pos{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em}
+.vhome .ep-today{height:30px;padding:0 15px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:.15s}
 .vhome .ep-today:hover:not(:disabled){border-color:var(--green);color:var(--ink)}
 .vhome .ep-today:disabled{opacity:.4;cursor:default}
 

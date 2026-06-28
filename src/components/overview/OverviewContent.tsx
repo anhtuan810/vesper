@@ -13,7 +13,7 @@ import {
 } from "@/components/NetWorthChart";
 import { AssetLogo } from "@/components/AssetLogo";
 import { MiniSparkline } from "@/components/MiniSparkline";
-import { useDisplayCurrency, useSparklines, useVitals, useUser } from "@/lib/hooks";
+import { useDisplayCurrency, useSparklines, useVitals } from "@/lib/hooks";
 import { toDisplay, formatMoney, type DisplayCurrency } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
@@ -155,23 +155,25 @@ function valueMovement(m: Mutation, displayCurrency: ReturnType<typeof useDispla
   return null;
 }
 
-function firstName(user: { user_metadata?: Record<string, unknown>; email?: string } | null | undefined): string {
-  const meta = user?.user_metadata ?? {};
-  const full = (meta.full_name || meta.name) as string | undefined;
-  if (full) return full.trim().split(/\s+/)[0];
-  if (user?.email) return user.email.split("@")[0];
-  return "there";
-}
-function greeting(d: Date): string {
-  const h = d.getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
 // Manual, locale-independent date so server and client render identically (the
 // component is SSR-safe even though it normally only mounts client-side).
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function headDate(d: Date): string {
   return `${WEEKDAYS[d.getDay()]} · ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// Suffix for the growth badge, matching the selected chart range.
+function rangeLabel(range: Range, firstDate: string): string {
+  switch (range) {
+    case "1D": return "today";
+    case "1W": return "past week";
+    case "1M": return "past month";
+    case "3M": return "past 3 months";
+    case "1Y": return "past year";
+    case "3Y": return "past 3 years";
+    default: return `since ${firstDate.slice(0, 4)}`;
+  }
 }
 
 interface Props {
@@ -206,7 +208,6 @@ function marketImpactText(mv: DiaryMarketMove): string | undefined {
 
 export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSettled, mutations }: Props) {
   const displayCurrency = useDisplayCurrency();
-  const { user } = useUser();
   const { data: vitalsData } = useVitals();
   // Clock-dependent header is computed after mount to stay hydration-safe.
   const [now, setNow] = useState<Date | null>(null);
@@ -354,16 +355,20 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   }, [now, entries]);
   const highlightMarkerId = selectedId ?? todayEntryId;
 
-  // "▲ +X% since YYYY" from the earliest snapshot to the headline value (so it
-  // tracks the selected entry too), computed on the same lens.
-  const sinceBadge = useMemo(() => {
-    if (fullSnapshots.length < 2) return null;
-    const first = fullSnapshots[0];
-    const firstVal = pointDisplayValue(first, effectiveInclude, displayCurrency, buildLiveRates());
-    if (!firstVal || firstVal <= 0) return null;
-    const pct = Math.round(((headlineNet - firstVal) / firstVal) * 100);
-    return `${pct >= 0 ? "▲ +" : "▼ −"}${Math.abs(pct)}% since ${first.date.slice(0, 4)}`;
-  }, [fullSnapshots, headlineNet, effectiveInclude, displayCurrency]);
+  // Growth over the SELECTED range (so it changes with the 1W/1M/1Y/All pills):
+  // from the start of the visible window to the live net worth, on the same lens.
+  const rangeBadge = useMemo(() => {
+    if (series.length < 2) return null;
+    // series[0] may be a pre-window ANCHOR (the last point before the window,
+    // kept so the chart line enters from the left). Measure from the first point
+    // INSIDE the window, else the % spans more time than the range label claims.
+    const windowStart = rangeStartDate(range);
+    const startPoint = windowStart ? series.find((p) => p.date >= windowStart) ?? series[series.length - 1] : series[0];
+    const startVal = convertPointToDisplay(startPoint, displayCurrency, buildLiveRates());
+    if (!startVal || startVal <= 0) return null;
+    const pct = Math.round(((liveNet - startVal) / startVal) * 100);
+    return `${pct >= 0 ? "▲ +" : "▼ −"}${Math.abs(pct)}% ${rangeLabel(range, startPoint.date)}`;
+  }, [series, liveNet, displayCurrency, range]);
 
   // ── Holdings grouped into the 4 semantic categories ────────────────────────
   const symbols = useMemo(
@@ -467,12 +472,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   return (
     <>
       <div className="head">
-        <div>
-          <span className="eyebrow">Overview</span>
-          <div className="hello" suppressHydrationWarning>
-            {now ? `${greeting(now)}, ${firstName(user)}.` : `Welcome back, ${firstName(user)}.`}
-          </div>
-        </div>
+        <span className="eyebrow">Overview</span>
         <div className="date" suppressHydrationWarning>{now ? headDate(now) : ""}</div>
       </div>
 
@@ -480,20 +480,20 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
       <section className="dash">
         <div className="dash-h">
           <div>
-            <span className="eyebrow">Net worth</span>
+            {/* Lens selector (mirrors the phone's "Net worth · Liquid"): full net
+                worth vs. excluding the illiquid property. Only when there's both. */}
+            {hasMixed ? (
+              <div className="nwsel" role="group" aria-label="Net worth lens">
+                <button type="button" className={`nwsel-opt${includeProperty ? " on" : ""}`} aria-pressed={includeProperty} onClick={() => { if (!includeProperty) toggleProperty(); }}>Net worth</button>
+                <span className="nwsel-dot" aria-hidden="true" />
+                <button type="button" className={`nwsel-opt${!includeProperty ? " on" : ""}`} aria-pressed={!includeProperty} onClick={() => { if (includeProperty) toggleProperty(); }}>Liquid</button>
+              </div>
+            ) : (
+              <span className="eyebrow">Net worth</span>
+            )}
             <div className="nwnum">{formatMoney(headlineNet, displayCurrency, displayCurrency)}</div>
-            {sinceBadge && <div className="nwbasis"><span className="badge">{sinceBadge}</span></div>}
+            {isToday && rangeBadge && <div className="nwbasis"><span className="badge">{rangeBadge}</span></div>}
           </div>
-          {hasMixed && (
-            <button
-              type="button"
-              className={`nwlens${includeProperty ? " on" : ""}`}
-              aria-pressed={includeProperty}
-              onClick={toggleProperty}
-            >
-              {includeProperty ? "Including property" : "Excluding property"}
-            </button>
-          )}
         </div>
 
         <div style={{ margin: "18px 0 4px" }}>
@@ -511,11 +511,15 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           />
         </div>
 
-        {/* selected decision / today, with prev-next navigation */}
-        <div className="ep-inline">
+        {/* selected entry / today, with prev-next navigation. Auto market entries
+            get a distinct theme (gold accent + tint), like the Journal. */}
+        <div className={`ep-inline${selectedMove ? " ep-market" : ""}`}>
           <div className="ep-nav">
             <button type="button" className="ep-step" onClick={goOlder} disabled={!canOlder} aria-label="Previous entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <button type="button" className="ep-today" onClick={() => setSelectedId(null)} disabled={isToday}>
+              Today
             </button>
             <button type="button" className="ep-step" onClick={goNewer} disabled={!canNewer} aria-label="Next entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
@@ -523,9 +527,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             <span className="ep-pos">
               {isToday ? "Today" : `${shortDate(selectedDate!)} · ${navIndex} of ${entries.length}`}
             </span>
-            <button type="button" className="ep-today" onClick={() => setSelectedId(null)} disabled={isToday}>
-              Today
-            </button>
           </div>
 
           {isToday ? (
@@ -550,7 +551,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               <>
                 <div className="ep-top">
                   <span className="ep-date">{shortDate(mv.date)}</span>
-                  <span className="ep-kind market">Market</span>
+                  <span className="ep-kind market">Auto · Market</span>
                 </div>
                 <h3 className="ep-title">{mv.index_label} {mv.pct_change >= 0 ? "+" : "−"}{fmtPct(Math.abs(mv.pct_change), 1)}%</h3>
                 <p className="ep-why">
@@ -576,7 +577,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               <>
                 <div className="ep-top">
                   <span className="ep-date">{shortDate(mDate(m))}</span>
-                  <span className={`ep-kind${own ? "" : " market"}`}>{own ? "Decision" : m.market_context ? "Market" : "Auto"}</span>
                 </div>
                 <h3 className="ep-title">{decisionTitle(m)}</h3>
                 {m.market_context && <p className="ep-ctx">{m.market_context}</p>}
