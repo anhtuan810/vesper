@@ -368,7 +368,7 @@ export async function getStoredMarketSwings(userId: string, supabase: SupabaseCl
       .eq("user_id", userId)
       .order("date", { ascending: false });
     if (error || !data) return [];
-    return data.map((r) => ({
+    const moves: DiaryMarketMove[] = data.map((r) => ({
       date: r.date as string,
       index_symbol: r.index_symbol as string,
       index_label: r.index_label as string,
@@ -376,9 +376,32 @@ export async function getStoredMarketSwings(userId: string, supabase: SupabaseCl
       impact: { total: Number(r.total), currency: r.currency as string, movers: (r.movers as SwingHoldingImpact[]) ?? [] },
       expanded: Boolean(r.expanded),
     }));
+    // Backfill mover assetIds for rows stored before the field existed, by mapping
+    // each mover's symbol to the user's current asset — so the chips deep-link.
+    return fillMoverAssetIds(moves, userId, supabase);
   } catch {
     return [];
   }
+}
+
+// Fills missing mover.assetId from the user's current tradeable assets (symbol →
+// id). A no-op when every mover already carries an assetId.
+async function fillMoverAssetIds(moves: DiaryMarketMove[], userId: string, supabase: SupabaseClient): Promise<DiaryMarketMove[]> {
+  const needs = moves.some((mv) => mv.impact?.movers.some((h) => !h.assetId));
+  if (!needs) return moves;
+  const { data } = await supabase.from("assets").select("id, symbol, type").eq("user_id", userId);
+  const bySymbol = new Map<string, string>();
+  for (const a of data ?? []) {
+    const sym = a.symbol as string | null;
+    if (sym && TRADEABLE.has(a.type as string) && !bySymbol.has(sym)) bySymbol.set(sym, a.id as string);
+  }
+  for (const mv of moves) {
+    if (!mv.impact) continue;
+    for (const h of mv.impact.movers) {
+      if (!h.assetId) { const id = bySymbol.get(h.symbol); if (id) h.assetId = id; }
+    }
+  }
+  return moves;
 }
 
 // Idempotent full-replace of a user's stored swings: a single data edit (e.g.
