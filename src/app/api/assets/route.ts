@@ -3,6 +3,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { demoExpiredGate } from "@/lib/demo-session";
 import { writeSnapshot } from "@/lib/snapshot";
+import { generateMarketSwings } from "@/lib/diary-market-moves";
 import { computeNetWorth } from "@/lib/utils";
 import { getUsdRates } from "@/lib/fx";
 
@@ -96,6 +97,9 @@ export async function POST(req: NextRequest) {
       .single();
 
     after(() => writeSnapshot(user.id));
+    // Logging an asset (esp. one bought long ago) can surface new historical
+    // market swings — regenerate them in the background so the user never waits.
+    after(() => generateMarketSwings(user.id));
 
     return NextResponse.json({ asset: created, mutation_id: mutation?.id ?? null });
   } catch (err) {

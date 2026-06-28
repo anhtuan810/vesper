@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { writeSnapshot } from "@/lib/snapshot";
 import { writeVitalSnapshots } from "@/lib/vitals/persist";
+import { generateMarketSwings } from "@/lib/diary-market-moves";
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -26,6 +27,9 @@ export async function GET(req: NextRequest) {
           extra: { user_id: userId },
         });
       }
+      // Refresh market-swing entries daily so a new >=2% day appears even when the
+      // user hasn't touched their data. Self-contained + error-swallowing.
+      await generateMarketSwings(userId);
     }),
   );
 

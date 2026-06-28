@@ -15,6 +15,7 @@ import { stripTags, timestampedPair } from "@/lib/chat-helpers";
 import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 import { generateMarketContext } from "@/lib/market-context";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
+import { generateMarketSwings } from "@/lib/diary-market-moves";
 import { generateInsight } from "@/lib/insight-generator";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { AGENT_TOOLS, executeAgentTool, type ToolContext, type CommitOutcome } from "@/lib/chat/agent-tools";
@@ -171,6 +172,8 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
     }
     after(async () => { try { await writeSnapshot(input.userId); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-snapshot" } }); } });
     if (commit.needsBackfill) after(async () => { try { await backfillSnapshots(input.userId, commit.rebuildFrom); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-backfill" } }); } });
+    // Holdings changed → recompute the user's market-swing entries in the background.
+    after(() => generateMarketSwings(input.userId));
     after(async () => {
       try {
         const sb = createServerSupabase();

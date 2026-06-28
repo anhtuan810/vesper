@@ -11,6 +11,7 @@ import { fetchHistoricalPrice } from "@/lib/prices";
 import { priceHoldingsLive } from "@/lib/prices-server";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
+import { generateMarketSwings } from "@/lib/diary-market-moves";
 import { validateEnv } from "@/lib/env";
 import { applyPortfolioChanges, ValueModeError } from "@/lib/apply-changes";
 import { generateMarketContext } from "@/lib/market-context";
@@ -1188,6 +1189,8 @@ export async function POST(req: NextRequest) {
           Sentry.captureException(err, { tags: { background: "snapshot" } });
         }
       });
+      // Holdings changed → recompute market-swing entries in the background.
+      after(() => generateMarketSwings(userId));
       if (needsBackfill) {
         after(async () => {
           try {

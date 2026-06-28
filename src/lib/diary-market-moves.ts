@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createServerSupabase } from "@/lib/supabase";
 import { fetchHistoricalSeries, normalizePrice } from "@/lib/prices";
 import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
 import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
@@ -350,4 +351,85 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   }
 
   return kept.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// ── Persistence: generated in the background, read instantly ─────────────────
+
+// Reads the precomputed swings for a user. Returns [] when none are stored yet
+// or the table is unavailable (e.g. before the migration is applied) — the
+// caller then falls back to computing at request time.
+export async function getStoredMarketSwings(userId: string, supabase: SupabaseClient): Promise<DiaryMarketMove[]> {
+  try {
+    const { data, error } = await supabase
+      .from("market_swings")
+      .select("date, index_symbol, index_label, pct_change, total, currency, movers, expanded")
+      .eq("user_id", userId)
+      .order("date", { ascending: false });
+    if (error || !data) return [];
+    return data.map((r) => ({
+      date: r.date as string,
+      index_symbol: r.index_symbol as string,
+      index_label: r.index_label as string,
+      pct_change: Number(r.pct_change),
+      impact: { total: Number(r.total), currency: r.currency as string, movers: (r.movers as SwingHoldingImpact[]) ?? [] },
+      expanded: Boolean(r.expanded),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Idempotent full-replace of a user's stored swings: a single data edit (e.g.
+// logging an asset bought years ago) can shift impacts across the whole history,
+// so the entire set is recomputed and swapped.
+async function replaceStoredSwings(userId: string, moves: DiaryMarketMove[], supabase: SupabaseClient): Promise<void> {
+  const withImpact = moves.filter((mv) => mv.impact);
+  const { error: delErr } = await supabase.from("market_swings").delete().eq("user_id", userId);
+  if (delErr) throw delErr;
+  if (withImpact.length === 0) return;
+  const { error: insErr } = await supabase.from("market_swings").insert(
+    withImpact.map((mv) => ({
+      user_id: userId,
+      date: mv.date,
+      index_symbol: mv.index_symbol,
+      index_label: mv.index_label,
+      pct_change: mv.pct_change,
+      total: mv.impact!.total,
+      currency: mv.impact!.currency,
+      movers: mv.impact!.movers,
+      expanded: mv.expanded ?? false,
+    })),
+  );
+  if (insErr) throw insErr;
+}
+
+async function reportSwingError(err: unknown): Promise<void> {
+  // Non-fatal: the table may not exist yet (migration not applied) or a transient
+  // failure — the read path falls back to request-time computation either way.
+  if (process.env.SENTRY_DSN) {
+    try { const S = await import("@sentry/nextjs"); S.captureException(err, { tags: { fn: "generateMarketSwings" } }); } catch {}
+  }
+}
+
+// Computes the user's market swings from live data and replaces their stored set.
+// Meant to run in the background (Next `after()` on data entry, and the daily
+// cron) so the user never waits.
+export async function generateMarketSwings(userId: string): Promise<void> {
+  try {
+    const supabase = createServerSupabase();
+    const moves = await getDiaryMarketMoves(userId, supabase);
+    await replaceStoredSwings(userId, moves, supabase);
+  } catch (err) {
+    await reportSwingError(err);
+  }
+}
+
+// Persists swings the caller already computed (e.g. the read path warming the
+// cache after a cold compute), avoiding a second computation.
+export async function storeMarketSwings(userId: string, moves: DiaryMarketMove[]): Promise<void> {
+  try {
+    await replaceStoredSwings(userId, moves, createServerSupabase());
+  } catch (err) {
+    await reportSwingError(err);
+  }
 }
