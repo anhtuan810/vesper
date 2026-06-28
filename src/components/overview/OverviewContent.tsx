@@ -154,14 +154,6 @@ function decisionPoints(m: Mutation, displayCurrency: ReturnType<typeof useDispl
   return pts;
 }
 
-// Manual, locale-independent date so server and client render identically (the
-// component is SSR-safe even though it normally only mounts client-side).
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-function headDate(d: Date): string {
-  return `${WEEKDAYS[d.getDay()]} · ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
-
 // Suffix for the growth badge, matching the selected chart range.
 function rangeLabel(range: Range, firstDate: string): string {
   switch (range) {
@@ -557,11 +549,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
 
   return (
     <>
-      <div className="head">
-        <span className="eyebrow">Overview</span>
-        <div className="date" suppressHydrationWarning>{now ? headDate(now) : ""}</div>
-      </div>
-
       {/* ── Dashboard card ── */}
       <section className="dash">
         <div className="dash-h">
