@@ -38,6 +38,14 @@ export interface VerdictData {
   lookbackLabel: string; // e.g. "18 months on"
   assetName: string;
   assumptions: string[];
+  // The actual figures behind the verdict, so "how this is figured" can show real
+  // numbers instead of a generic method note. All money is in `currency`.
+  detail: {
+    units: number; // the stake that left the book
+    valueThen: number; // what those units were worth on the sell date
+    valueNow: number; // what those units would be worth today
+    soldDate: string; // YYYY-MM-DD of the sell
+  };
 }
 
 export type VerdictOutcome =
@@ -137,14 +145,23 @@ export async function assembleVerdict(
 
   const { kind, magnitudeUsd } = classifyVerdict(thenUsd, nowUsd);
 
-  // Express the magnitude in the user's display currency; fall back to USD if the
-  // rate is unavailable rather than inventing a number.
+  // Express the magnitude AND the then/now values in the user's display currency;
+  // fall back to USD (all three together, so they stay consistent) if a rate is
+  // unavailable rather than inventing a number.
   let currency = "USD";
   let figure = magnitudeUsd;
+  let valueThen = thenUsd;
+  let valueNow = nowUsd;
   if (displayCurrency && displayCurrency !== "USD") {
-    const conv = await toDisplay(magnitudeUsd, "USD", displayCurrency);
-    if (conv != null) {
-      figure = conv;
+    const [mag, vThen, vNow] = await Promise.all([
+      toDisplay(magnitudeUsd, "USD", displayCurrency),
+      toDisplay(thenUsd, "USD", displayCurrency),
+      toDisplay(nowUsd, "USD", displayCurrency),
+    ]);
+    if (mag != null && vThen != null && vNow != null) {
+      figure = mag;
+      valueThen = vThen;
+      valueNow = vNow;
       currency = displayCurrency;
     }
   }
@@ -157,8 +174,8 @@ export async function assembleVerdict(
       currency,
       lookbackLabel: lookbackLabel(daysAgo),
       assetName: m.asset_name ?? m.symbol,
+      detail: { units: soldUnits, valueThen, valueNow, soldDate: occurred },
       assumptions: [
-        "Compares the stake you sold at its value then versus its value now.",
         "What the freed-up cash did afterwards is not counted — this weighs only the position you let go.",
         ...assumptions,
       ],

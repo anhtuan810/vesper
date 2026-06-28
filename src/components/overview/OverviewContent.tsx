@@ -175,10 +175,13 @@ function sellLookbackEligible(m: Mutation): boolean {
 // disclosure. No score, no praise or blame — an editorial post-mortem sitting
 // next to the reasoning the user wrote, the moat (reasoning + counterfactual)
 // finally connected.
-function VerdictStamp({ verdict }: { verdict: VerdictData }) {
+function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
   const [open, setOpen] = useState(false);
   const cur = verdict.currency as DisplayCurrency;
-  const money = formatMoney(verdict.figure, cur, cur);
+  const fmt = (v: number) => formatMoney(v, cur, cur);
+  const money = fmt(verdict.figure);
+  const d = verdict.detail;
+  const rose = d.valueNow >= d.valueThen;
   const line =
     verdict.kind === "spared" ? (
       <>Selling here spared you <strong>{money}</strong> — the stake you let go is worth less now.</>
@@ -200,9 +203,18 @@ function VerdictStamp({ verdict }: { verdict: VerdictData }) {
         {open ? "Hide how this is figured" : "How this is figured"}
       </button>
       {open && (
-        <ul className="ep-verdict-notes">
-          {verdict.assumptions.map((a, i) => <li key={i}>{a}</li>)}
-        </ul>
+        <div className="ep-verdict-notes">
+          {/* The actual arithmetic, in real numbers — not a generic method note. */}
+          <p className="ep-verdict-calc">
+            The {fmtUnits(d.units)} {unitLabel} you sold were worth <strong>{fmt(d.valueThen)}</strong> on{" "}
+            {shortDate(d.soldDate)}, and would be worth <strong>{fmt(d.valueNow)}</strong> today — a{" "}
+            {rose ? "rise" : "fall"} of <strong>{money}</strong>.
+          </p>
+          <ul>
+            <li>Valued at each date&apos;s closing price, with historical exchange rates applied per date.</li>
+            <li>What the freed-up cash did afterwards isn&apos;t counted — this weighs only the position you let go.</li>
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -790,7 +802,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                     {points.map((p, i) => <li key={i}>{p}</li>)}
                   </ul>
                 )}
-                {verdict && <VerdictStamp verdict={verdict} />}
+                {verdict && <VerdictStamp verdict={verdict} unitLabel={m.asset_type ? unitNoun(m.asset_type) : "units"} />}
               </>
             );
           })()}
