@@ -61,9 +61,12 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
 
   // Top-right account menu (Profile / Settings / Sign out).
   const [menuOpen, setMenuOpen] = useState(false);
-  // Demo profile photo: self-hosted /demo-avatar.jpg (drop one into /public). Falls
-  // back to the generic silhouette if it's absent so the nav never shows a broken image.
-  const [demoAvatarFailed, setDemoAvatarFailed] = useState(false);
+  // Demo profile photo: self-hosted /demo-avatar.(jpg|png) — drop either into /public.
+  // Tries jpg, then png, then falls back to the generic silhouette, so the nav never
+  // shows a broken image regardless of which format/name is uploaded.
+  const DEMO_AVATAR_SRCS = ["/demo-avatar.jpg", "/demo-avatar.png"];
+  const [demoAvatarStage, setDemoAvatarStage] = useState(0);
+  const demoAvatarSrc = DEMO_AVATAR_SRCS[demoAvatarStage] ?? null;
   const acctRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!menuOpen) return;
@@ -175,9 +178,9 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
               >
                 <span className="vh-av">
                   {isDemo
-                    ? (demoAvatarFailed
-                        ? <svg className="vh-av-person" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="3.6" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0z" /></svg>
-                        : <img className="vh-av-img" src="/demo-avatar.jpg" alt="" onError={() => setDemoAvatarFailed(true)} />)
+                    ? (demoAvatarSrc
+                        ? <img className="vh-av-img" src={demoAvatarSrc} alt="" onError={() => setDemoAvatarStage((s) => s + 1)} />
+                        : <svg className="vh-av-person" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="3.6" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0z" /></svg>)
                     : initials(user)}
                 </span>
                 <svg className="vh-av-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" /></svg>
