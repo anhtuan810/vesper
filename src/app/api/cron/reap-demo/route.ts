@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { DEMO_USER_TABLES } from "@/lib/demo-seed";
-import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS } from "@/lib/demo-session";
+import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS, DEMO_VISITOR_RETENTION_MS } from "@/lib/demo-session";
 
 // Reaps expired per-visitor demo accounts. Runs daily (vercel.json), but the cron
 // cadence has no bearing on session length — that is the per-user TTL the
@@ -68,5 +68,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, expired: uids.length, reaped });
+  // Prune visitor tombstones past the cookie's life — the lockout has long since
+  // lapsed, so the row is dead weight. Kept separate from the per-user reap (above)
+  // and never gates real users: demo_visitors holds no account data, only the
+  // browser's trial anchor. Best-effort — a failure here must not fail the run.
+  let visitorsReaped = 0;
+  try {
+    const vCutoff = new Date(Date.now() - DEMO_VISITOR_RETENTION_MS).toISOString();
+    const { data: prunedVisitors, error: vErr } = await supabase
+      .from("demo_visitors")
+      .delete()
+      .lt("first_seen", vCutoff)
+      .select("visitor_id");
+    if (vErr) throw vErr;
+    visitorsReaped = prunedVisitors?.length ?? 0;
+  } catch (err) {
+    Sentry.captureException(err, { tags: { fn: "cron/reap-demo", step: "prune-visitors" } });
+  }
+
+  return NextResponse.json({ ok: true, expired: uids.length, reaped, visitorsReaped });
 }
