@@ -274,25 +274,25 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     () => [...mutations].sort((a, b) => (mDate(b)).localeCompare(mDate(a))),
     [mutations],
   );
-  // Pinning every entry floods the chart, so only the SIGNIFICANT decisions get a
-  // marker: any tied to a real market event, plus the largest moves up to a small
-  // cap. Routine contributions stay reachable via prev/next but don't clutter the
-  // line. The selected entry is always pinned so its position shows when stepping.
+  // Pinning every entry floods the chart, so only the user's SIGNIFICANT decisions
+  // get a marker — the largest moves they actually made, up to a small cap.
+  // Routine contributions and automatic market entries stay in the journal (and
+  // are reachable via prev/next) but don't clutter the line. The selected entry is
+  // always pinned so its position shows when stepping.
   const NOTABLE_CAP = 8;
   const notableIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const m of sortedMutations) if (m.market_context) ids.add(m.id);
-    const rest = sortedMutations
-      .filter((m) => !ids.has(m.id))
+    const ranked = sortedMutations
+      .filter((m) => hasOwnNote(m))
       .map((m) => ({ id: m.id, mag: impactMagnitude(m, displayCurrency) }))
       .sort((a, b) => b.mag - a.mag);
-    for (const x of rest) { if (ids.size >= NOTABLE_CAP) break; ids.add(x.id); }
+    for (const x of ranked) { if (ids.size >= NOTABLE_CAP) break; ids.add(x.id); }
     return ids;
   }, [sortedMutations, displayCurrency]);
 
-  // Markers the chart pins: significant decisions, tagged so market-event entries
-  // ("market") read apart from personal decisions ("you"); the selected entry is
-  // always included even when it isn't otherwise notable.
+  // Markers the chart pins: significant decisions, tagged so a decision made during
+  // a market event ("market") reads apart from a calm one ("you"); the selected
+  // entry is always included even when it isn't otherwise notable.
   const markers = useMemo(
     () => sortedMutations
       .filter((m) => notableIds.has(m.id) || m.id === selectedId)
