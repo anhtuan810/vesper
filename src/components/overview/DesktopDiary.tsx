@@ -130,12 +130,6 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
 
   return (
     <>
-      <div className="sec-top" style={{ marginBottom: 18 }}>
-        <div>
-          <span className="eyebrow">Decision journal</span>
-        </div>
-      </div>
-
       {/* Search */}
       <div className="dsearch">
         <svg className="si" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M16.5 16.5L21 21" /></svg>
