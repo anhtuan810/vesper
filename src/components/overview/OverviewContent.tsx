@@ -119,15 +119,19 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const { data: vitalsData } = useVitals();
   // Clock-dependent header is computed after mount to stay hydration-safe.
   const [now, setNow] = useState<Date | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setNow(new Date()); }, []);
 
   const netWorthAssets = useMemo(() => assets.filter((a) => !isIncomePension(a)), [assets]);
 
   // ── Net-worth chart series (mirrors PortfolioTab's data flow) ──────────────
-  const [range, setRange] = useState<Range>("1M");
+  // Default to the full history so every decision marker is visible at a glance.
+  const [range, setRange] = useState<Range>("All");
   const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
-  const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
+  // The decision panel is driven by CLICKING a marker (not hover); null = default
+  // to the most recent decision.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -169,20 +173,17 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     () => [...mutations].sort((a, b) => (mDate(b)).localeCompare(mDate(a))),
     [mutations],
   );
-  // Panel follows the chart selection (nearest decision to the scrubbed date),
-  // defaulting to the most recent decision.
-  const selectedDecision = useMemo(() => {
-    if (sortedMutations.length === 0) return null;
-    if (!selectedPoint) return sortedMutations[0];
-    const target = selectedPoint.date;
-    let best = sortedMutations[0];
-    let bestDiff = Infinity;
-    for (const m of sortedMutations) {
-      const diff = Math.abs(new Date(mDate(m)).getTime() - new Date(target).getTime());
-      if (diff < bestDiff) { bestDiff = diff; best = m; }
-    }
-    return best;
-  }, [sortedMutations, selectedPoint]);
+  // One clickable chart marker per decision (date = YYYY-MM-DD to match snapshots).
+  const markers = useMemo(
+    () => sortedMutations.map((m) => ({ id: m.id, date: mDate(m).slice(0, 10) })),
+    [sortedMutations],
+  );
+  // The selected decision drives the panel: the clicked marker, else the most recent.
+  const effectiveSelectedId = selectedId ?? sortedMutations[0]?.id ?? null;
+  const selectedDecision = useMemo(
+    () => sortedMutations.find((m) => m.id === effectiveSelectedId) ?? sortedMutations[0] ?? null,
+    [sortedMutations, effectiveSelectedId],
+  );
 
   // ── Holdings grouped into the 4 semantic categories ────────────────────────
   const symbols = useMemo(
@@ -255,10 +256,12 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             onRangeChange={setRange}
             series={series}
             loading={loading}
-            onSelectPoint={setSelectedPoint}
             valuesSettled={valuesSettled}
             realPointCount={fullSnapshots.length}
             trackingSinceDate={trackingSinceDate}
+            markers={markers}
+            selectedMarkerId={effectiveSelectedId}
+            onMarkerClick={setSelectedId}
           />
         </div>
 
@@ -266,7 +269,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         <div className="ep-inline">
           <div className="ep-cue">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M6 12l6 6 6-6" /></svg>
-            The decision behind the selected point — scrub the line to explore
+            The decision behind the selected point — click any point on the line
           </div>
           {selectedDecision ? (() => {
             const m = selectedDecision;

@@ -103,6 +103,13 @@ interface Props {
   // Whether the Liquid-only view is active — gates the intraday 1D pill (enabled
   // only here, never by trackingSinceDate).
   liquidOnly?: boolean;
+  // Journal markers: clickable dots drawn on the line at decision dates. When
+  // provided (desktop Overview only), the chart shows static, click-to-select
+  // points and disables the hover-scrub/breakdown — selection is by click, not
+  // hover. Mobile (PortfolioTab) passes nothing, so its behaviour is unchanged.
+  markers?: { id: string; date: string }[];
+  selectedMarkerId?: string | null;
+  onMarkerClick?: (id: string) => void;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -313,6 +320,8 @@ export function NetWorthChart(props: Props) {
   const showSingleMarker = !loading && realCount < 2;
   const showLabels = !showSingleMarker && !loading && displaySeries.length >= 2;
   const interactive = !showSingleMarker && !loading && displaySeries.length >= 2;
+  // Journal-marker mode: render static clickable decision dots, no hover-scrub.
+  const markerMode = !!props.markers && props.markers.length > 0 && interactive;
   const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
 
   // Y domain fits the visible (range-clipped) series — recomputed on every
@@ -401,7 +410,7 @@ export function NetWorthChart(props: Props) {
     return Math.min(Math.max(rawIdx, 0), displaySeries.length - 1);
   }
 
-  const chartHandlers = interactive
+  const chartHandlers = interactive && !markerMode
     ? {
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
           const idx = calcIndex(e.clientX, e.currentTarget.getBoundingClientRect());
@@ -434,6 +443,26 @@ export function NetWorthChart(props: Props) {
         .filter((s) => Math.abs(s.value) >= 0.5)
     : [];
   const flipTooltipLeft = selectedX !== null && selectedX + TOOLTIP_WIDTH + 16 > W;
+
+  // Decision dots: each journal marker placed at the nearest plotted point whose
+  // date falls within the visible (range-clipped) window.
+  const markerDots: { id: string; x: number; y: number }[] = [];
+  if (markerMode && values.length >= 2) {
+    const dates = displaySeries.map((p) => p.date);
+    const first = dates[0];
+    const last = dates[dates.length - 1];
+    for (const mk of props.markers!) {
+      if (mk.date < first || mk.date > last) continue;
+      const t = new Date(mk.date).getTime();
+      let best = 0;
+      let bestDiff = Infinity;
+      for (let i = 0; i < dates.length; i++) {
+        const d = Math.abs(new Date(dates[i]).getTime() - t);
+        if (d < bestDiff) { bestDiff = d; best = i; }
+      }
+      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]) });
+    }
+  }
 
   return (
     <div>
@@ -519,13 +548,36 @@ export function NetWorthChart(props: Props) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {/* Static end-point marker — hidden while scrubbing a non-last point */}
-              {showEndMarker && (
+              {/* Static end-point marker — hidden while scrubbing a non-last point,
+                  and in marker mode (the decision dots are the markers instead) */}
+              {showEndMarker && !markerMode && (
                 <>
                   <circle cx={drawW} cy={lastY} r={6} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
                   <circle cx={drawW} cy={lastY} r={3} fill={strokeColor} />
                 </>
               )}
+              {/* Journal decision dots — visible, click-to-select (not hover). */}
+              {markerMode && markerDots.map((dot) => {
+                const sel = dot.id === props.selectedMarkerId;
+                return (
+                  <g key={dot.id}>
+                    {/* Generous transparent hit target for the small visible dot. */}
+                    <circle
+                      cx={dot.x} cy={dot.y} r={12} fill="transparent"
+                      style={{ cursor: "pointer" }}
+                      role="button" tabIndex={0} aria-label="Decision point" aria-pressed={sel}
+                      onClick={() => props.onMarkerClick?.(dot.id)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); props.onMarkerClick?.(dot.id); } }}
+                    />
+                    <circle
+                      cx={dot.x} cy={dot.y} r={sel ? 6 : 4.5}
+                      fill={sel ? "var(--accent)" : "var(--surface)"}
+                      stroke="var(--accent)" strokeWidth={2.4}
+                      style={{ pointerEvents: "none" }}
+                    />
+                  </g>
+                );
+              })}
               {/* Scrub marker — vertical guide + halo + dot */}
               {selectedIndex !== null && selectedX !== null && selectedY !== null && (
                 <>
