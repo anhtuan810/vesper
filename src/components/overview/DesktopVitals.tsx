@@ -7,14 +7,5 @@ import { VitalsContent } from "@/components/vitals/VitalsContent";
 // library), framed by the Twilight section header. Mobile keeps the stacked
 // VitalsContent unchanged.
 export function DesktopVitals() {
-  return (
-    <>
-      <div className="sec-top" style={{ marginBottom: 20 }}>
-        <div>
-          <span className="eyebrow">Vitals</span>
-        </div>
-      </div>
-      <VitalsContent layout="grid" showHeader={false} renderToggleInline />
-    </>
-  );
+  return <VitalsContent layout="grid" showHeader={false} renderToggleInline />;
 }

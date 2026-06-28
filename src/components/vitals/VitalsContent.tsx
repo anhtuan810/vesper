@@ -912,11 +912,10 @@ export function VitalsContent({
   ) : null;
 
   // Inline toggle row for headerless hosts (desktop Vitals page).
-  const inlineToggle = renderToggleInline && !showHeader && propertyToggle ? (
-    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-      {propertyToggle}
-    </div>
-  ) : null;
+  // The property lens toggle for headerless hosts (desktop Vitals) — now sits on
+  // the "Active vitals" row rather than at the very top, so the Pulse banner can
+  // align with the chat rail. Null on mobile (renderToggleInline off).
+  const inlineToggleNode = renderToggleInline && !showHeader && propertyToggle ? propertyToggle : null;
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -1104,9 +1103,6 @@ export function VitalsContent({
       {/* 1. Page title */}
       {pageTitle}
 
-      {/* 1b. Inline lens toggle for headerless hosts (desktop Vitals page). */}
-      {inlineToggle}
-
       {/* 2. Pulse banner — lens-aware: liquid pulse when Property is off,
              all-assets pulse otherwise. Falls back to all-assets pulse if
              pulseLiquid wasn't generated (non-mixed user or Haiku failure).
@@ -1132,19 +1128,34 @@ export function VitalsContent({
       {/* Library (top placement) */}
       {libraryPosition === "top" && library}
 
-      {/* 3. Active vitals eyebrow */}
-      <div
-        style={{
-          fontSize: "11px",
-          fontWeight: 500,
-          fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-          textTransform: "uppercase",
-          color: "var(--text-faint)",
-          marginBottom: 12,
-        }}
-      >
-        Active vitals &middot; {activeVitals.length}
-      </div>
+      {/* 3. Active vitals eyebrow — with the property lens toggle on its right
+             for headerless desktop hosts (mobile keeps the plain eyebrow). */}
+      {inlineToggleNode ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+          <span
+            style={{
+              fontSize: "11px", fontWeight: 500, fontFamily: "var(--mono)",
+              letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)",
+            }}
+          >
+            Active vitals &middot; {activeVitals.length}
+          </span>
+          {inlineToggleNode}
+        </div>
+      ) : (
+        <div
+          style={{
+            fontSize: "11px",
+            fontWeight: 500,
+            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
+            textTransform: "uppercase",
+            color: "var(--text-faint)",
+            marginBottom: 12,
+          }}
+        >
+          Active vitals &middot; {activeVitals.length}
+        </div>
+      )}
 
       {/* 5. Vital cards in fixed order */}
       {cards}
