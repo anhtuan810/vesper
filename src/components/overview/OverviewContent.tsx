@@ -130,29 +130,28 @@ function stripPropertyPoint(
 const fmtUnits = (n: number) =>
   new Intl.NumberFormat("nl-NL", { maximumFractionDigits: n % 1 === 0 ? 0 : 4 }).format(n);
 
-// The units change for a mutation → "+150 shares" / "200 → 320 shares" /
-// "0,05 BTC closed" (or null when units don't apply to this asset type).
-function unitsDetail(m: Mutation): string | null {
-  const type = m.asset_type;
-  if (!type) return null;
-  const noun = unitNoun(type);
-  if (m.action === "add" && m.after_units != null) return `+${fmtUnits(m.after_units)} ${noun}`;
-  if (m.action === "edit" && (m.before_units != null || m.after_units != null)) {
-    const before = m.before_units ?? 0, after = m.after_units ?? 0;
-    if (before === after) return null;
-    return `${fmtUnits(before)} → ${fmtUnits(after)} ${noun}`;
+// Prose bullets describing a decision's mechanics — replaces the stat-chip row so
+// the panel reads like a journal entry (units, value movement, money in/out).
+function decisionPoints(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): string[] {
+  const cur = m.currency || "USD";
+  const amt = impactRaw(m);
+  const money = (v: number) => formatMoney(Math.abs(v), cur, displayCurrency);
+  const noun = m.asset_type ? unitNoun(m.asset_type) : "units";
+  const pts: string[] = [];
+  if (m.action === "add") {
+    if (m.after_units != null) pts.push(`Added ${fmtUnits(m.after_units)} ${noun}${amt ? `, about ${money(amt)}` : ""}.`);
+    else if (amt) pts.push(`Added about ${money(amt)} to the position.`);
+  } else if (m.action === "remove") {
+    if (m.before_units != null) pts.push(`Closed ${fmtUnits(m.before_units)} ${noun}${amt ? `, about ${money(amt)}` : ""}.`);
+    else if (amt) pts.push(`Took about ${money(amt)} out of the position.`);
+  } else {
+    if (m.before_units != null && m.after_units != null && m.before_units !== m.after_units)
+      pts.push(`Holding moved from ${fmtUnits(m.before_units)} to ${fmtUnits(m.after_units)} ${noun}.`);
+    if (m.before_value != null && m.after_value != null)
+      pts.push(`Value moved from ${formatMoney(m.before_value, cur, displayCurrency)} to ${formatMoney(m.after_value, cur, displayCurrency)}.`);
+    else if (amt) pts.push(`A ${amt < 0 ? "decrease" : "increase"} of about ${money(amt)} that day.`);
   }
-  if (m.action === "remove" && m.before_units != null) return `${fmtUnits(m.before_units)} ${noun} closed`;
-  return null;
-}
-
-// The value movement for an edit → "€12.750 → €17.000" (null otherwise).
-function valueMovement(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): string | null {
-  if (m.action === "edit" && m.before_value != null && m.after_value != null) {
-    const cur = m.currency || "USD";
-    return `${formatMoney(m.before_value, cur, displayCurrency)} → ${formatMoney(m.after_value, cur, displayCurrency)}`;
-  }
-  return null;
+  return pts;
 }
 
 // Manual, locale-independent date so server and client render identically (the
@@ -672,20 +671,19 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                   Your portfolio {dn ? "lost" : "gained"} {formatMoney(Math.abs(imp.total), mc, mc)} that day
                   {imp.movers[0] ? `, led by ${imp.movers[0].label}` : ""}. No action taken — recorded automatically.
                 </p>
-                <div className="ep-foot">
-                  <span className={`ep-imp${dn ? " dn" : ""}`}>{dn ? "▼" : "▲"} {formatMoney(Math.abs(imp.total), mc, mc)}</span>
-                  {imp.movers.map((h) => (
-                    <span className="ep-stat" key={h.symbol}>{h.label} {h.impact >= 0 ? "+" : "−"}{formatMoney(Math.abs(h.impact), mc, mc)}</span>
-                  ))}
-                </div>
+                {imp.movers.length > 0 && (
+                  <ul className="ep-points">
+                    {imp.movers.map((h) => (
+                      <li key={h.symbol}>{h.label} {h.impact < 0 ? "down" : "up"} {formatMoney(Math.abs(h.impact), mc, mc)} that day.</li>
+                    ))}
+                  </ul>
+                )}
               </>
             );
           })() : (() => {
             const m = selectedDecision!;
             const own = hasOwnNote(m);
-            const imp = impact(m, displayCurrency);
-            const units = unitsDetail(m);
-            const move = valueMovement(m, displayCurrency);
+            const points = decisionPoints(m, displayCurrency);
             return (
               <>
                 <div className="ep-top">
@@ -698,12 +696,10 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                     : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
                     : "Recorded automatically — no note attached."}
                 </p>
-                {(imp || units || move) && (
-                  <div className="ep-foot">
-                    {imp && <span className={`ep-imp${imp.dn ? " dn" : ""}`}>{imp.text}</span>}
-                    {move && <span className="ep-stat">{move}</span>}
-                    {units && <span className="ep-stat">{units}</span>}
-                  </div>
+                {points.length > 0 && (
+                  <ul className="ep-points">
+                    {points.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
                 )}
               </>
             );
