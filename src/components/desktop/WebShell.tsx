@@ -5,7 +5,7 @@ import Link from "next/link";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
-import { useUser, useDisplayCurrency, useAssets, useSignOut } from "@/lib/hooks";
+import { useUser, useProfile, useDisplayCurrency, useAssets, useSignOut } from "@/lib/hooks";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { takeHandoff } from "@/lib/scenario/handoff";
 import { EXPLORE_EVENT, buildExploreSeed } from "@/lib/scenario/explore";
@@ -50,6 +50,7 @@ const NAV = [
  */
 export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }) {
   const { user } = useUser();
+  const profile = useProfile(user?.id);
   const signOut = useSignOut();
   const { data: sub } = useSubscription();
   // The demo account has no real identity, so show a generic person silhouette
@@ -179,7 +180,7 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
               {menuOpen && (
                 <div className="vh-menu" role="menu">
                   <div className="vh-menu-id">
-                    <span className="vh-menu-name">{firstName(user)}</span>
+                    <span className="vh-menu-name">{profile?.name || firstName(user)}</span>
                     {user?.email && <span className="vh-menu-email">{user.email}</span>}
                   </div>
                   <Link href="/profile" role="menuitem" className="vh-menu-item" onClick={() => setMenuOpen(false)}>Profile</Link>

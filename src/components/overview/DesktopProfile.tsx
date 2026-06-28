@@ -37,6 +37,19 @@ export function DesktopProfile() {
   const { netWorthEur, loading: nwLoading } = useNetWorth();
   const [netWorth12moAgoEur, setNetWorth12moAgoEur] = useState<number | null>(null);
 
+  // The account menu's "Subscription" links to /profile#subscription. The page
+  // scrolls inside .vh-content (not the window), so the browser's native hash
+  // scroll doesn't fire — do it ourselves on load and on same-page hash changes.
+  useEffect(() => {
+    const scrollToSub = () => {
+      if (window.location.hash !== "#subscription") return;
+      document.getElementById("subscription")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    const timers = [setTimeout(scrollToSub, 140), setTimeout(scrollToSub, 520)];
+    window.addEventListener("hashchange", scrollToSub);
+    return () => { timers.forEach(clearTimeout); window.removeEventListener("hashchange", scrollToSub); };
+  }, []);
+
   const loadBaseline = useCallback(() => {
     if (!userId) return;
     const cached = readBaselineCache(userId);
