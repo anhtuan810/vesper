@@ -10,19 +10,39 @@ every number"; the highest-leverage work is making that moat *felt*, not just st
 > revealed with the **first-3s line-draw WOW** (see `first-3s-wow.md`) — as one coherent
 > "the moat, made felt" release.
 
-Status note: **Decision Verdict** is being implemented first (v1). The rest are
+Status note: **Decision Verdict v1 is shipped** (see below). The rest are
 specced here to start in their own chats.
 
 ---
 
-## 1. Decision Verdict ⭐ (being built)
-**What.** On any closed or reduced position, run the existing counterfactual engine
-(`src/lib/scenario/counterfactual.ts` → `counterfactualRemove` / `reconstructPositionSeries`)
-over a fixed lookback (since-the-decision / 1Y / 3Y) and stamp the entry with a calm
+## 1. Decision Verdict ⭐ (v1 shipped 2026-06-28)
+**What.** On any closed or reduced **tradeable** position, value the stake the user
+*let go* — the units that left the book — then vs now from real historical prices + FX
+(`src/lib/scenario/counterfactual.ts` → `reconstructPositionSeries`, reused via the new
+`src/lib/scenario/decision-verdict.ts`) and stamp the selected-entry panel with a calm
 mono eyebrow: *"Looking back · 18 months on"* + one sentence + the deterministic figure
-(*"This sell spared you €4,120"* / *"Holding would have made €1,890"*), with an
+(*"Selling here spared you €4,120"* / *"Holding on would have gained €1,890"*), with an
 assumptions disclosure. **No score, no gamification** — an editorial post-mortem sitting
 next to the reasoning the user wrote.
+
+**Shipped (v1).** Server: `POST /api/decisions/verdict { mutation_id, display_currency }`
+(auth + `entitledGate`; returns `{ eligible:false }` for anything not a past tradeable
+sell/reduce ≥21 days old with price history — never an error). Client:
+`OverviewContent` fetches lazily when an eligible sell is selected, caches per
+(mutation, currency), and renders `<VerdictStamp>`. The figure is the sold stake's
+market value now minus its value at the sell date (delta<0 → *spared*, >0 → *missed*,
+within 1% of basis → *even*); what the freed cash did afterwards is deliberately not
+counted. Pure core unit-tested in `scripts/verify-decision-verdict.ts`.
+
+**Follow-ups (v2).** Surface the same stamp on the journal entry rows and the asset
+detail; add a since-the-decision / 1Y / 3Y lookback selector; carry the verdict into the
+"memo" export (#6). **Coverage hole to close:** a sell of a *value-only* tradeable (no
+recorded unit count) stores `before_units: null`, so v1 shows no verdict for it — derive
+the magnitude from `before_value` × the price ratio when units are absent (needs a
+value-path in the engine; verify how common null-`before_units` sells are against real
+data first). Known shared limitation: nominal units vs split-adjusted prices (the whole
+counterfactual track shares this). v1 fails closed on FX-unavailable (non-USD stock,
+historical FX down) rather than risk a wrong figure.
 
 **Why.** The one feature no competitor can ship: Copilot, Monarch, Empower, Kubera store
 what you *have*, not *why*; Sharesight grades against a benchmark, not your own thesis.

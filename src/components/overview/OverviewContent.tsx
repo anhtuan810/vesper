@@ -22,6 +22,7 @@ import { pctChange, displayTicker } from "@/lib/utils";
 import { firstSnapshotDate } from "@/lib/networth-history";
 import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
+import type { VerdictData } from "@/lib/scenario/decision-verdict";
 import { apiFetch } from "@/lib/api";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_ORDER,
@@ -152,6 +153,59 @@ function decisionPoints(m: Mutation, displayCurrency: ReturnType<typeof useDispl
     else if (amt) pts.push(`A ${amt < 0 ? "decrease" : "increase"} of about ${money(amt)} that day.`);
   }
   return pts;
+}
+
+// Cheap client-side pre-check before asking the server for a Decision Verdict:
+// only a past sell or reduce of a tradeable position (with a symbol, old enough to
+// look back on) could plausibly return one. Mirrors the server's eligibility so
+// the API call fires only when it might pay off — every other decision shows nothing.
+function sellLookbackEligible(m: Mutation): boolean {
+  if (!m.symbol || !["stocks", "etf", "crypto"].includes(m.asset_type ?? "")) return false;
+  const before = typeof m.before_units === "number" ? m.before_units : null;
+  const after = m.action === "remove" ? 0 : typeof m.after_units === "number" ? m.after_units : null;
+  const isSell = m.action === "remove" || (m.action === "edit" && before != null && after != null && before > after);
+  if (!isSell || before == null || after == null || !(before - after > 0)) return false;
+  const occurred = mDate(m).slice(0, 10);
+  if (!occurred) return false;
+  return (Date.now() - Date.parse(occurred)) / 86_400_000 >= 21;
+}
+
+// The retrospective verdict on a past sell/reduce: a calm mono eyebrow, one
+// sentence with the deterministic figure, and a quiet "how this is figured"
+// disclosure. No score, no praise or blame — an editorial post-mortem sitting
+// next to the reasoning the user wrote, the moat (reasoning + counterfactual)
+// finally connected.
+function VerdictStamp({ verdict }: { verdict: VerdictData }) {
+  const [open, setOpen] = useState(false);
+  const cur = verdict.currency as DisplayCurrency;
+  const money = formatMoney(verdict.figure, cur, cur);
+  const line =
+    verdict.kind === "spared" ? (
+      <>Selling here spared you <strong>{money}</strong> — the stake you let go is worth less now.</>
+    ) : verdict.kind === "missed" ? (
+      <>Holding on would have gained <strong>{money}</strong> — the stake kept climbing after you sold.</>
+    ) : (
+      <>This came out roughly even — the stake you sold is worth about what it was.</>
+    );
+  return (
+    <div className={`ep-verdict ${verdict.kind}`}>
+      <span className="ep-verdict-eyebrow">Looking back · {verdict.lookbackLabel}</span>
+      <p className="ep-verdict-line">{line}</p>
+      <button
+        type="button"
+        className="ep-verdict-how"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? "Hide how this is figured" : "How this is figured"}
+      </button>
+      {open && (
+        <ul className="ep-verdict-notes">
+          {verdict.assumptions.map((a, i) => <li key={i}>{a}</li>)}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 // Suffix for the growth badge, matching the selected chart range.
@@ -378,6 +432,37 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const selectedMove = selectedEntry?.kind === "market" ? selectedEntry.mv : null;
   const selectedDate = selectedEntry?.date ?? null;
   const isToday = !selectedEntry;
+
+  // Decision Verdict — when a past sell/reduce is selected, ask the server (which
+  // owns the price/FX history) to value the stake the user let go, then vs now.
+  // Cached per (mutation, display currency); `null` marks "asked, nothing to show"
+  // so we never re-fetch. Failures and ineligible decisions both resolve to null,
+  // so the panel just renders no stamp — the page never depends on this landing.
+  const [verdicts, setVerdicts] = useState<Record<string, VerdictData | null>>({});
+  const verdictAsked = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const m = selectedDecision;
+    if (!m || !sellLookbackEligible(m)) return;
+    const key = `${m.id}|${displayCurrency}`;
+    if (verdictAsked.current.has(key)) return;
+    verdictAsked.current.add(key);
+    let cancelled = false;
+    apiFetch("/api/decisions/verdict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mutation_id: m.id, display_currency: displayCurrency }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (cancelled) return;
+        setVerdicts((v) => ({ ...v, [key]: body?.eligible ? (body as VerdictData) : null }));
+      })
+      // A transient network failure shouldn't permanently suppress the verdict:
+      // release the key so re-selecting the entry retries (a clean 402/ineligible
+      // resolves above to a cached null and is not retried).
+      .catch(() => { if (!cancelled) verdictAsked.current.delete(key); });
+    return () => { cancelled = true; };
+  }, [selectedDecision, displayCurrency]);
 
   // Once an entry is selected, ← / → step through the journal and Esc returns
   // to Today — so scrubbing 68 entries doesn't mean 68 clicks. Gated on an active
@@ -687,6 +772,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             const m = selectedDecision!;
             const own = hasOwnNote(m);
             const points = decisionPoints(m, displayCurrency);
+            const verdict = verdicts[`${m.id}|${displayCurrency}`];
             return (
               <>
                 <div className="ep-top">
@@ -704,6 +790,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                     {points.map((p, i) => <li key={i}>{p}</li>)}
                   </ul>
                 )}
+                {verdict && <VerdictStamp verdict={verdict} />}
               </>
             );
           })()}

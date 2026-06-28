@@ -5,8 +5,19 @@ for the first time straight from the marketing page, the app should feel like **
 marketing page resolving into the product** — a cinematic but *calm* reveal. Delight, not
 flash. The brand is anti-hype: no count-ups, no confetti, no bounce.
 
-Status note: **v1 is being implemented** (line-draw + dot stagger + story eyebrow +
-reduced-motion / play-once gating). The rail-greeting beat is specced here as a follow-up.
+Status note: **v1 is shipped** (2026-06-28) — the net-worth line-draw, the card
+cascade, the journal dot stagger, and the reduced-motion / play-once gating. The
+one-line portfolio "story" eyebrow and the rail-greeting beat are specced here as
+follow-ups (the story changes the resting layout, so it was deferred from v1).
+
+**Shipped (v1).** `OverviewContent` sets a `reveal` flag once per session
+(`volnar:overview-revealed` in `sessionStorage`), skipped under
+`prefers-reduced-motion`. It drives: `.rv rv-1..rv-4` cascade classes on the four
+sections (reusing the global `up` keyframe), and `revealLine={reveal}` into
+`NetWorthChart`, which strokes the net-worth path via `pathLength=1` + a dash-draw
+(`.nw-line-draw`) and staggers the journal dots in oldest→newest (`.nw-dot-rise`,
+per-dot delay clamped to ~0.5s total). CSS + reduced-motion fallback live in
+`home-twilight.css`.
 
 ---
 
