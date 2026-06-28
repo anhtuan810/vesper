@@ -202,9 +202,9 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
       );
     calc = (
       <>
-        You put about <strong>{fmt(d.valueThen)}</strong> into {fmtUnits(d.units)} {unitLabel} on {shortDate(d.date)};
-        today that&apos;s <strong>{fmt(d.valueNow)}</strong>. The same money in {bench} would be about{" "}
-        <strong>{fmt(d.benchmarkNow ?? 0)}</strong>
+        Those {fmtUnits(d.units)} {unitLabel} were worth about <strong>{fmt(d.valueThen)}</strong> at the close on{" "}
+        {shortDate(d.date)}, and today they&apos;re <strong>{fmt(d.valueNow)}</strong>. The same amount in {bench} would
+        be about <strong>{fmt(d.benchmarkNow ?? 0)}</strong>
         {verdict.kind === "matched" ? <> — roughly level.</> : <> — {verdict.kind === "beat" ? "ahead" : "behind"} by <strong>{money}</strong>.</>}
       </>
     );

@@ -53,10 +53,10 @@ export interface VerdictData {
   // numbers, not a generic note. All money is in `currency`.
   detail: {
     units: number; // the stake that left the book (sell) / was bought (buy)
-    valueThen: number; // sell: worth at the sale; buy: capital deployed
+    valueThen: number; // those units' value at the decision-date close (sell: at sale; buy: the baseline)
     valueNow: number; // what those units are worth today
     date: string; // YYYY-MM-DD of the decision
-    benchmarkNow?: number; // buy only: that same capital in the benchmark, today
+    benchmarkNow?: number; // buy only: that same baseline amount grown at the benchmark, today
   };
 }
 
