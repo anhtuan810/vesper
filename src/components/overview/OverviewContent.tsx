@@ -231,6 +231,21 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     });
   };
 
+  // First-visit cinematic reveal (the net-worth line draws on, then a gentle card
+  // cascade). Plays once per session and is skipped under prefers-reduced-motion,
+  // so every other visit — and reduced-motion users — get the page instantly.
+  const [reveal, setReveal] = useState(false);
+  useEffect(() => {
+    try {
+      const seen = sessionStorage.getItem("volnar:overview-revealed");
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      if (!seen && !reduced) {
+        setReveal(true); // eslint-disable-line react-hooks/set-state-in-effect
+        sessionStorage.setItem("volnar:overview-revealed", "1");
+      }
+    } catch { /* sessionStorage/matchMedia unavailable — no reveal, page is instant */ }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     apiFetch(`/api/snapshots?range=All`, { signal: controller.signal })
@@ -550,7 +565,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   return (
     <>
       {/* ── Dashboard card ── */}
-      <section className="dash">
+      <section className={`dash${reveal ? " rv rv-1" : ""}`}>
         <div className="dash-h">
           <div>
             {/* Lens selector (mirrors the phone's "Net worth · Liquid"): full net
@@ -595,6 +610,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             markers={markers}
             selectedMarkerId={highlightMarkerId}
             onMarkerClick={setSelectedId}
+            revealLine={reveal}
           />
         </div>
 
@@ -726,7 +742,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
       </section>
 
       {/* ── Vitals ── */}
-      <section className="sec">
+      <section className={`sec${reveal ? " rv rv-2" : ""}`}>
         <div className="sec-top">
           <div>
             <span className="eyebrow">Vitals</span>
@@ -770,7 +786,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
       </section>
 
       {/* ── Decision journal ── */}
-      <section className="sec">
+      <section className={`sec${reveal ? " rv rv-3" : ""}`}>
         <div className="sec-top">
           <div>
             <span className="eyebrow">Decision journal</span>
@@ -829,7 +845,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
       </section>
 
       {/* ── Private by design ── */}
-      <section className="sec" style={{ marginBottom: 8 }}>
+      <section className={`sec${reveal ? " rv rv-4" : ""}`} style={{ marginBottom: 8 }}>
         <div className="trust">
           <span className="t">Private by design.</span>
           <div className="items">

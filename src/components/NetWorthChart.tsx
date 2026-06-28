@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { useDisplayCurrencyState } from "@/lib/hooks";
 import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } from "@/lib/money";
@@ -113,6 +113,10 @@ interface Props {
   markers?: { id: string; date: string; kind?: "you" | "market"; title?: string; sub?: string; value?: string }[];
   selectedMarkerId?: string | null;
   onMarkerClick?: (id: string) => void;
+  // First-visit cinematic reveal: when true, the net-worth line strokes itself in
+  // left→right and the journal dots light up oldest→newest (gated upstream to the
+  // first session landing + prefers-reduced-motion). Visual only — no behaviour.
+  revealLine?: boolean;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -635,7 +639,7 @@ export function NetWorthChart(props: Props) {
               )}
               {/* Soft same-hue glow under the trajectory, then the line itself —
                   thicker than the band edges so the net-worth path owns the silhouette. */}
-              <path d={line} fill="none" stroke={strokeColor} strokeWidth={3.5} strokeOpacity={0.12} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={line} fill="none" stroke={strokeColor} strokeWidth={3.5} strokeOpacity={0.12} strokeLinecap="round" strokeLinejoin="round" {...(props.revealLine ? { pathLength: 1, className: "nw-line-draw" } : {})} />
               <path
                 d={line}
                 fill="none"
@@ -643,6 +647,7 @@ export function NetWorthChart(props: Props) {
                 strokeWidth={1.75}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                {...(props.revealLine ? { pathLength: 1, className: "nw-line-draw" } : {})}
               />
               {/* Static end-point marker — hidden while scrubbing a non-last point,
                   and in marker mode (the decision dots are the markers instead) */}
@@ -679,12 +684,18 @@ export function NetWorthChart(props: Props) {
                   />
                 );
               })()}
-              {markerMode && markerDots.map((dot) => {
+              {markerMode && markerDots.map((dot, i) => {
                 const sel = dot.id === props.selectedMarkerId;
                 const hov = dot.id === hoveredMarker;
                 const dotColor = dot.kind === "market" ? "var(--text-faint)" : "var(--accent)";
+                // First-visit stagger: dots light up oldest→newest after the line
+                // settles. Step is clamped so a long line never crawls (~0.5s total).
+                const revealStep = Math.min(0.07, 0.5 / Math.max(1, markerDots.length - 1));
+                const revealStyle: CSSProperties = props.revealLine
+                  ? { pointerEvents: "none", animationDelay: `${(1.15 + i * revealStep).toFixed(2)}s` }
+                  : { pointerEvents: "none" };
                 return (
-                  <g key={dot.id} style={{ pointerEvents: "none" }}>
+                  <g key={dot.id} className={props.revealLine ? "nw-dot-rise" : undefined} style={revealStyle}>
                     {sel ? (
                       <>
                         <circle cx={dot.x} cy={dot.y} r={8} fill="none" stroke={dotColor} strokeOpacity={0.22} />

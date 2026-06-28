@@ -359,3 +359,33 @@
 .vhome .trust .items{display:flex;gap:24px;flex-wrap:wrap;margin-left:auto}
 .vhome .trust .it{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--darkmuted)}
 .vhome .trust .it svg{width:16px;height:16px;fill:none;stroke:var(--green);stroke-width:1.8}
+
+/* ── First-visit cinematic reveal ──────────────────────────────────────────
+   Plays once per session on the first landing from marketing (gated in
+   OverviewContent via sessionStorage + prefers-reduced-motion). The line
+   strokes itself in, the cards cascade up a beat behind, and the journal dots
+   light up oldest→newest after the line settles. Reuses the global `up`
+   keyframe (translateY 8px) so it feels like the marketing page resolving into
+   the product — small and slow, never flashy. Repeat visits and reduced-motion
+   users skip all of this (the `.rv` classes are simply never applied). */
+.vhome .rv{animation:up .55s cubic-bezier(.22,.61,.36,1) both}
+.vhome .rv-1{animation-delay:0s}
+.vhome .rv-2{animation-delay:.22s}
+.vhome .rv-3{animation-delay:.34s}
+.vhome .rv-4{animation-delay:.46s}
+
+/* The signature gesture: the net-worth line draws on left→right. pathLength=1
+   normalises the path so dasharray/offset of 1 works at any width. */
+@keyframes nwdraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.vhome .nw-line-draw{stroke-dasharray:1;stroke-dashoffset:1;animation:nwdraw 1.15s cubic-bezier(.33,.1,.25,1) .12s forwards}
+
+/* Journal dots scale-in from nothing after the line settles (per-dot delay set
+   inline in NetWorthChart). transform-box keeps the scale centred on each dot. */
+@keyframes nwdot{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
+.vhome .nw-dot-rise{opacity:0;transform-box:fill-box;transform-origin:center;animation:nwdot .42s cubic-bezier(.22,.61,.36,1) both}
+
+@media (prefers-reduced-motion:reduce){
+  .vhome .rv,.vhome .nw-line-draw,.vhome .nw-dot-rise{animation:none}
+  .vhome .nw-line-draw{stroke-dasharray:none;stroke-dashoffset:0}
+  .vhome .nw-dot-rise{opacity:1;transform:none}
+}
