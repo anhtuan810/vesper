@@ -185,7 +185,6 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
                   </div>
                   <Link href="/profile" role="menuitem" className="vh-menu-item" onClick={() => setMenuOpen(false)}>Profile</Link>
                   <Link href="/settings" role="menuitem" className="vh-menu-item" onClick={() => setMenuOpen(false)}>Settings</Link>
-                  <Link href="/profile#subscription" role="menuitem" className="vh-menu-item" onClick={() => setMenuOpen(false)}>Subscription</Link>
                   <div className="vh-menu-div" aria-hidden="true" />
                   <button type="button" role="menuitem" className="vh-menu-item vh-menu-signout" onClick={() => { setMenuOpen(false); signOut(); }}>Sign out</button>
                 </div>
