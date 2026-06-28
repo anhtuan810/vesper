@@ -512,8 +512,8 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         </div>
 
         {/* selected entry / today, with prev-next navigation. Auto market entries
-            get a distinct theme (gold accent + tint), like the Journal. */}
-        <div className={`ep-inline${selectedMove ? " ep-market" : ""}`}>
+            are flagged by the "Auto · Market" tag rather than a panel treatment. */}
+        <div className="ep-inline">
           <div className="ep-nav">
             <button type="button" className="ep-step" onClick={goOlder} disabled={!canOlder} aria-label="Previous entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
