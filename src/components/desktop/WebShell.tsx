@@ -6,6 +6,7 @@ import { VolnarLogo } from "@/components/VolnarLogo";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { useUser, useDisplayCurrency, useAssets, useSignOut } from "@/lib/hooks";
+import { useSubscription } from "@/components/SubscriptionProvider";
 import { takeHandoff } from "@/lib/scenario/handoff";
 import { EXPLORE_EVENT, buildExploreSeed } from "@/lib/scenario/explore";
 import { WHATIF_EVENT, takeWhatIfSeed } from "@/lib/scenario/whatif";
@@ -50,6 +51,10 @@ const NAV = [
 export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }) {
   const { user } = useUser();
   const signOut = useSignOut();
+  const { data: sub } = useSubscription();
+  // The demo account has no real identity, so show a generic person silhouette
+  // instead of initials; real users keep their initials.
+  const isDemo = !!sub?.isDemo;
   const displayCurrency = useDisplayCurrency();
   const { assets } = useAssets(user?.id);
 
@@ -164,7 +169,11 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((o) => !o)}
               >
-                <span className="vh-av">{initials(user)}</span>
+                <span className="vh-av">
+                  {isDemo
+                    ? <svg className="vh-av-person" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="3.6" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0z" /></svg>
+                    : initials(user)}
+                </span>
                 <svg className="vh-av-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" /></svg>
               </button>
               {menuOpen && (
