@@ -84,6 +84,21 @@
 .vhome .nwbasis-asof{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
 .vhome .nwbasis-asof .asof{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.02em}
 
+/* "On this day" hook — a quiet gold strip resurfacing a past entry dated today. */
+.vhome .onthisday{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--mint);border:1px solid var(--line);border-radius:12px;padding:11px 16px;margin-top:14px;cursor:pointer;transition:background .15s}
+.vhome .onthisday:hover{background:var(--mint2)}
+.vhome .otd-eyebrow{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--gb);white-space:nowrap}
+.vhome .otd-text{font-family:var(--serif);font-size:15px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Dot legend + scrub cue — names the chart as a walkable timeline of decisions. */
+.vhome .chart-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+.vhome .cl-item{display:inline-flex;align-items:center;gap:6px}
+.vhome .cl-dot{width:7px;height:7px;border-radius:99px;display:inline-block}
+.vhome .cl-dot.you{background:var(--green)}
+.vhome .cl-dot.mkt{background:var(--faint)}
+.vhome .cl-hint{margin-left:auto;color:var(--faint)}
+@media(max-width:640px){ .vhome .cl-hint{display:none} }
+
 /* selected-decision panel */
 .vhome .ep-inline{border-top:1px solid var(--line);margin-top:18px;padding-top:20px}
 .vhome .ep-cue{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:13px}

@@ -300,6 +300,31 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   }, [sortedMutations, moves]);
   const journalPreview = useMemo(() => entries.slice(0, 7), [entries]);
 
+  // "On this day, N years ago you…" — the most resonant proof this is a journal.
+  // Find a past entry sharing today's day+month; clicking it rewinds the card.
+  const onThisDay = useMemo(() => {
+    if (!now || entries.length === 0) return null;
+    const md = now.toISOString().slice(5, 10);
+    const y = now.getFullYear();
+    const e = entries.find((x) => x.date.slice(5, 10) === md && Number(x.date.slice(0, 4)) < y);
+    if (!e) return null;
+    const title = e.kind === "decision"
+      ? decisionTitle(e.m)
+      : `${e.mv.index_label} ${e.mv.pct_change >= 0 ? "+" : "−"}${fmtPct(Math.abs(e.mv.pct_change), 1)}%`;
+    return { id: e.id, years: y - Number(e.date.slice(0, 4)), title };
+  }, [now, entries]);
+
+  // Relative age of the most recent entry, for the Today panel's "Last entry · …".
+  const lastEntryAgo = useMemo(() => {
+    if (!now || entries.length === 0) return null;
+    const days = Math.floor((Date.parse(now.toISOString().slice(0, 10)) - Date.parse(entries[0].date)) / 86400000);
+    if (days <= 0) return "today";
+    if (days === 1) return "yesterday";
+    if (days < 30) return `${days} days ago`;
+    const months = Math.round(days / 30);
+    return months <= 1 ? "a month ago" : `${months} months ago`;
+  }, [now, entries]);
+
   // Chart markers — one per entry. Decisions use the accent ("you"); market swings
   // the muted "market" colour. Each carries the short content the chart shows on
   // hover; hovering previews, clicking commits the selection (drives the page).
@@ -547,6 +572,13 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           </div>
         </div>
 
+        {isToday && onThisDay && (
+          <button type="button" className="onthisday" onClick={() => setSelectedId(onThisDay.id)}>
+            <span className="otd-eyebrow">On this day · {onThisDay.years} {onThisDay.years === 1 ? "year" : "years"} ago</span>
+            <span className="otd-text">{onThisDay.title}</span>
+          </button>
+        )}
+
         <div style={{ margin: "18px 0 4px" }}>
           <NetWorthChart
             range={range}
@@ -561,6 +593,16 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             onMarkerClick={setSelectedId}
           />
         </div>
+
+        {/* Name the scrub: teach that the line is a walkable timeline of entries.
+            Shown at rest (Today); once scrubbing, the nav row carries the cue. */}
+        {isToday && entries.length > 0 && (
+          <div className="chart-legend">
+            <span className="cl-item"><span className="cl-dot you" aria-hidden="true" /> Your decisions</span>
+            <span className="cl-item"><span className="cl-dot mkt" aria-hidden="true" /> Market swings</span>
+            <span className="cl-hint">Hover the line to peek · click a dot to step into that decision</span>
+          </div>
+        )}
 
         {/* selected entry / today, with prev-next navigation. Auto market entries
             are flagged by the "Auto · Market" tag rather than a panel treatment. */}
@@ -586,14 +628,14 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           {isToday ? (
             <>
               <div className="ep-top">
-                <span className="ep-date">Live position</span>
+                <span className="ep-date">{lastEntryAgo ? `Last entry · ${lastEntryAgo}` : "Live position"}</span>
                 <span className="ep-kind milestone">Today</span>
               </div>
               <h3 className="ep-title">Your position today</h3>
               <p className="ep-why">
-                {formatMoney(headlineNet, displayCurrency, displayCurrency)} across {netWorthAssets.length} holdings
-                {effectiveInclude ? ", property shown net of mortgage." : ", property excluded."}
-                {" "}Step back through the line to see the decision behind each point.
+                {entries.length === 0
+                  ? "This is your starting position. From here, every change you make is journalled with the reasoning behind it — and the line above becomes a record you can step back through."
+                  : <>The line above holds {entries.length} {entries.length === 1 ? "entry" : "decisions and market moves"} — step back through it to revisit the reasoning behind any number.</>}
               </p>
             </>
           ) : selectedMove ? (() => {
