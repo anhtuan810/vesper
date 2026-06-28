@@ -397,6 +397,49 @@ export async function seedDemoUser(userId: string): Promise<void> {
     after_units: afterUnits,
   });
 
+  // A position the persona bought and later fully EXITED. It is not in the current
+  // holdings, so its symbol / type / currency are passed explicitly here (the
+  // byName lookup only covers still-held assets). Returns the buy and the sell as a
+  // pair; the "remove" is what the Decision Verdict scores. Real tickers + real past
+  // sell dates, so the verdict is computed against genuine historical prices — the
+  // values below are only the journal's cosmetic impact figures, never the verdict.
+  const exitedTrade = (opts: {
+    name: string; symbol: string; assetType: string; currency: string;
+    buyDate: string; buyValue: number; units: number; buyNote: string; buyTotal: number; buyMarket?: string;
+    sellDate: string; sellValue: number; sellNote: string; sellTotal: number; sellMarket?: string;
+  }): Array<Record<string, unknown>> => {
+    const common = (occurredAt: string) => ({
+      user_id: userId,
+      asset_id: null,
+      asset_name: opts.name,
+      asset_type: opts.assetType,
+      symbol: opts.symbol,
+      currency: opts.currency,
+      occurred_at: occurredAt,
+      recorded_at: `${occurredAt}T12:00:00Z`,
+    });
+    return [
+      {
+        ...common(opts.buyDate),
+        action: "add",
+        before_value: null, after_value: opts.buyValue,
+        before_units: null, after_units: opts.units,
+        personal_context: opts.buyNote,
+        market_context: opts.buyMarket ?? null,
+        portfolio_total: opts.buyTotal,
+      },
+      {
+        ...common(opts.sellDate),
+        action: "remove",
+        before_value: opts.sellValue, after_value: null,
+        before_units: opts.units, after_units: null,
+        personal_context: opts.sellNote,
+        market_context: opts.sellMarket ?? null,
+        portfolio_total: opts.sellTotal,
+      },
+    ];
+  };
+
   const mutationRows = [
     add(
       "iShares Core MSCI World",
@@ -743,6 +786,51 @@ export async function seedDemoUser(userId: string): Promise<void> {
       "Latest top-up of the cycle into the world tracker. Same plan, same discipline.",
       378000,
     ),
+
+    // ── Positions bought and later fully exited ──────────────────────────────
+    // The persona did not only accumulate — these are the sells. Each is a real
+    // ticker exited on a real past date, so the Decision Verdict on the "Removed
+    // …" entry scores against genuine price history (some calls aged well, some
+    // did not — exactly the honest mix the feature is meant to surface).
+    ...exitedTrade({
+      name: "Intel", symbol: "INTC", assetType: "stocks", currency: "USD",
+      buyDate: "2022-06-10", buyValue: 3040, units: 80,
+      buyNote: "Bought Intel as a turnaround and foundry bet — cheap, paid a dividend, and a credible plan to make chips for the whole industry.",
+      buyTotal: 201000,
+      sellDate: "2024-04-12", sellValue: 3520,
+      sellNote: "Sold Intel and took the small loss. The foundry turnaround kept slipping and the dividend was at risk — the case I bought had quietly fallen apart, so I admitted it rather than average down.",
+      sellTotal: 272000,
+    }),
+    ...exitedTrade({
+      name: "Tesla", symbol: "TSLA", assetType: "stocks", currency: "USD",
+      buyDate: "2022-11-18", buyValue: 2700, units: 15,
+      buyNote: "Bought Tesla on the post-peak slide — a bet on the energy business and FSD optionality more than the cars themselves.",
+      buyTotal: 216000,
+      buyMarket: "Tesla had fallen hard from its 2021 peak; I bought into the weakness.",
+      sellDate: "2024-09-16", sellValue: 3450,
+      sellNote: "Sold Tesla to cut single-name risk. Too much of the thesis rode on headlines and one person rather than the numbers, and the position had drifted larger than I was comfortable with.",
+      sellTotal: 301000,
+    }),
+    ...exitedTrade({
+      name: "PayPal", symbol: "PYPL", assetType: "stocks", currency: "USD",
+      buyDate: "2021-08-05", buyValue: 6875, units: 25,
+      buyNote: "Bought PayPal as a core fintech compounder — digital payments still taking share from cash, with a real moat in checkout.",
+      buyTotal: 158000,
+      sellDate: "2023-03-10", sellValue: 1800,
+      sellNote: "Sold PayPal and admitted the mistake. Growth slowed, competition caught up, and the story I paid a premium for at 275 simply was not there anymore.",
+      sellTotal: 232000,
+      sellMarket: "Sold during the regional-bank scare around the collapse of Silicon Valley Bank.",
+    }),
+    ...exitedTrade({
+      name: "Adyen", symbol: "ADYEN.AS", assetType: "stocks", currency: "EUR",
+      buyDate: "2021-10-12", buyValue: 17600, units: 8,
+      buyNote: "Bought a few shares of Adyen — a rare European payments champion compounding at high margins, and close to home.",
+      buyTotal: 167000,
+      sellDate: "2023-08-20", sellValue: 7200,
+      sellNote: "Sold Adyen into the summer collapse after a brutal earnings miss. In hindsight this was fear, not analysis — I sold the panic instead of sitting with a business I still believed in.",
+      sellTotal: 240000,
+      sellMarket: "Adyen had just fallen roughly forty percent in a single session on a margin and growth miss.",
+    }),
   ];
 
   const { error: mutationError } = await supabase.from("mutations").insert(mutationRows);
