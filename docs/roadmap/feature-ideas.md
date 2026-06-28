@@ -10,8 +10,20 @@ every number"; the highest-leverage work is making that moat *felt*, not just st
 > revealed with the **first-3s line-draw WOW** (see `first-3s-wow.md`) — as one coherent
 > "the moat, made felt" release.
 
-Status note: **Decision Verdict v1 is shipped** (see below). The rest are
-specced here to start in their own chats.
+## Status (2026-06-28)
+
+- ✅ **#1 Decision Verdict — shipped** (sells *and* buys), with server-side cache +
+  background prefetch, the real-numbers "how this is figured" disclosure, and the
+  demo seeded with real sell/buy history to exercise it. The first-3s WOW reveal is
+  also shipped (see `first-3s-wow.md`).
+- ⏭️ **Next up: #2 Alerts → journal prompts.** Smallest of the five and the *capture
+  mechanism* every other feature feeds on (more annotated entries → richer Verdicts,
+  coaching, conviction). Scope it first, then build.
+- After #2, **#6 Memo export** is the best standalone win — on-brand, viral, and it
+  showcases the Verdict already shipped.
+- #3 Coach, #4 Scenario Replay, #5 Conviction dial remain specced below.
+
+Each item below is a self-contained spec — pick any up in a fresh chat.
 
 ---
 
