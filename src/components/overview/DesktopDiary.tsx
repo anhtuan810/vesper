@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react";
 import Link from "next/link";
 import { getMonthKey, getMonthLabel, formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
@@ -75,6 +75,25 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
   const [customTo, setCustomTo] = useState(thisMonth);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  // Deep link from an asset's activity row: /diary?focus=<mutationId> scrolls to
+  // that entry and flashes it. Read client-side (no Suspense needed) on mount.
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get("focus");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (f) { setFocusId(f); setPeriod("all"); setSearchQuery(""); }
+  }, []);
+  useEffect(() => {
+    if (!focusId) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`diary-entry-${focusId}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedId(focusId);
+    }, 90);
+    const t2 = setTimeout(() => setHighlightedId(null), 1900);
+    return () => { clearTimeout(t); clearTimeout(t2); };
+  }, [focusId]);
 
   const anniversary = (() => {
     const month = now.getMonth(), day = now.getDate();
@@ -208,13 +227,14 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
                     <ValueRight v={v} date={m.occurred_at || m.recorded_at} />
                   </>
                 );
-                const cls = `drow${isAuto ? " drow-market" : ""}`;
+                const cls = `drow${isAuto ? " drow-market" : ""}${highlightedId === m.id ? " dfocus" : ""}`;
                 return gone
-                  ? <div className={cls} key={m.id}>{inner}</div>
-                  : <Link className={cls} key={m.id} href={`/asset?id=${m.asset_id}`}>{inner}</Link>;
+                  ? <div className={cls} key={m.id} id={`diary-entry-${m.id}`}>{inner}</div>
+                  : <Link className={cls} key={m.id} id={`diary-entry-${m.id}`} href={`/asset?id=${m.asset_id}`}>{inner}</Link>;
               }
               const { id: gid, anchor, members, groupName } = item;
-              const open = expandedGroups.has(gid);
+              // Auto-open the group that holds the deep-linked entry so it can scroll to it.
+              const open = expandedGroups.has(gid) || (focusId != null && members.some((mm) => mm.id === focusId));
               const gone = !anchor.asset_id;
               const ctx = members.find((mm) => !!mm.personal_context)?.personal_context ?? null;
               const gv = groupValue(members, displayCurrency);
@@ -233,7 +253,7 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
                   {open && members.map((m) => {
                     const v = diaryValue(m, displayCurrency);
                     return (
-                      <div className="dchild" key={m.id}>
+                      <div className={`dchild${highlightedId === m.id ? " dfocus" : ""}`} key={m.id} id={`diary-entry-${m.id}`}>
                         <span />
                         <span>{v && <span className={`drow-v ${v.cls}`}>{v.text}</span>}</span>
                         <span className="drow-date">{formatDate(m.occurred_at || m.recorded_at)}</span>

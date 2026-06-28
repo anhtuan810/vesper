@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PriceChart, type Range, type ScrubInfo } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
 import { pctChange, formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
+import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { formatMoney } from "@/lib/money";
 import { AssetLogo } from "@/components/AssetLogo";
 import { normalizePrice } from "@/lib/prices";
@@ -70,6 +71,9 @@ function ActivityDate({ dateStr }: { dateStr: string }) {
 
 export function TradeableDetail({ asset }: Props) {
   const router = useRouter();
+  // Desktop web only: activity rows deep-link to the journal entry. Mobile and
+  // native render the rows exactly as before (isDesktop is false/undefined there).
+  const isDesktop = useIsDesktop();
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [livePrev, setLivePrev] = useState<number | null>(null);
   const [nativePrice, setNativePrice] = useState<number | null>(null);
@@ -386,8 +390,21 @@ export function TradeableDetail({ asset }: Props) {
               // Hide row entirely if no delta and no context
               if (!delta && !m.personal_context) return null;
 
+              // Only journalled rows (with a note or market context) deep-link —
+              // a bare delta row has no journal entry to land on.
+              const linkToJournal = isDesktop === true && !!(m.personal_context || m.market_context);
               return (
-                <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
+                <div
+                  key={m.id}
+                  style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)", ...(linkToJournal ? { cursor: "pointer" } : {}) }}
+                  {...(linkToJournal ? {
+                    role: "button",
+                    tabIndex: 0,
+                    title: "Open in journal",
+                    onClick: () => router.push(`/diary?focus=${m.id}`),
+                    onKeyDown: (e: ReactKeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(`/diary?focus=${m.id}`); } },
+                  } : {})}
+                >
                   {dateStr && <ActivityDate dateStr={dateStr} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {delta && (
