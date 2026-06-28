@@ -114,14 +114,7 @@ export function RealEstateDetail({ asset }: Props) {
 
         {/* Equity hero */}
         <div style={{ marginBottom: hasMortgage ? 12 : 28 }}>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-            marginBottom: 6,
-          }}>
+          <div className="ad-eyebrow" style={{ marginBottom: 6 }}>
             Equity
           </div>
           <div style={{
@@ -159,7 +152,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Mortgage section */}
         {hasMortgage && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
+            <div className="ad-eyebrow" style={{ marginBottom: 6 }}>
               Mortgage
             </div>
             {asset.mortgage_rate != null && (
@@ -177,7 +170,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Activity */}
         {mutations.length > 0 && (
           <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 6 }}>
+            <div className="ad-eyebrow" style={{ marginBottom: 6 }}>
               Activity
             </div>
             {mutations.map((m) => {

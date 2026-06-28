@@ -200,14 +200,7 @@ export function TradeableDetail({ asset }: Props) {
 
         {/* Market price hero */}
         <div style={{ marginBottom: 20 }}>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-            marginBottom: 8,
-          }}>
+          <div className="ad-eyebrow" style={{ marginBottom: 8 }}>
             Market price
           </div>
           <div
@@ -295,14 +288,7 @@ export function TradeableDetail({ asset }: Props) {
 
         {/* Your position */}
         <div style={{ marginTop: 26 }}>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-            marginBottom: 12,
-          }}>
+          <div className="ad-eyebrow" style={{ marginBottom: 12 }}>
             Your position
           </div>
           <div style={{
@@ -365,14 +351,7 @@ export function TradeableDetail({ asset }: Props) {
         {/* Activity */}
         {mutations.length > 0 && (
           <div style={{ marginTop: 26 }}>
-            <div style={{
-              fontSize: 11,
-              fontWeight: 500,
-              fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-              textTransform: "uppercase",
-              color: "var(--text-faint)",
-              marginBottom: 12,
-            }}>
+            <div className="ad-eyebrow" style={{ marginBottom: 12 }}>
               Activity
             </div>
             {mutations.slice(0, 5).map((m) => {

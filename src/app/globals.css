@@ -325,3 +325,16 @@ html.native-app [contenteditable="true"] {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Asset-detail section eyebrow — extracted from the per-component inline styles
+   so the desktop Twilight shell can override its colour (see home-twilight.css
+   `.vhome .ad-eyebrow`). Base values match the previous inline styles exactly,
+   so mobile/native rendering is unchanged. marginBottom stays inline. */
+.ad-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--mono);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}

@@ -155,7 +155,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
 
         {/* Value hero */}
         <div style={{ marginBottom: 30 }}>
-          <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
+          <div className="ad-eyebrow" style={{ marginBottom: 8 }}>
             Value
           </div>
           <div style={{
@@ -220,7 +220,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
         {/* Projection */}
         {projection && (
           <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: 16, marginBottom: 26 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>
+            <div className="ad-eyebrow" style={{ marginBottom: 8 }}>
               Projected at {accessAge} (in {yta} {yta === 1 ? "year" : "years"})
             </div>
             <div style={{

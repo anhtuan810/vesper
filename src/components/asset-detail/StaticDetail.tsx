@@ -129,14 +129,7 @@ export function StaticDetail({ asset }: Props) {
 
         {/* Balance / market value hero */}
         <div style={{ marginBottom: 30 }}>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-            marginBottom: 8,
-          }}>
+          <div className="ad-eyebrow" style={{ marginBottom: 8 }}>
             {asset.type === "bonds" ? "Market value" : "Balance"}
           </div>
           <div style={{
@@ -191,7 +184,7 @@ export function StaticDetail({ asset }: Props) {
         {/* Activity */}
         {mutations.length > 0 && (
           <div style={{ marginTop: asset.type === "bonds" ? 0 : 4 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+            <div className="ad-eyebrow" style={{ marginBottom: 12 }}>
               Activity
             </div>
             {mutations.map((m) => {

@@ -256,6 +256,10 @@
 .vhome .st-confirm.armed{background:var(--surface2);color:var(--neg);cursor:pointer}
 .vhome .st-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--muted);box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:50}
 
+/* ── asset detail: gold section eyebrows on desktop (shared .ad-eyebrow hook;
+      base styling in globals.css keeps mobile unchanged) ── */
+.vhome .ad-eyebrow{color:var(--green)}
+
 /* dark trust band */
 .vhome .trust{background:var(--dark);color:var(--darkfg);border-radius:18px;padding:24px 30px;display:flex;align-items:center;gap:26px;flex-wrap:wrap}
 .vhome .trust .t{font-family:var(--serif);font-size:19px;font-weight:500}

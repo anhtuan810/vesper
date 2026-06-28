@@ -22,7 +22,7 @@ export function PensionActivityList({
 
   return (
     <div style={{ marginTop: 26 }}>
-      <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 12 }}>
+      <div className="ad-eyebrow" style={{ marginBottom: 12 }}>
         Activity
       </div>
       {mutations.map((m) => {
