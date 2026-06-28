@@ -545,8 +545,8 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         <div className="date" suppressHydrationWarning>{now ? headDate(now) : ""}</div>
       </div>
 
-      {/* ── Dashboard card ── (gold left-rule signals a rewound, historical view) */}
-      <section className={`dash${!isToday ? " dash-past" : ""}`}>
+      {/* ── Dashboard card ── */}
+      <section className="dash">
         <div className="dash-h">
           <div>
             {/* Lens selector (mirrors the phone's "Net worth · Liquid"): full net
