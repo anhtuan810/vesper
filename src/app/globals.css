@@ -71,10 +71,10 @@
   --negative-text: #8A3F22;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
   --nav-surface:   rgba(243, 236, 224, 0.85);
-  --category-public-markets: #5E7488;
-  --category-reserves:       #97703D;
-  --category-property:       #5E6A4A;
-  --category-crypto:         #7A5C8C;
+  --category-public-markets: #117A52;
+  --category-reserves:       #A89968;
+  --category-property:       #3F7CA8;
+  --category-crypto:         #E0922A;
   --surface-deep:  #E7DFD0;
   --accent-deep:   #6F5226;
   --negative-deep: #7E3A1F;
@@ -82,27 +82,27 @@
   --amber-deep:    #8A5E22;
   --amber-soft:    rgba(176, 122, 46, 0.13);
   --bg-deep:           #EAE2D4;
-  --cat-property:      #5E6A4A;
-  --cat-property-soft: #E3E4D6;
-  --cat-markets:       #5E7488;
-  --cat-markets-soft:  #DEE3E8;
-  --cat-reserves:      #97703D;
-  --cat-reserves-soft: #EBDFCB;
-  --cat-crypto:        #B0552F;
-  --cat-crypto-soft:   #EFDDD2;
+  --cat-property:      #3F7CA8;
+  --cat-property-soft: #DCE7EF;
+  --cat-markets:       #117A52;
+  --cat-markets-soft:  #D5E5DD;
+  --cat-reserves:      #A89968;
+  --cat-reserves-soft: #ECE3D0;
+  --cat-crypto:        #E0922A;
+  --cat-crypto-soft:   #F6E6D1;
   --cat-tangible:      #8C7B5E;
   --cat-tangible-soft: #E8E1D2;
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band:  #5E6A4A;
-  --cat-property-edge:  #47503A;
-  --cat-markets-band:   #5E7488;
-  --cat-markets-edge:   #475968;
-  --cat-reserves-band:  #C7A86E;
-  --cat-reserves-edge:  #A8854A;
-  --cat-crypto-band:    #C06A44;
-  --cat-crypto-edge:    #9E5234;
+  --cat-property-band:  #3F7CA8;
+  --cat-property-edge:  #2F6189;
+  --cat-markets-band:   #117A52;
+  --cat-markets-edge:   #0C5C3E;
+  --cat-reserves-band:  #A89968;
+  --cat-reserves-edge:  #877A4C;
+  --cat-crypto-band:    #E0922A;
+  --cat-crypto-edge:    #B5731C;
   --cat-tangible-band:  #BCAE94;
   --cat-tangible-edge:  #7E6F54;
   /* PerspectiveCard translucent surfaces — light values */
