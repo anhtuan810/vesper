@@ -319,6 +319,18 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const canOlder = navIndex >= 0 && navIndex < navIds.length - 1;
   const canNewer = navIndex > 0;
 
+  // Clicking a journal-preview row selects that entry — same as clicking its
+  // chart dot: it drives the panel and highlights the marker on the graph.
+  const selectRowProps = (id: string) => ({
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-pressed": selectedId === id,
+    onClick: () => setSelectedId(id),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedId(id); }
+    },
+  });
+
   // The selected entry drives the panel; null id = Today (the live position).
   const selectedEntry = useMemo(
     () => (selectedId ? entries.find((e) => e.id === selectedId) ?? null : null),
@@ -524,9 +536,9 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             <button type="button" className="ep-step" onClick={goNewer} disabled={!canNewer} aria-label="Next entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
-            <span className="ep-pos">
-              {isToday ? "Today" : `${shortDate(selectedDate!)} · ${navIndex} of ${entries.length}`}
-            </span>
+            {!isToday && (
+              <span className="ep-pos">{shortDate(selectedDate!)} · {navIndex} of {entries.length}</span>
+            )}
           </div>
 
           {isToday ? (
@@ -692,7 +704,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               const why = `Your portfolio ${dn ? "lost" : "gained"} ${formatMoney(Math.abs(imp.total), mc, mc)} that day`
                 + (top ? `, led by ${top.label}.` : ".");
               return (
-                <div className="led" key={row.id}>
+                <div className={`led${selectedId === row.id ? " sel" : ""}`} key={row.id} {...selectRowProps(row.id)}>
                   <span className={`led-dot${dn ? " dn" : ""}`} />
                   <span className="led-date">{shortDate(mv.date)}</span>
                   <div>
@@ -713,7 +725,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               : m.market_context ? m.market_context
               : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here." : "Recorded automatically.";
             return (
-              <div className="led" key={m.id}>
+              <div className={`led${selectedId === m.id ? " sel" : ""}`} key={m.id} {...selectRowProps(m.id)}>
                 <span className={`led-dot${imp?.dn ? " dn" : ""}`} />
                 <span className="led-date">{shortDate(mDate(m))}</span>
                 <div>

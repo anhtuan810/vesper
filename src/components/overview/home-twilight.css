@@ -114,7 +114,7 @@
 .vhome .ep-step svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .vhome .ep-step:hover:not(:disabled){border-color:var(--green);color:var(--green)}
 .vhome .ep-step:disabled{opacity:.4;cursor:default}
-.vhome .ep-pos{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em}
+.vhome .ep-pos{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em}
 .vhome .ep-today{height:30px;padding:0 15px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:.15s}
 .vhome .ep-today:hover:not(:disabled){border-color:var(--green);color:var(--ink)}
 .vhome .ep-today:disabled{opacity:.4;cursor:default}
@@ -178,9 +178,10 @@
 
 /* ledger */
 .vhome .ledger{background:var(--soft);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.vhome .led{display:grid;grid-template-columns:11px 96px 1fr auto;gap:16px;align-items:start;padding:16px 22px;border-bottom:1px solid var(--line2)}
+.vhome .led{display:grid;grid-template-columns:11px 96px 1fr auto;gap:16px;align-items:start;padding:16px 22px;border-bottom:1px solid var(--line2);width:100%;text-align:left;cursor:pointer;transition:background .12s}
 .vhome .led:last-child{border-bottom:0}
 .vhome .led:hover{background:var(--surface2)}
+.vhome .led.sel{background:var(--mint2);box-shadow:inset 3px 0 0 var(--green)}
 .vhome .led-dot{width:9px;height:9px;border-radius:99px;background:var(--green);margin-top:6px}
 .vhome .led-dot.dn{background:var(--neg)}
 .vhome .led-date{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
