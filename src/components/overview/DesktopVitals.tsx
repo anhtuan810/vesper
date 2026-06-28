@@ -12,10 +12,9 @@ export function DesktopVitals() {
       <div className="sec-top" style={{ marginBottom: 20 }}>
         <div>
           <span className="eyebrow">Vitals</span>
-          <h2>Not just what you own — <span className="g">how well it&apos;s built.</span></h2>
         </div>
       </div>
-      <VitalsContent layout="grid" showHeader={false} />
+      <VitalsContent layout="grid" showHeader={false} renderToggleInline />
     </>
   );
 }

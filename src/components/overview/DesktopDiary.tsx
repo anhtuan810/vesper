@@ -113,7 +113,6 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
       <div className="sec-top" style={{ marginBottom: 18 }}>
         <div>
           <span className="eyebrow">Decision journal</span>
-          <h2>Every change, <span className="g">with the reason.</span></h2>
         </div>
       </div>
 

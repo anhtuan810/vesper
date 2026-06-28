@@ -86,6 +86,70 @@ function impact(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurren
   return { text: `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(amt), cur, displayCurrency)}`, dn };
 }
 
+// Shared with VitalsContent's property lens — toggling on either surface carries
+// to the other across navigation.
+const PROPERTY_LENS_KEY = "volnar:vitals-show-property";
+
+// A snapshot point's value in the display currency, optionally net of property.
+// Property's share is taken from the point's per-type breakdown (the real_estate
+// bucket) and applied to the converted total, so it works whether the stored
+// total is USD (production) or the home currency (demo) — only the ratio is used.
+function pointDisplayValue(
+  p: SnapshotPoint,
+  includeProperty: boolean,
+  displayCurrency: ReturnType<typeof useDisplayCurrency>,
+  liveRates: Record<string, number>,
+): number {
+  const full = convertPointToDisplay(p, displayCurrency, liveRates);
+  if (includeProperty) return full;
+  const prop = p.breakdown?.real_estate ?? 0;
+  const share = p.total_value > 0 ? prop / p.total_value : 0;
+  return full * (1 - share);
+}
+
+// Rewrites a snapshot point to exclude property: the value drops by property's
+// share and the real_estate bucket is removed from the breakdown so the stacked
+// bands renormalise. native_breakdown is collapsed to an identity bucket in the
+// display currency so convertPointToDisplay returns the adjusted value exactly.
+function stripPropertyPoint(
+  p: SnapshotPoint,
+  displayCurrency: ReturnType<typeof useDisplayCurrency>,
+  liveRates: Record<string, number>,
+): SnapshotPoint {
+  const newVal = pointDisplayValue(p, false, displayCurrency, liveRates);
+  const nb: Record<string, number> = {};
+  if (p.breakdown) for (const [k, v] of Object.entries(p.breakdown)) { if (k !== "real_estate") nb[k] = v; }
+  return { date: p.date, total_value: newVal, breakdown: nb, native_breakdown: { [displayCurrency]: newVal } };
+}
+
+const fmtUnits = (n: number) =>
+  new Intl.NumberFormat("nl-NL", { maximumFractionDigits: n % 1 === 0 ? 0 : 4 }).format(n);
+
+// The units change for a mutation → "+150 shares" / "200 → 320 shares" /
+// "0,05 BTC closed" (or null when units don't apply to this asset type).
+function unitsDetail(m: Mutation): string | null {
+  const type = m.asset_type;
+  if (!type) return null;
+  const noun = unitNoun(type);
+  if (m.action === "add" && m.after_units != null) return `+${fmtUnits(m.after_units)} ${noun}`;
+  if (m.action === "edit" && (m.before_units != null || m.after_units != null)) {
+    const before = m.before_units ?? 0, after = m.after_units ?? 0;
+    if (before === after) return null;
+    return `${fmtUnits(before)} → ${fmtUnits(after)} ${noun}`;
+  }
+  if (m.action === "remove" && m.before_units != null) return `${fmtUnits(m.before_units)} ${noun} closed`;
+  return null;
+}
+
+// The value movement for an edit → "€12.750 → €17.000" (null otherwise).
+function valueMovement(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): string | null {
+  if (m.action === "edit" && m.before_value != null && m.after_value != null) {
+    const cur = m.currency || "USD";
+    return `${formatMoney(m.before_value, cur, displayCurrency)} → ${formatMoney(m.after_value, cur, displayCurrency)}`;
+  }
+  return null;
+}
+
 function firstName(user: { user_metadata?: Record<string, unknown>; email?: string } | null | undefined): string {
   const meta = user?.user_metadata ?? {};
   const full = (meta.full_name || meta.name) as string | undefined;
@@ -129,9 +193,24 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const [range, setRange] = useState<Range>("All");
   const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
-  // The decision panel is driven by CLICKING a marker (not hover); null = default
-  // to the most recent decision.
+  // The decision panel is driven by CLICKING a marker (not hover) or the prev/next
+  // controls; null = "Today" (the live position). A non-null id selects that entry.
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Include/exclude property lens — shared with the Vitals page via the same
+  // sessionStorage key, so the choice carries across both surfaces.
+  const [includeProperty, setIncludeProperty] = useState(true);
+  useEffect(() => {
+    const stored = sessionStorage.getItem(PROPERTY_LENS_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (stored !== null) setIncludeProperty(stored === "true");
+  }, []);
+  const toggleProperty = () => {
+    setIncludeProperty((prev) => {
+      const next = !prev;
+      try { sessionStorage.setItem(PROPERTY_LENS_KEY, String(next)); } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -152,38 +231,88 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     return result;
   }, [netWorthAssets, displayCurrency]);
 
-  const series = useMemo(
-    () => buildSeries(clipToRange(fullSnapshots, range), netTotal, todayBreakdown),
-    [fullSnapshots, range, netTotal, todayBreakdown],
+  // Live property equity (display currency) and whether the book is "mixed"
+  // (property + something else) — the lens only matters then.
+  const propertyEquity = todayBreakdown.real_estate ?? 0;
+  const hasMixed = useMemo(
+    () => netWorthAssets.some((a) => a.type === "real_estate") && netWorthAssets.some((a) => a.type !== "real_estate"),
+    [netWorthAssets],
   );
-  const trackingSinceDate = firstSnapshotDate(fullSnapshots);
+  const effectiveInclude = includeProperty || !hasMixed;
+  // Live net worth under the current lens.
+  const liveNet = effectiveInclude ? netTotal : netTotal - propertyEquity;
 
-  // "+X% since YYYY" badge from the earliest real snapshot.
-  const sinceBadge = useMemo(() => {
-    if (fullSnapshots.length < 2) return null;
-    const first = fullSnapshots[0];
-    const firstVal = convertPointToDisplay(first, displayCurrency, buildLiveRates());
-    if (!firstVal || firstVal <= 0) return null;
-    const pct = Math.round(((netTotal - firstVal) / firstVal) * 100);
-    return `${pct >= 0 ? "▲ +" : "▼ −"}${Math.abs(pct)}% since ${first.date.slice(0, 4)}`;
-  }, [fullSnapshots, netTotal, displayCurrency]);
+  // ── Net-worth chart series (lens-aware) ────────────────────────────────────
+  const series = useMemo(() => {
+    const liveRates = buildLiveRates();
+    const base = effectiveInclude ? fullSnapshots : fullSnapshots.map((p) => stripPropertyPoint(p, displayCurrency, liveRates));
+    const tipBreakdown = effectiveInclude
+      ? todayBreakdown
+      : Object.fromEntries(Object.entries(todayBreakdown).filter(([k]) => k !== "real_estate"));
+    return buildSeries(clipToRange(base, range), liveNet, tipBreakdown);
+  }, [fullSnapshots, range, liveNet, todayBreakdown, effectiveInclude, displayCurrency]);
+  const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
   // ── Decision journal (mutations) ───────────────────────────────────────────
   const sortedMutations = useMemo(
     () => [...mutations].sort((a, b) => (mDate(b)).localeCompare(mDate(a))),
     [mutations],
   );
-  // One clickable chart marker per decision (date = YYYY-MM-DD to match snapshots).
+  // One clickable chart marker per decision (date = YYYY-MM-DD), tagged so the
+  // chart can colour personal decisions ("you") apart from automatic ones ("auto").
   const markers = useMemo(
-    () => sortedMutations.map((m) => ({ id: m.id, date: mDate(m).slice(0, 10) })),
+    () => sortedMutations.map((m) => ({ id: m.id, date: mDate(m).slice(0, 10), kind: hasOwnNote(m) ? ("you" as const) : ("auto" as const) })),
     [sortedMutations],
   );
-  // The selected decision drives the panel: the clicked marker, else the most recent.
-  const effectiveSelectedId = selectedId ?? sortedMutations[0]?.id ?? null;
+
+  // Navigation order: Today (null) first, then decisions newest→oldest. ← steps
+  // older, → steps newer (back toward Today).
+  const navIds = useMemo<(string | null)[]>(() => [null, ...sortedMutations.map((m) => m.id)], [sortedMutations]);
+  const navIndex = navIds.indexOf(selectedId);
+  const goOlder = () => setSelectedId(navIds[Math.min(navIndex + 1, navIds.length - 1)] ?? null);
+  const goNewer = () => setSelectedId(navIds[Math.max(navIndex - 1, 0)] ?? null);
+  const canOlder = navIndex >= 0 && navIndex < navIds.length - 1;
+  const canNewer = navIndex > 0;
+
+  // The selected decision drives the panel; null id = Today (the live position).
   const selectedDecision = useMemo(
-    () => sortedMutations.find((m) => m.id === effectiveSelectedId) ?? sortedMutations[0] ?? null,
-    [sortedMutations, effectiveSelectedId],
+    () => (selectedId ? sortedMutations.find((m) => m.id === selectedId) ?? null : null),
+    [sortedMutations, selectedId],
   );
+  const isToday = !selectedDecision;
+
+  // Net worth as of the selection: live for Today, else the chart's own value at
+  // the entry's date (nearest snapshot on/before it), so the headline matches the
+  // line exactly and is currency-correct under either lens.
+  const headlineNet = useMemo(() => {
+    if (isToday || !selectedDecision) return liveNet;
+    const d = mDate(selectedDecision).slice(0, 10);
+    const liveRates = buildLiveRates();
+    let best: SnapshotPoint | null = null;
+    for (const p of fullSnapshots) { if (p.date <= d) best = p; else break; }
+    best = best ?? fullSnapshots[0] ?? null;
+    return best ? pointDisplayValue(best, effectiveInclude, displayCurrency, liveRates) : liveNet;
+  }, [isToday, selectedDecision, fullSnapshots, effectiveInclude, displayCurrency, liveNet]);
+
+  // Today's marker highlights only if a decision is actually dated today (#4);
+  // otherwise Today shows no selected marker. `now` keeps this hydration-safe.
+  const todayEntryId = useMemo(() => {
+    if (!now) return null;
+    const t = now.toISOString().slice(0, 10);
+    return sortedMutations.find((m) => mDate(m).slice(0, 10) === t)?.id ?? null;
+  }, [now, sortedMutations]);
+  const highlightMarkerId = selectedId ?? todayEntryId;
+
+  // "▲ +X% since YYYY" from the earliest snapshot to the headline value (so it
+  // tracks the selected entry too), computed on the same lens.
+  const sinceBadge = useMemo(() => {
+    if (fullSnapshots.length < 2) return null;
+    const first = fullSnapshots[0];
+    const firstVal = pointDisplayValue(first, effectiveInclude, displayCurrency, buildLiveRates());
+    if (!firstVal || firstVal <= 0) return null;
+    const pct = Math.round(((headlineNet - firstVal) / firstVal) * 100);
+    return `${pct >= 0 ? "▲ +" : "▼ −"}${Math.abs(pct)}% since ${first.date.slice(0, 4)}`;
+  }, [fullSnapshots, headlineNet, effectiveInclude, displayCurrency]);
 
   // ── Holdings grouped into the 4 semantic categories ────────────────────────
   const symbols = useMemo(
@@ -195,6 +324,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const groups = useMemo(() => {
     const byCategory: Record<string, LiveAsset[]> = {};
     for (const a of netWorthAssets) {
+      if (!effectiveInclude && a.type === "real_estate") continue;
       const cat = CATEGORY_MAP[a.type] ?? "reserves";
       (byCategory[cat] ??= []).push(a);
     }
@@ -209,7 +339,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         }, 0),
       }))
       .sort((a, b) => (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99));
-  }, [netWorthAssets, displayCurrency]);
+  }, [netWorthAssets, displayCurrency, effectiveInclude]);
 
   // ── Vitals summary + the six cards ─────────────────────────────────────────
   const vitalsByKey = useMemo(() => {
@@ -242,12 +372,24 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         <div className="dash-h">
           <div>
             <span className="eyebrow">Net worth</span>
-            <div className="nwnum">{formatMoney(netTotal, displayCurrency, displayCurrency)}</div>
+            <div className="nwnum">{formatMoney(headlineNet, displayCurrency, displayCurrency)}</div>
             <div className="nwbasis">
-              Equity basis — property shown net of mortgage.
+              {isToday ? "As of today" : `As of ${shortDate(mDate(selectedDecision!))}`}
+              {" · "}
+              {effectiveInclude ? "equity basis, property net of mortgage" : "excluding property"}
               {sinceBadge && <span className="badge" style={{ marginLeft: 6 }}>{sinceBadge}</span>}
             </div>
           </div>
+          {hasMixed && (
+            <button
+              type="button"
+              className={`nwlens${includeProperty ? " on" : ""}`}
+              aria-pressed={includeProperty}
+              onClick={toggleProperty}
+            >
+              {includeProperty ? "Including property" : "Excluding property"}
+            </button>
+          )}
         </div>
 
         <div style={{ margin: "18px 0 4px" }}>
@@ -260,26 +402,52 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             realPointCount={fullSnapshots.length}
             trackingSinceDate={trackingSinceDate}
             markers={markers}
-            selectedMarkerId={effectiveSelectedId}
+            selectedMarkerId={highlightMarkerId}
             onMarkerClick={setSelectedId}
           />
         </div>
 
-        {/* selected decision */}
+        {/* selected decision / today, with prev-next navigation */}
         <div className="ep-inline">
-          <div className="ep-cue">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M6 12l6 6 6-6" /></svg>
-            The decision behind the selected point — click any point on the line
+          <div className="ep-nav">
+            <button type="button" className="ep-step" onClick={goOlder} disabled={!canOlder} aria-label="Previous entry">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <button type="button" className="ep-step" onClick={goNewer} disabled={!canNewer} aria-label="Next entry">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </button>
+            <span className="ep-pos">
+              {isToday ? "Today" : `${shortDate(mDate(selectedDecision!))} · ${navIndex} of ${sortedMutations.length}`}
+            </span>
+            <button type="button" className="ep-today" onClick={() => setSelectedId(null)} disabled={isToday}>
+              Today
+            </button>
           </div>
-          {selectedDecision ? (() => {
-            const m = selectedDecision;
+
+          {isToday ? (
+            <>
+              <div className="ep-top">
+                <span className="ep-date">Live position</span>
+                <span className="ep-kind milestone">Today</span>
+              </div>
+              <h3 className="ep-title">Your position today</h3>
+              <p className="ep-why">
+                {formatMoney(headlineNet, displayCurrency, displayCurrency)} across {netWorthAssets.length} holdings
+                {effectiveInclude ? ", property shown net of mortgage." : ", property excluded."}
+                {" "}Step back through the line to see the decision behind each point.
+              </p>
+            </>
+          ) : (() => {
+            const m = selectedDecision!;
             const own = hasOwnNote(m);
             const imp = impact(m, displayCurrency);
+            const units = unitsDetail(m);
+            const move = valueMovement(m, displayCurrency);
             return (
               <>
                 <div className="ep-top">
                   <span className="ep-date">{shortDate(mDate(m))}</span>
-                  <span className={`ep-kind${own ? "" : " market"}`}>{own ? "Decision" : m.market_context ? "Market" : "Update"}</span>
+                  <span className={`ep-kind${own ? "" : " market"}`}>{own ? "Decision" : m.market_context ? "Market" : "Auto"}</span>
                 </div>
                 <h3 className="ep-title">{decisionTitle(m)}</h3>
                 {m.market_context && <p className="ep-ctx">{m.market_context}</p>}
@@ -288,12 +456,17 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                     : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
                     : "Recorded automatically — no note attached."}
                 </p>
-                {imp && <div className="ep-foot"><span className={`ep-imp${imp.dn ? " dn" : ""}`}>{imp.text}</span></div>}
+                {(imp || units || move) && (
+                  <div className="ep-foot">
+                    {imp && <span className={`ep-imp${imp.dn ? " dn" : ""}`}>{imp.text}</span>}
+                    {move && <span className="ep-stat">{move}</span>}
+                    {units && <span className="ep-stat">{units}</span>}
+                    <span className="ep-stat">Net worth then {formatMoney(headlineNet, displayCurrency, displayCurrency)}</span>
+                  </div>
+                )}
               </>
             );
-          })() : (
-            <p className="ep-empty">No decisions logged yet. Tell Volnar what changed and it records the reason here.</p>
-          )}
+          })()}
         </div>
 
         {/* expandable holdings */}
@@ -304,7 +477,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               category={g.category}
               label={g.label}
               total={g.total}
-              pct={netTotal > 0 ? Math.round((g.total / netTotal) * 100) : 0}
+              pct={liveNet > 0 ? Math.round((g.total / liveNet) * 100) : 0}
               items={g.items}
               displayCurrency={displayCurrency}
               sparklines={sparklines}
@@ -329,23 +502,30 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         <div className="sec-top">
           <div>
             <span className="eyebrow">Vitals</span>
-            <h2>Not just what you own — <span className="g">how well it&apos;s built.</span></h2>
           </div>
           <Link className="lk" href="/vitals">See all Vitals →</Link>
         </div>
         <div className="vrow">
-          <VitalCard name="Concentration" v={vitalsByKey.get("concentration")} render={(val: ConcentrationValue, b) => ({
-            value: `${fmtPct(val.topPositionPct)}%`, unit: val.topPositionName ? ` · ${val.topPositionName}` : "",
-            read: "Largest single position as a share of the book.", bar: clamp(val.topPositionPct), thr: 35, band: b,
-          })} />
+          <VitalCard name="Concentration" v={vitalsByKey.get("concentration")} render={(val: ConcentrationValue, b) => {
+            // Lens-aware: show the investable top position when property is excluded.
+            const pct = effectiveInclude ? val.topPositionPct : (val.investableTopPositionPct ?? val.topPositionPct);
+            const name = effectiveInclude ? val.topPositionName : (val.investableTopPositionName ?? val.topPositionName);
+            return {
+              value: `${fmtPct(pct)}%`, unit: name ? ` · ${name}` : "",
+              read: effectiveInclude ? "Largest single position as a share of the book." : "Largest investable position, property aside.",
+              bar: clamp(pct), thr: 35, band: b,
+            };
+          }} />
           <VitalCard name="Liquidity" v={vitalsByKey.get("liquidityPosture")} render={(val: LiquidityPostureValue, b) => ({
             value: `${fmtPct(val.deployable1wPct)}%`, unit: " in a week",
             read: "Share of wealth reachable within seven days.", bar: clamp(val.deployable1wPct), thr: 15, band: b,
           })} />
+          {effectiveInclude && (
           <VitalCard name="Leverage" v={vitalsByKey.get("leverage")} render={(val: LeverageValue, b) => ({
             value: `${fmtPct(val.ltvPct)}%`, unit: " LTV",
             read: "Loan-to-value across your property.", bar: clamp(val.ltvPct), thr: 50, thr2: 75, band: b,
           })} />
+          )}
           <VitalCard name="Drawdown" v={vitalsByKey.get("drawdown")} render={(val: DrawdownValue, b) => ({
             value: `−${fmtPct(Math.abs(val.shockPctOfNw))}%`, unit: " 2008-style",
             read: "Modelled hit from a simultaneous market crash.", bar: clamp(100 - Math.abs(val.shockPctOfNw)), badTail: clamp(Math.abs(val.shockPctOfNw)), band: b,
@@ -366,7 +546,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         <div className="sec-top">
           <div>
             <span className="eyebrow">Decision journal</span>
-            <h2>Every change, <span className="g">with the reason.</span></h2>
           </div>
           <Link className="lk" href="/diary">All {sortedMutations.length} entries →</Link>
         </div>

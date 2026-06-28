@@ -28,7 +28,6 @@ const NAV = [
   { label: "Overview", href: "/", tab: "overview" as const },
   { label: "Journal", href: "/diary", tab: "journal" as const },
   { label: "Vitals", href: "/vitals", tab: "vitals" as const },
-  { label: "Holdings", href: "/#holdings", tab: null },
 ];
 
 /**

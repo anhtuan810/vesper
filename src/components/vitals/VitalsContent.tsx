@@ -777,12 +777,17 @@ interface VitalsContentProps {
   libraryPosition?: "top" | "bottom";
   /** Render the big "Vitals" title. Off when a host panel supplies its own header. */
   showHeader?: boolean;
+  /** Render the property lens toggle inline (above the Pulse) even when the
+   *  built-in header is off — used by the desktop Vitals page, which supplies its
+   *  own Twilight header but still needs the include/exclude-Property control. */
+  renderToggleInline?: boolean;
 }
 
 export function VitalsContent({
   layout = "stack",
   libraryPosition = "bottom",
   showHeader = true,
+  renderToggleInline = false,
 }: VitalsContentProps = {}) {
   const router = useRouter();
   const { data, isLoading, error } = useVitals();
@@ -850,6 +855,36 @@ export function VitalsContent({
       .sort((a, b) => b.pct - a.pct);
   }, [data?.assets]);
 
+  // Shared lens toggle — included/excluded property. Shown in the built-in header
+  // and (when requested) inline above the Pulse for hosts that supply their own
+  // header. Renders only for mixed portfolios, where a property lens is meaningful.
+  const propertyToggle = hasMixed ? (
+    <button
+      aria-pressed={showProperty}
+      aria-label="Toggle property in vitals"
+      onClick={toggleShowProperty}
+      style={{
+        height: 26,
+        padding: "0 12px",
+        borderRadius: 999,
+        border: `0.5px solid ${showProperty ? "var(--accent-soft)" : "var(--border)"}`,
+        background: showProperty ? "var(--accent-soft)" : "transparent",
+        color: showProperty ? "var(--accent-deep)" : "var(--text-faint)",
+        fontSize: 13,
+        fontWeight: 500,
+        cursor: "pointer",
+        transition: "background 0.15s, border-color 0.15s, color 0.15s",
+        letterSpacing: "0.01em",
+        lineHeight: 1,
+        display: "flex",
+        alignItems: "center",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {showProperty ? "Including property" : "Excluding property"}
+    </button>
+  ) : null;
+
   const pageTitle = showHeader ? (
     <div style={{ marginBottom: 20, paddingTop: 32 }}>
       <div
@@ -871,33 +906,15 @@ export function VitalsContent({
         >
           Vitals
         </div>
-        {hasMixed && (
-          <button
-            aria-pressed={showProperty}
-            aria-label="Toggle property in vitals"
-            onClick={toggleShowProperty}
-            style={{
-              height: 26,
-              padding: "0 12px",
-              borderRadius: 999,
-              border: `0.5px solid ${showProperty ? "var(--accent-soft)" : "var(--border)"}`,
-              background: showProperty ? "var(--accent-soft)" : "transparent",
-              color: showProperty ? "var(--accent-deep)" : "var(--text-faint)",
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: "pointer",
-              transition: "background 0.15s, border-color 0.15s, color 0.15s",
-              letterSpacing: "0.01em",
-              lineHeight: 1,
-              display: "flex",
-              alignItems: "center",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Property
-          </button>
-        )}
+        {propertyToggle}
       </div>
+    </div>
+  ) : null;
+
+  // Inline toggle row for headerless hosts (desktop Vitals page).
+  const inlineToggle = renderToggleInline && !showHeader && propertyToggle ? (
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+      {propertyToggle}
     </div>
   ) : null;
 
@@ -1086,6 +1103,9 @@ export function VitalsContent({
     <>
       {/* 1. Page title */}
       {pageTitle}
+
+      {/* 1b. Inline lens toggle for headerless hosts (desktop Vitals page). */}
+      {inlineToggle}
 
       {/* 2. Pulse banner — lens-aware: liquid pulse when Property is off,
              all-assets pulse otherwise. Falls back to all-assets pulse if

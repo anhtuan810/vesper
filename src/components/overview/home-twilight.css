@@ -96,6 +96,23 @@
 .vhome .ep-foot{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
 .vhome .ep-imp{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:9px;padding:9px 14px}
 .vhome .ep-imp.dn{color:var(--neg);background:var(--surface2)}
+.vhome .ep-stat{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--body);background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:9px 13px}
+
+/* property lens toggle (sits in the net-worth header) */
+.vhome .nwlens{flex:0 0 auto;height:30px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;white-space:nowrap;transition:.15s}
+.vhome .nwlens:hover{border-color:var(--green);color:var(--ink)}
+.vhome .nwlens.on{background:var(--mint);border-color:var(--mint);color:var(--gb)}
+
+/* prev / next / today entry navigation */
+.vhome .ep-nav{display:flex;align-items:center;gap:8px;margin-bottom:15px}
+.vhome .ep-step{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);cursor:pointer;transition:.15s}
+.vhome .ep-step svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vhome .ep-step:hover:not(:disabled){border-color:var(--green);color:var(--green)}
+.vhome .ep-step:disabled{opacity:.4;cursor:default}
+.vhome .ep-pos{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em}
+.vhome .ep-today{margin-left:auto;height:30px;padding:0 15px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:.15s}
+.vhome .ep-today:hover:not(:disabled){border-color:var(--green);color:var(--ink)}
+.vhome .ep-today:disabled{opacity:.4;cursor:default}
 
 /* expandable holdings */
 .vhome .holds{border-top:1px solid var(--line);margin-top:20px;padding-top:6px}

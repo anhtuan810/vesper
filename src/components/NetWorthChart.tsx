@@ -107,7 +107,9 @@ interface Props {
   // provided (desktop Overview only), the chart shows static, click-to-select
   // points and disables the hover-scrub/breakdown — selection is by click, not
   // hover. Mobile (PortfolioTab) passes nothing, so its behaviour is unchanged.
-  markers?: { id: string; date: string }[];
+  // `kind` distinguishes a personal decision ("you") from an automatic/market
+  // entry ("auto") so each gets a distinct dot colour.
+  markers?: { id: string; date: string; kind?: "you" | "auto" }[];
   selectedMarkerId?: string | null;
   onMarkerClick?: (id: string) => void;
 }
@@ -446,7 +448,7 @@ export function NetWorthChart(props: Props) {
 
   // Decision dots: each journal marker placed at the nearest plotted point whose
   // date falls within the visible (range-clipped) window.
-  const markerDots: { id: string; x: number; y: number }[] = [];
+  const markerDots: { id: string; x: number; y: number; kind: "you" | "auto" }[] = [];
   if (markerMode && values.length >= 2) {
     const dates = displaySeries.map((p) => p.date);
     const first = dates[0];
@@ -460,7 +462,7 @@ export function NetWorthChart(props: Props) {
         const d = Math.abs(new Date(dates[i]).getTime() - t);
         if (d < bestDiff) { bestDiff = d; best = i; }
       }
-      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]) });
+      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you" });
     }
   }
 
@@ -556,9 +558,12 @@ export function NetWorthChart(props: Props) {
                   <circle cx={drawW} cy={lastY} r={3} fill={strokeColor} />
                 </>
               )}
-              {/* Journal decision dots — visible, click-to-select (not hover). */}
+              {/* Journal decision dots — visible, click-to-select (not hover).
+                  Personal decisions ("you") use the accent; automatic/market
+                  entries ("auto") use a muted neutral so the two read apart. */}
               {markerMode && markerDots.map((dot) => {
                 const sel = dot.id === props.selectedMarkerId;
+                const dotColor = dot.kind === "auto" ? "var(--text-faint)" : "var(--accent)";
                 return (
                   <g key={dot.id}>
                     {/* Generous transparent hit target for the small visible dot. */}
@@ -571,8 +576,8 @@ export function NetWorthChart(props: Props) {
                     />
                     <circle
                       cx={dot.x} cy={dot.y} r={sel ? 6 : 4.5}
-                      fill={sel ? "var(--accent)" : "var(--surface)"}
-                      stroke="var(--accent)" strokeWidth={2.4}
+                      fill={sel ? dotColor : "var(--surface)"}
+                      stroke={dotColor} strokeWidth={2.4}
                       style={{ pointerEvents: "none" }}
                     />
                   </g>
