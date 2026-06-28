@@ -537,7 +537,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
             {!isToday && (
-              <span className="ep-pos">{shortDate(selectedDate!)} · {navIndex} of {entries.length}</span>
+              <span className="ep-pos">{navIndex} of {entries.length}</span>
             )}
           </div>
 
