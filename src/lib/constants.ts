@@ -71,6 +71,13 @@ export const MARKET_MOVE_THRESHOLD_PCT = 2.0;
 export const MARKET_MOVE_WINDOW_TRADING_DAYS = 2;
 export const MARKET_MOVE_LOOKBACK_DAYS = 365;
 
+// A big swing becomes a FULL journal entry (with the per-holding impact) when it
+// is among the largest by |impact| in its calendar month AND the impact clears a
+// floor relative to that day's tradeable value. Smaller swings stay compact rows,
+// so a volatile month never floods the journal with full cards.
+export const MARKET_SWING_MAX_EXPANDED_PER_MONTH = 4;
+export const MARKET_SWING_EXPAND_FLOOR_PCT = 0.3;
+
 export const DIARY_MARKET_INDICES: { symbol: string; label: string }[] = [
   { symbol: "^IXIC", label: "Nasdaq" },
   { symbol: "^GSPC", label: "S&P 500" },

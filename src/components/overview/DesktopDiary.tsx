@@ -8,6 +8,7 @@ import { formatMoney, toUsdClient, type DisplayCurrency } from "@/lib/money";
 import type { Mutation } from "@/lib/supabase";
 import { AssetLogo } from "@/components/AssetLogo";
 import { DiaryMarketRow } from "@/components/DiaryMarketRow";
+import { DesktopMarketEntry } from "@/components/overview/DesktopMarketEntry";
 import { PeriodHighlight } from "@/components/diary/PeriodHighlight";
 import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
@@ -181,7 +182,12 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
               <span className="cnt">{monthMutations.length} {monthMutations.length === 1 ? "entry" : "entries"}</span>
             </div>
             {entries.map((entry) => {
-              if (entry.kind === "move") return <DiaryMarketRow key={`mv-${entry.move.index_symbol}-${entry.move.date}`} move={entry.move} />;
+              if (entry.kind === "move") {
+                const key = `mv-${entry.move.index_symbol}-${entry.move.date}`;
+                return entry.move.expanded && entry.move.impact
+                  ? <DesktopMarketEntry key={key} move={entry.move} />
+                  : <DiaryMarketRow key={key} move={entry.move} />;
+              }
               const item = entry.item;
               if (item.kind === "singleton") {
                 const m = item.mutation;
