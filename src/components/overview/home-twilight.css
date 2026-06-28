@@ -117,7 +117,7 @@
 .vhome .cl-hint{flex-basis:100%;margin-top:-6px;color:var(--faint)}
 
 /* selected-decision panel */
-.vhome .ep-inline{border-top:1px solid var(--line);margin-top:18px;padding-top:20px}
+.vhome .ep-inline{border-top:1px solid var(--line);margin-top:16px;padding-top:18px}
 .vhome .ep-cue{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:13px}
 .vhome .ep-cue svg{width:14px;height:14px;fill:none;stroke:var(--green);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .vhome .ep-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:11px}
@@ -152,14 +152,16 @@
 /* prev / next / today entry navigation */
 /* REPLAY stepper — centered ‹ › around a mono "REPLAY n / total · date" label
    with gold accents, borrowed from the marketing chart; sits right below the graph. */
-.vhome .ep-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px}
+.vhome .ep-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px}
 .vhome .ep-step{width:28px;height:28px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:.15s}
 .vhome .ep-step svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .vhome .ep-step:hover:not(:disabled){color:var(--green);background:var(--mint)}
 .vhome .ep-step:active:not(:disabled){transform:scale(.94)}
 .vhome .ep-step:disabled{opacity:.3;cursor:default}
 .vhome .ep-replay{display:flex;align-items:center;gap:10px;justify-content:center;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.04em}
-.vhome .ep-replay-lbl{text-transform:uppercase;letter-spacing:.13em;font-size:10.5px}
+.vhome .ep-replay-today{font-family:var(--mono);text-transform:uppercase;letter-spacing:.13em;font-size:10.5px;font-weight:700;color:var(--green);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line);transition:.15s}
+.vhome .ep-replay-today:hover:not(:disabled){color:var(--ink)}
+.vhome .ep-replay-today:disabled{color:var(--muted);text-decoration:none;cursor:default}
 .vhome .ep-replay-pos{color:var(--ink);font-feature-settings:"tnum" 1}
 .vhome .ep-replay-pos b{color:var(--green);font-weight:700}
 .vhome .ep-replay-date{color:var(--green)}

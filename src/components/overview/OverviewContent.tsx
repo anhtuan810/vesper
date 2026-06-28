@@ -778,29 +778,27 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           />
         </div>
 
-        {/* selected entry / today. The REPLAY stepper (marketing chart) sits right
-            below the graph; auto market entries are flagged by the "Auto · Market"
-            tag rather than a panel treatment. */}
-        <div className="ep-inline">
-          <div className="ep-nav">
-            <button type="button" className="ep-step" onClick={goOlder} disabled={!canOlder} aria-label="Previous entry">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
-            </button>
-            <div className="ep-replay">
-              <span className="ep-replay-lbl">Replay</span>
-              {/* Live tip and journal entries both read "Replay · pos · date" — the
-                  stepper never collapses to a bare "Today". The live position is
-                  the present frame ("Now"), every entry its index of the total. */}
-              <span className="ep-replay-pos">
-                {isToday ? "Now" : <><b>{navIndex}</b> / {navEntries.length}</>}
-              </span>
-              <span className="ep-replay-date">{isToday ? (now ? shortDate(now.toISOString()) : "") : shortDate(selectedDate!)}</span>
-            </div>
-            <button type="button" className="ep-step" onClick={goNewer} disabled={!canNewer} aria-label="Next entry">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-            </button>
+        {/* The stepper sits right below the graph, above the divider. "Today" is a
+            button that jumps to the live position; the arrows step through entries. */}
+        <div className="ep-nav">
+          <button type="button" className="ep-step" onClick={goOlder} disabled={!canOlder} aria-label="Previous entry">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <div className="ep-replay">
+            <button type="button" className="ep-replay-today" onClick={() => setSelectedId(null)} disabled={isToday}>Today</button>
+            <span className="ep-replay-pos">
+              {isToday ? "Now" : <><b>{navIndex}</b> / {navEntries.length}</>}
+            </span>
+            <span className="ep-replay-date">{isToday ? (now ? shortDate(now.toISOString()) : "") : shortDate(selectedDate!)}</span>
           </div>
+          <button type="button" className="ep-step" onClick={goNewer} disabled={!canNewer} aria-label="Next entry">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+          </button>
+        </div>
 
+        {/* selected entry / today, below the divider. Auto market entries are
+            flagged by the "Auto · Market" tag rather than a panel treatment. */}
+        <div className="ep-inline">
           {isToday ? (
             <>
               <div className="ep-top">
