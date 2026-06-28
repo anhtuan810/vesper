@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   NetWorthChart,
@@ -485,36 +485,63 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const selectedDate = selectedEntry?.date ?? null;
   const isToday = !selectedEntry;
 
-  // Decision Verdict — when a past sell/reduce is selected, ask the server (which
-  // owns the price/FX history) to value the stake the user let go, then vs now.
-  // Cached per (mutation, display currency); `null` marks "asked, nothing to show"
-  // so we never re-fetch. Failures and ineligible decisions both resolve to null,
-  // so the panel just renders no stamp — the page never depends on this landing.
+  // Decision Verdict — the server (which owns the price/FX history) values the
+  // stake then vs now. Cached per (mutation, display currency); `null` marks
+  // "asked, nothing to show". The verdict is computed live from external prices,
+  // so it carries latency — we (a) cache server-side and (b) PREFETCH eligible
+  // verdicts in the background after load, so the click that reveals one is
+  // usually instant. Failures and ineligible decisions both resolve to null, so
+  // the panel just renders no stamp — the page never depends on this landing.
   const [verdicts, setVerdicts] = useState<Record<string, VerdictData | null>>({});
   const verdictAsked = useRef<Set<string>>(new Set());
+
+  // Fetch one verdict and cache it, deduped by (mutation, currency). `alive` lets
+  // the caller drop the result after unmount. Shared by the on-select effect and
+  // the background prefetch, so a click reuses any in-flight prefetch.
+  const fetchVerdict = useCallback((m: Mutation, cur: DisplayCurrency, alive: () => boolean): Promise<void> => {
+    const key = `${m.id}|${cur}`;
+    if (verdictAsked.current.has(key)) return Promise.resolve();
+    verdictAsked.current.add(key);
+    return apiFetch("/api/decisions/verdict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mutation_id: m.id, display_currency: cur }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => { if (alive()) setVerdicts((v) => ({ ...v, [key]: body?.eligible ? (body as VerdictData) : null })); })
+      // A transient network failure shouldn't permanently suppress the verdict:
+      // release the key so a later select/prefetch retries (a clean 402/ineligible
+      // resolves above to a cached null and is not retried).
+      .catch(() => { if (alive()) verdictAsked.current.delete(key); });
+  }, []);
+
+  // On select: fetch the chosen decision's verdict (instant if prewarmed).
   useEffect(() => {
     const m = selectedDecision;
     if (!m || !verdictEligible(m)) return;
-    const key = `${m.id}|${displayCurrency}`;
-    if (verdictAsked.current.has(key)) return;
-    verdictAsked.current.add(key);
     let cancelled = false;
-    apiFetch("/api/decisions/verdict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mutation_id: m.id, display_currency: displayCurrency }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body) => {
-        if (cancelled) return;
-        setVerdicts((v) => ({ ...v, [key]: body?.eligible ? (body as VerdictData) : null }));
-      })
-      // A transient network failure shouldn't permanently suppress the verdict:
-      // release the key so re-selecting the entry retries (a clean 402/ineligible
-      // resolves above to a cached null and is not retried).
-      .catch(() => { if (!cancelled) verdictAsked.current.delete(key); });
+    fetchVerdict(m, displayCurrency, () => !cancelled);
     return () => { cancelled = true; };
-  }, [selectedDecision, displayCurrency]);
+  }, [selectedDecision, displayCurrency, fetchVerdict]);
+
+  // Background prefetch: after the page settles, warm every eligible decision's
+  // verdict at most a few at a time, so clicking one feels instant. Deferred so it
+  // doesn't compete with the initial snapshot load; deduped against on-select.
+  useEffect(() => {
+    const eligible = sortedMutations.filter(verdictEligible);
+    if (eligible.length === 0) return;
+    let cancelled = false;
+    const alive = () => !cancelled;
+    const timer = setTimeout(() => {
+      let i = 0;
+      const pump = (): Promise<void> => {
+        if (cancelled || i >= eligible.length) return Promise.resolve();
+        return fetchVerdict(eligible[i++], displayCurrency, alive).then(pump);
+      };
+      for (let lane = 0; lane < Math.min(3, eligible.length); lane++) pump();
+    }, 700);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [sortedMutations, displayCurrency, fetchVerdict]);
 
   // Once an entry is selected, ← / → step through the journal and Esc returns
   // to Today — so scrubbing 68 entries doesn't mean 68 clicks. Gated on an active

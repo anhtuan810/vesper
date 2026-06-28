@@ -174,11 +174,21 @@ export async function assembleVerdict(
   const daysAgo = Math.floor((Date.now() - Date.parse(occurred)) / 86_400_000);
   if (!(daysAgo >= MIN_LOOKBACK_DAYS)) return { ok: false, reason: "too_recent" };
 
+  // Cache-first: the verdict only drifts with the slow "now" value, so a row
+  // computed earlier today is served as-is. Keyed by content, not mutation id, so
+  // it survives the demo reseed and is shared across identical trades.
+  const verdictKey = `${mode}:${m.symbol}:${occurred}:${decisionUnits}:${displayCurrency}`;
+  const cached = await readVerdictCache(supabase, verdictKey);
+  if (cached) return { ok: true, data: cached };
+
   const todayStr = new Date().toISOString().slice(0, 10);
   const fromBuffered = isoDaysAgo(daysAgo + 10); // runway so a close exists on/before the decision date
-  const [priceRaw, fxSeries] = await Promise.all([
+  // Fetch the position prices, FX, and (for a buy) the benchmark series all at
+  // once — the slow part — rather than the benchmark sequentially after.
+  const [priceRaw, fxSeries, benchRaw] = await Promise.all([
     fetchHistoricalSeries(m.symbol, fromBuffered, todayStr),
     getHistoricalUsdRates(fromBuffered, todayStr),
+    mode === "buy" ? fetchHistoricalSeries(BENCHMARK.symbol, fromBuffered, todayStr) : Promise.resolve(null),
   ]);
   const priceSeries = priceRaw ?? [];
   if (priceSeries.length === 0) return { ok: false, reason: "no_prices" };
@@ -197,22 +207,20 @@ export async function assembleVerdict(
   if (mode === "sell") {
     const { kind, magnitudeUsd } = classifyVerdict(thenUsd, nowUsd);
     const conv = await convertAll(displayCurrency, { figure: magnitudeUsd, valueThen: thenUsd, valueNow: nowUsd });
-    return {
-      ok: true,
-      data: {
-        mode: "sell",
-        kind,
-        figure: conv.figure,
-        currency: conv.currency,
-        lookbackLabel: lookbackLabel(daysAgo),
-        assetName: m.asset_name ?? m.symbol,
-        detail: { units: decisionUnits, valueThen: conv.valueThen, valueNow: conv.valueNow, date: occurred },
-      },
+    const data: VerdictData = {
+      mode: "sell",
+      kind,
+      figure: conv.figure,
+      currency: conv.currency,
+      lookbackLabel: lookbackLabel(daysAgo),
+      assetName: m.asset_name ?? m.symbol,
+      detail: { units: decisionUnits, valueThen: conv.valueThen, valueNow: conv.valueNow, date: occurred },
     };
+    await writeVerdictCache(supabase, verdictKey, data);
+    return { ok: true, data };
   }
 
   // ── BUY: the active bet vs the same money in the index ─────────────────────
-  const benchRaw = await fetchHistoricalSeries(BENCHMARK.symbol, fromBuffered, todayStr);
   const bench = benchRaw ?? [];
   const benchThen = priceOnOrBefore(bench, occurred);
   const benchNow = bench.length > 0 ? bench[bench.length - 1].price : null;
@@ -227,25 +235,58 @@ export async function assembleVerdict(
     valueNow: nowUsd,
     benchmarkNow: benchmarkNowUsd,
   });
-  return {
-    ok: true,
-    data: {
-      mode: "buy",
-      kind,
-      figure: conv.figure,
-      currency: conv.currency,
-      lookbackLabel: lookbackLabel(daysAgo),
-      assetName: m.asset_name ?? m.symbol,
-      benchmarkLabel: BENCHMARK.label,
-      detail: {
-        units: decisionUnits,
-        valueThen: conv.valueThen,
-        valueNow: conv.valueNow,
-        benchmarkNow: conv.benchmarkNow,
-        date: occurred,
-      },
+  const data: VerdictData = {
+    mode: "buy",
+    kind,
+    figure: conv.figure,
+    currency: conv.currency,
+    lookbackLabel: lookbackLabel(daysAgo),
+    assetName: m.asset_name ?? m.symbol,
+    benchmarkLabel: BENCHMARK.label,
+    detail: {
+      units: decisionUnits,
+      valueThen: conv.valueThen,
+      valueNow: conv.valueNow,
+      benchmarkNow: conv.benchmarkNow,
+      date: occurred,
     },
   };
+  await writeVerdictCache(supabase, verdictKey, data);
+  return { ok: true, data };
+}
+
+// ── Cache helpers ────────────────────────────────────────────────────────────
+// Only successful verdicts are cached. Ineligible/failed outcomes (no_prices,
+// no_fx, no_benchmark) may be transient infra blips, so they are recomputed rather
+// than stuck for the day. Every call degrades gracefully: if the table isn't there
+// (migration not yet applied), reads return null and writes no-op — verdicts are
+// then computed live, exactly as before the cache existed.
+async function readVerdictCache(supabase: SupabaseClient, verdictKey: string): Promise<VerdictData | null> {
+  try {
+    const { data } = await supabase
+      .from("decision_verdicts")
+      .select("computed_on, payload")
+      .eq("verdict_key", verdictKey)
+      .maybeSingle();
+    const today = new Date().toISOString().slice(0, 10);
+    if (data && data.computed_on === today && data.payload) return data.payload as VerdictData;
+  } catch {
+    /* table missing or read error — fall through to a live compute */
+  }
+  return null;
+}
+
+async function writeVerdictCache(supabase: SupabaseClient, verdictKey: string, data: VerdictData): Promise<void> {
+  try {
+    await supabase
+      .from("decision_verdicts")
+      .upsert(
+        { verdict_key: verdictKey, computed_on: new Date().toISOString().slice(0, 10), payload: data, updated_at: new Date().toISOString() },
+        { onConflict: "verdict_key" },
+      );
+  } catch {
+    /* table missing or write error — caching is best-effort, never fatal */
+  }
 }
 
 // Convert a bundle of USD amounts to the display currency together, so they stay
