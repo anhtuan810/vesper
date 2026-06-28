@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
@@ -40,12 +41,12 @@ export function DesktopMarketEntry({ move }: { move: DiaryMarketMove }) {
         <p className="mktentry-narr">{lead} {body}</p>
         {m.length > 0 && (
           <div className="mktentry-movers">
-            {m.map((h) => (
-              <span className="mktmover" key={h.symbol}>
-                {h.label}
-                <b className={h.impact >= 0 ? "up" : "dn"}>{signed(h.impact)}</b>
-              </span>
-            ))}
+            {m.map((h) => {
+              const inner = <>{h.label}<b className={h.impact >= 0 ? "up" : "dn"}>{signed(h.impact)}</b></>;
+              return h.assetId
+                ? <Link className="mktmover mktmover-link" key={h.symbol} href={`/asset?id=${h.assetId}`} title={`Open ${h.label}`}>{inner}</Link>
+                : <span className="mktmover" key={h.symbol}>{inner}</span>;
+            })}
           </div>
         )}
       </div>

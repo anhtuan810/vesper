@@ -19,6 +19,7 @@ export interface SwingHoldingImpact {
   label: string;
   impact: number; // signed, display currency
   pct: number;    // the holding's own day-over-day price move, %
+  assetId?: string; // the holding's asset id, for deep-linking to its detail page
 }
 
 // The computed effect of a market swing on THIS user's portfolio that day.
@@ -151,6 +152,7 @@ export interface SwingHolding {
   label: string;
   units: number;
   histKey: string; // key into the price-history map (crypto-normalized)
+  assetId?: string;
 }
 
 // Pure day-change attribution for one swing: for each holding, value on D minus
@@ -185,7 +187,7 @@ export function computeSwingDayChange(
     const impact = valD - valP;
     tradeableValue += Math.abs(valD);
     total += impact;
-    movers.push({ symbol: h.symbol, label: h.label, impact, pct: normP ? ((normD - normP) / normP) * 100 : 0 });
+    movers.push({ symbol: h.symbol, label: h.label, impact, pct: normP ? ((normD - normP) / normP) * 100 : 0, assetId: h.assetId });
   }
   movers.sort((x, y) => Math.abs(y.impact) - Math.abs(x.impact));
   return { total, tradeableValue, movers };
@@ -319,7 +321,7 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     if (!P) { built.push({ move: base, total: 0, tradeableValue: 0, month: date.slice(0, 7) }); continue; }
 
     const holdings: SwingHolding[] = tradeables.map((a) => ({
-      symbol: a.symbol!, label: a.name || a.symbol!, units: unitsOf(a, date), histKey: normalizeCryptoSymbol(a.symbol!, a.type),
+      symbol: a.symbol!, label: a.name || a.symbol!, units: unitsOf(a, date), histKey: normalizeCryptoSymbol(a.symbol!, a.type), assetId: a.id,
     }));
     const { total, tradeableValue, movers } = computeSwingDayChange(date, P, holdings, histMap, toDisplay);
 
