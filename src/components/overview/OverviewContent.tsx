@@ -20,6 +20,8 @@ import { isIncomePension } from "@/lib/pension";
 import { displayName, STARTING_POSITION_CTX, unitNoun } from "@/lib/diary-utils";
 import { pctChange, displayTicker } from "@/lib/utils";
 import { firstSnapshotDate } from "@/lib/networth-history";
+import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
+import type { DiaryMarketMove } from "@/lib/diary-market-moves";
 import { apiFetch } from "@/lib/api";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_ORDER,
@@ -270,6 +272,17 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     () => [...mutations].sort((a, b) => (mDate(b)).localeCompare(mDate(a))),
     [mutations],
   );
+  // Auto-generated market-swing entries, interleaved with decisions in the
+  // journal preview below (same data the Journal page renders as full cards).
+  const { moves } = useDiaryMarketMoves();
+  const journalPreview = useMemo(() => {
+    type Row = { kind: "mut"; date: string; m: Mutation } | { kind: "move"; date: string; mv: DiaryMarketMove };
+    const rows: Row[] = [
+      ...sortedMutations.map((m): Row => ({ kind: "mut", date: mDate(m).slice(0, 10), m })),
+      ...moves.filter((mv) => mv.impact).map((mv): Row => ({ kind: "move", date: mv.date, mv })),
+    ];
+    return rows.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
+  }, [sortedMutations, moves]);
   // Every entry is plotted on the line. Each marker carries the short content the
   // chart shows on hover (title, date, value moved) and a kind so a market-event
   // entry ("market") reads apart from a personal decision ("you"). Hovering only
@@ -635,12 +648,35 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           <div>
             <span className="eyebrow">Decision journal</span>
           </div>
-          <Link className="lk" href="/diary">All {sortedMutations.length} entries →</Link>
+          <Link className="lk" href="/diary">Open the journal →</Link>
         </div>
         <div className="ledger">
-          {sortedMutations.length === 0 ? (
+          {journalPreview.length === 0 ? (
             <div className="led-empty">Nothing logged yet — your decisions will appear here.</div>
-          ) : sortedMutations.slice(0, 6).map((m) => {
+          ) : journalPreview.map((row) => {
+            if (row.kind === "move") {
+              const mv = row.mv;
+              const imp = mv.impact!;
+              const dn = imp.total < 0;
+              const top = imp.movers[0];
+              const why = `Your portfolio ${dn ? "lost" : "gained"} ${formatMoney(Math.abs(imp.total), imp.currency as typeof displayCurrency, imp.currency as typeof displayCurrency)} that day`
+                + (top ? `, led by ${top.label}.` : ".");
+              return (
+                <div className="led" key={`mv-${mv.index_symbol}-${mv.date}`}>
+                  <span className={`led-dot${dn ? " dn" : ""}`} />
+                  <span className="led-date">{shortDate(mv.date)}</span>
+                  <div>
+                    <div className="led-l1">
+                      <span className="led-title">{mv.index_label} {mv.pct_change >= 0 ? "+" : "−"}{fmtPct(Math.abs(mv.pct_change), 1)}%</span>
+                      <span className="led-tag auto">Market</span>
+                    </div>
+                    <div className="led-why">{why}</div>
+                  </div>
+                  <span className={`led-imp${dn ? " dn" : ""}`}>{dn ? "▼" : "▲"} {formatMoney(Math.abs(imp.total), imp.currency as typeof displayCurrency, imp.currency as typeof displayCurrency)}</span>
+                </div>
+              );
+            }
+            const m = row.m;
             const own = hasOwnNote(m);
             const imp = impact(m, displayCurrency);
             const why = own ? m.personal_context
