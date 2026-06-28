@@ -368,7 +368,9 @@ export function NetWorthChart(props: Props) {
   // right-aligned, interior centred, so nothing clips at the edges.
   const xAxisLabels = useMemo(() => {
     const n = displaySeries.length;
-    if (n < 2 || drawW <= 0) return [] as { key: number; pct: number; text: string; align: string }[];
+    // Journal (desktop Overview) only — keeps the mobile/intraday chart unchanged,
+    // where a date axis is redundant (1D is all one day) and wasn't there before.
+    if (!markerMode || n < 2 || drawW <= 0) return [] as { key: number; pct: number; text: string; align: string }[];
     const idx = Array.from(new Set([0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1]))
       .filter((i) => i >= 0 && i < n);
     const labels = idx.map((i) => ({
@@ -381,7 +383,7 @@ export function NetWorthChart(props: Props) {
     // landing in the same month on a dense series); always keep the two edges.
     return labels.filter((l, k) =>
       k === 0 || k === labels.length - 1 || (l.text !== labels[k - 1].text && l.text !== labels[labels.length - 1].text));
-  }, [displaySeries, drawW, W, range]);
+  }, [displaySeries, drawW, W, range, markerMode]);
 
   // Gradient area under the line — lineOnly (Liquid) mode only. Same top
   // boundary (x positions + projected y) as `line`, then down to the plot
@@ -449,23 +451,30 @@ export function NetWorthChart(props: Props) {
   // Decision dots: every journal marker placed at the nearest plotted point whose
   // date falls within the visible (range-clipped) window. Carries the short
   // content shown in the hover-preview box.
-  const markerDots: { id: string; x: number; y: number; kind: "you" | "market"; title?: string; sub?: string; value?: string; net?: number }[] = [];
-  if (markerMode && values.length >= 2) {
-    const dates = displaySeries.map((p) => p.date);
-    const first = dates[0];
-    const last = dates[dates.length - 1];
-    for (const mk of props.markers!) {
-      if (mk.date < first || mk.date > last) continue;
-      const t = new Date(mk.date).getTime();
-      let best = 0;
-      let bestDiff = Infinity;
-      for (let i = 0; i < dates.length; i++) {
-        const d = Math.abs(new Date(dates[i]).getTime() - t);
-        if (d < bestDiff) { bestDiff = d; best = i; }
+  // Memoized so the O(markers×points) nearest-point scan + Date parsing isn't
+  // rebuilt on every pointer-move re-render (hover state changes don't touch its
+  // inputs). projectY is a fresh closure; its inputs H/niceMin/niceMax are deps.
+  const markerDots = useMemo<{ id: string; x: number; y: number; kind: "you" | "market"; title?: string; sub?: string; value?: string; net?: number }[]>(() => {
+    const dots: { id: string; x: number; y: number; kind: "you" | "market"; title?: string; sub?: string; value?: string; net?: number }[] = [];
+    if (markerMode && values.length >= 2) {
+      const dates = displaySeries.map((p) => p.date);
+      const first = dates[0];
+      const last = dates[dates.length - 1];
+      for (const mk of props.markers!) {
+        if (mk.date < first || mk.date > last) continue;
+        const t = new Date(mk.date).getTime();
+        let best = 0;
+        let bestDiff = Infinity;
+        for (let i = 0; i < dates.length; i++) {
+          const d = Math.abs(new Date(dates[i]).getTime() - t);
+          if (d < bestDiff) { bestDiff = d; best = i; }
+        }
+        dots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value, net: values[best] });
       }
-      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value, net: values[best] });
     }
-  }
+    return dots;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markerMode, values, displaySeries, props.markers, drawW, H, niceMin, niceMax]);
 
   // The marker nearest the pointer's x — used so hovering anywhere along the line
   // previews the closest entry (dots can be dense), not only exact dot hits.

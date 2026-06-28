@@ -86,13 +86,26 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
   }, []);
   useEffect(() => {
     if (!focusId) return;
-    const t = setTimeout(() => {
+    // The target row may not exist yet on a cold deep-link (mutations load async),
+    // so poll for it (up to ~4s) instead of a single fixed timer, then scroll +
+    // flash once — and time the flash from when the row actually appears.
+    let done = false;
+    let tries = 0;
+    let flashTimer: ReturnType<typeof setTimeout> | undefined;
+    const attempt = () => {
+      if (done) return;
       const el = document.getElementById(`diary-entry-${focusId}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      setHighlightedId(focusId);
-    }, 90);
-    const t2 = setTimeout(() => setHighlightedId(null), 1900);
-    return () => { clearTimeout(t); clearTimeout(t2); };
+      if (el) {
+        done = true;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedId(focusId);
+        flashTimer = setTimeout(() => setHighlightedId(null), 1800);
+        return;
+      }
+      if (tries++ < 40) flashTimer = setTimeout(attempt, 100);
+    };
+    flashTimer = setTimeout(attempt, 60);
+    return () => { done = true; if (flashTimer) clearTimeout(flashTimer); };
   }, [focusId]);
 
   const anniversary = (() => {
