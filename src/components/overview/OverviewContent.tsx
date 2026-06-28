@@ -74,16 +74,23 @@ function decisionTitle(m: Mutation): string {
 function hasOwnNote(m: Mutation): boolean {
   return !!m.personal_context && m.personal_context !== STARTING_POSITION_CTX;
 }
+// Signed value moved by a change, in the asset's native currency.
+function impactRaw(m: Mutation): number {
+  if (m.action === "add") return m.after_value ?? 0;
+  if (m.action === "remove") return -(m.before_value ?? 0);
+  return (m.after_value ?? 0) - (m.before_value ?? 0);
+}
 // Value impact of a change → "▲ €34.000" / "▼ €33.000" (or null when flat).
 function impact(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): { text: string; dn: boolean } | null {
   const cur = m.currency || "USD";
-  let amt: number;
-  if (m.action === "add") amt = m.after_value ?? 0;
-  else if (m.action === "remove") amt = -(m.before_value ?? 0);
-  else amt = (m.after_value ?? 0) - (m.before_value ?? 0);
+  const amt = impactRaw(m);
   if (!amt) return null;
   const dn = amt < 0;
   return { text: `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(amt), cur, displayCurrency)}`, dn };
+}
+// Absolute impact in the display currency — ranks how "significant" a change is.
+function impactMagnitude(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): number {
+  return Math.abs(toDisplay(Math.abs(impactRaw(m)), m.currency || "USD", displayCurrency) ?? 0);
 }
 
 // Shared with VitalsContent's property lens — toggling on either surface carries
@@ -267,11 +274,30 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     () => [...mutations].sort((a, b) => (mDate(b)).localeCompare(mDate(a))),
     [mutations],
   );
-  // One clickable chart marker per decision (date = YYYY-MM-DD), tagged so the
-  // chart can colour personal decisions ("you") apart from automatic ones ("auto").
+  // Pinning every entry floods the chart, so only the SIGNIFICANT decisions get a
+  // marker: any tied to a real market event, plus the largest moves up to a small
+  // cap. Routine contributions stay reachable via prev/next but don't clutter the
+  // line. The selected entry is always pinned so its position shows when stepping.
+  const NOTABLE_CAP = 8;
+  const notableIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const m of sortedMutations) if (m.market_context) ids.add(m.id);
+    const rest = sortedMutations
+      .filter((m) => !ids.has(m.id))
+      .map((m) => ({ id: m.id, mag: impactMagnitude(m, displayCurrency) }))
+      .sort((a, b) => b.mag - a.mag);
+    for (const x of rest) { if (ids.size >= NOTABLE_CAP) break; ids.add(x.id); }
+    return ids;
+  }, [sortedMutations, displayCurrency]);
+
+  // Markers the chart pins: significant decisions, tagged so market-event entries
+  // ("market") read apart from personal decisions ("you"); the selected entry is
+  // always included even when it isn't otherwise notable.
   const markers = useMemo(
-    () => sortedMutations.map((m) => ({ id: m.id, date: mDate(m).slice(0, 10), kind: hasOwnNote(m) ? ("you" as const) : ("auto" as const) })),
-    [sortedMutations],
+    () => sortedMutations
+      .filter((m) => notableIds.has(m.id) || m.id === selectedId)
+      .map((m) => ({ id: m.id, date: mDate(m).slice(0, 10), kind: m.market_context ? ("market" as const) : ("you" as const) })),
+    [sortedMutations, notableIds, selectedId],
   );
 
   // Navigation order: Today (null) first, then decisions newest→oldest. ← steps

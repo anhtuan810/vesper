@@ -107,9 +107,9 @@ interface Props {
   // provided (desktop Overview only), the chart shows static, click-to-select
   // points and disables the hover-scrub/breakdown — selection is by click, not
   // hover. Mobile (PortfolioTab) passes nothing, so its behaviour is unchanged.
-  // `kind` distinguishes a personal decision ("you") from an automatic/market
-  // entry ("auto") so each gets a distinct dot colour.
-  markers?: { id: string; date: string; kind?: "you" | "auto" }[];
+  // `kind` distinguishes a personal decision ("you") from a market-event entry
+  // ("market") so each gets a distinct dot colour.
+  markers?: { id: string; date: string; kind?: "you" | "market" }[];
   selectedMarkerId?: string | null;
   onMarkerClick?: (id: string) => void;
 }
@@ -448,7 +448,7 @@ export function NetWorthChart(props: Props) {
 
   // Decision dots: each journal marker placed at the nearest plotted point whose
   // date falls within the visible (range-clipped) window.
-  const markerDots: { id: string; x: number; y: number; kind: "you" | "auto" }[] = [];
+  const markerDots: { id: string; x: number; y: number; kind: "you" | "market" }[] = [];
   if (markerMode && values.length >= 2) {
     const dates = displaySeries.map((p) => p.date);
     const first = dates[0];
@@ -558,28 +558,36 @@ export function NetWorthChart(props: Props) {
                   <circle cx={drawW} cy={lastY} r={3} fill={strokeColor} />
                 </>
               )}
-              {/* Journal decision dots — visible, click-to-select (not hover).
-                  Personal decisions ("you") use the accent; automatic/market
-                  entries ("auto") use a muted neutral so the two read apart. */}
+              {/* Journal decision dots — only the significant decisions are pinned
+                  (the host caps them), so the line stays uncluttered. Unselected
+                  dots are small and quiet; the selected one is filled and larger.
+                  Market-event entries ("market") use a muted neutral, personal
+                  decisions ("you") the accent. */}
               {markerMode && markerDots.map((dot) => {
                 const sel = dot.id === props.selectedMarkerId;
-                const dotColor = dot.kind === "auto" ? "var(--text-faint)" : "var(--accent)";
+                const dotColor = dot.kind === "market" ? "var(--text-faint)" : "var(--accent)";
                 return (
                   <g key={dot.id}>
                     {/* Generous transparent hit target for the small visible dot. */}
                     <circle
-                      cx={dot.x} cy={dot.y} r={12} fill="transparent"
+                      cx={dot.x} cy={dot.y} r={13} fill="transparent"
                       style={{ cursor: "pointer" }}
                       role="button" tabIndex={0} aria-label="Decision point" aria-pressed={sel}
                       onClick={() => props.onMarkerClick?.(dot.id)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); props.onMarkerClick?.(dot.id); } }}
                     />
-                    <circle
-                      cx={dot.x} cy={dot.y} r={sel ? 6 : 4.5}
-                      fill={sel ? dotColor : "var(--surface)"}
-                      stroke={dotColor} strokeWidth={2.4}
-                      style={{ pointerEvents: "none" }}
-                    />
+                    {sel ? (
+                      <>
+                        <circle cx={dot.x} cy={dot.y} r={7} fill="none" stroke={dotColor} strokeOpacity={0.22} style={{ pointerEvents: "none" }} />
+                        <circle cx={dot.x} cy={dot.y} r={4.5} fill={dotColor} stroke="var(--surface)" strokeWidth={1.5} style={{ pointerEvents: "none" }} />
+                      </>
+                    ) : (
+                      <circle
+                        cx={dot.x} cy={dot.y} r={3} fill="var(--surface)"
+                        stroke={dotColor} strokeWidth={1.5} strokeOpacity={0.8}
+                        style={{ pointerEvents: "none" }}
+                      />
+                    )}
                   </g>
                 );
               })}
