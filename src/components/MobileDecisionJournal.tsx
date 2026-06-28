@@ -142,9 +142,16 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
 }
 
 export function MobileDecisionJournal({ mutations, displayCurrency }: { mutations: Mutation[]; displayCurrency: DisplayCurrency }) {
-  // Decisions, newest first — the same order the stepper counts (1 = newest).
+  // Real decisions only, newest first — buys (add), sells (remove) and trims
+  // (a reduce edit). Routine top-ups (an edit that only adds units) are noise on
+  // a phone stepper, so they're left out; every card you step to is worth a look.
   const decisions = useMemo(
-    () => [...mutations].sort((a, b) => mDate(b).localeCompare(mDate(a))),
+    () => mutations
+      .filter((m) => {
+        if (m.action === "add" || m.action === "remove") return true;
+        return m.action === "edit" && typeof m.before_units === "number" && typeof m.after_units === "number" && m.before_units > m.after_units;
+      })
+      .sort((a, b) => mDate(b).localeCompare(mDate(a))),
     [mutations],
   );
   const [index, setIndex] = useState(0);
@@ -183,12 +190,7 @@ export function MobileDecisionJournal({ mutations, displayCurrency }: { mutation
   const canNewer = index > 0;
 
   return (
-    <section
-      style={{
-        marginTop: 6, marginBottom: 18, padding: "16px 16px 18px",
-        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)",
-      }}
-    >
+    <section style={{ marginTop: 4, marginBottom: 22, paddingTop: 18, borderTop: "1px solid var(--border-strong)" }}>
       {/* stepper — ‹  n / total · date  › */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 14 }}>
         <button
