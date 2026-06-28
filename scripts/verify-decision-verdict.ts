@@ -8,7 +8,7 @@
 // single-unit lookback phrasing (lookbackLabel). Both must be deterministic — the
 // product promise is that no model invents the figure or the framing.
 
-import { classifyVerdict, lookbackLabel } from "../src/lib/scenario/decision-verdict";
+import { classifyVerdict, classifyBuyVerdict, lookbackLabel } from "../src/lib/scenario/decision-verdict";
 import { reconstructPositionSeries } from "../src/lib/scenario/counterfactual";
 
 let failures = 0;
@@ -39,6 +39,22 @@ console.log("A wash within 1% of the basis reads 'even', not a verdict either wa
   check("then 1000 / now 980 → spared (2%)", classifyVerdict(1000, 980).kind === "spared");
   // Tiny basis: the $1 floor keeps sub-dollar noise from registering.
   check("then 10 / now 10.50 → even (<$1)", classifyVerdict(10, 10.5).kind === "even");
+}
+
+console.log("Buy verdict — the active bet vs the same money in the index:");
+{
+  // Deployed $1000; the index would have grown it to $1200. Position now $1500 →
+  // the pick beat the index by $300.
+  const beat = classifyBuyVerdict(1500, 1200, 1000);
+  check("position 1500 vs index 1200 → beat 300", beat.kind === "beat" && beat.magnitudeUsd === 300, `${beat.kind} ${beat.magnitudeUsd}`);
+  // Position now $1000, index would be $1200 → trailed by $200.
+  const trailed = classifyBuyVerdict(1000, 1200, 1000);
+  check("position 1000 vs index 1200 → trailed 200", trailed.kind === "trailed" && trailed.magnitudeUsd === 200, `${trailed.kind} ${trailed.magnitudeUsd}`);
+  // Within the 3% band of the $1000 deployed → matched, not a verdict either way.
+  check("position 1210 vs index 1200 → matched (1% gap)", classifyBuyVerdict(1210, 1200, 1000).kind === "matched");
+  check("position 1175 vs index 1200 → matched (2.5% gap)", classifyBuyVerdict(1175, 1200, 1000).kind === "matched");
+  // Just past the 3% band tips to a real verdict.
+  check("position 1240 vs index 1200 → beat (4% gap)", classifyBuyVerdict(1240, 1200, 1000).kind === "beat");
 }
 
 console.log("Lookback phrasing — calm, single-unit, no decimals:");

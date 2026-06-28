@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   NetWorthChart,
@@ -155,41 +155,86 @@ function decisionPoints(m: Mutation, displayCurrency: ReturnType<typeof useDispl
   return pts;
 }
 
-// Cheap client-side pre-check before asking the server for a Decision Verdict:
-// only a past sell or reduce of a tradeable position (with a symbol, old enough to
-// look back on) could plausibly return one. Mirrors the server's eligibility so
-// the API call fires only when it might pay off — every other decision shows nothing.
-function sellLookbackEligible(m: Mutation): boolean {
-  if (!m.symbol || !["stocks", "etf", "crypto"].includes(m.asset_type ?? "")) return false;
+// Cheap client-side pre-check before asking the server for a Decision Verdict, so
+// the API call fires only when it might pay off. Mirrors the server's eligibility:
+// a tradeable position (with a symbol), old enough to look back on, that is either
+//   • a sell/reduce of a stock/etf/crypto (the "keep or let go?" verdict), or
+//   • an INITIAL buy of a single-name bet — stock/crypto (the "beat the index?"
+//     verdict; index buys and top-ups are skipped to avoid journal noise).
+function verdictEligible(m: Mutation): boolean {
+  if (!m.symbol) return false;
+  const type = m.asset_type ?? "";
+  const occurred = mDate(m).slice(0, 10);
+  if (!occurred || (Date.now() - Date.parse(occurred)) / 86_400_000 < 21) return false;
   const before = typeof m.before_units === "number" ? m.before_units : null;
   const after = m.action === "remove" ? 0 : typeof m.after_units === "number" ? m.after_units : null;
-  const isSell = m.action === "remove" || (m.action === "edit" && before != null && after != null && before > after);
-  if (!isSell || before == null || after == null || !(before - after > 0)) return false;
-  const occurred = mDate(m).slice(0, 10);
-  if (!occurred) return false;
-  return (Date.now() - Date.parse(occurred)) / 86_400_000 >= 21;
+  const isReduce = m.action === "remove" || (m.action === "edit" && before != null && after != null && before > after);
+  if (isReduce) return ["stocks", "etf", "crypto"].includes(type) && before != null && after != null && before - after > 0;
+  if (m.action === "add") return ["stocks", "crypto"].includes(type) && (m.after_units ?? 0) > 0;
+  return false;
 }
 
-// The retrospective verdict on a past sell/reduce: a calm mono eyebrow, one
-// sentence with the deterministic figure, and a quiet "how this is figured"
-// disclosure. No score, no praise or blame — an editorial post-mortem sitting
-// next to the reasoning the user wrote, the moat (reasoning + counterfactual)
-// finally connected.
+// The retrospective verdict on a past decision: a calm mono eyebrow, one sentence
+// with the deterministic figure, and a quiet "how this is figured" disclosure that
+// shows the real arithmetic. No score, no praise or blame — an editorial
+// post-mortem next to the reasoning the user wrote, the moat (reasoning +
+// counterfactual) finally connected. Two modes: a SELL weighs "keep or let go?",
+// a BUY weighs the active bet against the same money left in the index.
 function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
   const [open, setOpen] = useState(false);
   const cur = verdict.currency as DisplayCurrency;
   const fmt = (v: number) => formatMoney(v, cur, cur);
   const money = fmt(verdict.figure);
   const d = verdict.detail;
-  const rose = d.valueNow >= d.valueThen;
-  const line =
-    verdict.kind === "spared" ? (
-      <>Selling here spared you <strong>{money}</strong> — the stake you let go is worth less now.</>
-    ) : verdict.kind === "missed" ? (
-      <>Holding on would have gained <strong>{money}</strong> — the stake kept climbing after you sold.</>
-    ) : (
-      <>This came out roughly even — the stake you sold is worth about what it was.</>
+  const bench = verdict.benchmarkLabel ?? "the index";
+
+  let line: ReactNode;
+  let calc: ReactNode;
+  let notes: string[];
+  if (verdict.mode === "buy") {
+    line =
+      verdict.kind === "beat" ? (
+        <>Buying here beat {bench} by <strong>{money}</strong> — your pick has outpaced the index since.</>
+      ) : verdict.kind === "trailed" ? (
+        <>Buying here trailed {bench} by <strong>{money}</strong> — the same money in the index would be worth more.</>
+      ) : (
+        <>This roughly matched {bench} — about what the index would have done with the same money.</>
+      );
+    calc = (
+      <>
+        You put about <strong>{fmt(d.valueThen)}</strong> into {fmtUnits(d.units)} {unitLabel} on {shortDate(d.date)};
+        today that&apos;s <strong>{fmt(d.valueNow)}</strong>. The same money in {bench} would be about{" "}
+        <strong>{fmt(d.benchmarkNow ?? 0)}</strong>
+        {verdict.kind === "matched" ? <> — roughly level.</> : <> — {verdict.kind === "beat" ? "ahead" : "behind"} by <strong>{money}</strong>.</>}
+      </>
     );
+    notes = [
+      `Compares your position today with the same capital put into ${bench} on the same day.`,
+      "Both valued at closing prices; dividends aren't reinvested on either side.",
+    ];
+  } else {
+    const rose = d.valueNow >= d.valueThen;
+    line =
+      verdict.kind === "spared" ? (
+        <>Selling here spared you <strong>{money}</strong> — the stake you let go is worth less now.</>
+      ) : verdict.kind === "missed" ? (
+        <>Holding on would have gained <strong>{money}</strong> — the stake kept climbing after you sold.</>
+      ) : (
+        <>This came out roughly even — the stake you sold is worth about what it was.</>
+      );
+    calc = (
+      <>
+        The {fmtUnits(d.units)} {unitLabel} you sold were worth <strong>{fmt(d.valueThen)}</strong> on{" "}
+        {shortDate(d.date)}, and would be worth <strong>{fmt(d.valueNow)}</strong> today — a{" "}
+        {rose ? "rise" : "fall"} of <strong>{money}</strong>.
+      </>
+    );
+    notes = [
+      "Valued at each date's closing price, with historical exchange rates applied per date.",
+      "What the freed-up cash did afterwards isn't counted — this weighs only the position you let go.",
+    ];
+  }
+
   return (
     <div className={`ep-verdict ${verdict.kind}`}>
       <span className="ep-verdict-eyebrow">Looking back · {verdict.lookbackLabel}</span>
@@ -205,14 +250,9 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
       {open && (
         <div className="ep-verdict-notes">
           {/* The actual arithmetic, in real numbers — not a generic method note. */}
-          <p className="ep-verdict-calc">
-            The {fmtUnits(d.units)} {unitLabel} you sold were worth <strong>{fmt(d.valueThen)}</strong> on{" "}
-            {shortDate(d.soldDate)}, and would be worth <strong>{fmt(d.valueNow)}</strong> today — a{" "}
-            {rose ? "rise" : "fall"} of <strong>{money}</strong>.
-          </p>
+          <p className="ep-verdict-calc">{calc}</p>
           <ul>
-            <li>Valued at each date&apos;s closing price, with historical exchange rates applied per date.</li>
-            <li>What the freed-up cash did afterwards isn&apos;t counted — this weighs only the position you let go.</li>
+            {notes.map((n, i) => <li key={i}>{n}</li>)}
           </ul>
         </div>
       )}
@@ -454,7 +494,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const verdictAsked = useRef<Set<string>>(new Set());
   useEffect(() => {
     const m = selectedDecision;
-    if (!m || !sellLookbackEligible(m)) return;
+    if (!m || !verdictEligible(m)) return;
     const key = `${m.id}|${displayCurrency}`;
     if (verdictAsked.current.has(key)) return;
     verdictAsked.current.add(key);

@@ -15,34 +15,40 @@ specced here to start in their own chats.
 
 ---
 
-## 1. Decision Verdict ⭐ (v1 shipped 2026-06-28)
-**What.** On any closed or reduced **tradeable** position, value the stake the user
-*let go* — the units that left the book — then vs now from real historical prices + FX
+## 1. Decision Verdict ⭐ (v1 sells + v1.1 buys shipped 2026-06-28)
+**What.** Stamp the selected-entry panel with a calm mono eyebrow (*"Looking back · 18
+months on"*) + one sentence + the deterministic figure + a "how this is figured"
+disclosure that shows the **real numbers**. Two modes, both on the pure engine
 (`src/lib/scenario/counterfactual.ts` → `reconstructPositionSeries`, reused via the new
-`src/lib/scenario/decision-verdict.ts`) and stamp the selected-entry panel with a calm
-mono eyebrow: *"Looking back · 18 months on"* + one sentence + the deterministic figure
-(*"Selling here spared you €4,120"* / *"Holding on would have gained €1,890"*), with an
-assumptions disclosure. **No score, no gamification** — an editorial post-mortem sitting
-next to the reasoning the user wrote.
+`src/lib/scenario/decision-verdict.ts`):
+- **Sell/reduce** — value the stake the user *let go* then vs now: *"Selling here spared
+  you €4,120"* / *"Holding on would have gained €1,890"*.
+- **Buy (initial single-name purchase)** — *was the active bet worth it?* Compare the
+  position today with the **same capital left in a world index** (`URTH`, MSCI World):
+  *"Buying here beat the MSCI World by €7,420"* / *"trailed … by €4,900"* / *"roughly
+  matched"*. Index buys (etf) and top-ups are excluded so we never benchmark the index
+  against itself or clutter the journal with near-ties.
 
-**Shipped (v1).** Server: `POST /api/decisions/verdict { mutation_id, display_currency }`
-(auth + `entitledGate`; returns `{ eligible:false }` for anything not a past tradeable
-sell/reduce ≥21 days old with price history — never an error). Client:
-`OverviewContent` fetches lazily when an eligible sell is selected, caches per
-(mutation, currency), and renders `<VerdictStamp>`. The figure is the sold stake's
-market value now minus its value at the sell date (delta<0 → *spared*, >0 → *missed*,
-within 1% of basis → *even*); what the freed cash did afterwards is deliberately not
-counted. Pure core unit-tested in `scripts/verify-decision-verdict.ts`.
+**No score, no gamification** — an editorial post-mortem next to the reasoning the user wrote.
 
-**Follow-ups (v2).** Surface the same stamp on the journal entry rows and the asset
-detail; add a since-the-decision / 1Y / 3Y lookback selector; carry the verdict into the
-"memo" export (#6). **Coverage hole to close:** a sell of a *value-only* tradeable (no
-recorded unit count) stores `before_units: null`, so v1 shows no verdict for it — derive
-the magnitude from `before_value` × the price ratio when units are absent (needs a
-value-path in the engine; verify how common null-`before_units` sells are against real
-data first). Known shared limitation: nominal units vs split-adjusted prices (the whole
-counterfactual track shares this). v1 fails closed on FX-unavailable (non-USD stock,
-historical FX down) rather than risk a wrong figure.
+**Shipped.** Server: `POST /api/decisions/verdict { mutation_id, display_currency }`
+(auth + `entitledGate`; returns `{ eligible:false }` for anything ineligible — never an
+error). Dispatches sell vs buy by inspecting the mutation. Client: `OverviewContent`
+fetches lazily for an eligible decision, caches per (mutation, currency), renders
+`<VerdictStamp>` (mode-aware copy + a real-numbers calc block). Sell: delta<0 *spared*,
+>0 *missed*, within 1% *even*. Buy: position-now − (deployed × index price-ratio); >3% of
+deployed *beat*, <−3% *trailed*, else *matched*. Pure cores
+(`classifyVerdict`/`classifyBuyVerdict`/`lookbackLabel`) unit-tested in
+`scripts/verify-decision-verdict.ts`.
+
+**Follow-ups (v2).** Surface the stamp on the journal rows + asset detail; a
+since-the-decision / 1Y / 3Y lookback selector; carry it into the "memo" export (#6); let
+the buy benchmark be the user's *own* index holding when they have one (today it's a fixed
+world tracker). **Coverage hole:** a sell of a *value-only* tradeable (no recorded units)
+stores `before_units: null` → no verdict; derive from `before_value` × price-ratio (needs a
+value-path in the engine; check how common these are first). Known shared limitation:
+nominal units vs split-adjusted prices. Both modes fail closed on FX- or benchmark-
+unavailable rather than risk a wrong figure.
 
 **Why.** The one feature no competitor can ship: Copilot, Monarch, Empower, Kubera store
 what you *have*, not *why*; Sharesight grades against a benchmark, not your own thesis.

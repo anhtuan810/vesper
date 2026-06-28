@@ -1,20 +1,23 @@
-// Decision Verdict — the retrospective "was selling here right?" stamp.
+// Decision Verdict — the retrospective "was this decision right?" stamp.
 //
-// For a past sell or reduce of a tradeable position, this reconstructs the stake
-// the user SOLD (the units that left the book) at its value then and its value
-// now, from real historical prices + FX, and reports the deterministic difference:
-//   delta = value-now − value-then
-//   delta < 0  → the stake is worth less now → selling SPARED that loss
-//   delta > 0  → the stake is worth more now → holding would have GAINED that much
+// Two modes, both built on the same pure price engine (reconstructPositionSeries),
+// so no model ever produces the figure:
 //
-// It deliberately reuses the same pure engine the counterfactual uses
-// (reconstructPositionSeries) so no model produces the figure. It ignores what
-// the freed-up cash did afterwards — the question is narrowly "the stake you let
-// go: better or worse to have kept it?", which is the honest, checkable comparison.
+//  • SELL / reduce — reconstructs the stake the user LET GO at its value then and
+//    now. delta = now − then:  delta < 0 → selling SPARED that loss; delta > 0 →
+//    holding would have GAINED that much. The freed-up cash is deliberately not
+//    counted — the question is narrowly "the stake you sold: keep or let go?".
+//
+//  • BUY (initial purchase of a single-name bet) — was the active bet worth it
+//    versus the boring default? It values the bought units now and compares them
+//    with the SAME capital put into a world index over the same period:
+//    delta = position-now − (deployed × index-ratio). delta > 0 → the pick BEAT
+//    the index; delta < 0 → it TRAILED it. Index buys (etf) are excluded so we
+//    never benchmark the index against itself.
 //
 // Pure read. Writes nothing. Degrades to { ok:false } (the panel shows nothing)
 // whenever the inputs can't support an honest number — not a tradeable, too
-// recent, no price history, no cost basis.
+// recent, no price history, no cost basis, no benchmark.
 
 import { getHistoricalUsdRates, toDisplay } from "@/lib/fx";
 import { fetchHistoricalSeries } from "@/lib/prices";
@@ -23,28 +26,37 @@ import type { createServerSupabase } from "@/lib/supabase";
 
 type SupabaseClient = ReturnType<typeof createServerSupabase>;
 
-const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto"]);
-// Below this, "looking back" isn't meaningful yet — the sell is too fresh for a
-// verdict to say anything but noise. Gated client-side too, so the call rarely fires.
+// Sells can be of any tradeable (you can sell your index too). Buy verdicts are
+// reserved for active single-name bets — benchmarking an index buy against the
+// index is circular, so etf is excluded there.
+const TRADEABLE_SELL = new Set(["stocks", "etf", "crypto"]);
+const TRADEABLE_BUY = new Set(["stocks", "crypto"]);
+// The "do nothing" yardstick a buy is measured against: a broad world tracker.
+const BENCHMARK = { symbol: "URTH", label: "the MSCI World" };
+// Below this, "looking back" isn't meaningful yet — the decision is too fresh for
+// a verdict to say anything but noise. Gated client-side too, so the call is rare.
 const MIN_LOOKBACK_DAYS = 21;
 
 const isoDaysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 export interface VerdictData {
-  // spared = good call (it fell); missed = sold early (it rose); even = a wash.
-  kind: "spared" | "missed" | "even";
+  mode: "sell" | "buy";
+  // sell: spared (good call) | missed (sold early) | even
+  // buy:  beat (outpaced the index) | trailed | matched
+  kind: "spared" | "missed" | "even" | "beat" | "trailed" | "matched";
   figure: number; // absolute magnitude, expressed in `currency`
   currency: string; // the currency `figure` is in (display currency, or USD fallback)
   lookbackLabel: string; // e.g. "18 months on"
   assetName: string;
-  assumptions: string[];
-  // The actual figures behind the verdict, so "how this is figured" can show real
-  // numbers instead of a generic method note. All money is in `currency`.
+  benchmarkLabel?: string; // buy only — what it was measured against
+  // The real figures behind the verdict, so "how this is figured" shows actual
+  // numbers, not a generic note. All money is in `currency`.
   detail: {
-    units: number; // the stake that left the book
-    valueThen: number; // what those units were worth on the sell date
-    valueNow: number; // what those units would be worth today
-    soldDate: string; // YYYY-MM-DD of the sell
+    units: number; // the stake that left the book (sell) / was bought (buy)
+    valueThen: number; // sell: worth at the sale; buy: capital deployed
+    valueNow: number; // what those units are worth today
+    date: string; // YYYY-MM-DD of the decision
+    benchmarkNow?: number; // buy only: that same capital in the benchmark, today
   };
 }
 
@@ -76,22 +88,43 @@ export function lookbackLabel(days: number): string {
   return `${years} ${years === 1 ? "year" : "years"} on`;
 }
 
-// Direction + magnitude from the sold stake's value then vs now (both USD), the
-// one piece of judgement in the verdict. delta = now − then:
-//   delta < 0 → the stake fell → selling SPARED that much
-//   delta > 0 → the stake rose → holding would have GAINED that much
-//   |delta| within 1% of the basis (or trivially small) → a wash ("even"), so a
-//   rounding-scale wobble isn't dressed up as a verdict either way.
-// Pure; exported for the test suite.
+// SELL direction + magnitude from the sold stake's value then vs now (both USD).
+// delta = now − then:  delta < 0 → fell → SPARED;  delta > 0 → rose → MISSED;
+// |delta| within 1% of the basis → a wash ("even"). Pure; exported for the test.
 export function classifyVerdict(
   thenUsd: number,
   nowUsd: number,
-): { kind: VerdictData["kind"]; magnitudeUsd: number } {
+): { kind: "spared" | "missed" | "even"; magnitudeUsd: number } {
   const deltaUsd = nowUsd - thenUsd;
   const evenThreshold = Math.max(thenUsd * 0.01, 1);
-  const kind: VerdictData["kind"] =
-    Math.abs(deltaUsd) < evenThreshold ? "even" : deltaUsd < 0 ? "spared" : "missed";
+  const kind = Math.abs(deltaUsd) < evenThreshold ? "even" : deltaUsd < 0 ? "spared" : "missed";
   return { kind, magnitudeUsd: Math.abs(deltaUsd) };
+}
+
+// BUY direction + magnitude: the position now vs the same capital in the index.
+// delta = positionNow − benchmarkNow:  > band → BEAT; < −band → TRAILED; else
+// MATCHED (a 3% band, since benchmark gaps are noisier than a raw price move).
+// Pure; exported for the test.
+export function classifyBuyVerdict(
+  positionNowUsd: number,
+  benchmarkNowUsd: number,
+  deployedUsd: number,
+): { kind: "beat" | "trailed" | "matched"; magnitudeUsd: number } {
+  const deltaUsd = positionNowUsd - benchmarkNowUsd;
+  const band = Math.max(deployedUsd * 0.03, 1);
+  const kind = Math.abs(deltaUsd) < band ? "matched" : deltaUsd > 0 ? "beat" : "trailed";
+  return { kind, magnitudeUsd: Math.abs(deltaUsd) };
+}
+
+// Most recent close on/before `date` from an ascending series (the benchmark only
+// needs a price ratio, so no FX is involved).
+function priceOnOrBefore(series: { date: string; price: number }[], date: string): number | null {
+  let result: number | null = null;
+  for (const p of series) {
+    if (p.date > date) break;
+    result = p.price;
+  }
+  return result;
 }
 
 export async function assembleVerdict(
@@ -108,15 +141,33 @@ export async function assembleVerdict(
     .maybeSingle();
   const m = mrow as MutationRow | null;
   if (!m) return { ok: false, reason: "not_found" };
+  if (!m.symbol) return { ok: false, reason: "no_symbol" };
+  const assetType = m.asset_type ?? "";
 
-  // Must be a sell or a reduce of a tradeable position with a symbol.
-  if (!m.symbol || !TRADEABLE_TYPES.has(m.asset_type ?? "")) return { ok: false, reason: "not_tradeable" };
+  // Classify the decision into a verdict mode and the units it concerns.
   const before = typeof m.before_units === "number" ? m.before_units : null;
-  const after = m.action === "remove" ? 0 : typeof m.after_units === "number" ? m.after_units : null;
-  const isSell = m.action === "remove" || (m.action === "edit" && before != null && after != null && before > after);
-  if (!isSell || before == null || after == null) return { ok: false, reason: "not_a_sell" };
-  const soldUnits = before - after;
-  if (!(soldUnits > 0)) return { ok: false, reason: "no_units" };
+  const afterRaw = typeof m.after_units === "number" ? m.after_units : null;
+  const isReduce = m.action === "remove" || (m.action === "edit" && before != null && afterRaw != null && before > afterRaw);
+
+  let mode: "sell" | "buy";
+  let decisionUnits: number;
+  if (isReduce) {
+    if (!TRADEABLE_SELL.has(assetType)) return { ok: false, reason: "not_tradeable" };
+    if (before == null) return { ok: false, reason: "no_units" };
+    const after = m.action === "remove" ? 0 : (afterRaw ?? before);
+    decisionUnits = before - after;
+    mode = "sell";
+  } else if (m.action === "add") {
+    // Only an INITIAL purchase of an active single-name bet gets a buy verdict —
+    // top-up edits and index buys would just clutter the journal with near-ties.
+    if (!TRADEABLE_BUY.has(assetType)) return { ok: false, reason: "not_eligible" };
+    if (afterRaw == null) return { ok: false, reason: "no_units" };
+    decisionUnits = afterRaw;
+    mode = "buy";
+  } else {
+    return { ok: false, reason: "not_eligible" };
+  }
+  if (!(decisionUnits > 0)) return { ok: false, reason: "no_units" };
 
   const occurred = (m.occurred_at || m.recorded_at || "").slice(0, 10); // matches the client's mDate (|| , not ??)
   if (!occurred) return { ok: false, reason: "no_date" };
@@ -124,7 +175,7 @@ export async function assembleVerdict(
   if (!(daysAgo >= MIN_LOOKBACK_DAYS)) return { ok: false, reason: "too_recent" };
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const fromBuffered = isoDaysAgo(daysAgo + 10); // a little runway so a close exists on/before the sell date
+  const fromBuffered = isoDaysAgo(daysAgo + 10); // runway so a close exists on/before the decision date
   const [priceRaw, fxSeries] = await Promise.all([
     fetchHistoricalSeries(m.symbol, fromBuffered, todayStr),
     getHistoricalUsdRates(fromBuffered, todayStr),
@@ -132,53 +183,95 @@ export async function assembleVerdict(
   const priceSeries = priceRaw ?? [];
   if (priceSeries.length === 0) return { ok: false, reason: "no_prices" };
 
-  // Value the SOLD stake (constant units) at the sell date and today.
-  const { series, assumptions } = reconstructPositionSeries([occurred, todayStr], soldUnits, priceSeries, fxSeries);
+  // Value the units the decision concerns at the decision date and today.
+  const { series, assumptions } = reconstructPositionSeries([occurred, todayStr], decisionUnits, priceSeries, fxSeries);
   // For a non-USD-priced holding, if the engine couldn't apply FX it leaves the
-  // native amount mislabeled as USD (and flags it in `assumptions`). Converting
-  // that to the display currency would double-apply a rate and show a wrong
-  // magnitude — so fail closed rather than stamp a number we don't trust.
+  // native amount mislabeled as USD — converting that to the display currency
+  // would double-apply a rate. Fail closed rather than stamp a number we distrust.
   if (assumptions.some((a) => a.includes("FX unavailable"))) return { ok: false, reason: "no_fx" };
   const thenUsd = series[0]?.valueUsd ?? 0;
   const nowUsd = series[1]?.valueUsd ?? 0;
-  if (!(thenUsd > 0)) return { ok: false, reason: "no_basis" }; // no usable price on/before the sell date
+  if (!(thenUsd > 0)) return { ok: false, reason: "no_basis" }; // no usable price on/before the decision date
 
-  const { kind, magnitudeUsd } = classifyVerdict(thenUsd, nowUsd);
-
-  // Express the magnitude AND the then/now values in the user's display currency;
-  // fall back to USD (all three together, so they stay consistent) if a rate is
-  // unavailable rather than inventing a number.
-  let currency = "USD";
-  let figure = magnitudeUsd;
-  let valueThen = thenUsd;
-  let valueNow = nowUsd;
-  if (displayCurrency && displayCurrency !== "USD") {
-    const [mag, vThen, vNow] = await Promise.all([
-      toDisplay(magnitudeUsd, "USD", displayCurrency),
-      toDisplay(thenUsd, "USD", displayCurrency),
-      toDisplay(nowUsd, "USD", displayCurrency),
-    ]);
-    if (mag != null && vThen != null && vNow != null) {
-      figure = mag;
-      valueThen = vThen;
-      valueNow = vNow;
-      currency = displayCurrency;
-    }
+  // ── SELL: the stake you let go, then vs now ────────────────────────────────
+  if (mode === "sell") {
+    const { kind, magnitudeUsd } = classifyVerdict(thenUsd, nowUsd);
+    const conv = await convertAll(displayCurrency, { figure: magnitudeUsd, valueThen: thenUsd, valueNow: nowUsd });
+    return {
+      ok: true,
+      data: {
+        mode: "sell",
+        kind,
+        figure: conv.figure,
+        currency: conv.currency,
+        lookbackLabel: lookbackLabel(daysAgo),
+        assetName: m.asset_name ?? m.symbol,
+        detail: { units: decisionUnits, valueThen: conv.valueThen, valueNow: conv.valueNow, date: occurred },
+      },
+    };
   }
 
+  // ── BUY: the active bet vs the same money in the index ─────────────────────
+  const benchRaw = await fetchHistoricalSeries(BENCHMARK.symbol, fromBuffered, todayStr);
+  const bench = benchRaw ?? [];
+  const benchThen = priceOnOrBefore(bench, occurred);
+  const benchNow = bench.length > 0 ? bench[bench.length - 1].price : null;
+  if (!benchThen || !benchNow || benchThen <= 0 || benchNow <= 0) return { ok: false, reason: "no_benchmark" };
+
+  // The same capital (thenUsd) grown at the index's price return over the period.
+  const benchmarkNowUsd = thenUsd * (benchNow / benchThen);
+  const { kind, magnitudeUsd } = classifyBuyVerdict(nowUsd, benchmarkNowUsd, thenUsd);
+  const conv = await convertAll(displayCurrency, {
+    figure: magnitudeUsd,
+    valueThen: thenUsd,
+    valueNow: nowUsd,
+    benchmarkNow: benchmarkNowUsd,
+  });
   return {
     ok: true,
     data: {
+      mode: "buy",
       kind,
-      figure,
-      currency,
+      figure: conv.figure,
+      currency: conv.currency,
       lookbackLabel: lookbackLabel(daysAgo),
       assetName: m.asset_name ?? m.symbol,
-      detail: { units: soldUnits, valueThen, valueNow, soldDate: occurred },
-      assumptions: [
-        "What the freed-up cash did afterwards is not counted — this weighs only the position you let go.",
-        ...assumptions,
-      ],
+      benchmarkLabel: BENCHMARK.label,
+      detail: {
+        units: decisionUnits,
+        valueThen: conv.valueThen,
+        valueNow: conv.valueNow,
+        benchmarkNow: conv.benchmarkNow,
+        date: occurred,
+      },
     },
+  };
+}
+
+// Convert a bundle of USD amounts to the display currency together, so they stay
+// mutually consistent — and fall back to USD as a set if any rate is missing,
+// rather than mixing currencies or inventing a number.
+async function convertAll(
+  displayCurrency: string,
+  usd: { figure: number; valueThen: number; valueNow: number; benchmarkNow?: number },
+): Promise<{ currency: string; figure: number; valueThen: number; valueNow: number; benchmarkNow?: number }> {
+  if (!displayCurrency || displayCurrency === "USD") return { currency: "USD", ...usd };
+  const conv = (v: number) => toDisplay(v, "USD", displayCurrency);
+  const [figure, valueThen, valueNow, benchmarkNow] = await Promise.all([
+    conv(usd.figure),
+    conv(usd.valueThen),
+    conv(usd.valueNow),
+    usd.benchmarkNow != null ? conv(usd.benchmarkNow) : Promise.resolve(undefined),
+  ]);
+  // A rate was missing — keep the whole set in USD rather than mixing currencies.
+  if (figure == null || valueThen == null || valueNow == null || (usd.benchmarkNow != null && benchmarkNow == null)) {
+    return { currency: "USD", ...usd };
+  }
+  return {
+    currency: displayCurrency,
+    figure,
+    valueThen,
+    valueNow,
+    ...(usd.benchmarkNow != null ? { benchmarkNow: benchmarkNow as number } : {}),
   };
 }
