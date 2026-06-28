@@ -55,7 +55,22 @@
 .vhome .vh-nav-r{display:flex;align-items:center;gap:14px}
 .vhome .vh-priv{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.03em}
 .vhome .vh-priv svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
-.vhome .vh-av{width:36px;height:36px;border-radius:11px;background:linear-gradient(140deg,#A9824B,#6F5026);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:14px;text-decoration:none}
+.vhome .vh-av{width:36px;height:36px;border-radius:11px;background:linear-gradient(140deg,#A9824B,#6F5026);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:14px;text-decoration:none;flex:0 0 auto}
+/* Account menu — the avatar opens a dropdown (Profile / Settings / Subscription / Sign out). */
+.vhome .vh-acct{position:relative;display:flex}
+.vhome .vh-acct-btn{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;cursor:pointer;border-radius:11px}
+.vhome .vh-acct-btn:focus-visible{outline:2.5px solid var(--green);outline-offset:2px}
+.vhome .vh-av-caret{width:14px;height:14px;fill:none;stroke:var(--faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s,stroke .15s}
+.vhome .vh-acct-btn[aria-expanded="true"] .vh-av-caret{transform:rotate(180deg);stroke:var(--muted)}
+.vhome .vh-menu{position:absolute;top:calc(100% + 10px);right:0;width:240px;background:var(--soft);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(34,30,38,.14);padding:7px;z-index:40;animation:up .15s ease forwards}
+.vhome .vh-menu-id{padding:9px 11px 11px;border-bottom:1px solid var(--line2);margin-bottom:6px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.vhome .vh-menu-name{font-family:var(--serif);font-size:15px;font-weight:600;color:var(--ink)}
+.vhome .vh-menu-email{font-family:var(--mono);font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vhome .vh-menu-item{display:block;width:100%;box-sizing:border-box;text-align:left;background:none;border:0;padding:9px 11px;border-radius:9px;font-family:var(--sans);font-size:14px;color:var(--ink);text-decoration:none;cursor:pointer;transition:background .12s}
+.vhome .vh-menu-item:hover{background:var(--mint2)}
+.vhome .vh-menu-div{height:1px;background:var(--line2);margin:6px 4px}
+.vhome .vh-menu-signout{color:var(--down)}
+.vhome .vh-menu-signout:hover{background:var(--surface2)}
 
 /* ── shell: content + chat rail ── */
 .vhome .vh-shell{flex:1;min-height:0;max-width:1280px;width:100%;margin:0 auto;padding:0 28px;display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:28px;align-items:start;height:100%}

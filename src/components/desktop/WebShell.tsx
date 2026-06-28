@@ -5,7 +5,7 @@ import Link from "next/link";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
-import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
+import { useUser, useDisplayCurrency, useAssets, useSignOut } from "@/lib/hooks";
 import { takeHandoff } from "@/lib/scenario/handoff";
 import { EXPLORE_EVENT, buildExploreSeed } from "@/lib/scenario/explore";
 import { WHATIF_EVENT, takeWhatIfSeed } from "@/lib/scenario/whatif";
@@ -22,6 +22,14 @@ function initials(user: { user_metadata?: Record<string, unknown>; email?: strin
     return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "·";
   }
   return (user?.email?.[0] ?? "·").toUpperCase();
+}
+
+function firstName(user: { user_metadata?: Record<string, unknown>; email?: string } | null | undefined): string {
+  const meta = user?.user_metadata ?? {};
+  const full = (meta.full_name || meta.name) as string | undefined;
+  if (full) return full.trim().split(/\s+/)[0];
+  if (user?.email) return user.email.split("@")[0];
+  return "Investor";
 }
 
 const NAV = [
@@ -41,8 +49,21 @@ const NAV = [
  */
 export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }) {
   const { user } = useUser();
+  const signOut = useSignOut();
   const displayCurrency = useDisplayCurrency();
   const { assets } = useAssets(user?.id);
+
+  // Top-right account menu (Profile / Settings / Subscription / Sign out).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const acctRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => { if (acctRef.current && !acctRef.current.contains(e.target as Node)) setMenuOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey); };
+  }, [menuOpen]);
   const hasPortfolio = assets.length > 0;
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
 
@@ -134,7 +155,32 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
               Private · EU
             </span>
-            <Link href="/profile" className="vh-av" aria-label="Account" aria-current={tab === "profile" ? "page" : undefined}>{initials(user)}</Link>
+            <div className="vh-acct" ref={acctRef}>
+              <button
+                type="button"
+                className="vh-acct-btn"
+                aria-label="Account"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((o) => !o)}
+              >
+                <span className="vh-av">{initials(user)}</span>
+                <svg className="vh-av-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" /></svg>
+              </button>
+              {menuOpen && (
+                <div className="vh-menu" role="menu">
+                  <div className="vh-menu-id">
+                    <span className="vh-menu-name">{firstName(user)}</span>
+                    {user?.email && <span className="vh-menu-email">{user.email}</span>}
+                  </div>
+                  <Link href="/profile" role="menuitem" className="vh-menu-item" onClick={() => setMenuOpen(false)}>Profile</Link>
+                  <Link href="/settings" role="menuitem" className="vh-menu-item" onClick={() => setMenuOpen(false)}>Settings</Link>
+                  <Link href="/profile#subscription" role="menuitem" className="vh-menu-item" onClick={() => setMenuOpen(false)}>Subscription</Link>
+                  <div className="vh-menu-div" aria-hidden="true" />
+                  <button type="button" role="menuitem" className="vh-menu-item vh-menu-signout" onClick={() => { setMenuOpen(false); signOut(); }}>Sign out</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>
