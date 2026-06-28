@@ -221,7 +221,7 @@
 .vhome .led-empty{padding:22px;font-size:14px;color:var(--muted);text-align:center}
 
 /* ── diary / journal page ── */
-.vhome .dsearch{position:relative;margin-bottom:14px;max-width:680px}
+.vhome .dsearch{position:relative;margin-bottom:14px}
 .vhome .dsearch input{width:100%;box-sizing:border-box;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:12px 36px 12px 42px;font-size:15px;font-family:var(--sans);color:var(--ink);outline:none;transition:border-color .15s}
 .vhome .dsearch input:focus{border-color:var(--green)}
 .vhome .dsearch input::placeholder{color:var(--faint)}
