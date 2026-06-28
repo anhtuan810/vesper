@@ -173,9 +173,8 @@
 
 .vhome .dash-foot{display:flex;align-items:center;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.02em}
 .vhome .dots{display:inline-flex;gap:5px}
-.vhome .dots i{width:8px;height:8px;border-radius:99px;background:var(--ok)}
-.vhome .dots i.w{background:var(--warn)}
-.vhome .dots i.b{background:var(--bad)}
+.vhome .dots i{width:8px;height:8px;border-radius:99px;background:var(--faint)}
+.vhome .dots i.w,.vhome .dots i.b{background:var(--warn)}
 
 /* ── sections ── */
 .vhome .sec{margin-bottom:48px}
@@ -189,14 +188,15 @@
 .vhome .vital{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
 .vhome .vt-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}
 .vhome .vt-name{font-size:14.5px;font-weight:600;color:var(--ink)}
-.vhome .vt-band{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--okbg);color:var(--ok)}
-.vhome .vital.warn .vt-band{background:var(--warnbg);color:var(--warn)}
-.vhome .vital.bad .vt-band{background:var(--badbg);color:var(--bad)}
+/* Healthy is quiet (faint text, no pill); only vitals needing attention carry a
+   single amber accent — watch and alert share it, severity told by the label. */
+.vhome .vt-band{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:3px 8px;border-radius:6px;background:transparent;color:var(--faint)}
+.vhome .vital.warn .vt-band,.vhome .vital.bad .vt-band{background:var(--warnbg);color:var(--warn)}
 .vhome .vt-val{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
 .vhome .vt-val span{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0}
 .vhome .vc{width:100%;height:auto;display:block;margin:12px 0 11px;overflow:visible}
 .vhome .vc-track{fill:var(--track)}
-.vhome .vc-ok{fill:var(--ok)}.vhome .vc-warn{fill:var(--warn)}.vhome .vc-bad{fill:var(--bad)}
+.vhome .vc-ok{fill:var(--faint)}.vhome .vc-warn{fill:var(--warn)}.vhome .vc-bad{fill:var(--warn)}
 .vhome .vc-thr{stroke:var(--muted);stroke-width:1;stroke-dasharray:2.5 2.5;opacity:.5}
 .vhome .vt-read{font-size:13px;color:var(--muted);line-height:1.45}
 
