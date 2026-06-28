@@ -77,6 +77,11 @@ export const MARKET_MOVE_LOOKBACK_DAYS = 365;
 // so a volatile month never floods the journal with full cards.
 export const MARKET_SWING_MAX_EXPANDED_PER_MONTH = 4;
 export const MARKET_SWING_EXPAND_FLOOR_PCT = 0.3;
+// Hard cap on swings surfaced per calendar month (full cards + compact rows
+// combined). Only swings that actually moved the portfolio above the floor are
+// surfaced at all; beyond this many, the smallest in the month are dropped — so
+// even a very volatile month never floods the journal (on desktop OR mobile).
+export const MARKET_SWING_MAX_PER_MONTH = 8;
 
 export const DIARY_MARKET_INDICES: { symbol: string; label: string }[] = [
   { symbol: "^IXIC", label: "Nasdaq" },

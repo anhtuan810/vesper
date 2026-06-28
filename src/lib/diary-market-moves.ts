@@ -8,6 +8,7 @@ import {
   MARKET_MOVE_THRESHOLD_PCT,
   MARKET_SWING_EXPAND_FLOOR_PCT,
   MARKET_SWING_MAX_EXPANDED_PER_MONTH,
+  MARKET_SWING_MAX_PER_MONTH,
 } from "@/lib/constants";
 
 // One holding's contribution to a swing day's portfolio move, in the user's
@@ -302,7 +303,7 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     if (cur === displayCurrency) return amount;
     const rFrom = rateOf(date, cur);
     const rTo = rateOf(date, displayCurrency);
-    if (rFrom == null || rTo == null) return null;
+    if (!rFrom || !rTo) return null; // falsy guard catches null / 0 / NaN (matches convertCurrency)
     return amount * (rTo / rFrom);
   };
 
@@ -327,24 +328,26 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     built.push({ move: base, total, tradeableValue, month: date.slice(0, 7) });
   }
 
-  // ── Expand the largest few per month (above the floor) ──
+  // ── Keep only swings that actually moved the portfolio above the floor, then
+  // cap per month (largest |impact| first): the top few become full cards, the
+  // next few stay compact, the rest are dropped. This bounds the journal on every
+  // surface — a volatile year can't flood it with rows the user never acted on. ──
   const byMonth = new Map<string, Built[]>();
   for (const b of built) {
-    if (!b.move.impact) continue;
+    if (!b.move.impact) continue; // no priceable holdings that day → not "a swing that moved you"
+    const floor = (b.tradeableValue * MARKET_SWING_EXPAND_FLOOR_PCT) / 100;
+    if (Math.abs(b.total) < floor || Math.abs(b.total) === 0) continue; // negligible personal impact
     (byMonth.get(b.month) ?? byMonth.set(b.month, []).get(b.month)!).push(b);
   }
+
+  const kept: DiaryMarketMove[] = [];
   for (const list of byMonth.values()) {
     list.sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
-    let expandedCount = 0;
-    for (const b of list) {
-      if (expandedCount >= MARKET_SWING_MAX_EXPANDED_PER_MONTH) break;
-      const floor = (b.tradeableValue * MARKET_SWING_EXPAND_FLOOR_PCT) / 100;
-      if (Math.abs(b.total) >= floor && Math.abs(b.total) > 0) {
-        b.move.expanded = true;
-        expandedCount++;
-      }
-    }
+    list.slice(0, MARKET_SWING_MAX_PER_MONTH).forEach((b, i) => {
+      b.move.expanded = i < MARKET_SWING_MAX_EXPANDED_PER_MONTH;
+      kept.push(b.move);
+    });
   }
 
-  return built.map((b) => b.move).sort((a, b) => b.date.localeCompare(a.date));
+  return kept.sort((a, b) => b.date.localeCompare(a.date));
 }
