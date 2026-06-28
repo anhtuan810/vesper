@@ -804,7 +804,7 @@ function PositionRow({ asset, value, historical, displayCurrency, closes }: {
     : isProperty ? "Property" : CATEGORY_LABEL[CATEGORY_MAP[asset.type] ?? "reserves"];
 
   return (
-    <div className="pos">
+    <Link className="pos" href={`/asset?id=${asset.id}`}>
       <AssetLogo type={asset.type} symbol={asset.symbol ?? null} name={asset.name} size={42} />
       <div className="pos-m">
         <span className="pos-n">{asset.name}</span>
@@ -819,6 +819,6 @@ function PositionRow({ asset, value, historical, displayCurrency, closes }: {
           ? <span className="pos-own">{owned}% owned</span>
           : !historical && chg != null && <span className={`pos-chg ${up ? "up" : "dn"}`}>{up ? "+" : "−"}{fmtPct(Math.abs(chg), 1)}%</span>}
       </div>
-    </div>
+    </Link>
   );
 }
