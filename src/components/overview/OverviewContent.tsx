@@ -778,36 +778,35 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           />
         </div>
 
-        {/* Name the scrub: teach that the line is a walkable timeline of entries.
-            Shown at rest (Today); once scrubbing, the nav row carries the cue. */}
-        {isToday && navEntries.length > 0 && (
-          <div className="chart-legend">
-            <span className="cl-item"><span className="cl-dot you" aria-hidden="true" /> Your decisions</span>
-            <span className="cl-item"><span className="cl-dot mkt" aria-hidden="true" /> Market swings</span>
-            <span className="cl-hint">Hover the line to peek · click a dot to step into that decision</span>
-          </div>
-        )}
-
-        {/* selected entry / today, with prev-next navigation. Auto market entries
-            are flagged by the "Auto · Market" tag rather than a panel treatment. */}
+        {/* selected entry / today. The REPLAY stepper (marketing chart) sits right
+            below the graph; auto market entries are flagged by the "Auto · Market"
+            tag rather than a panel treatment. */}
         <div className="ep-inline">
           <div className="ep-nav">
             <button type="button" className="ep-step" onClick={goOlder} disabled={!canOlder} aria-label="Previous entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
-            <button type="button" className="ep-today" onClick={() => setSelectedId(null)} disabled={isToday}>
-              Today
-            </button>
+            <div className="ep-replay">
+              <span className="ep-replay-lbl">Replay</span>
+              {isToday ? (
+                <span className="ep-replay-date">Today</span>
+              ) : (
+                <>
+                  <span className="ep-replay-pos"><b>{navIndex}</b> / {navEntries.length}</span>
+                  <span className="ep-replay-date">{shortDate(selectedDate!)}</span>
+                </>
+              )}
+            </div>
             <button type="button" className="ep-step" onClick={goNewer} disabled={!canNewer} aria-label="Next entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
-            {!isToday && (
-              <span className="ep-pos">{navIndex} of {navEntries.length}</span>
-            )}
-            {!isToday && (
-              <span className="ep-hint" aria-hidden="true">← → to step · Esc for today</span>
-            )}
           </div>
+          {!isToday && (
+            <div className="ep-nav-foot">
+              <button type="button" className="ep-today" onClick={() => setSelectedId(null)}>Back to today</button>
+              <span className="ep-hint" aria-hidden="true">← → to step · Esc for today</span>
+            </div>
+          )}
 
           {isToday ? (
             <>
