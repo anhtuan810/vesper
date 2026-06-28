@@ -100,8 +100,9 @@
 .vhome .cl-dot{width:7px;height:7px;border-radius:99px;display:inline-block}
 .vhome .cl-dot.you{background:var(--green)}
 .vhome .cl-dot.mkt{background:var(--faint)}
-.vhome .cl-hint{margin-left:auto;color:var(--faint)}
-@media(max-width:640px){ .vhome .cl-hint{display:none} }
+/* Always its own quiet caption line under the two legend swatches — predictable
+   at every home width, instead of an auto-margin right-shift that strands it. */
+.vhome .cl-hint{flex-basis:100%;margin-top:-6px;color:var(--faint)}
 
 /* selected-decision panel */
 .vhome .ep-inline{border-top:1px solid var(--line);margin-top:18px;padding-top:20px}

@@ -371,12 +371,16 @@ export function NetWorthChart(props: Props) {
     if (n < 2 || drawW <= 0) return [] as { key: number; pct: number; text: string; align: string }[];
     const idx = Array.from(new Set([0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1]))
       .filter((i) => i >= 0 && i < n);
-    return idx.map((i) => ({
+    const labels = idx.map((i) => ({
       key: i,
       pct: ((i / (n - 1)) * drawW / W) * 100,
       text: formatXLabel(displaySeries[i].date, range),
       align: i === 0 ? "translateX(0)" : i === n - 1 ? "translateX(-100%)" : "translateX(-50%)",
     }));
+    // Drop interior labels that repeat a neighbour's text (two chosen indices
+    // landing in the same month on a dense series); always keep the two edges.
+    return labels.filter((l, k) =>
+      k === 0 || k === labels.length - 1 || (l.text !== labels[k - 1].text && l.text !== labels[labels.length - 1].text));
   }, [displaySeries, drawW, W, range]);
 
   // Gradient area under the line — lineOnly (Liquid) mode only. Same top
