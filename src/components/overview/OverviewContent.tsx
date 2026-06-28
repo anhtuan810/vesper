@@ -482,12 +482,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           <div>
             <span className="eyebrow">Net worth</span>
             <div className="nwnum">{formatMoney(headlineNet, displayCurrency, displayCurrency)}</div>
-            <div className="nwbasis">
-              {isToday ? "As of today" : `As of ${shortDate(selectedDate!)}`}
-              {" · "}
-              {effectiveInclude ? "equity basis, property net of mortgage" : "excluding property"}
-              {sinceBadge && <span className="badge" style={{ marginLeft: 6 }}>{sinceBadge}</span>}
-            </div>
+            {sinceBadge && <div className="nwbasis"><span className="badge">{sinceBadge}</span></div>}
           </div>
           {hasMixed && (
             <button

@@ -418,7 +418,7 @@ export function NetWorthChart(props: Props) {
   // Decision dots: every journal marker placed at the nearest plotted point whose
   // date falls within the visible (range-clipped) window. Carries the short
   // content shown in the hover-preview box.
-  const markerDots: { id: string; x: number; y: number; kind: "you" | "market"; title?: string; sub?: string; value?: string }[] = [];
+  const markerDots: { id: string; x: number; y: number; kind: "you" | "market"; title?: string; sub?: string; value?: string; net?: number }[] = [];
   if (markerMode && values.length >= 2) {
     const dates = displaySeries.map((p) => p.date);
     const first = dates[0];
@@ -432,7 +432,7 @@ export function NetWorthChart(props: Props) {
         const d = Math.abs(new Date(dates[i]).getTime() - t);
         if (d < bestDiff) { bestDiff = d; best = i; }
       }
-      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value });
+      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value, net: values[best] });
     }
   }
 
@@ -711,9 +711,16 @@ export function NetWorthChart(props: Props) {
                   {hoveredDot.title}
                 </div>
               )}
-              {hoveredDot.value && (
-                <div style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--text-dim)", marginTop: 4, fontFeatureSettings: '"tnum" 1' }}>
-                  {hoveredDot.value}
+              {(hoveredDot.net != null || hoveredDot.value) && (
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', flexWrap: "wrap" }}>
+                  {hoveredDot.net != null && (
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+                      {formatMoney(hoveredDot.net, displayCurrency, displayCurrency)}
+                    </span>
+                  )}
+                  {hoveredDot.value && (
+                    <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{hoveredDot.value}</span>
+                  )}
                 </div>
               )}
             </div>
