@@ -14,6 +14,7 @@ import {
   buildLiveRates,
 } from "@/components/NetWorthChart";
 import { PortfolioSummaryCard } from "@/components/PortfolioSummaryCard";
+import { MobileDecisionJournal } from "@/components/MobileDecisionJournal";
 import { PositionRow } from "@/components/PositionRow";
 import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
@@ -355,6 +356,13 @@ export function PortfolioTab({
           </div>
         )}
       </div>
+
+      {/* Decision journal — step through past decisions and see each one's
+          reasoning + the "Looking back" Decision Verdict, mirroring the desktop
+          Overview's selected-entry panel (here, right below the graph). */}
+      {mutations.length > 0 && (
+        <MobileDecisionJournal mutations={mutations} displayCurrency={displayCurrency} />
+      )}
 
       {/* Portfolio summary — three compact rows (Projection, Worth knowing,
           Markets) held in one contained card. Bleeds to the same width as the
