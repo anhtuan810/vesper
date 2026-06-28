@@ -55,7 +55,8 @@
 .vhome .vh-nav-r{display:flex;align-items:center;gap:14px}
 .vhome .vh-priv{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.03em}
 .vhome .vh-priv svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
-.vhome .vh-av{width:36px;height:36px;border-radius:11px;background:linear-gradient(140deg,#A9824B,#6F5026);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:14px;text-decoration:none;flex:0 0 auto}
+.vhome .vh-av{width:36px;height:36px;border-radius:11px;background:linear-gradient(140deg,#A9824B,#6F5026);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:14px;text-decoration:none;flex:0 0 auto;overflow:hidden}
+.vhome .vh-av-img{width:100%;height:100%;object-fit:cover;display:block}
 /* Account menu — the avatar opens a dropdown (Profile / Settings / Subscription / Sign out). */
 .vhome .vh-av-person{width:21px;height:21px;fill:currentColor;display:block}
 .vhome .vh-acct{position:relative;display:flex}

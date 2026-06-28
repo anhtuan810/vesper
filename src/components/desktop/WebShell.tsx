@@ -59,8 +59,11 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
   const displayCurrency = useDisplayCurrency();
   const { assets } = useAssets(user?.id);
 
-  // Top-right account menu (Profile / Settings / Subscription / Sign out).
+  // Top-right account menu (Profile / Settings / Sign out).
   const [menuOpen, setMenuOpen] = useState(false);
+  // Demo profile photo: self-hosted /demo-avatar.jpg (drop one into /public). Falls
+  // back to the generic silhouette if it's absent so the nav never shows a broken image.
+  const [demoAvatarFailed, setDemoAvatarFailed] = useState(false);
   const acctRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!menuOpen) return;
@@ -172,7 +175,9 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
               >
                 <span className="vh-av">
                   {isDemo
-                    ? <svg className="vh-av-person" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="3.6" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0z" /></svg>
+                    ? (demoAvatarFailed
+                        ? <svg className="vh-av-person" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="3.6" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0z" /></svg>
+                        : <img className="vh-av-img" src="/demo-avatar.jpg" alt="" onError={() => setDemoAvatarFailed(true)} />)
                     : initials(user)}
                 </span>
                 <svg className="vh-av-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" /></svg>
