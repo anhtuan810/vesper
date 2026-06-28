@@ -1,8 +1,17 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { useSignOut } from "@/lib/hooks";
+import { readDemoExpiry } from "@/components/DemoExpiryWall";
+import { DEMO_EXPIRED_EVENT } from "@/lib/api";
+
+// "47:12 left" from a remaining-ms count — minutes:seconds, zero-padded seconds.
+function fmtCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")} left`;
+}
 
 // Accent-tinted banner shown only on the shared demo account (entitlement
 // product_id "demo", surfaced server-side as SubscriptionView.isDemo). Subscribe
@@ -17,8 +26,32 @@ export function DemoBanner() {
   const { data } = useSubscription();
   const pathname = usePathname();
   const signOut = useSignOut();
+  const isDemo = !!data?.isDemo;
 
-  if (!data?.isDemo) return null;
+  // Live trial countdown from the session deadline (per-visitor demo). null when
+  // there's no deadline (shared demo / production) — the pill then shows as before.
+  // Computed after mount so it's hydration-safe. At zero, fire the expiry event so
+  // DemoExpiryWall takes over at once (which ends the session and resets the data).
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (!isDemo) return;
+    const update = () => {
+      const deadline = readDemoExpiry();
+      if (deadline == null) { setRemainingMs(null); return; }
+      const rem = deadline - Date.now();
+      setRemainingMs(Math.max(0, rem));
+      if (rem <= 0 && !firedRef.current) {
+        firedRef.current = true;
+        window.dispatchEvent(new Event(DEMO_EXPIRED_EVENT));
+      }
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [isDemo]);
+
+  if (!isDemo) return null;
   // The mobile chat composer sits where this banner would — skip it there. Also skip
   // the login page, which a demo session can now reach (to sign in as themselves).
   if (pathname === "/chat" || pathname.startsWith("/login")) return null;
@@ -60,7 +93,13 @@ export function DemoBanner() {
           }}
         >
           Demo account{" "}
-          <span style={{ color: "var(--text-dim)" }}>· sample data</span>
+          {remainingMs != null ? (
+            <span style={{ color: "var(--accent)", fontFamily: "var(--font-mono, monospace)", fontSize: 13.5, fontFeatureSettings: '"tnum" 1' }}>
+              · {fmtCountdown(remainingMs)}
+            </span>
+          ) : (
+            <span style={{ color: "var(--text-dim)" }}>· sample data</span>
+          )}
         </span>
         <span
           aria-hidden="true"

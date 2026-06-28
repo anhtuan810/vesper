@@ -10,7 +10,7 @@ import { DEMO_EXPIRED_EVENT } from "@/lib/api";
 // (set by the /demo route), and localStorage on native (cookies don't cross the
 // capacitor://localhost origin — set when the session tokens are adopted). Both
 // hold an ISO timestamp under the same name. Returns the deadline in ms, or null.
-function readDemoExpiry(): number | null {
+export function readDemoExpiry(): number | null {
   if (typeof document !== "undefined") {
     const m = document.cookie.match(/(?:^|;\s*)demo_expires_at=([^;]+)/);
     if (m) {
