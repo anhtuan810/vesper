@@ -116,10 +116,8 @@
    at every home width, instead of an auto-margin right-shift that strands it. */
 .vhome .cl-hint{flex-basis:100%;margin-top:-6px;color:var(--faint)}
 
-/* selected-decision panel — the REPLAY stepper sits above a boxed entry card,
-   mirroring the marketing mockup (stepper, then a bordered decision card). */
-.vhome .ep-inline{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
-.vhome .ep-card{border:1px solid var(--line);border-radius:18px;background:var(--surface2);padding:22px 24px;margin-top:14px}
+/* selected-decision panel */
+.vhome .ep-inline{border-top:1px solid var(--line);margin-top:18px;padding-top:20px}
 .vhome .ep-cue{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:13px}
 .vhome .ep-cue svg{width:14px;height:14px;fill:none;stroke:var(--green);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .vhome .ep-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:11px}
@@ -152,25 +150,17 @@
 .vhome .nwsel-dot{width:3px;height:3px;border-radius:999px;background:var(--faint);opacity:.6}
 
 /* prev / next / today entry navigation */
-/* REPLAY stepper — centered ‹ › around a mono "REPLAY n / total · date" label
-   with gold accents, borrowed from the marketing chart. */
-.vhome .ep-nav{display:flex;align-items:center;justify-content:center;gap:16px}
-.vhome .ep-step{width:28px;height:28px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:.15s}
-.vhome .ep-step svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.vhome .ep-step:hover:not(:disabled){color:var(--green);background:var(--mint)}
-.vhome .ep-step:active:not(:disabled){transform:scale(.94)}
-.vhome .ep-step:disabled{opacity:.3;cursor:default}
-.vhome .ep-replay{display:flex;align-items:center;gap:10px;justify-content:center;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.04em}
-.vhome .ep-replay-lbl{text-transform:uppercase;letter-spacing:.13em;font-size:10.5px}
-.vhome .ep-replay-pos{color:var(--ink);font-feature-settings:"tnum" 1}
-.vhome .ep-replay-pos b{color:var(--green);font-weight:700}
-.vhome .ep-replay-date{color:var(--green)}
-.vhome .ep-nav-foot{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:9px}
-.vhome .ep-today{background:none;border:none;padding:0;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.03em;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line);transition:.15s}
-.vhome .ep-today:hover:not(:disabled){color:var(--ink)}
-.vhome .ep-today:disabled{opacity:.4;cursor:default}
-.vhome .ep-hint{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.02em;white-space:nowrap}
+.vhome .ep-nav{display:flex;align-items:center;gap:8px;margin-bottom:15px}
+.vhome .ep-step{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);cursor:pointer;transition:.15s}
+.vhome .ep-step svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vhome .ep-step:hover:not(:disabled){border-color:var(--green);color:var(--green)}
+.vhome .ep-step:disabled{opacity:.4;cursor:default}
+.vhome .ep-pos{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em;font-feature-settings:"tnum" 1}
+.vhome .ep-hint{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.02em;white-space:nowrap}
 @media(max-width:640px){ .vhome .ep-hint{display:none} }
+.vhome .ep-today{height:30px;padding:0 15px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:.15s}
+.vhome .ep-today:hover:not(:disabled){border-color:var(--green);color:var(--ink)}
+.vhome .ep-today:disabled{opacity:.4;cursor:default}
 
 /* expandable holdings */
 .vhome .holds{border-top:1px solid var(--line);margin-top:20px;padding-top:6px}
@@ -420,18 +410,3 @@
 .vhome .ep-verdict-notes ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .vhome .ep-verdict-notes li{position:relative;padding-left:17px;font-size:13.5px;color:var(--muted);line-height:1.55}
 .vhome .ep-verdict-notes li::before{content:"";position:absolute;left:2px;top:8px;width:5px;height:5px;border-radius:99px;background:var(--faint)}
-
-/* ── Asset-class palette + legend (from the marketing chart) ─────────────────
-   The shared NetWorthChart fills its bands with these CSS vars; overriding them
-   under .vhome recolours ONLY the desktop Overview to the marketing hues
-   (property blue, public markets green, reserves khaki, crypto orange) — the
-   mobile chart, which renders outside .vhome, keeps the globals.css colours. */
-.vhome{
-  --cat-property-band:#3F7CA8;--cat-property-edge:#2F6189;
-  --cat-markets-band:#117A52;--cat-markets-edge:#0C5C3E;
-  --cat-reserves-band:#A89968;--cat-reserves-edge:#877A4C;
-  --cat-crypto-band:#E0922A;--cat-crypto-edge:#B5731C;
-}
-.vhome .asset-legend{display:flex;flex-wrap:wrap;gap:15px;margin-top:14px}
-.vhome .al-item{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);font-weight:500}
-.vhome .al-sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}

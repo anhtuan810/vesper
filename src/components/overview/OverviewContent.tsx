@@ -778,18 +778,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           />
         </div>
 
-        {/* Asset-class key for the stacked bands (marketing palette). */}
-        {groups.length > 0 && (
-          <div className="asset-legend">
-            {groups.map((g) => (
-              <span className="al-item" key={g.category}>
-                <span className="al-sw" style={{ background: CAT_DOT[g.category] ?? "var(--faint)" }} aria-hidden="true" />
-                {g.label}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Name the scrub: teach that the line is a walkable timeline of entries.
             Shown at rest (Today); once scrubbing, the nav row carries the cue. */}
         {isToday && navEntries.length > 0 && (
@@ -807,29 +795,20 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             <button type="button" className="ep-step" onClick={goOlder} disabled={!canOlder} aria-label="Previous entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
-            <div className="ep-replay">
-              <span className="ep-replay-lbl">Replay</span>
-              {isToday ? (
-                <span className="ep-replay-date">Today</span>
-              ) : (
-                <>
-                  <span className="ep-replay-pos"><b>{navIndex}</b> / {navEntries.length}</span>
-                  <span className="ep-replay-date">{shortDate(selectedDate!)}</span>
-                </>
-              )}
-            </div>
+            <button type="button" className="ep-today" onClick={() => setSelectedId(null)} disabled={isToday}>
+              Today
+            </button>
             <button type="button" className="ep-step" onClick={goNewer} disabled={!canNewer} aria-label="Next entry">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
-          </div>
-          {!isToday && (
-            <div className="ep-nav-foot">
-              <button type="button" className="ep-today" onClick={() => setSelectedId(null)}>Back to today</button>
+            {!isToday && (
+              <span className="ep-pos">{navIndex} of {navEntries.length}</span>
+            )}
+            {!isToday && (
               <span className="ep-hint" aria-hidden="true">← → to step · Esc for today</span>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div className="ep-card">
           {isToday ? (
             <>
               <div className="ep-top">
@@ -894,7 +873,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               </>
             );
           })()}
-          </div>
         </div>
 
         {/* expandable holdings */}
