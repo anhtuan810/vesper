@@ -186,9 +186,7 @@
 /* vitals */
 .vhome .vrow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 @media(max-width:1240px){ .vhome .vrow{grid-template-columns:1fr 1fr} }
-.vhome .vital{background:var(--soft);border:1px solid var(--line);border-left:3px solid var(--ok);border-radius:14px;padding:16px 18px}
-.vhome .vital.warn{border-left-color:var(--warn)}
-.vhome .vital.bad{border-left-color:var(--bad)}
+.vhome .vital{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
 .vhome .vt-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}
 .vhome .vt-name{font-size:14.5px;font-weight:600;color:var(--ink)}
 .vhome .vt-band{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--okbg);color:var(--ok)}
