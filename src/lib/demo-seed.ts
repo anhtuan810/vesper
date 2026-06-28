@@ -599,6 +599,15 @@ export async function seedDemoUser(userId: string): Promise<void> {
     // System-generated: a holding revalued by a notable market move, with the
     // market event as the reason and no personal note. These read as "Market"
     // entries in the journal and on the chart, distinct from the decisions above.
+    // Spread densely across the timeline so the demo clearly shows Volnar logging
+    // market movements as their own entries.
+    marketEntry(
+      "iShares Core MSCI World",
+      "2021-12-20",
+      12000, 13300, 150,
+      "Global equities climbed to record highs into year-end on strong earnings and still-easy monetary policy. The world tracker rose with the market.",
+      165000,
+    ),
     marketEntry(
       "iShares Core MSCI World",
       "2022-06-20",
@@ -622,10 +631,24 @@ export async function seedDemoUser(userId: string): Promise<void> {
     ),
     marketEntry(
       "iShares Core MSCI World",
-      "2024-08-05",
-      26000, 24100, 300,
-      "Global markets plunged in a single session as an abrupt unwind of the yen carry trade hit risk assets, before recovering within weeks. Stayed fully invested.",
-      288000,
+      "2023-10-27",
+      22000, 20600, 230,
+      "Stocks and bonds fell together as US Treasury yields touched 5% for the first time since 2007. The drawdown passed without any change to the plan.",
+      244000,
+    ),
+    marketEntry(
+      "NVIDIA",
+      "2024-11-06",
+      2900, 3500, 30,
+      "Equities surged to fresh records after the US election on expectations of lighter regulation and tax cuts. NVIDIA led the move higher.",
+      300000,
+    ),
+    marketEntry(
+      "NVIDIA",
+      "2025-01-27",
+      3500, 2850, 30,
+      "A new low-cost Chinese AI model triggered a sudden sell-off in AI chipmakers; NVIDIA fell double digits in a single session before stabilising.",
+      318000,
     ),
     marketEntry(
       "Apple",
@@ -633,6 +656,20 @@ export async function seedDemoUser(userId: string): Promise<void> {
       4200, 3450, 20,
       "A surprise package of trade tariffs triggered the sharpest equity sell-off since 2020, and megacap tech led the drop. Logged the move and held the line.",
       330000,
+    ),
+    marketEntry(
+      "iShares Core MSCI World",
+      "2024-08-05",
+      26000, 24100, 300,
+      "Global markets plunged in a single session as an abrupt unwind of the yen carry trade hit risk assets, before recovering within weeks. Stayed fully invested.",
+      288000,
+    ),
+    marketEntry(
+      "iShares Core MSCI World",
+      "2025-10-20",
+      30000, 31600, 320,
+      "Global equities pushed to record highs as central banks began cutting rates and inflation cooled. The world tracker rose with the rally.",
+      350000,
     ),
 
     // ── Recent activity, dated relative to the reseed moment ─────────────────
@@ -818,7 +855,36 @@ export async function seedDemoUser(userId: string): Promise<void> {
       378000,
     ),
     // Recent market-driven entries (no action taken) so the journal shows the app
-    // logging market moves as entries, not just as index-move overlays.
+    // logging market moves as entries across the last few months, not just as
+    // index-move overlays.
+    marketEntry(
+      "iShares Core MSCI World",
+      daysAgo(95),
+      32000, 30900, 344,
+      "A spring sell-off on renewed tariff worries dragged global equities lower before they steadied. The world tracker fell with the market — no action taken.",
+      360000,
+    ),
+    marketEntry(
+      "Microsoft",
+      daysAgo(70),
+      3700, 4150, 11,
+      "Strong cloud and AI demand drove a robust tech-earnings season; Microsoft led the megacaps higher. Recorded the revaluation, left it untouched.",
+      366000,
+    ),
+    marketEntry(
+      "Bitcoin",
+      daysAgo(48),
+      5170, 5950, 0.073,
+      "Crypto rallied to new highs as institutional inflows accelerated. The small Bitcoin sleeve rose with the market — still sized to sleep through.",
+      370000,
+    ),
+    marketEntry(
+      "iShares Core MSCI World",
+      daysAgo(33),
+      32500, 31600, 348,
+      "A hotter-than-expected inflation print briefly spooked markets before dip-buyers stepped back in. Logged the move, stayed the course.",
+      372000,
+    ),
     marketEntry(
       "iShares Core MSCI World",
       daysAgo(20),

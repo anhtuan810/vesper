@@ -716,9 +716,6 @@ export function NetWorthChart(props: Props) {
                   {hoveredDot.value}
                 </div>
               )}
-              <div style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "var(--text-faint)", marginTop: 5 }}>
-                {hoveredDot.id === props.selectedMarkerId ? "Selected" : "Click to select"}
-              </div>
             </div>
           )}
         </div>
