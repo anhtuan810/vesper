@@ -414,3 +414,15 @@
 .vhome .ep-verdict-notes ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .vhome .ep-verdict-notes li{position:relative;padding-left:17px;font-size:13.5px;color:var(--muted);line-height:1.55}
 .vhome .ep-verdict-notes li::before{content:"";position:absolute;left:2px;top:8px;width:5px;height:5px;border-radius:99px;background:var(--faint)}
+
+/* ── Asset-class palette (from the marketing chart) ──────────────────────────
+   The shared NetWorthChart fills its stacked bands with these CSS vars;
+   overriding them under .vhome recolours ONLY the desktop Overview to the
+   marketing hues (property blue, public markets green, reserves khaki, crypto
+   orange). The mobile chart renders outside .vhome and keeps globals.css. */
+.vhome{
+  --cat-property-band:#3F7CA8;--cat-property-edge:#2F6189;
+  --cat-markets-band:#117A52;--cat-markets-edge:#0C5C3E;
+  --cat-reserves-band:#A89968;--cat-reserves-edge:#877A4C;
+  --cat-crypto-band:#E0922A;--cat-crypto-edge:#B5731C;
+}
