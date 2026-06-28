@@ -75,9 +75,12 @@
 /* ── dashboard card ── */
 .vhome .dash{background:var(--soft);border:1px solid var(--line);border-radius:20px;padding:26px 28px;margin-bottom:48px}
 .vhome .dash-h{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:6px}
-.vhome .badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:999px;padding:6px 13px;letter-spacing:.02em}
-.vhome .nwnum{font-family:var(--serif);font-size:clamp(38px,4.4vw,50px);font-weight:600;letter-spacing:-.02em;color:var(--ink);line-height:1;margin-top:10px}
+.vhome .badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:999px;padding:6px 13px;letter-spacing:.02em;font-feature-settings:"tnum" 1}
+.vhome .badge.dn{color:var(--muted);background:var(--surface2)}
+.vhome .nwnum{font-family:var(--serif);font-size:clamp(38px,4.4vw,50px);font-weight:600;letter-spacing:-.02em;color:var(--ink);line-height:1;margin-top:10px;font-feature-settings:"tnum" 1}
 .vhome .nwbasis{font-size:14px;color:var(--muted);margin-top:11px}
+.vhome .nwbasis-asof{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.vhome .nwbasis-asof .asof{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.02em}
 
 /* selected-decision panel */
 .vhome .ep-inline{border-top:1px solid var(--line);margin-top:18px;padding-top:20px}
@@ -93,9 +96,9 @@
 .vhome .ep-why{font-size:15.5px;color:var(--body);line-height:1.6;margin:0 0 17px;max-width:680px}
 .vhome .ep-empty{font-size:14.5px;color:var(--muted);line-height:1.55;margin:2px 0 6px}
 .vhome .ep-foot{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
-.vhome .ep-imp{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:9px;padding:9px 14px}
+.vhome .ep-imp{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--gb);background:var(--mint);border-radius:9px;padding:9px 14px;font-feature-settings:"tnum" 1}
 .vhome .ep-imp.dn{color:var(--neg);background:var(--surface2)}
-.vhome .ep-stat{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--body);background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:9px 13px}
+.vhome .ep-stat{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--body);background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:9px 13px;font-feature-settings:"tnum" 1}
 
 /* property lens — inline word toggle in the eyebrow slot, mirroring the phone's
    "Net worth · Liquid". Active word = green (like the eyebrow), inactive = faint. */
@@ -114,7 +117,9 @@
 .vhome .ep-step svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .vhome .ep-step:hover:not(:disabled){border-color:var(--green);color:var(--green)}
 .vhome .ep-step:disabled{opacity:.4;cursor:default}
-.vhome .ep-pos{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em}
+.vhome .ep-pos{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.03em;font-feature-settings:"tnum" 1}
+.vhome .ep-hint{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.02em;white-space:nowrap}
+@media(max-width:640px){ .vhome .ep-hint{display:none} }
 .vhome .ep-today{height:30px;padding:0 15px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:.15s}
 .vhome .ep-today:hover:not(:disabled){border-color:var(--green);color:var(--ink)}
 .vhome .ep-today:disabled{opacity:.4;cursor:default}
@@ -140,7 +145,7 @@
 .vhome .pos-n{font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vhome .pos-sub{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.02em}
 .vhome .pos-v{text-align:right;display:flex;flex-direction:column;gap:2px;min-width:88px}
-.vhome .pos-val{font-family:var(--mono);font-size:14.5px;font-weight:600;color:var(--ink)}
+.vhome .pos-val{font-family:var(--mono);font-size:14.5px;font-weight:600;color:var(--ink);font-feature-settings:"tnum" 1}
 .vhome .pos-chg{font-family:var(--mono);font-size:12px;font-weight:500}
 .vhome .pos-chg.up{color:var(--ok)}.vhome .pos-chg.dn{color:var(--neg)}
 .vhome .pos-own{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
@@ -190,7 +195,7 @@
 .vhome .led-tag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:3px 7px;border-radius:5px;background:var(--mint);color:var(--gb)}
 .vhome .led-tag.auto{background:var(--surface2);color:var(--ok);border:1px solid var(--line2)}
 .vhome .led-why{font-size:13.5px;color:var(--muted);line-height:1.45;margin-top:5px}
-.vhome .led-imp{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--gb);white-space:nowrap;text-align:right;margin-top:3px}
+.vhome .led-imp{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--gb);white-space:nowrap;text-align:right;margin-top:3px;font-feature-settings:"tnum" 1}
 .vhome .led-imp.dn{color:var(--neg)}
 .vhome .led-empty{padding:22px;font-size:14px;color:var(--muted);text-align:center}
 

@@ -123,11 +123,13 @@ function fmtYLabel(value: number, currency: string): string {
   const sym = CURRENCY_SYMBOL[currency] ?? currency;
   const sign = value < 0 ? "−" : "";
   const abs = Math.abs(value);
+  // Match the hero number's locale (nl-NL) so the axis and headline share one
+  // grammar — e.g. €0,1 mln rather than a US-compacted €0.1M next to €115.077.
   const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(n);
-  if (abs >= 1_000_000) return `${sign}${sym}${fmt(abs / 1_000_000)}M`;
+    new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(n);
+  if (abs >= 1_000_000) return `${sign}${sym}${fmt(abs / 1_000_000)} mln`;
   if (abs >= 1_000) return `${sign}${sym}${fmt(abs / 1_000)}K`;
-  return `${sign}${sym}${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
+  return `${sign}${sym}${new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
 }
 
 const CHART_PAD_TOP = 6;

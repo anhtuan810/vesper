@@ -341,6 +341,23 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const selectedDate = selectedEntry?.date ?? null;
   const isToday = !selectedEntry;
 
+  // Once an entry is selected, ← / → step through the journal and Esc returns
+  // to Today — so scrubbing 68 entries doesn't mean 68 clicks. Gated on an active
+  // selection so it never hijacks arrow keys for someone who hasn't engaged, and
+  // ignored while typing (chat rail, inputs).
+  useEffect(() => {
+    if (isToday) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "ArrowLeft") { e.preventDefault(); setSelectedId(navIds[Math.min(navIndex + 1, navIds.length - 1)] ?? null); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); setSelectedId(navIds[Math.max(navIndex - 1, 0)] ?? null); }
+      else if (e.key === "Escape") { e.preventDefault(); setSelectedId(null); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isToday, navIndex, navIds]);
+
   // The snapshot on/before the selected entry's date — anchors both the headline
   // and the holdings to the same point in time so they reconcile with the chart.
   const selectedSnapshot = useMemo(() => {
@@ -378,9 +395,24 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     const startPoint = windowStart ? series.find((p) => p.date >= windowStart) ?? series[series.length - 1] : series[0];
     const startVal = convertPointToDisplay(startPoint, displayCurrency, buildLiveRates());
     if (!startVal || startVal <= 0) return null;
-    const pct = Math.round(((liveNet - startVal) / startVal) * 100);
-    return `${pct >= 0 ? "▲ +" : "▼ −"}${Math.abs(pct)}% ${rangeLabel(range, startPoint.date)}`;
+    const delta = liveNet - startVal;
+    const pct = (delta / startVal) * 100;
+    const dn = delta < 0;
+    // Lead with the money moved (investors think in €, not just %), % muted after.
+    const pctStr = Math.abs(pct).toLocaleString("nl-NL", { maximumFractionDigits: 1 });
+    return `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(delta), displayCurrency, displayCurrency)} · ${dn ? "−" : "+"}${pctStr}% ${rangeLabel(range, startPoint.date)}`;
   }, [series, liveNet, displayCurrency, range]);
+
+  // In entry mode the headline shows the value AS OF the selected date; this
+  // surfaces that framing plus how the portfolio has moved to today, so a
+  // rewound number is never mistaken for the live balance.
+  const asOfDelta = useMemo(() => {
+    if (isToday) return null;
+    const delta = liveNet - headlineNet;
+    if (!Number.isFinite(delta) || Math.abs(delta) < 1) return null;
+    const dn = delta < 0;
+    return { dn, text: `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(delta), displayCurrency, displayCurrency)} to today` };
+  }, [isToday, liveNet, headlineNet, displayCurrency]);
 
   // ── Holdings grouped into the 4 semantic categories ────────────────────────
   const symbols = useMemo(
@@ -504,7 +536,14 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               <span className="eyebrow">Net worth</span>
             )}
             <div className="nwnum">{formatMoney(headlineNet, displayCurrency, displayCurrency)}</div>
-            {isToday && rangeBadge && <div className="nwbasis"><span className="badge">{rangeBadge}</span></div>}
+            {isToday
+              ? rangeBadge && <div className="nwbasis"><span className="badge">{rangeBadge}</span></div>
+              : (
+                <div className="nwbasis nwbasis-asof">
+                  <span className="asof">as of {shortDate(selectedDate!)}</span>
+                  {asOfDelta && <span className={`badge${asOfDelta.dn ? " dn" : ""}`}>{asOfDelta.text}</span>}
+                </div>
+              )}
           </div>
         </div>
 
@@ -538,6 +577,9 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             </button>
             {!isToday && (
               <span className="ep-pos">{navIndex} of {entries.length}</span>
+            )}
+            {!isToday && (
+              <span className="ep-hint" aria-hidden="true">← → to step · Esc for today</span>
             )}
           </div>
 
@@ -575,7 +617,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                   {imp.movers.map((h) => (
                     <span className="ep-stat" key={h.symbol}>{h.label} {h.impact >= 0 ? "+" : "−"}{formatMoney(Math.abs(h.impact), mc, mc)}</span>
                   ))}
-                  <span className="ep-stat">Net worth then {formatMoney(headlineNet, displayCurrency, displayCurrency)}</span>
                 </div>
               </>
             );
@@ -602,7 +643,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                     {imp && <span className={`ep-imp${imp.dn ? " dn" : ""}`}>{imp.text}</span>}
                     {move && <span className="ep-stat">{move}</span>}
                     {units && <span className="ep-stat">{units}</span>}
-                    <span className="ep-stat">Net worth then {formatMoney(headlineNet, displayCurrency, displayCurrency)}</span>
                   </div>
                 )}
               </>
