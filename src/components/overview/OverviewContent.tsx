@@ -801,12 +801,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
           </div>
-          {!isToday && (
-            <div className="ep-nav-foot">
-              <button type="button" className="ep-today" onClick={() => setSelectedId(null)}>Back to today</button>
-              <span className="ep-hint" aria-hidden="true">← → to step · Esc for today</span>
-            </div>
-          )}
 
           {isToday ? (
             <>

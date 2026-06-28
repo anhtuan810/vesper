@@ -163,12 +163,6 @@
 .vhome .ep-replay-pos{color:var(--ink);font-feature-settings:"tnum" 1}
 .vhome .ep-replay-pos b{color:var(--green);font-weight:700}
 .vhome .ep-replay-date{color:var(--green)}
-.vhome .ep-nav-foot{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:-7px;margin-bottom:16px}
-.vhome .ep-today{background:none;border:none;padding:0;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.03em;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line);transition:.15s}
-.vhome .ep-today:hover:not(:disabled){color:var(--ink)}
-.vhome .ep-today:disabled{opacity:.4;cursor:default}
-.vhome .ep-hint{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.02em;white-space:nowrap}
-@media(max-width:640px){ .vhome .ep-hint{display:none} }
 
 /* expandable holdings */
 .vhome .holds{border-top:1px solid var(--line);margin-top:20px;padding-top:6px}
