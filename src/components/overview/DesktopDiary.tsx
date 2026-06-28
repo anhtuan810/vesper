@@ -188,20 +188,24 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
                 const name = displayName(m);
                 const gone = !m.asset_id;
                 const v = diaryValue(m, displayCurrency);
+                // Auto entry: a market-driven revaluation Volnar logged itself
+                // (market context, no personal note) — given a distinct look.
+                const isAuto = !!m.market_context && !m.personal_context;
                 const inner = (
                   <>
                     <div style={{ opacity: gone ? 0.7 : 1 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={30} /></div>
                     <div className="drow-m">
-                      <div className={`drow-n${gone ? " gone" : ""}`}>{name}</div>
+                      <div className={`drow-n${gone ? " gone" : ""}`}>{name}{isAuto && <span className="drow-auto">Auto</span>}</div>
                       {m.personal_context && <div className="drow-why">{m.personal_context}</div>}
                       {m.market_context && <div className="drow-why"><span className="drow-ctx">Markets</span>{m.market_context}</div>}
                     </div>
                     <ValueRight v={v} date={m.occurred_at || m.recorded_at} />
                   </>
                 );
+                const cls = `drow${isAuto ? " drow-market" : ""}`;
                 return gone
-                  ? <div className="drow" key={m.id}>{inner}</div>
-                  : <Link className="drow" key={m.id} href={`/asset?id=${m.asset_id}`}>{inner}</Link>;
+                  ? <div className={cls} key={m.id}>{inner}</div>
+                  : <Link className={cls} key={m.id} href={`/asset?id=${m.asset_id}`}>{inner}</Link>;
               }
               const { id: gid, anchor, members, groupName } = item;
               const open = expandedGroups.has(gid);
