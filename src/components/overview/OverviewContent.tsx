@@ -177,6 +177,15 @@ interface Props {
   mutations: Mutation[];
 }
 
+// A holding row carries the asset plus the value to show — live equity in Today
+// mode, or the snapshot-anchored value held at the selected date in entry mode.
+type HoldingItem = { asset: LiveAsset; value: number };
+type HoldingGroupData = {
+  category: string; label: string; total: number; items: HoldingItem[];
+  // Historical (entry) rows suppress live-only adornments (sparkline, day change).
+  historical: boolean;
+};
+
 export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSettled, mutations }: Props) {
   const displayCurrency = useDisplayCurrency();
   const { user } = useUser();
@@ -281,18 +290,23 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   );
   const isToday = !selectedDecision;
 
-  // Net worth as of the selection: live for Today, else the chart's own value at
-  // the entry's date (nearest snapshot on/before it), so the headline matches the
-  // line exactly and is currency-correct under either lens.
-  const headlineNet = useMemo(() => {
-    if (isToday || !selectedDecision) return liveNet;
+  // The snapshot on/before the selected entry's date — anchors both the headline
+  // and the holdings to the same point in time so they reconcile with the chart.
+  const selectedSnapshot = useMemo(() => {
+    if (isToday || !selectedDecision) return null;
     const d = mDate(selectedDecision).slice(0, 10);
-    const liveRates = buildLiveRates();
     let best: SnapshotPoint | null = null;
     for (const p of fullSnapshots) { if (p.date <= d) best = p; else break; }
-    best = best ?? fullSnapshots[0] ?? null;
-    return best ? pointDisplayValue(best, effectiveInclude, displayCurrency, liveRates) : liveNet;
-  }, [isToday, selectedDecision, fullSnapshots, effectiveInclude, displayCurrency, liveNet]);
+    return best ?? fullSnapshots[0] ?? null;
+  }, [isToday, selectedDecision, fullSnapshots]);
+
+  // Net worth as of the selection: live for Today, else the chart's own value at
+  // the entry's date, so the headline matches the line and is currency-correct
+  // under either lens.
+  const headlineNet = useMemo(() => {
+    if (isToday || !selectedSnapshot) return liveNet;
+    return pointDisplayValue(selectedSnapshot, effectiveInclude, displayCurrency, buildLiveRates());
+  }, [isToday, selectedSnapshot, effectiveInclude, displayCurrency, liveNet]);
 
   // Today's marker highlights only if a decision is actually dated today (#4);
   // otherwise Today shows no selected marker. `now` keeps this hydration-safe.
@@ -321,25 +335,83 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   );
   const sparklines = useSparklines(symbols, "1W");
 
-  const groups = useMemo(() => {
-    const byCategory: Record<string, LiveAsset[]> = {};
-    for (const a of netWorthAssets) {
+  const byOrder = (a: { category: string }, b: { category: string }) =>
+    (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99);
+
+  const groups = useMemo<HoldingGroupData[]>(() => {
+    // ── Today: live, asset-driven grouping ──
+    if (isToday || !selectedSnapshot || !selectedDecision) {
+      const byCategory: Record<string, HoldingItem[]> = {};
+      for (const a of netWorthAssets) {
+        if (!effectiveInclude && a.type === "real_estate") continue;
+        const cat = CATEGORY_MAP[a.type] ?? "reserves";
+        const equity = a.type === "real_estate" ? Math.max(0, a.value - computeCurrentBalance(a)) : a.value;
+        const value = toDisplay(equity, a.currency || "USD", displayCurrency) ?? 0;
+        (byCategory[cat] ??= []).push({ asset: a, value });
+      }
+      return Object.entries(byCategory)
+        .map(([cat, items]) => ({
+          category: cat, label: CATEGORY_LABEL[cat] ?? cat, historical: false,
+          items: [...items].sort((a, b) => b.value - a.value),
+          total: items.reduce((s, it) => s + it.value, 0),
+        }))
+        .sort(byOrder);
+    }
+
+    // ── Entry: snapshot-anchored category totals + the assets held then ──
+    const liveRates = buildLiveRates();
+    const fullDisplay = convertPointToDisplay(selectedSnapshot, displayCurrency, liveRates);
+    const base = selectedSnapshot.total_value || 1;
+    const d = mDate(selectedDecision).slice(0, 10);
+
+    // Each asset's last recorded value on/before the selected date (0 = removed /
+    // not yet held). sortedMutations is newest-first, so the first hit per asset
+    // within the window is the latest state at that time.
+    const weightByAsset = new Map<string, number>();
+    for (const m of sortedMutations) {
+      if (!m.asset_id || weightByAsset.has(m.asset_id)) continue;
+      if (mDate(m).slice(0, 10) > d) continue;
+      const w = m.action === "remove" ? 0 : (toDisplay(m.after_value ?? 0, m.currency || "USD", displayCurrency) ?? 0);
+      weightByAsset.set(m.asset_id, w);
+    }
+    const assetById = new Map(netWorthAssets.map((a) => [a.id, a]));
+
+    // Category totals from the snapshot's per-type breakdown (display currency,
+    // lens-aware) — these sum to the headline.
+    const catTotal: Record<string, number> = {};
+    for (const [type, v] of Object.entries(selectedSnapshot.breakdown ?? {})) {
+      if (!effectiveInclude && type === "real_estate") continue;
+      const cat = CATEGORY_MAP[type] ?? "reserves";
+      catTotal[cat] = (catTotal[cat] ?? 0) + (v / base) * fullDisplay;
+    }
+
+    // The assets actually held then, grouped, with their recorded weights.
+    const catAssets: Record<string, { asset: LiveAsset; weight: number }[]> = {};
+    for (const [id, w] of weightByAsset) {
+      if (w <= 0) continue;
+      const a = assetById.get(id);
+      if (!a) continue;
       if (!effectiveInclude && a.type === "real_estate") continue;
       const cat = CATEGORY_MAP[a.type] ?? "reserves";
-      (byCategory[cat] ??= []).push(a);
+      (catAssets[cat] ??= []).push({ asset: a, weight: w });
     }
-    return Object.entries(byCategory)
-      .map(([cat, items]) => ({
-        category: cat,
-        label: CATEGORY_LABEL[cat] ?? cat,
-        items: [...items].sort((a, b) => b.value - a.value),
-        total: items.reduce((s, a) => {
-          const equity = a.type === "real_estate" ? Math.max(0, a.value - computeCurrentBalance(a)) : a.value;
-          return s + (toDisplay(equity, a.currency || "USD", displayCurrency) ?? 0);
-        }, 0),
-      }))
-      .sort((a, b) => (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99));
-  }, [netWorthAssets, displayCurrency, effectiveInclude]);
+
+    const cats = new Set([...Object.keys(catTotal), ...Object.keys(catAssets)]);
+    const out: HoldingGroupData[] = [];
+    for (const cat of cats) {
+      const total = catTotal[cat] ?? 0;
+      if (total < 1) continue;
+      const arr = catAssets[cat] ?? [];
+      const sumW = arr.reduce((s, x) => s + x.weight, 0);
+      // Scale the held assets to the snapshot's category total so each group's
+      // rows reconcile with its header (recorded values aren't market-adjusted).
+      const items: HoldingItem[] = sumW > 0
+        ? arr.map((x) => ({ asset: x.asset, value: total * (x.weight / sumW) })).sort((p, q) => q.value - p.value)
+        : [];
+      out.push({ category: cat, label: CATEGORY_LABEL[cat] ?? cat, historical: true, items, total });
+    }
+    return out.sort(byOrder);
+  }, [isToday, selectedSnapshot, selectedDecision, sortedMutations, netWorthAssets, displayCurrency, effectiveInclude]);
 
   // ── Vitals summary + the six cards ─────────────────────────────────────────
   const vitalsByKey = useMemo(() => {
@@ -477,8 +549,9 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               category={g.category}
               label={g.label}
               total={g.total}
-              pct={liveNet > 0 ? Math.round((g.total / liveNet) * 100) : 0}
+              pct={headlineNet > 0 ? Math.round((g.total / headlineNet) * 100) : 0}
               items={g.items}
+              historical={g.historical}
               displayCurrency={displayCurrency}
               sparklines={sparklines}
             />
@@ -641,9 +714,10 @@ function VitalCard<T>({ name, v, render }: {
 }
 
 // ── Expandable holdings group ────────────────────────────────────────────────
-function HoldingGroup({ category, label, total, pct, items, displayCurrency, sparklines }: {
+function HoldingGroup({ category, label, total, pct, items, historical, displayCurrency, sparklines }: {
   category: string; label: string; total: number; pct: number;
-  items: LiveAsset[]; displayCurrency: ReturnType<typeof useDisplayCurrency>;
+  items: HoldingItem[]; historical: boolean;
+  displayCurrency: ReturnType<typeof useDisplayCurrency>;
   sparklines: Record<string, number[]>;
 }) {
   const [open, setOpen] = useState(false);
@@ -668,25 +742,39 @@ function HoldingGroup({ category, label, total, pct, items, displayCurrency, spa
         <svg className="hg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
       </button>
       <div className="hg-pos" id={panelId} ref={posRef} style={{ maxHeight: maxH }}>
-        {items.map((a) => <PositionRow key={a.id} asset={a} displayCurrency={displayCurrency} closes={a.symbol ? sparklines[a.symbol] : undefined} />)}
+        {items.map(({ asset, value }) => (
+          <PositionRow
+            key={asset.id}
+            asset={asset}
+            value={value}
+            historical={historical}
+            displayCurrency={displayCurrency}
+            closes={!historical && asset.symbol ? sparklines[asset.symbol] : undefined}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function PositionRow({ asset, displayCurrency, closes }: {
-  asset: LiveAsset; displayCurrency: ReturnType<typeof useDisplayCurrency>; closes?: number[];
+function PositionRow({ asset, value, historical, displayCurrency, closes }: {
+  asset: LiveAsset; value: number; historical: boolean;
+  displayCurrency: ReturnType<typeof useDisplayCurrency>; closes?: number[];
 }) {
   const isProperty = asset.type === "real_estate";
-  const equity = isProperty ? Math.max(0, asset.value - computeCurrentBalance(asset)) : asset.value;
-  const value = formatMoney(equity, asset.currency || "USD", displayCurrency);
+  // Value is supplied by the parent: live equity in Today mode, the snapshot-
+  // anchored value held at the selected date in entry mode. Both are already in
+  // the display currency, so render with an identity conversion.
+  const valueText = formatMoney(value, displayCurrency, displayCurrency);
   const chg = pctChange(asset.livePrice, asset.livePrev);
   const up = chg != null && chg >= 0;
-  const hasSpark = !!closes && closes.length >= 2;
-  const owned = isProperty && asset.value > 0 ? Math.round((equity / asset.value) * 100) : null;
+  const hasSpark = !historical && !!closes && closes.length >= 2;
+  // Owned-% is a live concept (equity vs market value) — Today only.
+  const liveEquity = isProperty ? Math.max(0, asset.value - computeCurrentBalance(asset)) : asset.value;
+  const owned = !historical && isProperty && asset.value > 0 ? Math.round((liveEquity / asset.value) * 100) : null;
 
   const sub = asset.symbol
-    ? `${displayTicker(asset.symbol)}${asset.units != null ? ` · ${fmtPct(asset.units, asset.units % 1 === 0 ? 0 : 2)} ${unitNoun(asset.type)}` : ""}`
+    ? `${displayTicker(asset.symbol)}${!historical && asset.units != null ? ` · ${fmtPct(asset.units, asset.units % 1 === 0 ? 0 : 2)} ${unitNoun(asset.type)}` : ""}`
     : isProperty ? "Property" : CATEGORY_LABEL[CATEGORY_MAP[asset.type] ?? "reserves"];
 
   return (
@@ -700,10 +788,10 @@ function PositionRow({ asset, displayCurrency, closes }: {
         ? <MiniSparkline prices={closes!} directionUp={chg == null ? undefined : up} width={80} height={28} />
         : <span />}
       <div className="pos-v">
-        <span className="pos-val">{value}</span>
+        <span className="pos-val">{valueText}</span>
         {owned != null
           ? <span className="pos-own">{owned}% owned</span>
-          : chg != null && <span className={`pos-chg ${up ? "up" : "dn"}`}>{up ? "+" : "−"}{fmtPct(Math.abs(chg), 1)}%</span>}
+          : !historical && chg != null && <span className={`pos-chg ${up ? "up" : "dn"}`}>{up ? "+" : "−"}{fmtPct(Math.abs(chg), 1)}%</span>}
       </div>
     </div>
   );
