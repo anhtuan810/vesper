@@ -14,7 +14,7 @@ import {
 import { AssetLogo } from "@/components/AssetLogo";
 import { MiniSparkline } from "@/components/MiniSparkline";
 import { useDisplayCurrency, useSparklines, useVitals, useUser } from "@/lib/hooks";
-import { toDisplay, formatMoney } from "@/lib/money";
+import { toDisplay, formatMoney, type DisplayCurrency } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import { displayName, STARTING_POSITION_CTX, unitNoun } from "@/lib/diary-utils";
@@ -191,6 +191,19 @@ type HoldingGroupData = {
   historical: boolean;
 };
 
+// A journal entry: a user decision (mutation) or an auto-generated market swing.
+type Entry =
+  | { id: string; date: string; kind: "decision"; m: Mutation }
+  | { id: string; date: string; kind: "market"; mv: DiaryMarketMove };
+
+// "▲ €1.240" / "▼ €930" — a market swing's signed impact in its display currency.
+function marketImpactText(mv: DiaryMarketMove): string | undefined {
+  if (!mv.impact) return undefined;
+  const dn = mv.impact.total < 0;
+  const mc = mv.impact.currency as DisplayCurrency;
+  return `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(mv.impact.total), mc, mc)}`;
+}
+
 export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSettled, mutations }: Props) {
   const displayCurrency = useDisplayCurrency();
   const { user } = useUser();
@@ -272,61 +285,57 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     () => [...mutations].sort((a, b) => (mDate(b)).localeCompare(mDate(a))),
     [mutations],
   );
-  // Auto-generated market-swing entries, interleaved with decisions in the
-  // journal preview below (same data the Journal page renders as full cards).
+  // Auto-generated market-swing entries (computed from index moves + the user's
+  // holdings). Treated as first-class journal entries alongside decisions: plotted
+  // on the chart, navigable with prev/next, and selectable.
   const { moves } = useDiaryMarketMoves();
-  const journalPreview = useMemo(() => {
-    type Row = { kind: "mut"; date: string; m: Mutation } | { kind: "move"; date: string; mv: DiaryMarketMove };
-    const rows: Row[] = [
-      ...sortedMutations.map((m): Row => ({ kind: "mut", date: mDate(m).slice(0, 10), m })),
-      ...moves.filter((mv) => mv.impact).map((mv): Row => ({ kind: "move", date: mv.date, mv })),
+  const entries = useMemo<Entry[]>(() => {
+    const rows: Entry[] = [
+      ...sortedMutations.map((m): Entry => ({ id: m.id, date: mDate(m).slice(0, 10), kind: "decision", m })),
+      ...moves.filter((mv) => mv.impact).map((mv): Entry => ({ id: `mv-${mv.index_symbol}-${mv.date}`, date: mv.date, kind: "market", mv })),
     ];
-    return rows.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
+    // Newest first; on a tie, decisions before market rows.
+    return rows.sort((a, b) => b.date.localeCompare(a.date) || (a.kind === b.kind ? 0 : a.kind === "market" ? 1 : -1));
   }, [sortedMutations, moves]);
-  // Every entry is plotted on the line. Each marker carries the short content the
-  // chart shows on hover (title, date, value moved) and a kind so a market-event
-  // entry ("market") reads apart from a personal decision ("you"). Hovering only
-  // previews; clicking commits the selection (drives the rest of the page).
+  const journalPreview = useMemo(() => entries.slice(0, 7), [entries]);
+
+  // Chart markers — one per entry. Decisions use the accent ("you"); market swings
+  // the muted "market" colour. Each carries the short content the chart shows on
+  // hover; hovering previews, clicking commits the selection (drives the page).
   const markers = useMemo(
-    () => sortedMutations.map((m) => {
-      const imp = impact(m, displayCurrency);
-      return {
-        id: m.id,
-        date: mDate(m).slice(0, 10),
-        kind: m.market_context ? ("market" as const) : ("you" as const),
-        title: decisionTitle(m),
-        sub: shortDate(mDate(m)),
-        value: imp?.text,
-      };
-    }),
-    [sortedMutations, displayCurrency],
+    () => entries.map((e) => e.kind === "decision"
+      ? { id: e.id, date: e.date, kind: "you" as const, title: decisionTitle(e.m), sub: shortDate(e.date), value: impact(e.m, displayCurrency)?.text }
+      : { id: e.id, date: e.date, kind: "market" as const, title: `${e.mv.index_label} ${e.mv.pct_change >= 0 ? "+" : "−"}${fmtPct(Math.abs(e.mv.pct_change), 1)}%`, sub: shortDate(e.date), value: marketImpactText(e.mv) }),
+    [entries, displayCurrency],
   );
 
-  // Navigation order: Today (null) first, then decisions newest→oldest. ← steps
+  // Navigation order: Today (null) first, then entries newest→oldest. ← steps
   // older, → steps newer (back toward Today).
-  const navIds = useMemo<(string | null)[]>(() => [null, ...sortedMutations.map((m) => m.id)], [sortedMutations]);
+  const navIds = useMemo<(string | null)[]>(() => [null, ...entries.map((e) => e.id)], [entries]);
   const navIndex = navIds.indexOf(selectedId);
   const goOlder = () => setSelectedId(navIds[Math.min(navIndex + 1, navIds.length - 1)] ?? null);
   const goNewer = () => setSelectedId(navIds[Math.max(navIndex - 1, 0)] ?? null);
   const canOlder = navIndex >= 0 && navIndex < navIds.length - 1;
   const canNewer = navIndex > 0;
 
-  // The selected decision drives the panel; null id = Today (the live position).
-  const selectedDecision = useMemo(
-    () => (selectedId ? sortedMutations.find((m) => m.id === selectedId) ?? null : null),
-    [sortedMutations, selectedId],
+  // The selected entry drives the panel; null id = Today (the live position).
+  const selectedEntry = useMemo(
+    () => (selectedId ? entries.find((e) => e.id === selectedId) ?? null : null),
+    [entries, selectedId],
   );
-  const isToday = !selectedDecision;
+  const selectedDecision = selectedEntry?.kind === "decision" ? selectedEntry.m : null;
+  const selectedMove = selectedEntry?.kind === "market" ? selectedEntry.mv : null;
+  const selectedDate = selectedEntry?.date ?? null;
+  const isToday = !selectedEntry;
 
   // The snapshot on/before the selected entry's date — anchors both the headline
   // and the holdings to the same point in time so they reconcile with the chart.
   const selectedSnapshot = useMemo(() => {
-    if (isToday || !selectedDecision) return null;
-    const d = mDate(selectedDecision).slice(0, 10);
+    if (!selectedDate) return null;
     let best: SnapshotPoint | null = null;
-    for (const p of fullSnapshots) { if (p.date <= d) best = p; else break; }
+    for (const p of fullSnapshots) { if (p.date <= selectedDate) best = p; else break; }
     return best ?? fullSnapshots[0] ?? null;
-  }, [isToday, selectedDecision, fullSnapshots]);
+  }, [selectedDate, fullSnapshots]);
 
   // Net worth as of the selection: live for Today, else the chart's own value at
   // the entry's date, so the headline matches the line and is currency-correct
@@ -336,13 +345,13 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     return pointDisplayValue(selectedSnapshot, effectiveInclude, displayCurrency, buildLiveRates());
   }, [isToday, selectedSnapshot, effectiveInclude, displayCurrency, liveNet]);
 
-  // Today's marker highlights only if a decision is actually dated today (#4);
-  // otherwise Today shows no selected marker. `now` keeps this hydration-safe.
+  // Today's marker highlights only if an entry is actually dated today; otherwise
+  // Today shows no selected marker. `now` keeps this hydration-safe.
   const todayEntryId = useMemo(() => {
     if (!now) return null;
     const t = now.toISOString().slice(0, 10);
-    return sortedMutations.find((m) => mDate(m).slice(0, 10) === t)?.id ?? null;
-  }, [now, sortedMutations]);
+    return entries.find((e) => e.date === t)?.id ?? null;
+  }, [now, entries]);
   const highlightMarkerId = selectedId ?? todayEntryId;
 
   // "▲ +X% since YYYY" from the earliest snapshot to the headline value (so it
@@ -368,7 +377,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
 
   const groups = useMemo<HoldingGroupData[]>(() => {
     // ── Today: live, asset-driven grouping ──
-    if (isToday || !selectedSnapshot || !selectedDecision) {
+    if (isToday || !selectedSnapshot || !selectedDate) {
       const byCategory: Record<string, HoldingItem[]> = {};
       for (const a of netWorthAssets) {
         if (!effectiveInclude && a.type === "real_estate") continue;
@@ -390,7 +399,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     const liveRates = buildLiveRates();
     const fullDisplay = convertPointToDisplay(selectedSnapshot, displayCurrency, liveRates);
     const base = selectedSnapshot.total_value || 1;
-    const d = mDate(selectedDecision).slice(0, 10);
+    const d = selectedDate;
 
     // Each asset's last recorded value on/before the selected date (0 = removed /
     // not yet held). sortedMutations is newest-first, so the first hit per asset
@@ -439,7 +448,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
       out.push({ category: cat, label: CATEGORY_LABEL[cat] ?? cat, historical: true, items, total });
     }
     return out.sort(byOrder);
-  }, [isToday, selectedSnapshot, selectedDecision, sortedMutations, netWorthAssets, displayCurrency, effectiveInclude]);
+  }, [isToday, selectedSnapshot, selectedDate, sortedMutations, netWorthAssets, displayCurrency, effectiveInclude]);
 
   // ── Vitals summary + the six cards ─────────────────────────────────────────
   const vitalsByKey = useMemo(() => {
@@ -474,7 +483,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             <span className="eyebrow">Net worth</span>
             <div className="nwnum">{formatMoney(headlineNet, displayCurrency, displayCurrency)}</div>
             <div className="nwbasis">
-              {isToday ? "As of today" : `As of ${shortDate(mDate(selectedDecision!))}`}
+              {isToday ? "As of today" : `As of ${shortDate(selectedDate!)}`}
               {" · "}
               {effectiveInclude ? "equity basis, property net of mortgage" : "excluding property"}
               {sinceBadge && <span className="badge" style={{ marginLeft: 6 }}>{sinceBadge}</span>}
@@ -517,7 +526,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
             <span className="ep-pos">
-              {isToday ? "Today" : `${shortDate(mDate(selectedDecision!))} · ${navIndex} of ${sortedMutations.length}`}
+              {isToday ? "Today" : `${shortDate(selectedDate!)} · ${navIndex} of ${entries.length}`}
             </span>
             <button type="button" className="ep-today" onClick={() => setSelectedId(null)} disabled={isToday}>
               Today
@@ -537,7 +546,32 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                 {" "}Step back through the line to see the decision behind each point.
               </p>
             </>
-          ) : (() => {
+          ) : selectedMove ? (() => {
+            const mv = selectedMove;
+            const imp = mv.impact!;
+            const mc = imp.currency as typeof displayCurrency;
+            const dn = imp.total < 0;
+            return (
+              <>
+                <div className="ep-top">
+                  <span className="ep-date">{shortDate(mv.date)}</span>
+                  <span className="ep-kind market">Market</span>
+                </div>
+                <h3 className="ep-title">{mv.index_label} {mv.pct_change >= 0 ? "+" : "−"}{fmtPct(Math.abs(mv.pct_change), 1)}%</h3>
+                <p className="ep-why">
+                  Your portfolio {dn ? "lost" : "gained"} {formatMoney(Math.abs(imp.total), mc, mc)} that day
+                  {imp.movers[0] ? `, led by ${imp.movers[0].label}` : ""}. No action taken — recorded automatically.
+                </p>
+                <div className="ep-foot">
+                  <span className={`ep-imp${dn ? " dn" : ""}`}>{dn ? "▼" : "▲"} {formatMoney(Math.abs(imp.total), mc, mc)}</span>
+                  {imp.movers.map((h) => (
+                    <span className="ep-stat" key={h.symbol}>{h.label} {h.impact >= 0 ? "+" : "−"}{formatMoney(Math.abs(h.impact), mc, mc)}</span>
+                  ))}
+                  <span className="ep-stat">Net worth then {formatMoney(headlineNet, displayCurrency, displayCurrency)}</span>
+                </div>
+              </>
+            );
+          })() : (() => {
             const m = selectedDecision!;
             const own = hasOwnNote(m);
             const imp = impact(m, displayCurrency);
@@ -654,15 +688,16 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           {journalPreview.length === 0 ? (
             <div className="led-empty">Nothing logged yet — your decisions will appear here.</div>
           ) : journalPreview.map((row) => {
-            if (row.kind === "move") {
+            if (row.kind === "market") {
               const mv = row.mv;
               const imp = mv.impact!;
+              const mc = imp.currency as typeof displayCurrency;
               const dn = imp.total < 0;
               const top = imp.movers[0];
-              const why = `Your portfolio ${dn ? "lost" : "gained"} ${formatMoney(Math.abs(imp.total), imp.currency as typeof displayCurrency, imp.currency as typeof displayCurrency)} that day`
+              const why = `Your portfolio ${dn ? "lost" : "gained"} ${formatMoney(Math.abs(imp.total), mc, mc)} that day`
                 + (top ? `, led by ${top.label}.` : ".");
               return (
-                <div className="led" key={`mv-${mv.index_symbol}-${mv.date}`}>
+                <div className="led" key={row.id}>
                   <span className={`led-dot${dn ? " dn" : ""}`} />
                   <span className="led-date">{shortDate(mv.date)}</span>
                   <div>
@@ -672,7 +707,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                     </div>
                     <div className="led-why">{why}</div>
                   </div>
-                  <span className={`led-imp${dn ? " dn" : ""}`}>{dn ? "▼" : "▲"} {formatMoney(Math.abs(imp.total), imp.currency as typeof displayCurrency, imp.currency as typeof displayCurrency)}</span>
+                  <span className={`led-imp${dn ? " dn" : ""}`}>{dn ? "▼" : "▲"} {formatMoney(Math.abs(imp.total), mc, mc)}</span>
                 </div>
               );
             }
