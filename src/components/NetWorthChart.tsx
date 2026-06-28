@@ -103,13 +103,14 @@ interface Props {
   // Whether the Liquid-only view is active — gates the intraday 1D pill (enabled
   // only here, never by trackingSinceDate).
   liquidOnly?: boolean;
-  // Journal markers: clickable dots drawn on the line at decision dates. When
-  // provided (desktop Overview only), the chart shows static, click-to-select
-  // points and disables the hover-scrub/breakdown — selection is by click, not
-  // hover. Mobile (PortfolioTab) passes nothing, so its behaviour is unchanged.
-  // `kind` distinguishes a personal decision ("you") from a market-event entry
-  // ("market") so each gets a distinct dot colour.
-  markers?: { id: string; date: string; kind?: "you" | "market" }[];
+  // Journal markers: a dot per entry drawn on the line at its date. When provided
+  // (desktop Overview only) the chart enters a two-layer selection mode — moving
+  // the pointer PREVIEWS the nearest entry (a small box appears next to it),
+  // clicking COMMITS it (onMarkerClick). Mobile (PortfolioTab) passes nothing, so
+  // its hover-scrub behaviour is unchanged. `kind` distinguishes a personal
+  // decision ("you") from a market-event entry ("market") for the dot colour;
+  // title/sub/value are the short content shown in the hover box.
+  markers?: { id: string; date: string; kind?: "you" | "market"; title?: string; sub?: string; value?: string }[];
   selectedMarkerId?: string | null;
   onMarkerClick?: (id: string) => void;
 }
@@ -253,6 +254,8 @@ export function NetWorthChart(props: Props) {
     [series, valuesSettled],
   );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  // Marker hover-preview (the "peek" layer): the entry the pointer is nearest to.
+  const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
   const haptic = useChartHaptic();
   const { currency: displayCurrency } = useDisplayCurrencyState();
   const [chartWidth, setChartWidth] = useState(280);
@@ -412,8 +415,63 @@ export function NetWorthChart(props: Props) {
     return Math.min(Math.max(rawIdx, 0), displaySeries.length - 1);
   }
 
-  const chartHandlers = interactive && !markerMode
+  // Decision dots: every journal marker placed at the nearest plotted point whose
+  // date falls within the visible (range-clipped) window. Carries the short
+  // content shown in the hover-preview box.
+  const markerDots: { id: string; x: number; y: number; kind: "you" | "market"; title?: string; sub?: string; value?: string }[] = [];
+  if (markerMode && values.length >= 2) {
+    const dates = displaySeries.map((p) => p.date);
+    const first = dates[0];
+    const last = dates[dates.length - 1];
+    for (const mk of props.markers!) {
+      if (mk.date < first || mk.date > last) continue;
+      const t = new Date(mk.date).getTime();
+      let best = 0;
+      let bestDiff = Infinity;
+      for (let i = 0; i < dates.length; i++) {
+        const d = Math.abs(new Date(dates[i]).getTime() - t);
+        if (d < bestDiff) { bestDiff = d; best = i; }
+      }
+      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value });
+    }
+  }
+
+  // The marker nearest the pointer's x — used so hovering anywhere along the line
+  // previews the closest entry (dots can be dense), not only exact dot hits.
+  function nearestMarkerId(clientX: number, rect: DOMRect): string | null {
+    if (!markerDots.length) return null;
+    const xView = ((clientX - rect.left) / rect.width) * W;
+    let bestId: string | null = null;
+    let bestDiff = Infinity;
+    for (const d of markerDots) {
+      const diff = Math.abs(d.x - xView);
+      if (diff < bestDiff) { bestDiff = diff; bestId = d.id; }
+    }
+    return bestId;
+  }
+
+  const chartHandlers = !interactive
+    ? {}
+    : markerMode
     ? {
+        // Two-layer selection: move previews the nearest entry, click commits it.
+        onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+          setHoveredMarker(nearestMarkerId(e.clientX, e.currentTarget.getBoundingClientRect()));
+        },
+        onMouseLeave() { setHoveredMarker(null); },
+        onClick(e: React.MouseEvent<HTMLDivElement>) {
+          const id = nearestMarkerId(e.clientX, e.currentTarget.getBoundingClientRect());
+          if (id) props.onMarkerClick?.(id);
+        },
+        onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+          setHoveredMarker(nearestMarkerId(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
+        },
+        onTouchEnd() {
+          if (hoveredMarker) props.onMarkerClick?.(hoveredMarker);
+          setHoveredMarker(null);
+        },
+      }
+    : {
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
           const idx = calcIndex(e.clientX, e.currentTarget.getBoundingClientRect());
           setSelectedIndex(idx);
@@ -431,8 +489,7 @@ export function NetWorthChart(props: Props) {
           haptic(idx);
         },
         onTouchEnd() { setSelectedIndex(null); haptic(null); },
-      }
-    : {};
+      };
 
   // Per-class hover card — top-down order (reserves, crypto, markets,
   // property), mirroring the stack read top-down. Flips to the left of the
@@ -446,25 +503,9 @@ export function NetWorthChart(props: Props) {
     : [];
   const flipTooltipLeft = selectedX !== null && selectedX + TOOLTIP_WIDTH + 16 > W;
 
-  // Decision dots: each journal marker placed at the nearest plotted point whose
-  // date falls within the visible (range-clipped) window.
-  const markerDots: { id: string; x: number; y: number; kind: "you" | "market" }[] = [];
-  if (markerMode && values.length >= 2) {
-    const dates = displaySeries.map((p) => p.date);
-    const first = dates[0];
-    const last = dates[dates.length - 1];
-    for (const mk of props.markers!) {
-      if (mk.date < first || mk.date > last) continue;
-      const t = new Date(mk.date).getTime();
-      let best = 0;
-      let bestDiff = Infinity;
-      for (let i = 0; i < dates.length; i++) {
-        const d = Math.abs(new Date(dates[i]).getTime() - t);
-        if (d < bestDiff) { bestDiff = d; best = i; }
-      }
-      markerDots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you" });
-    }
-  }
+  // The hovered marker's full dot (for the preview box).
+  const hoveredDot = markerMode ? markerDots.find((d) => d.id === hoveredMarker) ?? null : null;
+  const MARKER_TIP_W = 184;
 
   return (
     <div>
@@ -474,7 +515,7 @@ export function NetWorthChart(props: Props) {
         {/* Chart SVG — interaction target; handlers attached here so getBoundingClientRect covers only the curve area */}
         <div
           ref={svgContainerRef}
-          style={{ flex: 1, position: "relative", touchAction: interactive ? "none" : undefined }}
+          style={{ flex: 1, position: "relative", touchAction: interactive ? "none" : undefined, cursor: markerMode ? "pointer" : undefined }}
           {...chartHandlers}
         >
           {showSingleMarker ? (
@@ -558,35 +599,34 @@ export function NetWorthChart(props: Props) {
                   <circle cx={drawW} cy={lastY} r={3} fill={strokeColor} />
                 </>
               )}
-              {/* Journal decision dots — only the significant decisions are pinned
-                  (the host caps them), so the line stays uncluttered. Unselected
-                  dots are small and quiet; the selected one is filled and larger.
+              {/* Journal decision dots — one per entry. The pointer handlers live
+                  on the container (move previews the nearest entry, click commits),
+                  so the dots are pure visuals. Default dots are small and quiet; the
+                  hovered one enlarges; the selected one is filled with a halo.
                   Market-event entries ("market") use a muted neutral, personal
                   decisions ("you") the accent. */}
+              {markerMode && hoveredDot && hoveredDot.id !== props.selectedMarkerId && (
+                <line
+                  x1={hoveredDot.x} y1={hoveredDot.y} x2={hoveredDot.x} y2={H}
+                  stroke="var(--text-dim)" strokeWidth={1} strokeDasharray="3 3" opacity={0.45}
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
               {markerMode && markerDots.map((dot) => {
                 const sel = dot.id === props.selectedMarkerId;
+                const hov = dot.id === hoveredMarker;
                 const dotColor = dot.kind === "market" ? "var(--text-faint)" : "var(--accent)";
                 return (
-                  <g key={dot.id}>
-                    {/* Generous transparent hit target for the small visible dot. */}
-                    <circle
-                      cx={dot.x} cy={dot.y} r={13} fill="transparent"
-                      style={{ cursor: "pointer" }}
-                      role="button" tabIndex={0} aria-label="Decision point" aria-pressed={sel}
-                      onClick={() => props.onMarkerClick?.(dot.id)}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); props.onMarkerClick?.(dot.id); } }}
-                    />
+                  <g key={dot.id} style={{ pointerEvents: "none" }}>
                     {sel ? (
                       <>
-                        <circle cx={dot.x} cy={dot.y} r={7} fill="none" stroke={dotColor} strokeOpacity={0.22} style={{ pointerEvents: "none" }} />
-                        <circle cx={dot.x} cy={dot.y} r={4.5} fill={dotColor} stroke="var(--surface)" strokeWidth={1.5} style={{ pointerEvents: "none" }} />
+                        <circle cx={dot.x} cy={dot.y} r={8} fill="none" stroke={dotColor} strokeOpacity={0.22} />
+                        <circle cx={dot.x} cy={dot.y} r={5} fill={dotColor} stroke="var(--surface)" strokeWidth={1.5} />
                       </>
+                    ) : hov ? (
+                      <circle cx={dot.x} cy={dot.y} r={4.5} fill={dotColor} stroke="var(--surface)" strokeWidth={1.5} />
                     ) : (
-                      <circle
-                        cx={dot.x} cy={dot.y} r={3} fill="var(--surface)"
-                        stroke={dotColor} strokeWidth={1.5} strokeOpacity={0.8}
-                        style={{ pointerEvents: "none" }}
-                      />
+                      <circle cx={dot.x} cy={dot.y} r={2.6} fill="var(--surface)" stroke={dotColor} strokeWidth={1.4} strokeOpacity={0.75} />
                     )}
                   </g>
                 );
@@ -638,6 +678,47 @@ export function NetWorthChart(props: Props) {
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Marker hover-preview ("peek" layer): short content for the entry
+              nearest the pointer. Clicking commits the selection. */}
+          {markerMode && hoveredDot && (
+            <div
+              style={{
+                position: "absolute",
+                left: Math.min(Math.max(hoveredDot.x, MARKER_TIP_W / 2 + 4), W - MARKER_TIP_W / 2 - 4),
+                // Flip below the dot for high points so the box never overflows above the chart.
+                top: hoveredDot.y < 78 ? hoveredDot.y + 14 : hoveredDot.y - 14,
+                transform: hoveredDot.y < 78 ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+                width: MARKER_TIP_W,
+                background: "var(--surface)",
+                border: "0.5px solid var(--border)",
+                borderRadius: 10,
+                boxShadow: "0 6px 20px rgba(0,0,0,0.13)",
+                padding: "9px 11px",
+                pointerEvents: "none",
+                zIndex: 3,
+              }}
+            >
+              {hoveredDot.sub && (
+                <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 3 }}>
+                  {hoveredDot.sub}{hoveredDot.kind === "market" ? " · Market" : ""}
+                </div>
+              )}
+              {hoveredDot.title && (
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, color: "var(--text)", lineHeight: 1.25 }}>
+                  {hoveredDot.title}
+                </div>
+              )}
+              {hoveredDot.value && (
+                <div style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--text-dim)", marginTop: 4, fontFeatureSettings: '"tnum" 1' }}>
+                  {hoveredDot.value}
+                </div>
+              )}
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "var(--text-faint)", marginTop: 5 }}>
+                {hoveredDot.id === props.selectedMarkerId ? "Selected" : "Click to select"}
+              </div>
             </div>
           )}
         </div>

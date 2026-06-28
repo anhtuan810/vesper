@@ -88,10 +88,6 @@ function impact(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurren
   const dn = amt < 0;
   return { text: `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(amt), cur, displayCurrency)}`, dn };
 }
-// Absolute impact in the display currency — ranks how "significant" a change is.
-function impactMagnitude(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): number {
-  return Math.abs(toDisplay(Math.abs(impactRaw(m)), m.currency || "USD", displayCurrency) ?? 0);
-}
 
 // Shared with VitalsContent's property lens — toggling on either surface carries
 // to the other across navigation.
@@ -274,30 +270,23 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     () => [...mutations].sort((a, b) => (mDate(b)).localeCompare(mDate(a))),
     [mutations],
   );
-  // Pinning every entry floods the chart, so only the user's SIGNIFICANT decisions
-  // get a marker — the largest moves they actually made, up to a small cap.
-  // Routine contributions and automatic market entries stay in the journal (and
-  // are reachable via prev/next) but don't clutter the line. The selected entry is
-  // always pinned so its position shows when stepping.
-  const NOTABLE_CAP = 8;
-  const notableIds = useMemo(() => {
-    const ids = new Set<string>();
-    const ranked = sortedMutations
-      .filter((m) => hasOwnNote(m))
-      .map((m) => ({ id: m.id, mag: impactMagnitude(m, displayCurrency) }))
-      .sort((a, b) => b.mag - a.mag);
-    for (const x of ranked) { if (ids.size >= NOTABLE_CAP) break; ids.add(x.id); }
-    return ids;
-  }, [sortedMutations, displayCurrency]);
-
-  // Markers the chart pins: significant decisions, tagged so a decision made during
-  // a market event ("market") reads apart from a calm one ("you"); the selected
-  // entry is always included even when it isn't otherwise notable.
+  // Every entry is plotted on the line. Each marker carries the short content the
+  // chart shows on hover (title, date, value moved) and a kind so a market-event
+  // entry ("market") reads apart from a personal decision ("you"). Hovering only
+  // previews; clicking commits the selection (drives the rest of the page).
   const markers = useMemo(
-    () => sortedMutations
-      .filter((m) => notableIds.has(m.id) || m.id === selectedId)
-      .map((m) => ({ id: m.id, date: mDate(m).slice(0, 10), kind: m.market_context ? ("market" as const) : ("you" as const) })),
-    [sortedMutations, notableIds, selectedId],
+    () => sortedMutations.map((m) => {
+      const imp = impact(m, displayCurrency);
+      return {
+        id: m.id,
+        date: mDate(m).slice(0, 10),
+        kind: m.market_context ? ("market" as const) : ("you" as const),
+        title: decisionTitle(m),
+        sub: shortDate(mDate(m)),
+        value: imp?.text,
+      };
+    }),
+    [sortedMutations, displayCurrency],
   );
 
   // Navigation order: Today (null) first, then decisions newest→oldest. ← steps
