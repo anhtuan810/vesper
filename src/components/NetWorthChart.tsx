@@ -132,6 +132,15 @@ function fmtYLabel(value: number, currency: string): string {
   return `${sign}${sym}${new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
 }
 
+const X_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// A sparse x-axis label for a "YYYY-MM-DD" date — day+month on short windows,
+// month+year on long ones, so the time premise has a temporal anchor.
+function formatXLabel(date: string, range: Range): string {
+  const mon = X_MONTHS[Math.max(0, Math.min(11, parseInt(date.slice(5, 7), 10) - 1))];
+  if (range === "1D" || range === "1W" || range === "1M") return `${parseInt(date.slice(8, 10), 10)} ${mon}`;
+  return `${mon} '${date.slice(2, 4)}`;
+}
+
 const CHART_PAD_TOP = 6;
 const CHART_PAD_RIGHT = 8;   // room for end-point halo (r=6) to sit inside the viewBox
 const CHART_PAD_BOTTOM = 8;  // same — prevents clipping when current value is near niceMin
@@ -353,6 +362,22 @@ export function NetWorthChart(props: Props) {
     () => buildPath(values, W, H, niceMin, niceMax, drawW),
     [values, W, H, niceMin, niceMax, drawW],
   );
+
+  // Sparse time axis: ~4 evenly-spaced date labels along the curve, so the line
+  // and its decision dots are anchored in time. First is left-aligned, last
+  // right-aligned, interior centred, so nothing clips at the edges.
+  const xAxisLabels = useMemo(() => {
+    const n = displaySeries.length;
+    if (n < 2 || drawW <= 0) return [] as { key: number; pct: number; text: string; align: string }[];
+    const idx = Array.from(new Set([0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1]))
+      .filter((i) => i >= 0 && i < n);
+    return idx.map((i) => ({
+      key: i,
+      pct: ((i / (n - 1)) * drawW / W) * 100,
+      text: formatXLabel(displaySeries[i].date, range),
+      align: i === 0 ? "translateX(0)" : i === n - 1 ? "translateX(-100%)" : "translateX(-50%)",
+    }));
+  }, [displaySeries, drawW, W, range]);
 
   // Gradient area under the line — lineOnly (Liquid) mode only. Same top
   // boundary (x positions + projected y) as `line`, then down to the plot
@@ -614,6 +639,20 @@ export function NetWorthChart(props: Props) {
                   style={{ pointerEvents: "none" }}
                 />
               )}
+              {/* Selected-entry time-cursor: a faint accent guide from the
+                  committed dot down to the axis, so the rewound point is anchored
+                  in time (not drawn while that dot is actively hovered). */}
+              {markerMode && (() => {
+                const selDot = markerDots.find((d) => d.id === props.selectedMarkerId);
+                if (!selDot || selDot.id === hoveredMarker) return null;
+                return (
+                  <line
+                    x1={selDot.x} y1={selDot.y} x2={selDot.x} y2={H}
+                    stroke="var(--accent)" strokeWidth={1} strokeDasharray="3 3" opacity={0.32}
+                    style={{ pointerEvents: "none" }}
+                  />
+                );
+              })()}
               {markerMode && markerDots.map((dot) => {
                 const sel = dot.id === props.selectedMarkerId;
                 const hov = dot.id === hoveredMarker;
@@ -754,6 +793,30 @@ export function NetWorthChart(props: Props) {
           </div>
         )}
       </div>
+
+      {/* Sparse time axis — aligned under the curve (matches the 40px y-label gutter) */}
+      {showLabels && xAxisLabels.length > 0 && (
+        <div style={{ position: "relative", height: 14, marginTop: 7, marginRight: 40 }}>
+          {xAxisLabels.map((lab) => (
+            <span
+              key={lab.key}
+              style={{
+                position: "absolute",
+                left: `${lab.pct}%`,
+                transform: lab.align,
+                fontFamily: "var(--mono)",
+                fontSize: 11,
+                color: "var(--text-faint)",
+                whiteSpace: "nowrap",
+                lineHeight: 1,
+                pointerEvents: "none",
+              }}
+            >
+              {lab.text}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Range pills */}
       <div

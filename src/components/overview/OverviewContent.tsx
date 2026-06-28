@@ -520,8 +520,8 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
         <div className="date" suppressHydrationWarning>{now ? headDate(now) : ""}</div>
       </div>
 
-      {/* ── Dashboard card ── */}
-      <section className="dash">
+      {/* ── Dashboard card ── (gold left-rule signals a rewound, historical view) */}
+      <section className={`dash${!isToday ? " dash-past" : ""}`}>
         <div className="dash-h">
           <div>
             {/* Lens selector (mirrors the phone's "Net worth · Liquid"): full net
@@ -652,6 +652,9 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
 
         {/* expandable holdings */}
         <div className="holds" id="holdings">
+          {!isToday && (
+            <div className="holds-asof">Holdings as of {shortDate(selectedDate!)}</div>
+          )}
           {groups.map((g) => (
             <HoldingGroup
               key={g.category}
