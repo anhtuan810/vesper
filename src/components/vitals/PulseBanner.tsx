@@ -4,7 +4,7 @@ export interface PulseBannerProps {
   metaLabel?: string;
 }
 
-function toSafeHtml(raw: string): string {
+export function toSafeHtml(raw: string): string {
   const escaped = raw
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PulseBanner } from "@/components/vitals/PulseBanner";
+import { PulseBanner, toSafeHtml } from "@/components/vitals/PulseBanner";
 import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
@@ -781,9 +781,10 @@ interface VitalsContentProps {
    *  built-in header is off — used by the desktop Vitals page, which supplies its
    *  own Twilight header but still needs the include/exclude-Property control. */
   renderToggleInline?: boolean;
-  /** Optional node rendered just under the page title, above the Pulse. The mobile
-   *  Vitals page passes the relocated Portfolio summary card here; desktop omits
-   *  it (so it doesn't show). */
+  /** Optional signals node. When present (mobile), it's folded into the Pulse card
+   *  as sibling rows beneath the narrative pulse — the mobile Vitals page passes
+   *  the relocated Portfolio summary card (projection / worth knowing / markets).
+   *  Desktop omits it, so the Pulse renders as its standalone banner. */
   topSlot?: React.ReactNode;
 }
 
@@ -1108,30 +1109,59 @@ export function VitalsContent({
       {/* 1. Page title */}
       {pageTitle}
 
-      {/* Host slot — the relocated Portfolio summary card on mobile (Projection +
-          Worth knowing + Markets); omitted on desktop. */}
-      {topSlot && <div style={{ marginBottom: 16 }}>{topSlot}</div>}
+      {/* 2. Pulse + signals. The Pulse is lens-aware: liquid pulse when Property
+             is off, all-assets pulse otherwise (falls back to all-assets if the
+             liquid pulse wasn't generated). It loads on a separate channel after
+             the body paints, so until the sentence lands we hold the slot with a
+             shimmer (only when the user has assets) to avoid shifting the cards.
 
-      {/* 2. Pulse banner — lens-aware: liquid pulse when Property is off,
-             all-assets pulse otherwise. Falls back to all-assets pulse if
-             pulseLiquid wasn't generated (non-mixed user or Haiku failure).
-             The Pulse loads on a separate channel after the body paints, so
-             until the sentence lands we hold the slot with a shimmer (only when
-             the user actually has assets) to avoid shifting the cards below. */}
+             On mobile these are unified into ONE "Pulse" card: the narrative
+             pulse leads (gold band) and the relocated projection / worth-knowing /
+             markets sit below it as sibling signals — all read as a family of
+             pulses. Desktop (no host slot) keeps the standalone Pulse banner. */}
       {(() => {
-        const pulseSentence = showProperty
-          ? data.pulse
-          : (data.pulseLiquid ?? data.pulse);
-        if (pulseSentence) {
-          return (
-            <PulseBanner
-              dateLabel={`Pulse · ${fmtDate()}`}
-              sentence={pulseSentence}
-              metaLabel={`${activeVitals.length} vitals · 0 shifted`}
-            />
-          );
+        const pulseSentence = showProperty ? data.pulse : (data.pulseLiquid ?? data.pulse);
+        const hasAssets = data.assets.length > 0;
+
+        // Desktop / no host slot: the standalone Pulse banner, unchanged.
+        if (!topSlot) {
+          if (pulseSentence) {
+            return (
+              <PulseBanner
+                dateLabel={`Pulse · ${fmtDate()}`}
+                sentence={pulseSentence}
+                metaLabel={`${activeVitals.length} vitals · 0 shifted`}
+              />
+            );
+          }
+          return hasAssets ? <PulseBannerSkeleton /> : null;
         }
-        return data.assets.length > 0 ? <PulseBannerSkeleton /> : null;
+
+        // Mobile: one card holding the narrative pulse (gold lead) + the relocated
+        // signals (projection / worth knowing / markets) on the surface below.
+        return (
+          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 16 }}>
+            {pulseSentence ? (
+              <div style={{ background: "var(--accent-soft)", padding: "11px 15px 12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                  <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--accent-deep)", opacity: 0.75 }}>
+                    Pulse · {fmtDate()}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--accent-deep)", opacity: 0.55, letterSpacing: "0.06em" }}>
+                    {activeVitals.length} vitals · 0 shifted
+                  </div>
+                </div>
+                <div
+                  style={{ fontFamily: "var(--serif)", fontSize: 13, fontStyle: "italic", lineHeight: 1.42, color: "var(--text)", letterSpacing: "-0.005em" }}
+                  dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
+                />
+              </div>
+            ) : hasAssets ? (
+              <div style={{ background: "var(--accent-soft)", height: 52, opacity: 0.5 }} />
+            ) : null}
+            <div style={{ padding: "3px 15px 5px" }}>{topSlot}</div>
+          </div>
+        );
       })()}
 
       {/* Library (top placement) */}

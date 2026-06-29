@@ -63,6 +63,7 @@ export function PortfolioSummaryCardLoader() {
       snapshots={snapshots}
       marketHighlights={marketHighlights}
       onExplore={onExplore}
+      embedded
     />
   );
 }
