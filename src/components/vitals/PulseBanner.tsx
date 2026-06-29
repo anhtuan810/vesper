@@ -24,7 +24,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
         margin: "0 0 10px",
         background: "var(--accent-soft)",
         padding: "11px 15px 10px",
-        borderRadius: 14,
+        borderRadius: "var(--radius-lg)",
       }}
     >
       <div
@@ -36,11 +36,8 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
         }}
       >
         <div
+          className="eyebrow"
           style={{
-            fontSize: "11px",
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
             color: "var(--accent-deep)",
             opacity: 0.75,
           }}
@@ -49,11 +46,10 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
         </div>
         {metaLabel && (
           <div
+            className="eyebrow"
             style={{
-              fontSize: "11px",
               color: "var(--accent-deep)",
               opacity: 0.55,
-              letterSpacing: "0.06em",
             }}
           >
             {metaLabel}
@@ -63,11 +59,10 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
       <div
         style={{
           fontFamily: "var(--serif)",
-          fontSize: "13px",
+          fontSize: "var(--fs-body)",
           fontStyle: "italic",
-          lineHeight: 1.42,
+          lineHeight: "var(--lh-body)",
           color: "var(--text)",
-          letterSpacing: "-0.005em",
         }}
         dangerouslySetInnerHTML={{ __html: toSafeHtml(sentence) }}
       />

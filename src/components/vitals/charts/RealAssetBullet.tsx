@@ -50,10 +50,10 @@ export function RealAssetBullet({ data }: Props) {
         ))}
 
         {/* Percentile labels */}
-        <text x={60}  y={43} textAnchor="middle" fontSize={8} fill="var(--text-faint)" fontFamily="system-ui">25th</text>
-        <text x={140} y={43} textAnchor="middle" fontSize={8} fill="var(--text-faint)" fontFamily="system-ui" fontWeight={500}>median</text>
-        <text x={220} y={43} textAnchor="middle" fontSize={8} fill="var(--text-faint)" fontFamily="system-ui">75th</text>
-        <text x={280} y={43} textAnchor="middle" fontSize={8} fill="var(--text-faint)" fontFamily="system-ui">90th</text>
+        <text x={60}  y={43} textAnchor="middle" fontSize={11} fill="var(--text-faint)">25th</text>
+        <text x={140} y={43} textAnchor="middle" fontSize={11} fill="var(--text-faint)" fontWeight={500}>median</text>
+        <text x={220} y={43} textAnchor="middle" fontSize={11} fill="var(--text-faint)">75th</text>
+        <text x={280} y={43} textAnchor="middle" fontSize={11} fill="var(--text-faint)">90th</text>
 
         {/* Your position bar */}
         <rect x={0} y={19} width={barW} height={8} fill="var(--accent)" />
@@ -64,10 +64,9 @@ export function RealAssetBullet({ data }: Props) {
           x={EU_MEDIAN_X}
           y={6}
           textAnchor="middle"
-          fontSize={8}
+          fontSize={11}
           fill="var(--hero)"
           fontWeight={600}
-          fontFamily="system-ui"
           style={{ fontFeatureSettings: "'tnum'" }}
         >
           EU median 63%

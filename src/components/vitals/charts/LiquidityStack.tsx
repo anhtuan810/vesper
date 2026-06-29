@@ -79,9 +79,8 @@ export function LiquidityStack({ data }: Props) {
           x={bufferX}
           y={42}
           textAnchor="middle"
-          fontSize={8.5}
+          fontSize={11}
           fill="var(--text-dim)"
-          fontFamily="system-ui"
           fontWeight={500}
         >
           {data.liquidBufferPct}% buffer
@@ -98,13 +97,13 @@ export function LiquidityStack({ data }: Props) {
         {legendData.map((item, i) => (
           <span
             key={i}
+            className="tnum"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: 11,
+              fontSize: 'var(--fs-caption)',
               color: 'var(--text-faint)',
-              fontFamily: 'var(--mono)',
             }}
           >
             <span

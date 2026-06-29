@@ -59,15 +59,14 @@ export function CashWaterfall({ data }: Props) {
         x={savingsX + rectW / 2}
         y={savingsTop - 5}
         textAnchor="middle"
-        fontSize={10.5}
-        fill="var(--accent)"
+        fontSize={12}
+        fill="var(--positive-text)"
         fontWeight={600}
-        fontFamily="system-ui"
         style={{ fontFeatureSettings: "'tnum'" }}
       >
         {fmtPct(savingsRatePct)}
       </text>
-      <text x={savingsX + rectW / 2} y={62} textAnchor="middle" fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">
+      <text x={savingsX + rectW / 2} y={62} textAnchor="middle" fontSize={11} fill="var(--text-faint)">
         savings
       </text>
 
@@ -88,15 +87,14 @@ export function CashWaterfall({ data }: Props) {
         x={inflationX + rectW / 2}
         y={inflationTop - 5}
         textAnchor="middle"
-        fontSize={10.5}
-        fill="var(--negative)"
+        fontSize={12}
+        fill="var(--negative-text)"
         fontWeight={600}
-        fontFamily="system-ui"
         style={{ fontFeatureSettings: "'tnum'" }}
       >
         {fmtPct(-inflationDragPct)}
       </text>
-      <text x={inflationX + rectW / 2} y={Math.min(92, inflationBottom + 14)} textAnchor="middle" fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">
+      <text x={inflationX + rectW / 2} y={Math.min(92, inflationBottom + 14)} textAnchor="middle" fontSize={11} fill="var(--text-faint)">
         inflation
       </text>
 
@@ -117,15 +115,14 @@ export function CashWaterfall({ data }: Props) {
         x={taxX + rectW / 2}
         y={taxTop - 5}
         textAnchor="middle"
-        fontSize={10.5}
-        fill="var(--negative)"
+        fontSize={12}
+        fill="var(--negative-text)"
         fontWeight={600}
-        fontFamily="system-ui"
         style={{ fontFeatureSettings: "'tnum'" }}
       >
         {fmtPct(-box3TaxPct)}
       </text>
-      <text x={taxX + rectW / 2} y={Math.min(92, taxBottom + 14)} textAnchor="middle" fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">
+      <text x={taxX + rectW / 2} y={Math.min(92, taxBottom + 14)} textAnchor="middle" fontSize={11} fill="var(--text-faint)">
         box 3 tax
       </text>
 
@@ -148,7 +145,7 @@ export function CashWaterfall({ data }: Props) {
             width={resultBoxW}
             height={resultH}
             fill="none"
-            stroke="var(--negative)"
+            stroke="var(--negative-text)"
             strokeWidth={1.5}
             strokeDasharray="3 2"
           />
@@ -156,10 +153,9 @@ export function CashWaterfall({ data }: Props) {
             x={resultX + resultBoxW / 2}
             y={resultMidY}
             textAnchor="middle"
-            fontSize={14}
-            fill="var(--negative)"
+            fontSize={13}
+            fill="var(--negative-text)"
             fontWeight={700}
-            fontFamily="system-ui"
             style={{ fontFeatureSettings: "'tnum'" }}
           >
             {fmtPct(realYieldPct)}
@@ -170,9 +166,8 @@ export function CashWaterfall({ data }: Props) {
         x={resultX + resultBoxW / 2}
         y={92}
         textAnchor="middle"
-        fontSize={9}
+        fontSize={11}
         fill="var(--text-faint)"
-        fontFamily="system-ui"
         fontWeight={500}
       >
         real yield

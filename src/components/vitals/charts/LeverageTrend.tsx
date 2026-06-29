@@ -80,12 +80,12 @@ export function LeverageTrend({ data }: Props) {
         <rect x={0} y={26} width={320} height={50} fill="rgba(46,139,94,0.06)" />
 
         {/* Zone labels */}
-        <text x={315} y={9}  textAnchor="end" fontSize={8} fill="var(--text-faint)" fontFamily="system-ui">75%</text>
-        <text x={315} y={23} textAnchor="end" fontSize={8} fill="var(--text-faint)" fontFamily="system-ui">50%</text>
+        <text x={315} y={9}  textAnchor="end" fontSize={11} fill="var(--text-faint)">75%</text>
+        <text x={315} y={23} textAnchor="end" fontSize={11} fill="var(--text-faint)">50%</text>
 
         {/* NL avg dashed line */}
         <line x1={0} y1={nlAvgY} x2={320} y2={nlAvgY} stroke="var(--text-dim)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.5} />
-        <text x={5} y={nlAvgY - 2} fontSize={8} fill="var(--text-dim)" fontFamily="system-ui" style={{ fontFeatureSettings: "'tnum'" }}>
+        <text x={5} y={nlAvgY - 2} fontSize={11} fill="var(--text-dim)" style={{ fontFeatureSettings: "'tnum'" }}>
           NL avg {NL_AVG_LTV_PCT}%
         </text>
 
@@ -119,9 +119,9 @@ export function LeverageTrend({ data }: Props) {
           fontFeatureSettings: "'tnum'",
         }}
       >
-        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: "var(--mono)" }}>{pastLabel}</span>
-        <span style={{ fontSize: 11, color: 'var(--accent-deep)', fontWeight: 600, fontFamily: "var(--mono)" }}>{todayLabel}</span>
-        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic', fontFamily: "var(--mono)" }}>{projLabel}</span>
+        <span className="tnum" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-faint)' }}>{pastLabel}</span>
+        <span className="tnum" style={{ fontSize: 'var(--fs-caption)', color: 'var(--accent-deep)', fontWeight: 600 }}>{todayLabel}</span>
+        <span className="tnum" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-faint)', fontStyle: 'italic' }}>{projLabel}</span>
       </div>
     </div>
   );

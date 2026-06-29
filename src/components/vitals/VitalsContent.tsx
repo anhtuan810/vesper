@@ -728,7 +728,7 @@ function CardSkeleton() {
       style={{
         background: "var(--surface-elev)",
         border: "0.5px solid var(--border)",
-        borderRadius: 14,
+        borderRadius: "var(--radius-lg)",
         height: 180,
         marginBottom: 10,
         opacity: 0.45,
@@ -742,7 +742,7 @@ function SkeletonStripLine() {
     <div
       style={{
         background: "var(--surface-elev)",
-        borderRadius: 6,
+        borderRadius: "var(--radius-md)",
         height: 12,
         marginBottom: 8,
         opacity: 0.4,
@@ -760,7 +760,7 @@ function PulseBannerSkeleton() {
       style={{
         margin: "0 0 10px",
         background: "var(--surface-elev)",
-        borderRadius: 14,
+        borderRadius: "var(--radius-lg)",
         height: 36,
         opacity: 0.4,
       }}
@@ -872,11 +872,11 @@ export function VitalsContent({
       style={{
         height: 26,
         padding: "0 12px",
-        borderRadius: 999,
+        borderRadius: "var(--radius-pill)",
         border: `0.5px solid ${showProperty ? "var(--accent-soft)" : "var(--border)"}`,
         background: showProperty ? "var(--accent-soft)" : "transparent",
         color: showProperty ? "var(--accent-deep)" : "var(--text-faint)",
-        fontSize: 13,
+        fontSize: "var(--fs-meta)",
         fontWeight: 500,
         cursor: "pointer",
         transition: "background 0.15s, border-color 0.15s, color 0.15s",
@@ -892,7 +892,7 @@ export function VitalsContent({
   ) : null;
 
   const pageTitle = showHeader ? (
-    <div style={{ marginBottom: 20, paddingTop: 32 }}>
+    <div style={{ marginBottom: 20, paddingTop: "var(--space-8)" }}>
       <div
         style={{
           display: "flex",
@@ -903,11 +903,11 @@ export function VitalsContent({
         <div
           style={{
             fontFamily: "var(--serif)",
-            fontSize: 34,
+            fontSize: "var(--fs-title)",
             fontWeight: 500,
-            letterSpacing: "-0.026em",
+            letterSpacing: "var(--tracking-title)",
             color: "var(--hero)",
-            lineHeight: 1,
+            lineHeight: "var(--lh-tight)",
           }}
         >
           Vitals
@@ -933,7 +933,7 @@ export function VitalsContent({
           <div
             style={{
               background: "var(--surface-elev)",
-              borderRadius: 6,
+              borderRadius: "var(--radius-md)",
               height: 36,
               opacity: 0.4,
               marginBottom: 14,
@@ -956,9 +956,9 @@ export function VitalsContent({
           style={{
             fontFamily: "var(--serif)",
             fontStyle: "italic",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             color: "var(--text-dim)",
-            lineHeight: 1.5,
+            lineHeight: "var(--lh-body)",
           }}
         >
           Couldn&apos;t load your Vitals. Pull down to retry.
@@ -983,9 +983,9 @@ export function VitalsContent({
           style={{
             fontFamily: "var(--serif)",
             fontStyle: "italic",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             color: "var(--text-dim)",
-            lineHeight: 1.5,
+            lineHeight: "var(--lh-body)",
             marginBottom: 20,
           }}
         >
@@ -998,9 +998,9 @@ export function VitalsContent({
             alignItems: "center",
             padding: "10px 18px",
             background: "var(--accent)",
-            color: "#fff",
-            borderRadius: 10,
-            fontSize: 13,
+            color: "var(--bg)",
+            borderRadius: "var(--radius-md)",
+            fontSize: "var(--fs-meta)",
             fontWeight: 600,
             border: "none",
             cursor: "pointer",
@@ -1144,15 +1144,15 @@ export function VitalsContent({
             {pulseSentence ? (
               <div style={{ background: "var(--accent-soft)", padding: "11px 15px 12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-                  <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--accent-deep)", opacity: 0.75 }}>
+                  <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.75 }}>
                     Pulse · {fmtDate()}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--accent-deep)", opacity: 0.55, letterSpacing: "0.06em" }}>
+                  <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.55 }}>
                     {activeVitals.length} vitals · 0 shifted
                   </div>
                 </div>
                 <div
-                  style={{ fontFamily: "var(--serif)", fontSize: 13, fontStyle: "italic", lineHeight: 1.42, color: "var(--text)", letterSpacing: "-0.005em" }}
+                  style={{ fontFamily: "var(--serif)", fontSize: "var(--fs-body)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
                   dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
                 />
               </div>
@@ -1171,25 +1171,16 @@ export function VitalsContent({
              for headerless desktop hosts (mobile keeps the plain eyebrow). */}
       {inlineToggleNode ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-          <span
-            style={{
-              fontSize: "11px", fontWeight: 500, fontFamily: "var(--mono)",
-              letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)",
-            }}
-          >
+          <span className="eyebrow">
             Active vitals &middot; {activeVitals.length}
           </span>
           {inlineToggleNode}
         </div>
       ) : (
         <div
+          className="eyebrow"
           style={{
-            fontSize: "11px",
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-            marginBottom: 12,
+            marginBottom: "var(--space-4)",
           }}
         >
           Active vitals &middot; {activeVitals.length}

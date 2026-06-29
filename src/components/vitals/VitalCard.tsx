@@ -23,7 +23,7 @@ export interface VitalCardProps {
 // card's bands, sub-line and suggestion strip — not by recoloring the number.)
 const HERO_COLOR: Record<HeroClass, string> = {
   default:  "var(--hero)",
-  negative: "var(--negative)",
+  negative: "var(--negative-text)",
   positive: "var(--hero)",
 };
 
@@ -43,8 +43,8 @@ export function VitalCard({
       style={{
         background: "var(--surface)",
         border: "0.5px solid var(--border)",
-        borderRadius: 14,
-        padding: "14px 15px 12px",
+        borderRadius: "var(--radius-lg)",
+        padding: "var(--space-card)",
         marginBottom: 10,
         ...(fillHeight ? { display: "flex", flexDirection: "column", height: "100%" } : {}),
       }}
@@ -61,15 +61,7 @@ export function VitalCard({
       >
         {/* Left: eyebrow → hero+subline */}
         <div>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-              textTransform: "uppercase",
-              color: "var(--text-faint)",
-            }}
-          >
+          <div className="eyebrow">
             {eyebrow}
           </div>
           <div
@@ -81,23 +73,23 @@ export function VitalCard({
             }}
           >
             <div
+              className="tnum"
               style={{
                 fontFamily: "var(--serif)",
-                fontSize: "30px",
+                fontSize: "var(--fs-metric)",
                 fontWeight: 600,
-                letterSpacing: "-0.022em",
+                letterSpacing: "var(--tracking-hero)",
                 color: HERO_COLOR[heroNumberClass],
-                lineHeight: 1,
-                fontFeatureSettings: "'tnum'",
+                lineHeight: "var(--lh-tight)",
               }}
             >
               {heroNumber}
             </div>
             <div
+              className="tnum"
               style={{
-                fontSize: "11px",
+                fontSize: "var(--fs-caption)",
                 color: "var(--text-dim)",
-                fontFeatureSettings: "'tnum'",
               }}
             >
               {subLine}
@@ -117,23 +109,17 @@ export function VitalCard({
             }}
           >
             <span
-              style={{
-                fontSize: "11px",
-                color: "var(--text-faint)",
-                fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-                textTransform: "uppercase",
-                lineHeight: 1,
-              }}
+              className="eyebrow"
+              style={{ lineHeight: 1 }}
             >
               {rightStat.label}
             </span>
             <span
+              className="tnum"
               style={{
-                fontSize: "15px",
+                fontSize: "var(--fs-meta)",
                 fontWeight: 500,
-                fontFamily: "var(--mono)",
                 color: "var(--text)",
-                fontFeatureSettings: "'tnum'",
                 lineHeight: 1,
               }}
             >
@@ -150,7 +136,7 @@ export function VitalCard({
       {benchLine && (
         <div
           style={{
-            fontSize: "11px",
+            fontSize: "var(--fs-caption)",
             color: "var(--text-dim)",
             display: "flex",
             alignItems: "center",

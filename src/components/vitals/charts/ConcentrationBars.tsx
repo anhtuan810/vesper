@@ -92,7 +92,7 @@ export function ConcentrationBars({ positions }: Props) {
           top: 0,
           left: threshLeft,
           transform: "translateX(-50%)",
-          fontSize: 11,
+          fontSize: "var(--fs-caption)",
           fontWeight: 500,
           color: "var(--text-faint)",
           whiteSpace: "nowrap",
@@ -148,7 +148,7 @@ export function ConcentrationBars({ positions }: Props) {
               {isExpanded && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
                   <AssetLogo type={pos.type} symbol={pos.symbol ?? null} name={pos.name} size={18} />
-                  <div style={{ flex: 1, minWidth: 0, fontSize: 11, lineHeight: 1.3, color: "var(--text)", overflowWrap: "break-word" }}>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-caption)", lineHeight: "var(--lh-snug)", color: "var(--text)", overflowWrap: "break-word" }}>
                     {pos.name}
                   </div>
                 </div>
@@ -174,8 +174,8 @@ export function ConcentrationBars({ positions }: Props) {
                         style={{
                           flex: 1,
                           minWidth: 0,
-                          fontSize: 11,
-                          lineHeight: 1.3,
+                          fontSize: "var(--fs-caption)",
+                          lineHeight: "var(--lh-snug)",
                           color: "var(--text-dim)",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
@@ -207,14 +207,13 @@ export function ConcentrationBars({ positions }: Props) {
                     />
                   </div>
                   <span
+                    className="tnum"
                     style={{
                       width: VALUE_W,
                       flexShrink: 0,
                       textAlign: "left",
-                      fontSize: 11,
-                      fontFamily: "var(--mono)",
+                      fontSize: "var(--fs-meta)",
                       color: "var(--text-dim)",
-                      fontFeatureSettings: "'tnum'",
                       lineHeight: 1,
                     }}
                   >
@@ -230,13 +229,12 @@ export function ConcentrationBars({ positions }: Props) {
       {/* Overflow summary — not a bar, keeps the staircase silhouette clean */}
       {restCount > 0 && (
         <div
+          className="tnum"
           style={{
             marginTop: ROW_GAP + 1,
             paddingLeft: LABEL_W,
-            fontSize: 11,
+            fontSize: "var(--fs-caption)",
             color: "var(--text-faint)",
-            fontFamily: "var(--mono)",
-            fontFeatureSettings: "'tnum'",
             lineHeight: 1,
           }}
         >

@@ -31,7 +31,7 @@ export function DrawdownBars({ data }: Props) {
 
   const labelStyle = (combined: boolean): React.CSSProperties => ({
     flex: '0 0 108px',
-    fontSize: 11,
+    fontSize: 'var(--fs-caption)',
     color: combined ? 'var(--text)' : 'var(--text-dim)',
     fontWeight: combined ? 600 : 400,
   });
@@ -48,8 +48,9 @@ export function DrawdownBars({ data }: Props) {
   const valueStyle = (combined: boolean): React.CSSProperties => ({
     flex: '0 0 50px',
     textAlign: 'right',
-    fontSize: combined ? 12 : 11,
-    color: 'var(--negative)',
+    fontSize: combined ? 'var(--fs-meta)' : 'var(--fs-caption)',
+    color: 'var(--negative-text)',
+    fontFamily: 'var(--mono)',
     fontFeatureSettings: "'tnum'",
     fontWeight: combined ? 600 : 500,
   });

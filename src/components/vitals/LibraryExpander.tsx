@@ -113,7 +113,7 @@ export function LibraryExpander({
       style={{
         background: "rgba(248,244,236,0.55)",
         border: "0.5px solid var(--border)",
-        borderRadius: 11,
+        borderRadius: "var(--radius-md)",
         padding: "13px 14px",
         marginBottom: 18,
         cursor: "pointer",
@@ -132,16 +132,16 @@ export function LibraryExpander({
           <div
             style={{ display: "flex", alignItems: "baseline", gap: 8 }}
           >
-            <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>
+            <span style={{ fontSize: "var(--fs-body)", color: "var(--text)", fontWeight: 500, lineHeight: 1.2 }}>
               Library
             </span>
-            <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
+            <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>
               {totalCount} vitals · {dormantVitals.length} dormant
             </span>
           </div>
           <div
             style={{
-              fontSize: 11,
+              fontSize: "var(--fs-caption)",
               color: "var(--text-faint)",
               marginTop: 3,
             }}
@@ -195,7 +195,7 @@ export function LibraryExpander({
                 style={{
                   width: 28,
                   height: 28,
-                  borderRadius: 7,
+                  borderRadius: "var(--radius-md)",
                   background: "var(--surface-elev)",
                   display: "flex",
                   alignItems: "center",
@@ -215,14 +215,14 @@ export function LibraryExpander({
                     gap: 8,
                   }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                  <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--sans)", fontWeight: 500, lineHeight: 1.2, color: "var(--text)" }}>
                     {vital.label}
                   </span>
                   <span
+                    className="tnum"
                     style={{
-                      fontSize: 12,
+                      fontSize: "var(--fs-caption)",
                       color: "var(--text-faint)",
-                      fontFeatureSettings: "'tnum'",
                       flexShrink: 0,
                     }}
                   >
@@ -231,9 +231,9 @@ export function LibraryExpander({
                 </div>
                 <div
                   style={{
-                    fontSize: 12,
+                    fontSize: "var(--fs-caption)",
                     color: "var(--text-dim)",
-                    lineHeight: 1.4,
+                    lineHeight: "var(--lh-snug)",
                     marginTop: 2,
                   }}
                 >

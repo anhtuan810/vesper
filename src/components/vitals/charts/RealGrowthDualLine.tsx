@@ -32,8 +32,8 @@ export function RealGrowthDualLine({ data }: Props) {
         <line x1={0} y1={40} x2={W} y2={40} stroke="#7A8C6A" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" />
         <circle cx={W} cy={40} r={3.8} fill="var(--accent)" stroke="var(--surface)" strokeWidth={1.5} />
         <circle cx={W} cy={40} r={3.2} fill="#7A8C6A" stroke="var(--surface)" strokeWidth={1.5} />
-        <text x={0} y={82} fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">—</text>
-        <text x={W} y={82} textAnchor="end" fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">today</text>
+        <text x={0} y={82} fontSize={11} fill="var(--text-faint)">—</text>
+        <text x={W} y={82} textAnchor="end" fontSize={11} fill="var(--text-faint)">today</text>
       </svg>
     );
   }
@@ -113,21 +113,21 @@ export function RealGrowthDualLine({ data }: Props) {
 
       {/* Pill labels near right edge */}
       <rect x={262} y={9} width={48} height={13} rx={6.5} fill="var(--surface-elev)" />
-      <text x={286} y={18} textAnchor="middle" fontSize={9} fill="var(--accent-deep)" fontWeight={600} fontFamily="system-ui">
+      <text x={286} y={18} textAnchor="middle" fontSize={11} fill="var(--accent-deep)" fontWeight={600}>
         nominal
       </text>
 
       <rect x={262} y={33} width={48} height={13} rx={6.5} fill="var(--surface-elev)" />
-      <text x={286} y={42} textAnchor="middle" fontSize={9} fill="#7C7268" fontWeight={500} fontFamily="system-ui">
+      <text x={286} y={42} textAnchor="middle" fontSize={11} fill="var(--text-dim)" fontWeight={500}>
         real
       </text>
 
       {/* Date labels */}
-      <text x={0}   y={82} fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">{startLabel}</text>
+      <text x={0}   y={82} fontSize={11} fill="var(--text-faint)">{startLabel}</text>
       {midLabel && (
-        <text x={W / 2} y={82} textAnchor="middle" fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">{midLabel}</text>
+        <text x={W / 2} y={82} textAnchor="middle" fontSize={11} fill="var(--text-faint)">{midLabel}</text>
       )}
-      <text x={W}   y={82} textAnchor="end" fontSize={9} fill="var(--text-faint)" fontFamily="system-ui">today</text>
+      <text x={W}   y={82} textAnchor="end" fontSize={11} fill="var(--text-faint)">today</text>
     </svg>
   );
 }

@@ -56,8 +56,8 @@ export function SuggestionStrip({
   label,
   body,
   icon,
-  labelFontSize = "11px",
-  bodyFontSize = "13px",
+  labelFontSize = "var(--fs-micro)",
+  bodyFontSize = "var(--fs-caption)",
 }: SuggestionStripProps) {
   const { bg, color } = VARIANT_STYLES[variant];
   const defaultIcon =
@@ -66,7 +66,7 @@ export function SuggestionStrip({
   return (
     <div
       style={{
-        borderRadius: 9,
+        borderRadius: "var(--radius-md)",
         padding: "9px 11px",
         marginTop: 10,
         display: "flex",
@@ -78,11 +78,9 @@ export function SuggestionStrip({
       {icon ?? defaultIcon}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
+          className="eyebrow"
           style={{
             fontSize: labelFontSize,
-            fontWeight: 600,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
             opacity: 0.82,
             marginBottom: 3,
             lineHeight: 1,
@@ -91,7 +89,7 @@ export function SuggestionStrip({
         >
           {label}
         </div>
-        <div style={{ fontSize: bodyFontSize, lineHeight: 1.42, color: "var(--text)" }}>
+        <div style={{ fontSize: bodyFontSize, lineHeight: "var(--lh-body)", color: "var(--text)" }}>
           {body}
         </div>
       </div>

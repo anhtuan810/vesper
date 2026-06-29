@@ -54,15 +54,7 @@ export function PerspectiveCard({
         }}
       >
         <div style={{ flex: 1, height: 0.5, background: "var(--border)" }} />
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-          }}
-        >
+        <div className="eyebrow">
           Perspective
         </div>
         <div style={{ flex: 1, height: 0.5, background: "var(--border)" }} />
@@ -73,8 +65,8 @@ export function PerspectiveCard({
         style={{
           background:
             "linear-gradient(180deg, var(--perspective-card-grad-start) 0%, var(--perspective-card-grad-end) 100%)",
-          border: "0.5px solid rgba(151,112,61,0.20)",
-          borderRadius: 14,
+          border: "0.5px solid var(--border-strong)",
+          borderRadius: "var(--radius-lg)",
           padding: "20px 18px 18px",
           marginBottom: 18,
         }}
@@ -82,26 +74,24 @@ export function PerspectiveCard({
         {/* Hero block */}
         <div style={{ marginBottom: 14 }}>
           <div
+            className="eyebrow"
             style={{
-              fontSize: 11,
               color: "var(--accent-deep)",
               opacity: 0.72,
-              fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-              textTransform: "uppercase",
               marginBottom: 5,
             }}
           >
             Your net worth, today
           </div>
           <div
+            className="tnum"
             style={{
               fontFamily: "var(--serif)",
-              fontSize: 40,
+              fontSize: "var(--fs-hero)",
               fontWeight: 600,
-              letterSpacing: "-0.022em",
+              letterSpacing: "var(--tracking-hero)",
               color: "var(--hero)",
-              lineHeight: 1,
-              fontFeatureSettings: "'tnum'",
+              lineHeight: "var(--lh-tight)",
             }}
           >
             {nwFull}
@@ -112,12 +102,11 @@ export function PerspectiveCard({
         <div
           style={{
             fontFamily: "var(--serif)",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             fontStyle: "italic",
-            lineHeight: 1.5,
+            lineHeight: "var(--lh-body)",
             color: "var(--text)",
             marginBottom: 18,
-            letterSpacing: "-0.003em",
           }}
         >
           You sit above <em style={{ fontWeight: 600 }}>{euPct}%</em> of EU
@@ -129,18 +118,16 @@ export function PerspectiveCard({
         <div
           style={{
             background: "var(--perspective-panel)",
-            borderRadius: 10,
+            borderRadius: "var(--radius-md)",
             padding: "16px 10px 12px",
             marginBottom: 16,
           }}
         >
           <div
+            className="eyebrow"
             style={{
-              fontSize: 11,
               color: "var(--accent-deep)",
               opacity: 0.7,
-              fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-              textTransform: "uppercase",
               marginBottom: 10,
               padding: "0 6px",
             }}
@@ -153,10 +140,10 @@ export function PerspectiveCard({
           >
             <defs>
               <linearGradient id="dens3" x1="0" x2="1" y1="0" y2="0">
-                <stop offset="0%" stopColor="#97703D" stopOpacity="0.05" />
-                <stop offset="50%" stopColor="#97703D" stopOpacity="0.10" />
-                <stop offset="80%" stopColor="#97703D" stopOpacity="0.16" />
-                <stop offset="100%" stopColor="#97703D" stopOpacity="0.04" />
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.05" />
+                <stop offset="50%" stopColor="var(--accent)" stopOpacity="0.10" />
+                <stop offset="80%" stopColor="var(--accent)" stopOpacity="0.16" />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.04" />
               </linearGradient>
             </defs>
             {/* Density fill */}
@@ -180,20 +167,20 @@ export function PerspectiveCard({
             <line x1="160" y1="72" x2="160" y2="76" stroke="var(--text-faint)" strokeWidth="0.6" />
             <line x1="232" y1="72" x2="232" y2="76" stroke="var(--text-faint)" strokeWidth="0.6" />
             <line x1="305" y1="72" x2="305" y2="76" stroke="var(--text-faint)" strokeWidth="0.6" />
-            <text x="15" y="88" textAnchor="middle" fontSize="9" fill="var(--text-faint)" fontFamily="system-ui">€1k</text>
-            <text x="88" y="88" textAnchor="middle" fontSize="9" fill="var(--text-faint)" fontFamily="system-ui">€10k</text>
-            <text x="160" y="88" textAnchor="middle" fontSize="9" fill="var(--text-faint)" fontFamily="system-ui">€100k</text>
-            <text x="232" y="88" textAnchor="middle" fontSize="9" fill="var(--text-faint)" fontFamily="system-ui">€1M</text>
-            <text x="305" y="88" textAnchor="middle" fontSize="9" fill="var(--text-faint)" fontFamily="system-ui">€10M</text>
+            <text x="15" y="88" textAnchor="middle" fontSize="11" fill="var(--text-faint)">€1k</text>
+            <text x="88" y="88" textAnchor="middle" fontSize="11" fill="var(--text-faint)">€10k</text>
+            <text x="160" y="88" textAnchor="middle" fontSize="11" fill="var(--text-faint)">€100k</text>
+            <text x="232" y="88" textAnchor="middle" fontSize="11" fill="var(--text-faint)">€1M</text>
+            <text x="305" y="88" textAnchor="middle" fontSize="11" fill="var(--text-faint)">€10M</text>
             {/* Cohort markers */}
             <line x1="88" y1="60" x2="88" y2="72" stroke="var(--text-dim)" strokeWidth="0.7" strokeDasharray="2 2" opacity="0.5" />
-            <text x="88" y="56" textAnchor="middle" fontSize="8.5" fill="var(--text-dim)" fontFamily="system-ui">World median</text>
+            <text x="88" y="56" textAnchor="middle" fontSize="11" fill="var(--text-dim)">World median</text>
             <line x1="155" y1="48" x2="155" y2="72" stroke="var(--text-dim)" strokeWidth="0.7" strokeDasharray="2 2" opacity="0.5" />
-            <text x="148" y="44" textAnchor="middle" fontSize="8.5" fill="var(--text-dim)" fontFamily="system-ui">EU med</text>
+            <text x="148" y="44" textAnchor="middle" fontSize="11" fill="var(--text-dim)">EU med</text>
             <line x1="180" y1="28" x2="180" y2="72" stroke="var(--text-dim)" strokeWidth="0.7" strokeDasharray="2 2" opacity="0.5" />
-            <text x="184" y="24" textAnchor="middle" fontSize="8.5" fill="var(--text-dim)" fontFamily="system-ui">NL med</text>
+            <text x="184" y="24" textAnchor="middle" fontSize="11" fill="var(--text-dim)">NL med</text>
             <line x1="232" y1="12" x2="232" y2="72" stroke="var(--text-dim)" strokeWidth="0.7" strokeDasharray="2 2" opacity="0.5" />
-            <text x="232" y="8" textAnchor="middle" fontSize="8.5" fill="var(--text-dim)" fontFamily="system-ui">World top 1%</text>
+            <text x="232" y="8" textAnchor="middle" fontSize="11" fill="var(--text-dim)">World top 1%</text>
             {/* "You" marker — dynamic */}
             <line
               x1={markerX}
@@ -219,10 +206,9 @@ export function PerspectiveCard({
               x={markerX}
               y="108"
               textAnchor="middle"
-              fontSize="9.5"
+              fontSize="11"
               fill="var(--accent-deep)"
               fontWeight="600"
-              fontFamily="system-ui"
             >
               you · {nwShort}
             </text>
@@ -238,22 +224,22 @@ export function PerspectiveCard({
                 display: "flex",
                 alignItems: "center",
                 padding: "11px 0",
-                borderTop: "0.5px solid rgba(151,112,61,0.16)",
+                borderTop: "0.5px solid var(--border-strong)",
               }}
             >
               {/* Left block */}
               <div style={{ flex: "0 0 72px" }}>
                 <div
                   style={{
-                    fontSize: 12,
-                    fontWeight: 600,
+                    fontSize: "var(--fs-body)",
+                    fontWeight: 500,
+                    lineHeight: 1.2,
                     color: "var(--text)",
-                    letterSpacing: "0.03em",
                   }}
                 >
                   {row.label}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)" }}>
                   {row.sublabel}
                 </div>
               </div>
@@ -263,7 +249,7 @@ export function PerspectiveCard({
                   style={{
                     height: 3,
                     background: "rgba(151,112,61,0.18)",
-                    borderRadius: 999,
+                    borderRadius: "var(--radius-pill)",
                     position: "relative",
                   }}
                 >
@@ -275,7 +261,7 @@ export function PerspectiveCard({
                       height: "100%",
                       width: `${row.percentile}%`,
                       background: "var(--accent)",
-                      borderRadius: 999,
+                      borderRadius: "var(--radius-pill)",
                     }}
                   />
                   <div
@@ -295,7 +281,7 @@ export function PerspectiveCard({
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: "var(--fs-caption)",
                     color: "var(--text-faint)",
                     marginTop: 6,
                   }}
@@ -306,23 +292,22 @@ export function PerspectiveCard({
               {/* Percentile number */}
               <div style={{ flex: "0 0 54px", textAlign: "right" }}>
                 <div
+                  className="tnum"
                   style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 19,
+                    fontSize: "var(--fs-title)",
                     fontWeight: 600,
                     color: "var(--hero)",
                     lineHeight: 1,
-                    fontFeatureSettings: "'tnum'",
                   }}
                 >
                   {Math.round(row.percentile)}
-                  <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                  <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)" }}>
                     {ordinalSuffix(Math.round(row.percentile))}
                   </span>
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: "var(--fs-caption)",
                     color: "var(--text-faint)",
                     letterSpacing: "0.04em",
                     marginTop: 2,
@@ -349,7 +334,7 @@ export function PerspectiveCard({
                 gap: 7,
                 padding: "7px 11px",
                 background: "var(--perspective-chip-bg)",
-                borderRadius: 999,
+                borderRadius: "var(--radius-pill)",
                 marginTop: 14,
               }}
             >
@@ -376,7 +361,7 @@ export function PerspectiveCard({
                 )}
                 {direction === "flat" && <path d="M5 12h14" />}
               </svg>
-              <span style={{ fontSize: 12, color: "var(--text)" }}>
+              <span style={{ fontSize: "var(--fs-caption)", color: "var(--text)" }}>
                 {direction === "flat" ? (
                   <>No change in {data.trajectory.region} this year</>
                 ) : (
@@ -397,13 +382,13 @@ export function PerspectiveCard({
         <div
           style={{
             fontFamily: "var(--serif)",
-            fontSize: 13,
+            fontSize: "var(--fs-body)",
             fontStyle: "italic",
-            lineHeight: 1.5,
+            lineHeight: "var(--lh-body)",
             color: "var(--text-dim)",
             marginTop: 16,
             paddingTop: 14,
-            borderTop: "0.5px solid rgba(151,112,61,0.16)",
+            borderTop: "0.5px solid var(--border-strong)",
           }}
         >
           Most of the world manages without an investment portfolio at all.
