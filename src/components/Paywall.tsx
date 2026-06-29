@@ -271,11 +271,11 @@ export function Paywall() {
           <h1
             style={{
               fontFamily: "var(--font-serif)",
-              fontSize: 28,
+              fontSize: "var(--fs-title)",
               fontWeight: 500,
-              letterSpacing: "-0.02em",
+              letterSpacing: "var(--tracking-title)",
               color: "var(--hero)",
-              lineHeight: 1.1,
+              lineHeight: "var(--lh-tight)",
               textAlign: "center",
               fontVariationSettings: "'opsz' 32",
               margin: 0,
@@ -283,7 +283,7 @@ export function Paywall() {
           >
             Full access to Volnar
           </h1>
-          <p style={{ fontSize: 15, color: "var(--text-dim)", textAlign: "center", lineHeight: 1.5, maxWidth: 320, margin: 0 }}>
+          <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", textAlign: "center", lineHeight: "var(--lh-body)", maxWidth: 320, margin: 0 }}>
             Start with a {TRIAL_DAYS}-day free trial. Cancel anytime before it ends and you won&apos;t be charged.
           </p>
         </div>
@@ -311,14 +311,14 @@ export function Paywall() {
         {error && (
           <div
             style={{
-              fontSize: 13,
+              fontSize: "var(--fs-meta)",
               color: "var(--negative-text)",
               background: "var(--negative-soft)",
               border: "1px solid var(--negative-soft)",
-              borderRadius: 10,
+              borderRadius: "var(--radius-md)",
               padding: "10px 14px",
               marginBottom: 14,
-              lineHeight: 1.5,
+              lineHeight: "var(--lh-body)",
             }}
           >
             {error}
@@ -331,11 +331,11 @@ export function Paywall() {
           style={{
             width: "100%",
             padding: "15px 22px",
-            borderRadius: 14,
+            borderRadius: "var(--radius-lg)",
             border: "none",
             background: "var(--accent)",
-            color: "#fff",
-            fontSize: 15,
+            color: "var(--bg)",
+            fontSize: "var(--fs-body)",
             fontWeight: 600,
             cursor: busy ? "default" : "pointer",
             opacity: busy ? 0.7 : 1,
@@ -357,11 +357,11 @@ export function Paywall() {
             width: "100%",
             marginTop: 10,
             padding: "12px 18px",
-            borderRadius: 12,
+            borderRadius: "var(--radius-md)",
             border: "none",
             background: "none",
             color: "var(--accent-text)",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             fontWeight: 500,
             cursor: busy ? "default" : "pointer",
             fontFamily: "var(--font-sans)",
@@ -390,11 +390,11 @@ export function Paywall() {
               width: "100%",
               marginTop: 10,
               padding: "12px 18px",
-              borderRadius: 12,
+              borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-strong)",
               background: "var(--surface)",
               color: "var(--text)",
-              fontSize: 15,
+              fontSize: "var(--fs-body)",
               fontWeight: 500,
               cursor: busy ? "default" : "pointer",
             }}
@@ -411,11 +411,11 @@ export function Paywall() {
               width: "100%",
               marginTop: 10,
               padding: "12px 18px",
-              borderRadius: 12,
+              borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-strong)",
               background: "var(--surface)",
               color: "var(--text)",
-              fontSize: 15,
+              fontSize: "var(--fs-body)",
               fontWeight: 500,
               cursor: busy ? "default" : "pointer",
             }}
@@ -427,9 +427,9 @@ export function Paywall() {
         {/* Apple-required auto-renew disclosure + legal links, near the buy button */}
         <p
           style={{
-            fontSize: 12,
+            fontSize: "var(--fs-caption)",
             color: "var(--text-faint)",
-            lineHeight: 1.6,
+            lineHeight: "var(--lh-body)",
             textAlign: "center",
             marginTop: 16,
           }}
@@ -462,7 +462,7 @@ export function Paywall() {
         {showBuildSha && (
           <p
             style={{
-              fontSize: 11,
+              fontSize: "var(--fs-micro)",
               color: "var(--text-faint)",
               textAlign: "center",
               marginTop: 8,
@@ -478,7 +478,7 @@ export function Paywall() {
           <button
             onClick={signOut}
             style={{
-              fontSize: 13,
+              fontSize: "var(--fs-meta)",
               color: "var(--text-faint)",
               background: "none",
               border: "none",
@@ -523,7 +523,7 @@ function PlanOption({
         alignItems: "center",
         gap: 12,
         padding: "16px 18px",
-        borderRadius: 14,
+        borderRadius: "var(--radius-lg)",
         border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`,
         background: selected ? "var(--accent-soft)" : "var(--surface)",
         cursor: "pointer",
@@ -547,8 +547,9 @@ function PlanOption({
           <span
             style={{
               fontFamily: "var(--font-serif)",
-              fontSize: 17,
+              fontSize: "var(--fs-subhead)",
               fontWeight: 500,
+              letterSpacing: "var(--tracking-subhead)",
               color: "var(--text)",
               fontVariationSettings: "'opsz' 18",
             }}
@@ -557,15 +558,12 @@ function PlanOption({
           </span>
           {highlight && (
             <span
+              className="eyebrow"
               style={{
-                fontSize: 11,
-                fontWeight: 600,
-                fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-                textTransform: "uppercase",
                 color: "var(--accent-text)",
                 background: "var(--surface)",
                 border: "1px solid var(--accent)",
-                borderRadius: 999,
+                borderRadius: "var(--radius-pill)",
                 padding: "2px 8px",
               }}
             >
@@ -574,14 +572,14 @@ function PlanOption({
           )}
         </span>
         {note && (
-          <span style={{ display: "block", fontSize: 13, color: "var(--text-dim)", marginTop: 3 }}>
+          <span style={{ display: "block", fontSize: "var(--fs-meta)", color: "var(--text-dim)", marginTop: 3 }}>
             {note}
           </span>
         )}
       </span>
       <span style={{ textAlign: "right", flexShrink: 0 }}>
-        <span style={{ display: "block", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{price}</span>
-        <span style={{ display: "block", fontSize: 12, color: "var(--text-faint)" }}>{period}</span>
+        <span className="tnum" style={{ display: "block", fontSize: "var(--fs-subhead)", fontWeight: 600, color: "var(--text)" }}>{price}</span>
+        <span style={{ display: "block", fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>{period}</span>
       </span>
     </button>
   );

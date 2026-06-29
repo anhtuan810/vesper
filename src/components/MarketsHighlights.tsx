@@ -13,7 +13,7 @@ import { SwipeExpandCarousel } from "@/components/SwipeExpandCarousel";
 // current market highlights it renders nothing, so the section (and its
 // divider) doesn't show.
 
-function ActivityIcon({ size = 13, color }: { size?: number; color: string }) {
+function ActivityIcon({ size = 14, color }: { size?: number; color: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size, flexShrink: 0, marginTop: 2 }}>
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />

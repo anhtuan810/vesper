@@ -85,13 +85,13 @@ export function UndoDeleteToast() {
         bottom: "calc(80px + env(safe-area-inset-bottom))",
         background: "var(--surface)",
         border: "1px solid var(--border-strong)",
-        borderRadius: 10,
+        borderRadius: "var(--radius-md)",
         padding: "10px 14px",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+        boxShadow: "var(--shadow-soft)",
         maxWidth: "calc(100vw - 32px)",
       }}
     >
-      <span className="font-mono text-dim" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
+      <span className="font-mono text-dim" style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>
         {error ? error : `Deleted ${name}`}
       </span>
       <button
@@ -99,12 +99,12 @@ export function UndoDeleteToast() {
         disabled={restoring}
         className="font-mono uppercase text-accent hover:opacity-80 transition-opacity"
         style={{
-          fontSize: 12,
+          fontSize: "var(--fs-caption)",
           padding: "4px 10px",
-          letterSpacing: "0.08em",
+          letterSpacing: "var(--tracking-label)",
           background: "none",
           border: "1px solid var(--border-strong)",
-          borderRadius: 6,
+          borderRadius: "var(--radius-md)",
           cursor: restoring ? "default" : "pointer",
           opacity: restoring ? 0.5 : 1,
         }}

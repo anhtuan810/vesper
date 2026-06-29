@@ -33,7 +33,7 @@ function Monogram({ symbol, name, type, size }: { type: string | null; symbol: s
         background: "var(--surface-elev)",
         color: "var(--text)",
         fontSize,
-        letterSpacing: "0.04em",
+        letterSpacing: "var(--tracking-label)",
       }}
     >
       {mono}
@@ -189,7 +189,7 @@ export function AssetLogo({ type, symbol, name, size = 32, ownedFraction }: Prop
       style={{
         width: size,
         height: size,
-        borderRadius: 10,
+        borderRadius: "var(--radius-md)",
         background: containerBg,
         border: showBorder ? `${borderWidth} solid var(--border)` : "none",
         position: "relative",
