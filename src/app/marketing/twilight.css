@@ -49,7 +49,7 @@
   font-family:var(--mkt-sans),'Inter',system-ui,sans-serif;
   line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
-.tw .disp{font-family:var(--mkt-serif),'Fraunces','Inter',serif}
+.tw .disp{font-family:var(--mkt-serif),'Spectral','Inter',serif}
 .tw a{color:inherit}
 .tw .ic{width:1em;height:1em;stroke:currentColor;stroke-width:1.85;fill:none;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:-0.13em;flex-shrink:0}
 .tw .wrap{max-width:1120px;margin:0 auto;padding:0 28px}
@@ -180,7 +180,7 @@
 .tw .pipe-col{display:flex;flex-direction:column;gap:18px}
 .tw .pipe-card{padding:16px 18px;position:relative;transition:opacity .4s}
 .tw .pipe-card.dim{opacity:.32;filter:grayscale(.65)}
-.tw .pc-h{font-family:var(--mkt-serif),'Fraunces',serif;font-size:13.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;padding-bottom:11px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.tw .pc-h{font-family:var(--mkt-serif),'Spectral',serif;font-size:13.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;padding-bottom:11px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .tw .pc-h .ic{color:var(--green);font-size:16px}
 .tw .pipe-mkt .pc-h .ic{color:var(--auto)}
 .tw .pc-h .auto{margin-left:auto;font-size:9px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--auto);background:var(--autobg);padding:2px 8px;border-radius:6px}
@@ -274,7 +274,7 @@
 .tw .dash-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:10px}
 .tw .dash-l{font-family:var(--mkt-mono),'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .tw .dash-badge{font-family:var(--mkt-mono),'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--green);background:var(--mint);padding:3px 9px;border-radius:7px;white-space:nowrap}
-.tw .dash-nw{font-family:var(--mkt-serif),'Fraunces','Inter',serif;font-size:31px;font-weight:600;letter-spacing:-.02em;color:var(--ink);margin-bottom:17px}
+.tw .dash-nw{font-family:var(--mkt-serif),'Spectral','Inter',serif;font-size:31px;font-weight:600;letter-spacing:-.02em;color:var(--ink);margin-bottom:17px}
 .tw .dash-rows{display:grid;gap:11px}
 .tw .dr{display:grid;grid-template-columns:84px 1fr auto;gap:11px;align-items:center}
 .tw .dr-n{font-size:12.5px;color:var(--muted)}
@@ -298,7 +298,7 @@
 .tw .vital.ok .vital-band{background:var(--sig-ok-bg);color:var(--sig-ok)}
 .tw .vital.warn .vital-band{background:var(--sig-warn-bg);color:var(--sig-warn)}
 .tw .vital.bad .vital-band{background:var(--sig-bad-bg);color:var(--sig-bad)}
-.tw .vital-val{font-family:var(--mkt-serif),'Fraunces','Inter',serif;font-size:23px;font-weight:600;letter-spacing:-.01em;color:var(--ink);margin-bottom:5px}
+.tw .vital-val{font-family:var(--mkt-serif),'Spectral','Inter',serif;font-size:23px;font-weight:600;letter-spacing:-.01em;color:var(--ink);margin-bottom:5px}
 .tw .vital-val span{font-family:var(--mkt-sans),'Inter',sans-serif;font-size:11.5px;font-weight:500;color:var(--muted);letter-spacing:0}
 .tw .vital-read{font-size:11.5px;color:var(--muted);line-height:1.4}
 
@@ -364,7 +364,7 @@
 .tw .led-main{min-width:0}
 .tw .led-l1{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
 .tw .led-date{font-family:var(--mkt-mono),'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);letter-spacing:.04em;flex:0 0 auto;min-width:52px}
-.tw .led-title{font-family:var(--mkt-serif),'Fraunces','Inter',serif;font-weight:600;font-size:15px;color:var(--ink);letter-spacing:-.005em}
+.tw .led-title{font-family:var(--mkt-serif),'Spectral','Inter',serif;font-weight:600;font-size:15px;color:var(--ink);letter-spacing:-.005em}
 .tw .led-tag{font-family:var(--mkt-mono),'IBM Plex Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding:2px 6px;border-radius:5px;flex:0 0 auto}
 .tw .led-tag.user{background:var(--mint);color:var(--green)}
 .tw .led-tag.auto{background:var(--autobg);color:var(--auto)}

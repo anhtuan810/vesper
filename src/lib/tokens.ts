@@ -28,7 +28,7 @@ export const tokens = {
   amberDeep:    "#8A5E22",
   amberSoft:    "rgba(176, 122, 46, 0.13)",
 
-  serif: "Fraunces",
+  serif: "Spectral",
   sans:  "Inter",
   mono:  "IBM Plex Mono",
 } as const;

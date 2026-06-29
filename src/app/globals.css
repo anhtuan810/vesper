@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Typography — the brand trio shared with the marketing landing page, so the
-   app and the page read as one continuous brand. layout.tsx loads Fraunces into
+   app and the page read as one continuous brand. layout.tsx loads Spectral into
    --font-serif (display: big money figures + headings), Inter into --font-sans
    (body + labels) and IBM Plex Mono into --font-mono (numeric/label detail).
    Each role below references its own font variable with a graceful fallback. */

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Spectral, Inter, IBM_Plex_Mono } from "next/font/google";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { OverviewChart } from "@/components/overview/OverviewChart";
 import { OverviewHoldings } from "@/components/overview/OverviewHoldings";
@@ -29,7 +29,7 @@ export const metadata: Metadata = { title: "Overview" };
 // ONLY as CSS variables on this screen's wrapper (--vapp-*) — the rest of the
 // app's typography is untouched. Mirrors the marketing page's scoped approach.
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--vapp-sans", display: "swap" });
-const fraunces = Fraunces({ subsets: ["latin"], axes: ["opsz"], variable: "--vapp-serif", display: "swap" });
+const spectral = Spectral({ subsets: ["latin"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--vapp-serif", display: "swap" });
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--vapp-mono", display: "swap" });
 
 // Nav tabs map to the closest existing app routes; Overview is the current page.
@@ -93,7 +93,7 @@ function LoggedLine({ title, detail }: { title: string; detail: string }) {
 
 export default function OverviewPage() {
   return (
-    <div className={`vapp ${inter.variable} ${fraunces.variable} ${plexMono.variable}`} data-theme="light">
+    <div className={`vapp ${inter.variable} ${spectral.variable} ${plexMono.variable}`} data-theme="light">
       {/* ── Nav (reuses the real VolnarLogo, not the mockup's placeholder) ── */}
       <nav className="nav">
         <div className="nav-in">

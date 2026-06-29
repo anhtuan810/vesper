@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Spectral, Inter, IBM_Plex_Mono } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -19,14 +19,18 @@ import { AppLock } from "@/components/AppLock";
 import { PreloadResources } from "@/components/PreloadResources";
 
 // Brand typography, shared with the marketing landing page so the app and the
-// page read as one continuous brand: Fraunces (serif display — the big money
-// figures and headings via var(--serif)/font-serif), Inter (body via --sans),
-// and IBM Plex Mono (the numeric/label detail via --mono). globals.css maps the
-// roles to these three variables, so every surface adopts them without touching
-// markup. The marketing page declares the same trio under its scoped --mkt-*.
-const fraunces = Fraunces({
+// page read as one continuous brand: Spectral (serif display — the big money
+// figures, headings and italic notes via var(--serif)/font-serif), Inter (body
+// via --sans), and IBM Plex Mono (the numeric/label detail via --mono).
+// globals.css maps the roles to these three variables, so every surface adopts
+// them without touching markup. The marketing page declares the same trio under
+// its scoped --mkt-*. Spectral is a static-weight family (no variable opsz
+// axis), so weights + italic are loaded explicitly; any leftover
+// `font-variation-settings: 'opsz' …` is simply ignored and renders normally.
+const spectral = Spectral({
   subsets: ["latin"],
-  axes: ["opsz"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
   variable: "--font-serif",
   display: "swap",
 });
@@ -120,7 +124,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${spectral.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning={isNativeBuild}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">

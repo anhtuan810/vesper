@@ -1,12 +1,12 @@
 import "./twilight.css";
-import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Spectral, Inter, IBM_Plex_Mono } from "next/font/google";
 import { I18nProvider } from "@/components/marketing/i18n";
 import { MarketingBody } from "@/components/marketing/MarketingBody";
 
 // Webfonts the Twilight design uses, loaded via next/font and exposed only as
 // CSS variables on the marketing wrapper — the app's own typography is untouched.
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--mkt-sans", display: "swap" });
-const fraunces = Fraunces({ subsets: ["latin"], axes: ["opsz"], variable: "--mkt-serif", display: "swap" });
+const spectral = Spectral({ subsets: ["latin"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--mkt-serif", display: "swap" });
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--mkt-mono", display: "swap" });
 
 export default function MarketingPage() {
@@ -14,7 +14,7 @@ export default function MarketingPage() {
     <div
       id="tw-root"
       data-theme="light"
-      className={`tw ${inter.variable} ${fraunces.variable} ${plexMono.variable}`}
+      className={`tw ${inter.variable} ${spectral.variable} ${plexMono.variable}`}
     >
       {/* Icon sprite — referenced via <use href="#i-…"> across the page. */}
       <svg style={{ position: "absolute", width: 0, height: 0 }} aria-hidden="true">
