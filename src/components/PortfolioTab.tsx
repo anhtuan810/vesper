@@ -14,7 +14,7 @@ import {
   buildLiveRates,
 } from "@/components/NetWorthChart";
 import { PortfolioSummaryCard } from "@/components/PortfolioSummaryCard";
-import { MobileDecisionJournal } from "@/components/MobileDecisionJournal";
+import { MobileDecisionJournal, notableDecisions, decisionTitle, mDate, shortDate } from "@/components/MobileDecisionJournal";
 import { PositionRow } from "@/components/PositionRow";
 import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
@@ -101,6 +101,9 @@ export function PortfolioTab({
   const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
   const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
+  // The decision selected on the chart / in the journal (shared between the two,
+  // mirroring the desktop). null → default to the newest in-range decision.
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -120,6 +123,7 @@ export function PortfolioTab({
 
   useEffect(() => {
     setSelectedPoint(null);
+    setSelectedDecisionId(null);
   }, [range]);
 
   // Live per-asset-type breakdown (display currency) for the synthesized
@@ -265,6 +269,21 @@ export function PortfolioTab({
 
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
+  // Decision markers for the chart — the notable decisions (buys/sells/trims),
+  // scoped to the visible range, the same set the journal steps through. Tapping
+  // a dot selects it; stepping the journal moves the dot. Not shown in the Liquid
+  // line view. Mirrors the desktop Overview's journal-dot chart.
+  const journalDecisions = useMemo(() => notableDecisions(mutations), [mutations]);
+  const navDecisions = useMemo(() => {
+    const start = rangeStartDate(range);
+    return start ? journalDecisions.filter((d) => mDate(d).slice(0, 10) >= start) : journalDecisions;
+  }, [journalDecisions, range]);
+  const markers = useMemo(
+    () => navDecisions.map((d) => ({ id: d.id, date: mDate(d).slice(0, 10), kind: "you" as const, title: decisionTitle(d), sub: shortDate(mDate(d)) })),
+    [navDecisions],
+  );
+  const activeMarkerId = selectedDecisionId ?? navDecisions[0]?.id ?? null;
+
   // Group by semantic category, ordered by the fixed CATEGORY_ORDER (Crypto above
   // Reserves); rows within a group still sort by value desc.
   const groups = useMemo(() => {
@@ -352,16 +371,24 @@ export function PortfolioTab({
               trackingSinceDate={trackingSinceDate}
               lineOnly={liquidOnly}
               liquidOnly={liquidOnly}
+              markers={liquidOnly ? undefined : markers}
+              selectedMarkerId={activeMarkerId}
+              onMarkerClick={setSelectedDecisionId}
             />
           </div>
         )}
       </div>
 
       {/* Decision journal — step through past decisions and see each one's
-          reasoning + the "Looking back" Decision Verdict, mirroring the desktop
-          Overview's selected-entry panel (here, right below the graph). */}
-      {mutations.length > 0 && (
-        <MobileDecisionJournal mutations={mutations} displayCurrency={displayCurrency} />
+          reasoning + the "Looking back" Decision Verdict, synced with the chart
+          dots (mirrors the desktop Overview's selected-entry panel). */}
+      {navDecisions.length > 0 && (
+        <MobileDecisionJournal
+          decisions={navDecisions}
+          selectedId={selectedDecisionId}
+          onSelect={setSelectedDecisionId}
+          displayCurrency={displayCurrency}
+        />
       )}
 
       {/* Portfolio summary — three compact rows (Projection, Worth knowing,

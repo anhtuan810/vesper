@@ -156,14 +156,14 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   if (!currencyLoaded || !valuesSettled) {
     return (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <button onClick={() => onSetLiquid(false)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 15, fontWeight: liquidOnly ? 500 : 600, color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
+          <button onClick={() => onSetLiquid(false)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 14, fontWeight: liquidOnly ? 500 : 600, color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
           <span style={{ width: 3, height: 3, borderRadius: 999, background: "var(--text-faint)", opacity: 0.6 }} />
-          <button onClick={() => onSetLiquid(true)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 15, fontWeight: liquidOnly ? 600 : 500, color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
+          <button onClick={() => onSetLiquid(true)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 14, fontWeight: liquidOnly ? 600 : 500, color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
         </div>
         <div
           className="bg-surface-elev rounded-lg animate-pulse"
-          style={{ height: 56, width: "60%", maxWidth: 280 }}
+          style={{ height: 42, width: "60%", maxWidth: 280 }}
         />
       </div>
     );
@@ -180,21 +180,21 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
     <div>
       {/* Eyebrow toggle — "Net worth · Liquid"; active word inks/600, inactive
           faints/500. Drives liquidOnly (number/series/delta already follow it). */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <button onClick={() => onSetLiquid(false)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 15, fontWeight: liquidOnly ? 500 : 600, color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
+        <button onClick={() => onSetLiquid(false)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 14, fontWeight: liquidOnly ? 500 : 600, color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
         <span style={{ width: 3, height: 3, borderRadius: 999, background: "var(--text-faint)", opacity: 0.6 }} />
-        <button onClick={() => onSetLiquid(true)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 15, fontWeight: liquidOnly ? 600 : 500, color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
+        <button onClick={() => onSetLiquid(true)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 14, fontWeight: liquidOnly ? 600 : 500, color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
       </div>
 
       {/* Hero number — serif, monochrome */}
       <div
         className="font-serif leading-none"
         style={{
-          fontSize: 54,
+          fontSize: 42,
           fontWeight: 600,
           letterSpacing: "-0.02em",
           color: "var(--hero)",
-          fontVariationSettings: "'opsz' 60",
+          fontVariationSettings: "'opsz' 48",
         }}
       >
         <span>{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
@@ -202,7 +202,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
 
       {/* Change pill — compact tinted, mirrors the asset-detail delta pill */}
       {formattedAbs != null && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 9 }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 999, fontSize: 13, fontWeight: 500, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)", color: isPositive ? "var(--positive-text)" : "var(--negative-text)" }}>
             <svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
               {isPositive ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" /> : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}

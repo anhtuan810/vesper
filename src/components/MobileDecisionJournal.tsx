@@ -13,15 +13,28 @@ import type { VerdictData } from "@/lib/scenario/decision-verdict";
 // and styled in the mobile Twilight idiom (tokens + inline styles, theme-aware).
 
 // ── pure helpers (mirrors the desktop OverviewContent so behaviour matches) ──
-function mDate(m: Mutation): string {
+export function mDate(m: Mutation): string {
   return m.occurred_at || m.recorded_at;
 }
-function shortDate(iso: string): string {
+export function shortDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
-function decisionTitle(m: Mutation): string {
+
+// Real decisions only, newest first — buys (add), sells (remove) and trims (a
+// reduce edit). Routine top-ups (an edit that only adds units) are dropped so the
+// chart dots and the stepper carry meaningful decisions, not contribution noise.
+export function notableDecisions(mutations: Mutation[]): Mutation[] {
+  return mutations
+    .filter((m) => {
+      if (m.action === "add" || m.action === "remove") return true;
+      return m.action === "edit" && typeof m.before_units === "number" && typeof m.after_units === "number" && m.before_units > m.after_units;
+    })
+    .sort((a, b) => mDate(b).localeCompare(mDate(a)));
+}
+
+export function decisionTitle(m: Mutation): string {
   const name = displayName(m);
   if (!name) return m.action === "add" ? "Added a holding" : m.action === "remove" ? "Removed a holding" : "Adjusted the portfolio";
   if (m.action === "add") return `Added ${name}`;
@@ -141,23 +154,20 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
   );
 }
 
-export function MobileDecisionJournal({ mutations, displayCurrency }: { mutations: Mutation[]; displayCurrency: DisplayCurrency }) {
-  // Real decisions only, newest first — buys (add), sells (remove) and trims
-  // (a reduce edit). Routine top-ups (an edit that only adds units) are noise on
-  // a phone stepper, so they're left out; every card you step to is worth a look.
-  const decisions = useMemo(
-    () => mutations
-      .filter((m) => {
-        if (m.action === "add" || m.action === "remove") return true;
-        return m.action === "edit" && typeof m.before_units === "number" && typeof m.after_units === "number" && m.before_units > m.after_units;
-      })
-      .sort((a, b) => mDate(b).localeCompare(mDate(a))),
-    [mutations],
-  );
-  const [index, setIndex] = useState(0);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setIndex(0); }, [decisions.length]);
-
+export function MobileDecisionJournal({
+  decisions, selectedId, onSelect, displayCurrency,
+}: {
+  decisions: Mutation[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  displayCurrency: DisplayCurrency;
+}) {
+  // Controlled by the shared selection (a tapped chart dot or the stepper). When
+  // nothing is selected, default to the newest decision so the panel is never empty.
+  const index = useMemo(() => {
+    const i = decisions.findIndex((d) => d.id === selectedId);
+    return i >= 0 ? i : 0;
+  }, [decisions, selectedId]);
   const m = decisions[index];
 
   // Verdict — fetched lazily for the selected eligible decision, cached per
@@ -195,7 +205,7 @@ export function MobileDecisionJournal({ mutations, displayCurrency }: { mutation
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 14 }}>
         <button
           type="button" aria-label="Older decision" disabled={!canOlder}
-          onClick={() => setIndex((i) => Math.min(i + 1, decisions.length - 1))}
+          onClick={() => { const n = decisions[Math.min(index + 1, decisions.length - 1)]; if (n) onSelect(n.id); }}
           style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", color: "var(--text-dim)", fontSize: 19, lineHeight: 1, cursor: canOlder ? "pointer" : "default", opacity: canOlder ? 1 : 0.3 }}
         >‹</button>
         <div style={{ fontFamily: "var(--mono)", fontSize: 11.5, letterSpacing: "0.04em", color: "var(--text-dim)", display: "flex", gap: 8, alignItems: "center" }}>
@@ -205,7 +215,7 @@ export function MobileDecisionJournal({ mutations, displayCurrency }: { mutation
         </div>
         <button
           type="button" aria-label="Newer decision" disabled={!canNewer}
-          onClick={() => setIndex((i) => Math.max(i - 1, 0))}
+          onClick={() => { const n = decisions[Math.max(index - 1, 0)]; if (n) onSelect(n.id); }}
           style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", color: "var(--text-dim)", fontSize: 19, lineHeight: 1, cursor: canNewer ? "pointer" : "default", opacity: canNewer ? 1 : 0.3 }}
         >›</button>
       </div>
