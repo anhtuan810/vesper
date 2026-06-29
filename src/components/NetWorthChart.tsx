@@ -7,7 +7,7 @@ import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } f
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
-import { computeYAxisDomain, computeNiceLevels } from "@/lib/networth-axis";
+import { computeNiceLevels } from "@/lib/networth-axis";
 
 export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -307,7 +307,7 @@ export function NetWorthChart(props: Props) {
   }, [selectedIndex]);
 
   const W = chartWidth;
-  const H = 140;
+  const H = 116;
 
   // Convert all series values to display currency so the axis and curve are in
   // the same unit as the hero number above the chart. Each row's native_breakdown
@@ -344,20 +344,22 @@ export function NetWorthChart(props: Props) {
   const markerMode = !!props.markers && props.markers.length > 0 && interactive;
   const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
 
-  // Y domain fits the visible (range-clipped) series — recomputed on every
-  // range switch, so 1W zooms tight to that week's band and All spans the
-  // full history, rather than always stretching from 0 to the all-time max.
-  const { niceMin, niceMax, labels: yLabels } = useMemo(() => {
+  // Y domain fits the visible (range-clipped) series — recomputed on every range
+  // switch. The chart no longer prints a y-axis label column, so the domain no
+  // longer needs "nice" round levels: it just frames the data tightly. Liquid
+  // (lineOnly) zooms to a padded data band like a price chart; the stacked area
+  // still anchors at 0 (bands can't float) but takes only a slim top pad, so the
+  // composition fills the plot instead of sitting under a 0→600K headroom.
+  const { niceMin, niceMax } = useMemo(() => {
     const dataMin = values.length >= 2 ? Math.min(...values) : 0;
     const dataMax = values.length >= 2 ? Math.max(...values) : 1;
-    // Liquid line zooms to its own min..max like a price chart; the stacked-area
-    // domain anchors at 0 (needed so bands aren't clipped), which would flatten
-    // a single line — so override to a padded data band in lineOnly mode.
     if (lineOnly) {
       const pad = Math.max((dataMax - dataMin) * 0.08, 1);
-      return computeNiceLevels(dataMin - pad, dataMax + pad);
+      const nice = computeNiceLevels(dataMin - pad, dataMax + pad);
+      return { niceMin: nice.niceMin, niceMax: nice.niceMax };
     }
-    return computeYAxisDomain(dataMin, dataMax);
+    const pad = Math.max(dataMax * 0.08, 1);
+    return { niceMin: 0, niceMax: dataMax + pad };
   }, [values, lineOnly]);
 
   const drawW = W - CHART_PAD_RIGHT;
@@ -366,28 +368,6 @@ export function NetWorthChart(props: Props) {
     () => buildPath(values, W, H, niceMin, niceMax, drawW),
     [values, W, H, niceMin, niceMax, drawW],
   );
-
-  // Sparse time axis: ~4 evenly-spaced date labels along the curve, so the line
-  // and its decision dots are anchored in time. First is left-aligned, last
-  // right-aligned, interior centred, so nothing clips at the edges.
-  const xAxisLabels = useMemo(() => {
-    const n = displaySeries.length;
-    // Journal (desktop Overview) only — keeps the mobile/intraday chart unchanged,
-    // where a date axis is redundant (1D is all one day) and wasn't there before.
-    if (!markerMode || n < 2 || drawW <= 0) return [] as { key: number; pct: number; text: string; align: string }[];
-    const idx = Array.from(new Set([0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1]))
-      .filter((i) => i >= 0 && i < n);
-    const labels = idx.map((i) => ({
-      key: i,
-      pct: ((i / (n - 1)) * drawW / W) * 100,
-      text: formatXLabel(displaySeries[i].date, range),
-      align: i === 0 ? "translateX(0)" : i === n - 1 ? "translateX(-100%)" : "translateX(-50%)",
-    }));
-    // Drop interior labels that repeat a neighbour's text (two chosen indices
-    // landing in the same month on a dense series); always keep the two edges.
-    return labels.filter((l, k) =>
-      k === 0 || k === labels.length - 1 || (l.text !== labels[k - 1].text && l.text !== labels[labels.length - 1].text));
-  }, [displaySeries, drawW, W, range, markerMode]);
 
   // Gradient area under the line — lineOnly (Liquid) mode only. Same top
   // boundary (x positions + projected y) as `line`, then down to the plot
@@ -553,7 +533,8 @@ export function NetWorthChart(props: Props) {
 
   return (
     <div>
-      {/* Chart area: SVG + Y-axis label column */}
+      {/* Chart area — full-bleed SVG (no y-axis label column; the hero number
+          above is the value reference, and exact values surface on scrub). */}
       <div style={{ display: "flex", alignItems: "stretch", height: H }}>
 
         {/* Chart SVG — interaction target; handlers attached here so getBoundingClientRect covers only the curve area */}
@@ -771,8 +752,8 @@ export function NetWorthChart(props: Props) {
                 position: "absolute",
                 left: Math.min(Math.max(hoveredDot.x, MARKER_TIP_W / 2 + 4), W - MARKER_TIP_W / 2 - 4),
                 // Flip below the dot for high points so the box never overflows above the chart.
-                top: hoveredDot.y < 78 ? hoveredDot.y + 14 : hoveredDot.y - 14,
-                transform: hoveredDot.y < 78 ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+                top: hoveredDot.y < H * 0.55 ? hoveredDot.y + 14 : hoveredDot.y - 14,
+                transform: hoveredDot.y < H * 0.55 ? "translate(-50%, 0)" : "translate(-50%, -100%)",
                 width: MARKER_TIP_W,
                 background: "var(--surface)",
                 border: "0.5px solid var(--border)",
@@ -808,61 +789,33 @@ export function NetWorthChart(props: Props) {
             </div>
           )}
         </div>
-
-        {/* Y-axis price labels — no gridlines, IBKR-style */}
-        {showLabels && (
-          <div style={{ width: 40, position: "relative" }}>
-            {yLabels.map((value) => (
-              <div
-                key={value}
-                style={{
-                  position: "absolute",
-                  top: `${(1 - (value - niceMin) / (niceMax - niceMin)) * 100}%`,
-                  transform: "translateY(-50%)",
-                  right: 0,
-                  fontFamily: "var(--mono)",
-                  fontSize: 11,
-                  color: "var(--text-faint)",
-                  textAlign: "right",
-                  lineHeight: 1,
-                  pointerEvents: "none",
-                }}
-              >
-                {fmtYLabel(value, displayCurrency)}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Sparse time axis — aligned under the curve (matches the 40px y-label gutter) */}
-      {showLabels && xAxisLabels.length > 0 && (
-        <div style={{ position: "relative", height: 14, marginTop: 7, marginRight: 40 }}>
-          {xAxisLabels.map((lab) => (
-            <span
-              key={lab.key}
-              style={{
-                position: "absolute",
-                left: `${lab.pct}%`,
-                transform: lab.align,
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                color: "var(--text-faint)",
-                whiteSpace: "nowrap",
-                lineHeight: 1,
-                pointerEvents: "none",
-              }}
-            >
-              {lab.text}
-            </span>
-          ))}
+      {/* Two-end time frame — just the window start (left) and "Now" (right),
+          statement-style, in place of a full date axis or a y-axis column. */}
+      {showLabels && displaySeries.length >= 2 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            height: 14,
+            marginTop: 7,
+            fontFamily: "var(--mono)",
+            fontSize: 11,
+            color: "var(--text-faint)",
+            lineHeight: 1,
+            pointerEvents: "none",
+          }}
+        >
+          <span>{formatXLabel(displaySeries[0].date, range)}</span>
+          <span>Now</span>
         </div>
       )}
 
       {/* Range pills */}
       <div
         className="flex gap-1 mt-2"
-        style={{ padding: 3, borderRadius: 8, marginRight: 40 }}
+        style={{ padding: 3, borderRadius: 8 }}
       >
         {RANGES.map((r) => {
           const start = rangeStartDate(r);
