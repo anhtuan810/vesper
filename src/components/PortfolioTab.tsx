@@ -275,14 +275,23 @@ export function PortfolioTab({
   // line view. Mirrors the desktop Overview's journal-dot chart.
   const journalDecisions = useMemo(() => notableDecisions(mutations), [mutations]);
   const navDecisions = useMemo(() => {
-    const start = rangeStartDate(range);
+    // Bound by the chart's actual first plotted point (which includes clipToRange's
+    // left anchor), not rangeStartDate — so every stepper entry has a dot on the
+    // line and the journal count matches the dots exactly.
+    const start = series[0]?.date ?? rangeStartDate(range);
     return start ? journalDecisions.filter((d) => mDate(d).slice(0, 10) >= start) : journalDecisions;
-  }, [journalDecisions, range]);
+  }, [journalDecisions, series, range]);
   const markers = useMemo(
     () => navDecisions.map((d) => ({ id: d.id, date: mDate(d).slice(0, 10), kind: "you" as const, title: decisionTitle(d), sub: shortDate(mDate(d)) })),
     [navDecisions],
   );
-  const activeMarkerId = selectedDecisionId ?? navDecisions[0]?.id ?? null;
+  // Fall back to the newest in-range decision whenever the selected id isn't in
+  // the current set (range narrowed, or `mutations` revalidated out from under
+  // it) — keeps the chart highlight and the journal panel agreeing on one entry.
+  const activeMarkerId =
+    selectedDecisionId && navDecisions.some((d) => d.id === selectedDecisionId)
+      ? selectedDecisionId
+      : navDecisions[0]?.id ?? null;
 
   // Group by semantic category, ordered by the fixed CATEGORY_ORDER (Crypto above
   // Reserves); rows within a group still sort by value desc.
@@ -382,7 +391,7 @@ export function PortfolioTab({
       {/* Decision journal — step through past decisions and see each one's
           reasoning + the "Looking back" Decision Verdict, synced with the chart
           dots (mirrors the desktop Overview's selected-entry panel). */}
-      {navDecisions.length > 0 && (
+      {!liquidOnly && navDecisions.length > 0 && (
         <MobileDecisionJournal
           decisions={navDecisions}
           selectedId={selectedDecisionId}
