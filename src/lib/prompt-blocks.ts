@@ -1,58 +1,44 @@
 // Shared prompt fragments reused across buildStaticSystem and buildOnboardingPrompt.
 // Each export is a verbatim string that gets embedded in the larger prompt via template literals.
 
-export const PRICE_KNOWLEDGE_BLOCK = `PRICE KNOWLEDGE — ABSOLUTE RULE:
+export const PRICE_KNOWLEDGE_BLOCK = `LIVE PRICES — FETCH THEM, NEVER GUESS THEM:
 
-You do NOT have access to current market prices for any
-tradeable asset (stocks, ETFs, crypto, gold, bonds). Your
-training data is stale by months or years. Any price you
-"remember" is unreliable and MUST NOT be quoted to the user.
+You CAN give the user a real, current market price — but only by
+asking the system to look it up, never from your own memory. Your
+training data is stale by months or years, so any price you
+"remember" is unreliable and must never be stated as if it were live.
 
-This rule has no exceptions. It overrides any user request to
-"check the price", "look it up", "use the current price",
-"what's it at right now", or any similar phrasing — even if
-the user repeats the request, insists, or expresses frustration.
+When the user asks for the current price, quote, or "what's it at"
+for a specific tradeable (a stock, ETF, crypto, index, or gold),
+emit a single <price> tag naming the asset and write NO prose of
+your own that turn — the system looks up the live figure and writes
+the answer:
 
-Prices you must NEVER produce in prose, anywhere, in any form:
-  - Per-unit prices: "BTC at ~€95,000", "Apple trades around $185"
-  - Derived prices: "€21,756 ÷ X price = Y units"
-  - Approximations: "~€95k", "around $180", "roughly €1,800"
-  - Ranges: "BTC is currently between €90k and €100k"
-  - Calculations that imply a price: "10 shares would be ~$1,850"
+  <price>{"query":"<the name or ticker the user named>"}</price>
 
-When the user asks for a price, respond with this canned line
-(paraphrase only minimally — the message must convey the same
-three points: no live prices in chat, server resolves on save,
-offer value-mode add):
+Examples:
+  User: "What's Infineon trading at?"    -> <price>{"query":"Infineon"}</price>
+  User: "Price of NVDA?"                 -> <price>{"query":"NVDA"}</price>
+  User: "How much is bitcoin right now"  -> <price>{"query":"bitcoin"}</price>
 
-  "I don't have live prices in chat — the server resolves them
-   on save. I can add the position by stated value at market
-   price, and the units will be derived from the live price at
-   the moment of saving."
+Never pair the <price> tag with any other tag (<changes>,
+<propose_change>, <scenario>) in the same turn. If the user asks
+for a price AND to do something else, answer the price with the tag
+this turn and handle the rest on the next.
 
-When the user provides a monetary value and asks for unit
-derivation, use Mode 4 directly. Do not preview the calculation
-in prose. Do not show your work. Do not quote a per-unit price
-even as a check.
+What you must STILL never do: write a specific market price, a
+per-unit figure, or a price-derived calculation from memory — not as
+an approximation, a range, or a "roughly". The live number always
+comes from the <price> tool. (Figures the user themselves stated,
+and values already recorded in their portfolio, you may repeat
+freely — those are not market prices you would be guessing.)
 
-If the user pushes back on a price you previously quoted (e.g.
-"the price is wrong", "check again"), acknowledge once that you
-shouldn't have quoted a price, then offer value-mode. Do NOT
-attempt to "correct" with a different number — any number you
-produce is equally unreliable.
+  BAD (from memory):  "Apple trades around $185, so 10 shares ≈ $1,850"
+  GOOD (look it up):  <price>{"query":"Apple"}</price>
 
-Anti-examples — never write anything like these:
-  BAD: "Bitcoin: €21,756 → ~0.2028 BTC at ~€107,290/BTC"
-  BAD: "Current prices as of today: BTC ~€95,200, ETH ~€1,820"
-  BAD: "Apple trades at around $185, so 10 shares ≈ $1,850"
-  BAD: "Roughly €1,800 per ETH at the moment"
-
-Correct alternatives:
-  GOOD: "Adding €21,756 of Bitcoin at market price."
-  GOOD: "I don't have live prices in chat — the server resolves
-         them on save. Want me to add by stated value?"
-  GOOD: "Server will derive units from the live price at the
-         moment of saving."`;
+Adding a position by a money amount needs no price from you at all:
+say "Adding {amount} of <asset> at market price" and the server
+derives the units from the live price at the moment of saving.`;
 
 export const NO_COST_QUESTIONS_BLOCK = `NO COST-RELATED QUESTIONS — APPLIES TO EVERY ADD/EDIT/REMOVE:
 

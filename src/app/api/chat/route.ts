@@ -8,7 +8,8 @@ import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@
 import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
 import { toUsd, getUsdRates } from "@/lib/fx";
 import { fetchHistoricalPrice } from "@/lib/prices";
-import { priceHoldingsLive } from "@/lib/prices-server";
+import { priceHoldingsLive, fetchPriceWithFallback } from "@/lib/prices-server";
+import { formatPriceLine } from "@/lib/price-line";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { generateMarketSwings } from "@/lib/diary-market-moves";
@@ -468,6 +469,46 @@ async function dispatchScenario(
   return null;
 }
 
+// Live price lookup (read-only). The model emits <price>{"query":"..."} for a
+// "what's X trading at" question and writes no prose of its own; here we resolve
+// the reference to a market symbol, fetch the live quote, and answer with the real
+// figure — so the price is accurate, never remembered. Never mutates. Returns null
+// only on a malformed/empty tag, so the caller falls through to the normal flow.
+async function handlePriceQuery(
+  supabase: ReturnType<typeof createServerSupabase>,
+  userId: string,
+  userMessage: string,
+  priceRaw: string,
+  used: number,
+): Promise<NextResponse | null> {
+  let query = "";
+  try {
+    const parsed = JSON.parse(priceRaw.trim());
+    if (parsed && typeof parsed.query === "string") query = parsed.query.trim();
+  } catch {
+    query = priceRaw.trim(); // tolerate a bare ticker/name with no JSON wrapper
+  }
+  if (!query) return null;
+
+  const reply = (content: string) => scenarioReply(supabase, userId, userMessage, content, used);
+
+  const resolution = await resolveMarketSymbol(query);
+  if (resolution.kind === "ambiguous") {
+    const names = resolution.candidates.map((c) => c.label).join(" or ");
+    return reply(`Did you mean ${names}? Tell me which and I'll pull the price.`);
+  }
+  if (resolution.kind === "none") {
+    return reply(`I couldn't find a listing for "${query}". Which ticker did you mean?`);
+  }
+
+  const quote = await fetchPriceWithFallback(resolution.symbol);
+  if (quote.error || !(quote.price > 0)) {
+    return reply(`I can't reach live market data for ${resolution.label} right now — try again in a moment.`);
+  }
+
+  return reply(formatPriceLine(resolution.label, quote));
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
@@ -693,6 +734,16 @@ export async function POST(req: NextRequest) {
       // Chip-originated intents compute directly; free-typed ones confirm first.
       const mode: ScenarioMode = fromChip ? "compute" : "confirm";
       const res = await dispatchScenario(supabase, userId, userMsg, parsed, (assets ?? []), displayCurrency, used, mode);
+      if (res) return res;
+    }
+
+    // --- Live price lookup (read-only) ---
+    // Claude emitted <price> for a "what's X trading at" question. Resolve the
+    // reference, fetch the live quote, and answer with the real figure. Never
+    // mutates; does not enter the proposal/mutation branches below.
+    const priceRaw = extractTag(raw, "price");
+    if (priceRaw) {
+      const res = await handlePriceQuery(supabase, userId, message || "Price", priceRaw, used);
       if (res) return res;
     }
 

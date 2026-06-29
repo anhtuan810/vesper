@@ -70,7 +70,7 @@ export function sanitizeChips(raw: unknown): string[] | null {
   return safe;
 }
 
-const TAG_RE = /<(changes|update|context|goal|propose_address|propose_venue|propose_change|suggested_replies|clarify)>[\s\S]*?<\/\1>/g;
+const TAG_RE = /<(changes|update|context|goal|propose_address|propose_venue|propose_change|suggested_replies|clarify|price)>[\s\S]*?<\/\1>/g;
 export function stripTags(text: string) { return text.replace(TAG_RE, "").trim(); }
 export function extractTag(text: string, tag: string) {
   return text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))?.[1] ?? null;
