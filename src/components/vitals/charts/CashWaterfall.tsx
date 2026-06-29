@@ -10,7 +10,8 @@ interface Props {
 
 function fmtPct(v: number): string {
   const sign = v >= 0 ? '+' : '−';
-  return `${sign}${Math.abs(v).toFixed(1)}%`;
+  // nl-NL comma decimals, matching the rest of the app.
+  return `${sign}${Math.abs(v).toFixed(1).replace(".", ",")}%`;
 }
 
 export function CashWaterfall({ data }: Props) {

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     // a fresh generation with the improved home-anchor framing.
     //   row[0] — most recent overall; fallback when Haiku fails
     //   row[0] with expiry + version guard — live cache hit
-    const PULSE_VER = "v2:";
+    const PULSE_VER = "v3:";
 
     const pulseRows = await supabase
       .from("highlights")

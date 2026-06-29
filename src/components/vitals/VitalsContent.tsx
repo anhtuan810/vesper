@@ -68,16 +68,16 @@ const VITAL_SURFACES_WHEN: Record<string, string> = {
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
 
+// nl-NL number grammar (comma decimals) everywhere, matching the rest of the app.
 function fmtPct(v: number, forceSign = false): string {
-  if (v < 0) return "−" + Math.abs(v).toFixed(1) + "%";
-  if (forceSign && v > 0) return "+" + v.toFixed(1) + "%";
-  return v.toFixed(1) + "%";
+  const sign = v < 0 ? "−" : forceSign && v > 0 ? "+" : "";
+  return sign + Math.abs(v).toFixed(1).replace(".", ",") + "%";
 }
 
 function fmtCurrency(eur: number, dc: string): string {
   const sym = dc.toUpperCase() === "EUR" ? "€" : "$";
   const abs = Math.abs(eur);
-  if (abs >= 1_000_000) return `${sym}${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000_000) return `${sym}${(abs / 1_000_000).toFixed(1).replace(".", ",")}M`;
   if (abs >= 1_000) return `${sym}${Math.round(abs / 1_000)}k`;
   return `${sym}${Math.round(abs)}`;
 }
@@ -375,7 +375,7 @@ function cashYieldSuggestion(
       body: (
         <>
           Cash is losing{" "}
-          <strong>{Math.abs(v.realYieldPct).toFixed(1)}%</strong> of real
+          <strong>{Math.abs(v.realYieldPct).toFixed(1).replace(".", ",")}%</strong> of real
           purchasing power per year. At {v.cashPctOfNw.toFixed(0)}% of net
           worth, that&apos;s meaningful erosion.
         </>
@@ -418,9 +418,9 @@ function realGrowthSuggestion(
       body: (
         <>
           Your portfolio lost{" "}
-          <strong>{Math.abs(v.real12moPct).toFixed(1)}%</strong> of real
+          <strong>{Math.abs(v.real12moPct).toFixed(1).replace(".", ",")}%</strong> of real
           purchasing power over 12 months. Inflation drag of{" "}
-          {v.inflationDragPct.toFixed(1)}% is a significant headwind.
+          {v.inflationDragPct.toFixed(1).replace(".", ",")}% is a significant headwind.
         </>
       ),
     };
@@ -651,7 +651,7 @@ function buildLeverageCard(vital: VitalResult): CardConfig {
       subLine: "loan-to-value",
       rightStat: {
         label: "Rate",
-        value: `${v.mortgageRate.toFixed(2)}%`,
+        value: `${v.mortgageRate.toFixed(2).replace(".", ",")}%`,
       },
       benchLine: "NL average LTV: 52%",
       suggestion: leverageSuggestion(v, vital.band),
@@ -694,7 +694,7 @@ function buildCashYieldCard(vital: VitalResult): CardConfig {
         label: "Cash share",
         value: `${v.cashPctOfNw.toFixed(0)}%`,
       },
-      benchLine: `savings ${v.savingsRatePct.toFixed(1)}% − inflation ${v.inflationDragPct.toFixed(1)}% − tax ${v.box3TaxPct.toFixed(1)}%`,
+      benchLine: `savings ${v.savingsRatePct.toFixed(1).replace(".", ",")}% − inflation ${v.inflationDragPct.toFixed(1).replace(".", ",")}% − tax ${v.box3TaxPct.toFixed(1).replace(".", ",")}%`,
       suggestion: cashYieldSuggestion(v, vital.band),
     },
     chart: <CashWaterfall data={v} />,
@@ -713,7 +713,7 @@ function buildRealGrowthCard(vital: VitalResult): CardConfig {
         label: "Nominal",
         value: fmtPct(v.nominal12moPct, true),
       },
-      benchLine: `inflation drag: ${v.inflationDragPct.toFixed(1)}% per year`,
+      benchLine: `inflation drag: ${v.inflationDragPct.toFixed(1).replace(".", ",")}% per year`,
       suggestion: realGrowthSuggestion(v, vital.band),
     },
     chart: <RealGrowthDualLine data={v} />,

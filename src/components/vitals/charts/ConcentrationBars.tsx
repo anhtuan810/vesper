@@ -20,8 +20,8 @@ function colorFor(type: string): string {
 }
 
 function fmtPct(v: number): string {
-  if (v < 0) return "−" + Math.abs(v).toFixed(1) + "%";
-  return v.toFixed(1) + "%";
+  // nl-NL comma decimals, matching the rest of the app.
+  return (v < 0 ? "−" : "") + Math.abs(v).toFixed(1).replace(".", ",") + "%";
 }
 
 interface Position {
