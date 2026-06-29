@@ -199,13 +199,13 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       `}</style>
 
       {/* Page title */}
-      <div style={{ marginBottom: 18 }}>
+      <div style={{ marginBottom: 12 }}>
         <h1
           className="font-serif"
           style={{
-            fontSize: 38, fontWeight: 500, letterSpacing: "-0.025em",
+            fontSize: 30, fontWeight: 500, letterSpacing: "-0.022em",
             color: "var(--hero)", lineHeight: 1,
-            fontVariationSettings: "'opsz' 60",
+            fontVariationSettings: "'opsz' 48",
           }}
         >
           Diary
@@ -283,8 +283,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               key={key}
               onClick={() => setPeriod(key)}
               style={{
-                fontSize: 13,
-                padding: "4px 10px",
+                fontSize: 12,
+                padding: "3px 9px",
                 borderRadius: 999,
                 border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
                 background: active ? "var(--surface-elev)" : "transparent",
@@ -446,19 +446,19 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             <div
               style={{
                 display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                margin: "22px 0 12px",
+                margin: "16px 0 8px",
               }}
             >
               <div
                 className="font-serif"
                 style={{
-                  fontSize: 22, fontWeight: 500, color: "var(--text)",
+                  fontSize: 19, fontWeight: 500, color: "var(--text)",
                   letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 24",
                 }}
               >
                 {getMonthLabel(monthKey)}
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--mono)" }}>
                 {monthMutations.length} {monthMutations.length === 1 ? "entry" : "entries"}
               </div>
             </div>
@@ -490,7 +490,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                   };
                   const rowContent = (
                     <DiaryRowContent
-                      logo={<div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={28} /></div>}
+                      logo={<div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={26} /></div>}
                       name={name}
                       nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
                       valueNode={valueNode}
@@ -552,7 +552,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                       }}
                     >
                       <DiaryRowContent
-                        logo={<div style={{ opacity: isRemovedGroup ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={28} /></div>}
+                        logo={<div style={{ opacity: isRemovedGroup ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={26} /></div>}
                         name={groupName}
                         nameColor={isRemovedGroup ? "var(--text-dim)" : "var(--text)"}
                         valueNode={groupAggNode}
@@ -583,11 +583,11 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                           className="last:border-0"
                           style={{ borderBottom: "0.5px solid var(--border)" }}
                         >
-                          <div style={{ display: "flex", gap: 10, padding: "5px 0 5px 38px", alignItems: "baseline" }}>
+                          <div style={{ display: "flex", gap: 10, padding: "4px 0 4px 36px", alignItems: "baseline" }}>
                             <span style={{ flex: 1 }}>{valueNode}</span>
                             <span
                               style={{
-                                fontSize: 13, color: "var(--text-faint)",
+                                fontSize: 12, color: "var(--text-faint)",
                                 fontFamily: "var(--mono)",
                                 fontFeatureSettings: '"tnum" 1', flexShrink: 0,
                               }}

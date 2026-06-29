@@ -46,7 +46,10 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
     <div
       style={{
         display: "flex", gap: 10, alignItems: "flex-start",
-        padding: "12px 13px 13px 14px",
+        // No horizontal padding so the glyph sits in the same left column as the
+        // asset logos (the diary list is flush to the screen edge), keeping the
+        // auto entry aligned with the manual rows. Vertical padding kept tight.
+        padding: "8px 0 9px",
         // Auto-entry highlight — soft reserves-lane wash fading right + a 3px left
         // accent stripe, matching the desktop Journal's .mktentry treatment.
         background: "linear-gradient(90deg, var(--cat-reserves-soft), transparent 76%)",
@@ -58,7 +61,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
       <div
         aria-hidden
         style={{
-          width: 28, height: 28, flexShrink: 0, marginTop: 1,
+          width: 26, height: 26, flexShrink: 0, marginTop: 1,
           display: "flex", alignItems: "center", justifyContent: "center",
           borderRadius: "50%", border: "1px solid var(--cat-reserves-band)",
         }}
@@ -69,42 +72,42 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Index move (left) · portfolio impact total (right) */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontSize: 15, fontWeight: 500, color: "var(--text)" }}>
+          <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text)", lineHeight: 1.2 }}>
             {move.index_label}{" "}
-            <span style={{ fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', color: indexUp ? "var(--positive-text)" : "var(--negative-text)" }}>
+            <span style={{ fontFamily: "var(--mono)", fontWeight: 500, fontFeatureSettings: '"tnum" 1', color: indexUp ? "var(--positive-text)" : "var(--negative-text)" }}>
               {pct(move.pct_change)}
             </span>
           </span>
-          <span style={{ fontSize: 14, fontWeight: 600, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap", flexShrink: 0, color: portUp ? "var(--positive-text)" : "var(--negative-text)" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap", flexShrink: 0, color: portUp ? "var(--positive-text)" : "var(--negative-text)" }}>
             {signed(imp.total)}
           </span>
         </div>
 
         {/* Auto · Market tag (left) · date (right) */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 5 }}>
           <span
             style={{
-              fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700,
-              letterSpacing: "0.08em", textTransform: "uppercase",
+              fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700,
+              letterSpacing: "0.07em", textTransform: "uppercase",
               color: "var(--cat-reserves-band)", background: "var(--surface)",
-              border: "0.5px solid var(--border)", borderRadius: 5, padding: "2px 7px",
+              border: "0.5px solid var(--border)", borderRadius: 4, padding: "1.5px 6px",
             }}
           >
             Auto · Market
           </span>
-          <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-faint)", whiteSpace: "nowrap" }}>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>
             {formatDate(move.date)}
           </span>
         </div>
 
         {/* Narrative */}
-        <p style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.5, margin: "8px 0 0" }}>
+        <p style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.4, margin: "5px 0 0" }}>
           {lead} {body}
         </p>
 
         {/* Movers — tappable to the holding's detail when it's still held */}
         {m.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7 }}>
             {m.map((h) => {
               const inner = (
                 <>
@@ -116,9 +119,9 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
               );
               const style = {
                 display: "inline-flex", alignItems: "center", gap: 5,
-                padding: "3px 9px", borderRadius: 999,
+                padding: "2px 8px", borderRadius: 999,
                 border: "0.5px solid var(--border)", background: "var(--surface)",
-                fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap" as const,
+                fontSize: 11.5, color: "var(--text-dim)", whiteSpace: "nowrap" as const,
                 textDecoration: "none" as const,
               };
               return h.assetId

@@ -21,16 +21,16 @@ export function DiaryRowContent({
   subtitle, footer,
 }: DiaryRowContentProps) {
   return (
-    <div style={{ display: "flex", gap: 10, padding: "8px 0", alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 10, padding: "6px 0", alignItems: "flex-start" }}>
       {logo}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: nameColor }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 1 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 600, color: nameColor, lineHeight: 1.2 }}>
             {name}
           </span>
           <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
             {valueNode}
-            <span style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
               {formatDate(date)}
             </span>
           </span>
@@ -40,8 +40,8 @@ export function DiaryRowContent({
           <div
             className="font-serif"
             style={{
-              fontStyle: "italic", fontSize: 13,
-              color: "var(--text-dim)", lineHeight: 1.4,
+              fontStyle: "italic", fontSize: 12.5,
+              color: "var(--text-dim)", lineHeight: 1.35,
               fontVariationSettings: "'opsz' 14",
             }}
           >
@@ -49,14 +49,14 @@ export function DiaryRowContent({
           </div>
         )}
         {marketContext && (
-          <div style={{ marginTop: personalContext ? 6 : 0, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ marginTop: personalContext ? 5 : 0, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
             <span
               className="font-mono uppercase"
-              style={{ fontSize: 11, letterSpacing: "0.14em", color: "var(--text-faint)", flexShrink: 0 }}
+              style={{ fontSize: 10.5, letterSpacing: "0.14em", color: "var(--text-faint)", flexShrink: 0 }}
             >
               Markets
             </span>
-            <span style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
+            <span style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.35 }}>
               {marketContext}
             </span>
           </div>
