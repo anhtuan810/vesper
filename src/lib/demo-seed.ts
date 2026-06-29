@@ -842,9 +842,11 @@ export async function seedDemoUser(userId: string): Promise<void> {
   // Market highlights are normally written by the daily 07:00 cron, so a
   // freshly reseeded demo account would show an empty market section until the
   // next run — bad for App Review. Seed deterministic, evergreen items tied to
-  // the demo holdings instead; they expire on the cron's usual 24h horizon and
-  // every /demo entry re-creates them.
-  const marketExpiry = new Date(Date.now() + 86_400_000).toISOString();
+  // the demo holdings instead. Given a 7-day horizon (not the cron's usual 24h)
+  // so the demo's Markets block — now at the top of the Vitals page — stays
+  // populated through a long exploration session rather than lapsing after a day;
+  // every /demo entry re-creates them regardless.
+  const marketExpiry = new Date(Date.now() + 7 * 86_400_000).toISOString();
   const marketSeeds = [
     {
       title: "NVIDIA steady after earnings",
