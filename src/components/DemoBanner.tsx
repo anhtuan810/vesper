@@ -76,7 +76,7 @@ export function DemoBanner() {
           alignItems: "center",
           gap: 11,
           padding: "9px 18px",
-          borderRadius: 999,
+          borderRadius: "var(--radius-pill)",
           background: "var(--accent-soft)",
           border: "0.5px solid var(--accent)",
           boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
@@ -87,14 +87,14 @@ export function DemoBanner() {
         <span
           style={{
             fontFamily: "var(--font-serif)",
-            fontSize: 15,
+            fontSize: "var(--fs-subhead)",
             color: "var(--accent)",
             fontVariationSettings: "'opsz' 14",
           }}
         >
           Demo account{" "}
           {remainingMs != null ? (
-            <span style={{ color: "var(--accent)", fontFamily: "var(--font-mono, monospace)", fontSize: 13.5, fontFeatureSettings: '"tnum" 1' }}>
+            <span className="tnum" style={{ color: "var(--accent)", fontSize: "var(--fs-meta)" }}>
               · {fmtCountdown(remainingMs)}
             </span>
           ) : (
@@ -111,7 +111,7 @@ export function DemoBanner() {
           onClick={signOut}
           style={{
             fontFamily: "var(--font-sans)",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             fontWeight: 500,
             color: "var(--accent)",
             background: "none",

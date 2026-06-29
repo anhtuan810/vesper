@@ -27,6 +27,8 @@ export interface ChipProps {
   /** Local-only fallback for the impression dedup key when messageId is absent. */
   contentHash?: string;
   onTap: (label: string) => void;
+  /** 'accent' fills the chip with the soft accent band; default is the elevated surface. */
+  tone?: "default" | "accent";
   style?: CSSProperties;
   className?: string;
 }
@@ -42,6 +44,7 @@ export function Chip({
   messageId,
   contentHash,
   onTap,
+  tone = "default",
   style,
   className,
 }: ChipProps) {
@@ -72,8 +75,27 @@ export function Chip({
     onTap(label);
   };
 
+  // The chip's one owned spec on the design-system tokens. Callers can still
+  // override individual properties via `style` (it wins via spread order).
+  const baseStyle: CSSProperties = {
+    height: 32,
+    padding: "0 var(--space-3)",
+    borderRadius: "var(--radius-pill)",
+    border: "0.5px solid var(--border)",
+    fontSize: "var(--fs-body)",
+    background: tone === "accent" ? "var(--accent-soft)" : "var(--surface-elev)",
+    color: tone === "accent" ? "var(--accent-text)" : "var(--text)",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
+
   return (
-    <button type="button" className={className} style={style} onClick={handleClick}>
+    <button
+      type="button"
+      className={className}
+      style={{ ...baseStyle, ...style }}
+      onClick={handleClick}
+    >
       {label}
     </button>
   );

@@ -269,6 +269,16 @@ export default function ChatPage() {
           paddingRight: 20,
         }}
       >
+        <div
+          className="eyebrow"
+          style={{
+            flexShrink: 0,
+            paddingTop: "calc(var(--space-3) + env(safe-area-inset-top))",
+            color: "var(--text-faint)",
+          }}
+        >
+          Ask Volnar
+        </div>
         <ChatThread
           variant="page"
           session={session}

@@ -169,19 +169,18 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     }, [input, autoGrowComposer, isPage]);
 
     // ── Per-variant presentational config ────────────────────────────────────
-    const msgFontSize = isPage ? 15 : 14;
+    const msgFontSize = "var(--fs-body)";
     const userMaxWidth = isPage ? "78%" : "80%";
     // User bubble = the elevated surface token on BOTH variants, so the desktop
     // (popup) bubbles are the identical colour as mobile (page) — not a separate tan.
     const userBg = "var(--surface)";
-    const userLineHeight = isPage ? 1.4 : 1.55;
-    const chipFontSize = isPage ? 14 : 13;
-    const seedFontSize = isPage ? 15 : 14;
+    const userLineHeight = "var(--lh-body)";
+    const seedFontSize = "var(--fs-body)";
 
     const scrollStyle: React.CSSProperties = isPage
       ? {
           minHeight: 0,
-          padding: "calc(32px + env(safe-area-inset-top)) 0 16px",
+          padding: "var(--space-4) 0 var(--space-4)",
           scrollbarWidth: "none",
           display: "flex",
           flexDirection: "column",
@@ -218,7 +217,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         {remaining !== null && remaining <= 10 && (
           <div
             className="font-mono text-accent text-right"
-            style={{ fontSize: 11, paddingBottom: 4 }}
+            style={{ fontSize: "var(--fs-micro)", paddingBottom: 4 }}
           >
             {remaining === 0 ? "Limit reached" : `${remaining} left today`}
           </div>
@@ -227,7 +226,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           <div
             className="font-mono"
             style={{
-              fontSize: 11,
+              fontSize: "var(--fs-micro)",
               paddingBottom: 4,
               color: input.length >= 500 ? "var(--negative)" : "var(--accent)",
             }}
@@ -242,10 +241,10 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     const disclaimer = (
       <div
         className="text-faint text-center"
-        style={{ fontSize: 11, lineHeight: 1.4, paddingTop: 6 }}
+        style={{ fontSize: "var(--fs-micro)", lineHeight: "var(--lh-snug)", paddingTop: 6 }}
       >
         {isDemo && (
-          <div style={{ fontSize: 11, color: "var(--text-dim)", paddingBottom: 4 }}>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", paddingBottom: 4 }}>
             This is a demo. Anything you enter is deleted when your session ends — nothing is stored.
           </div>
         )}
@@ -265,7 +264,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         {isLoadingMore && (
           <div
             className="text-center text-faint"
-            style={{ fontSize: 12, paddingBottom: 4 }}
+            style={{ fontSize: "var(--fs-caption)", paddingBottom: 4 }}
           >
             Loading older messages…
           </div>
@@ -274,8 +273,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         {messages.length === 0 && !seedMessage && (
           <div>
             <div
-              className={`text-dim ${isPage ? "mb-5" : "mb-4"} leading-relaxed`}
-              style={{ fontSize: isPage ? 15 : 14 }}
+              className={`text-dim ${isPage ? "mb-5" : "mb-4"}`}
+              style={{ fontSize: "var(--fs-body)", lineHeight: "var(--lh-body)" }}
             >
               {emptyText}
             </div>
@@ -292,15 +291,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                     sendRawLabel={c.sendRawLabel}
                     position={i}
                     onTap={sendText}
-                    style={{
-                      fontSize: 13,
-                      color: "var(--accent-text)",
-                      background: "var(--accent-soft)",
-                      padding: "8px 14px",
-                      borderRadius: 999,
-                      border: "none",
-                      cursor: "pointer",
-                    }}
+                    tone="accent"
                   />
                 );
               })}
@@ -318,11 +309,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               className={`chat-msg flex flex-col ${msg.from === "user" ? "items-end" : "items-start"}`}
             >
               {firstAssistant && (
-                <div style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-                  textTransform: "uppercase",
+                <div className="eyebrow" style={{
                   color: "var(--accent-text)",
                   opacity: 0.7,
                   marginBottom: 6,
@@ -337,10 +324,11 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                   borderRadius: msg.from === "user" ? "18px 18px 4px 18px" : 0,
                   background: msg.from === "user" ? userBg : "transparent",
                   border: msg.from === "user" ? "0.5px solid var(--border)" : "none",
-                  boxShadow: msg.from === "user" ? "0 1px 2px rgba(0,0,0,0.02)" : "none",
+                  boxShadow: msg.from === "user" ? "var(--shadow-soft)" : "none",
                   color: "var(--text)",
+                  fontFamily: "var(--sans)",
                   fontSize: msgFontSize,
-                  lineHeight: msg.from === "user" ? userLineHeight : 1.55,
+                  lineHeight: msg.from === "user" ? userLineHeight : "var(--lh-body)",
                   overflowWrap: "break-word",
                   minWidth: 0,
                 }}
@@ -360,7 +348,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                               display: "block",
                               maxWidth: "100%",
                               maxHeight: 200,
-                              borderRadius: 10,
+                              borderRadius: "var(--radius-md)",
                             }}
                           />
                         ))}
@@ -391,19 +379,11 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                         messageId={msg.id}
                         contentHash={cheapHash(msg.text)}
                         onTap={sendText}
-                        style={{
-                          height: 32,
-                          padding: "0 14px",
-                          borderRadius: 999,
-                          fontSize: chipFontSize,
-                          background: "var(--surface-elev)",
-                          color: "var(--text)",
-                          border: chip === "Confirm and save"
-                            ? "1px solid var(--accent)"
-                            : "1px solid var(--border)",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                        }}
+                        style={
+                          chip === "Confirm and save"
+                            ? { border: "1px solid var(--accent)" }
+                            : undefined
+                        }
                       />
                     );
                   })}
@@ -424,8 +404,9 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 background: "transparent",
                 border: "none",
                 color: "var(--text)",
+                fontFamily: "var(--sans)",
                 fontSize: seedFontSize,
-                lineHeight: 1.55,
+                lineHeight: "var(--lh-body)",
                 overflowWrap: "break-word",
                 minWidth: 0,
               }}
@@ -441,7 +422,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                   padding: "14px 14px 12px",
                   background: "var(--surface)",
                   border: "0.5px solid var(--border)",
-                  borderRadius: 14,
+                  borderRadius: "var(--radius-lg)",
                 }}
               >
                 <ProjectionChart
@@ -453,7 +434,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 />
                 <div
                   className="font-serif"
-                  style={{ fontStyle: "italic", fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5, marginTop: 10 }}
+                  style={{ fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginTop: 10 }}
                 >
                   {seedMessage.cone.line}
                 </div>
@@ -474,17 +455,6 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                     position={ci}
                     contentHash={cheapHash(seedMessage.message)}
                     onTap={tapSeedChip}
-                    style={{
-                      height: 32,
-                      padding: "0 14px",
-                      borderRadius: 999,
-                      fontSize: chipFontSize,
-                      background: "var(--surface-elev)",
-                      color: "var(--text)",
-                      border: "1px solid var(--border)",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
                   />
                 );
               })}
@@ -535,7 +505,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                         width: 18, height: 18, borderRadius: "50%",
                         background: "var(--text-faint)", color: "var(--bg)",
                         border: "none", cursor: "pointer",
-                        fontSize: 11, lineHeight: "18px", textAlign: "center", padding: 0,
+                        fontSize: "var(--fs-micro)", lineHeight: "18px", textAlign: "center", padding: 0,
                       }}
                     >
                       ✕
@@ -552,7 +522,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               style={{
                 background: "var(--surface)",
                 border: "0.5px solid var(--border-strong)",
-                borderRadius: 22,
+                borderRadius: "var(--radius-xl)",
                 padding: "7px 7px 7px 10px",
                 display: "flex",
                 alignItems: "flex-end",
@@ -620,8 +590,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                   border: "none",
                   resize: "none",
                   fontFamily: "var(--sans)",
-                  fontSize: 15,
-                  lineHeight: 1.4,
+                  fontSize: "var(--fs-body)",
+                  lineHeight: "var(--lh-body)",
                   color: "var(--text)",
                   padding: "6px 2px",
                   margin: 0,
@@ -692,7 +662,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                     width: 16, height: 16, borderRadius: "50%",
                     background: "var(--text-faint)", color: "var(--bg)",
                     border: "none", cursor: "pointer",
-                    fontSize: 11, lineHeight: "16px", textAlign: "center", padding: 0,
+                    fontSize: "var(--fs-micro)", lineHeight: "16px", textAlign: "center", padding: 0,
                   }}
                 >
                   ✕
@@ -715,7 +685,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               position: "relative",
               background: composerBg ?? "var(--bg)",
               border: "0.5px solid var(--border-strong)",
-              borderRadius: 20,
+              borderRadius: "var(--radius-xl)",
               padding: "10px 46px 10px 40px",
               display: "flex",
               alignItems: "center",
@@ -782,7 +752,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 background: "transparent",
                 border: "none",
                 fontFamily: "var(--sans)",
-                fontSize: 15,
+                fontSize: "var(--fs-body)",
                 color: "var(--text)",
               }}
             />

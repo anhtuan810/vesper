@@ -93,11 +93,11 @@ export function DemoExpiryWall() {
       <p
         style={{
           fontFamily: "var(--font-serif)",
-          fontSize: 19,
+          fontSize: "var(--fs-title)",
           fontWeight: 500,
           color: "var(--hero)",
-          lineHeight: 1.4,
-          letterSpacing: "-0.01em",
+          lineHeight: "var(--lh-snug)",
+          letterSpacing: "var(--tracking-title)",
           fontVariationSettings: "'opsz' 20",
           maxWidth: 340,
           margin: 0,
@@ -109,11 +109,11 @@ export function DemoExpiryWall() {
         onClick={signOut}
         style={{
           padding: "14px 22px",
-          borderRadius: 14,
+          borderRadius: "var(--radius-lg)",
           border: "none",
           background: "var(--accent)",
-          color: "#fff",
-          fontSize: 15,
+          color: "var(--bg)",
+          fontSize: "var(--fs-body)",
           fontWeight: 600,
           cursor: "pointer",
           minHeight: 52,

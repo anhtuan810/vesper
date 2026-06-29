@@ -138,7 +138,7 @@ export default function ChatPopup({
         onClick={onToggle}
         className="fixed bottom-8 right-8 flex items-center justify-center text-bg bg-accent hover:opacity-90 transition-opacity"
         style={{
-          width: 52, height: 52, borderRadius: 16,
+          width: 52, height: 52, borderRadius: "var(--radius-lg)",
           boxShadow: "0 8px 24px rgba(151,112,61,0.3)",
           fontSize: 18,
         }}
@@ -166,8 +166,8 @@ export default function ChatPopup({
         height: size.height,
         background: "var(--surface)",
         border: "1px solid var(--border-strong)",
-        borderRadius: 24,
-        boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
+        borderRadius: "var(--radius-2xl)",
+        boxShadow: "var(--shadow-soft)",
         animation: isResizing ? "none" : "pop 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards",
       }}
     >
@@ -206,7 +206,7 @@ export default function ChatPopup({
           onClick={onToggle}
           className="flex items-center justify-center text-faint hover:text-dim transition-colors"
           style={{
-            width: 28, height: 28, borderRadius: 8,
+            width: 28, height: 28, borderRadius: "var(--radius-md)",
             background: "var(--surface-elev)",
             border: "none",
             cursor: "pointer",
