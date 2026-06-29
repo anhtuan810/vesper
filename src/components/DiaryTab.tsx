@@ -10,6 +10,7 @@ import type { Mutation } from "@/lib/supabase";
 import { AssetLogo } from "@/components/AssetLogo";
 import { DiaryRowContent } from "@/components/diary/DiaryRowContent";
 import { DiaryMarketRow } from "@/components/DiaryMarketRow";
+import { MobileMarketEntry } from "@/components/MobileMarketEntry";
 import { PeriodHighlight } from "@/components/diary/PeriodHighlight";
 import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
@@ -18,7 +19,7 @@ import {
   type DiaryItem, type PeriodKey,
   PERIOD_OPTIONS, SELECT_STYLE,
   unitNoun, hasContent, relativeAge, displayName, actionVerb,
-  buildDisplayItems, abbrevMoney, buildGroupAggregate,
+  buildDisplayItems, buildGroupAggregate,
   getMonthOptions, isInPeriod,
 } from "@/lib/diary-utils";
 
@@ -466,7 +467,14 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             <div>
               {renderEntries.map((entry) => {
                 if (entry.kind === "move") {
-                  return <DiaryMarketRow key={`move-${entry.move.index_symbol}-${entry.move.date}`} move={entry.move} />;
+                  // A big swing (largest by portfolio impact in its month, above
+                  // the floor) renders as the full auto entry with its computed
+                  // impact + movers; smaller swings keep the compact one-liner —
+                  // mirrors the desktop Journal.
+                  const moveKey = `move-${entry.move.index_symbol}-${entry.move.date}`;
+                  return entry.move.expanded && entry.move.impact
+                    ? <MobileMarketEntry key={moveKey} move={entry.move} />
+                    : <DiaryMarketRow key={moveKey} move={entry.move} />;
                 }
 
                 const item = entry.item;
