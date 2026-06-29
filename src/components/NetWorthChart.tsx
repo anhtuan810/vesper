@@ -791,64 +791,65 @@ export function NetWorthChart(props: Props) {
         </div>
       </div>
 
-      {/* Two-end time frame — just the window start (left) and "Now" (right),
-          statement-style, in place of a full date axis or a y-axis column. */}
-      {showLabels && displaySeries.length >= 2 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            height: 14,
-            marginTop: 7,
-            fontFamily: "var(--mono)",
-            fontSize: 11,
-            color: "var(--text-faint)",
-            lineHeight: 1,
-            pointerEvents: "none",
-          }}
-        >
-          <span>{formatXLabel(displaySeries[0].date, range)}</span>
-          <span>Now</span>
-        </div>
-      )}
-
-      {/* Range pills */}
+      {/* Time frame + range picker on ONE line: the window-start date (left) and
+          "Now" (right) flank a compact, centred range selector. The dates appear
+          only once there's real history (showLabels); the picker is always present
+          so the range stays switchable even on a cold start / while loading. The
+          selected range keeps a small soft chip so the choice stays obvious. */}
       <div
-        className="flex gap-1 mt-2"
-        style={{ padding: 3, borderRadius: 8 }}
+        style={{
+          display: "grid",
+          gridTemplateColumns: "auto 1fr auto",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 8,
+        }}
       >
-        {RANGES.map((r) => {
-          const start = rangeStartDate(r);
-          // 1D is intraday-liquid only: enabled purely by liquidOnly, never
-          // gated by trackingSinceDate. Every other range keeps the
-          // history-coverage gate.
-          const disabled = r === "1D"
-            ? !liquidOnly
-            : trackingSinceDate != null && start != null && start < trackingSinceDate;
-          return (
-          <button
-            key={r}
-            disabled={disabled}
-            onClick={() => { if (!disabled) onRangeChange(r); }}
-            className="flex-1 text-center"
-            style={{
-              padding: "5px 0",
-              fontSize: 12,
-              fontWeight: 500,
-              borderRadius: 6,
-              color: disabled ? "var(--text-faint)" : range === r ? "var(--text)" : "var(--text-dim)",
-              background: range === r ? "var(--surface-elev)" : "transparent",
-              boxShadow: range === r ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-              border: "none",
-              cursor: disabled ? "default" : "pointer",
-              opacity: disabled ? 0.45 : 1,
-              transition: "all 0.15s",
-            }}
-          >
-            {r}
-          </button>
-          );
-        })}
+        <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
+          {showLabels ? formatXLabel(displaySeries[0].date, range) : ""}
+        </span>
+
+        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+          {RANGES.map((r) => {
+            const start = rangeStartDate(r);
+            // 1D is intraday-liquid only: enabled purely by liquidOnly, never
+            // gated by trackingSinceDate. Every other range keeps the
+            // history-coverage gate.
+            const disabled = r === "1D"
+              ? !liquidOnly
+              : trackingSinceDate != null && start != null && start < trackingSinceDate;
+            const active = range === r;
+            return (
+              <button
+                key={r}
+                disabled={disabled}
+                onClick={() => { if (!disabled) onRangeChange(r); }}
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 11,
+                  fontWeight: active ? 600 : 500,
+                  lineHeight: 1,
+                  padding: "5px 5px",
+                  borderRadius: 6,
+                  color: disabled ? "var(--text-faint)" : active ? "var(--text)" : "var(--text-dim)",
+                  background: active ? "var(--surface-elev)" : "transparent",
+                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  border: "none",
+                  cursor: disabled ? "default" : "pointer",
+                  opacity: disabled ? 0.45 : 1,
+                  whiteSpace: "nowrap",
+                  transition: "all 0.15s",
+                }}
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
+
+        <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
+          {showLabels ? "Now" : ""}
+        </span>
       </div>
     </div>
   );
