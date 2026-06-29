@@ -57,7 +57,7 @@ function SettingsGearIcon({ size = 18 }: { size?: number }) {
 // A muted placeholder bar used in the zero-data preview.
 function GhostBar({ width, height = 10 }: { width: number | string; height?: number }) {
   return (
-    <div style={{ width, height, borderRadius: 999, background: "var(--surface-elev)" }} />
+    <div style={{ width, height, borderRadius: "var(--radius-pill)", background: "var(--surface-elev)" }} />
   );
 }
 
@@ -67,24 +67,16 @@ function GhostBar({ width, height = 10 }: { width: number | string; height?: num
 // bars — so a new user knows what to expect and the page doesn't feel broken. It
 // gives way to the real Perspective/Context blocks as soon as there's data.
 function ProfilePreview() {
-  const sectionLabel: CSSProperties = {
-    fontSize: 11,
-    fontWeight: 500,
-    fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-    textTransform: "uppercase",
-    color: "var(--text-faint)",
-    marginBottom: 10,
-  };
   const card: CSSProperties = {
     background: "var(--surface)",
     border: "0.5px solid var(--border)",
-    borderRadius: 14,
+    borderRadius: "var(--radius-lg)",
     overflow: "hidden",
   };
   const caption: CSSProperties = {
-    fontSize: 13,
+    fontSize: "var(--fs-caption)",
     color: "var(--text-faint)",
-    lineHeight: 1.5,
+    lineHeight: "var(--lh-body)",
     margin: "10px 2px 24px",
   };
 
@@ -92,11 +84,11 @@ function ProfilePreview() {
     <div>
       {/* Intro — sets the expectation in the app's calm, serif voice. */}
       <p style={{
-        fontFamily: "var(--font-serif)",
+        fontFamily: "var(--serif)",
         fontStyle: "italic",
-        fontSize: 15,
+        fontSize: "var(--fs-body)",
         color: "var(--text-dim)",
-        lineHeight: 1.55,
+        lineHeight: "var(--lh-body)",
         margin: "0 0 24px",
         fontVariationSettings: "'opsz' 16",
       }}>
@@ -105,8 +97,8 @@ function ProfilePreview() {
       </p>
 
       {/* Perspective preview */}
-      <div style={sectionLabel}>Perspective</div>
-      <div style={{ ...card, padding: "16px" }}>
+      <div className="eyebrow" style={{ marginBottom: 10 }}>Perspective</div>
+      <div style={{ ...card, padding: "var(--space-card)" }}>
         <GhostBar width={84} height={9} />
         <div style={{ height: 14 }} />
         <GhostBar width="52%" height={24} />
@@ -121,7 +113,7 @@ function ProfilePreview() {
       </p>
 
       {/* Profile preview — the same fields the extractor fills from chat. */}
-      <div style={sectionLabel}>Profile</div>
+      <div className="eyebrow" style={{ marginBottom: 10 }}>Profile</div>
       <div style={card}>
         {PROFILE_FIELDS.map(({ key, label }, idx) => (
           <div
@@ -132,9 +124,10 @@ function ProfilePreview() {
             }}
           >
             <div style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: 16,
+              fontFamily: "var(--serif)",
+              fontSize: "var(--fs-subhead)",
               fontWeight: 500,
+              letterSpacing: "var(--tracking-subhead)",
               color: "var(--text-faint)",
               marginBottom: 10,
               fontVariationSettings: "'opsz' 18",
@@ -221,12 +214,12 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {/* Name as page title + fingerprint as supporting line */}
       <div style={{ paddingTop: 32, marginBottom: 26 }}>
         <div style={{
-          fontFamily: "var(--font-serif)",
-          fontSize: 38,
+          fontFamily: "var(--serif)",
+          fontSize: "var(--fs-title)",
           fontWeight: 500,
-          letterSpacing: "-0.025em",
+          letterSpacing: "var(--tracking-title)",
           color: "var(--hero)",
-          lineHeight: 1,
+          lineHeight: "var(--lh-tight)",
           fontVariationSettings: "'opsz' 60",
           marginBottom: profile?.fingerprint ? 10 : 0,
         }}>
@@ -234,11 +227,11 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
         </div>
         {profile?.fingerprint && (
           <div style={{
-            fontFamily: "var(--font-serif)",
+            fontFamily: "var(--serif)",
             fontStyle: "italic",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             color: "var(--text-dim)",
-            lineHeight: 1.45,
+            lineHeight: "var(--lh-body)",
             fontVariationSettings: "'opsz' 16",
           }}>
             {profile.fingerprint}
@@ -255,14 +248,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {/* Perspective section */}
       {perspective && (
         <>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-            marginBottom: 10,
-          }}>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>
             Perspective
           </div>
           <PerspectiveCard data={perspective} displayCurrency={displayCurrency} />
@@ -272,20 +258,13 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {/* Context section — hidden entirely if extractor hasn't populated any fields yet */}
       {visibleFields.length > 0 && (
         <>
-          <div style={{
-            fontSize: 12,
-            fontWeight: 500,
-            fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase",
-            color: "var(--text-faint)",
-            marginBottom: 10,
-          }}>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>
             Context
           </div>
           <div style={{
             background: "var(--surface)",
             border: "0.5px solid var(--border)",
-            borderRadius: 14,
+            borderRadius: "var(--radius-lg)",
             marginBottom: 24,
             overflow: "hidden",
           }}>
@@ -305,16 +284,17 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontFamily: "var(--font-serif)",
-                      fontSize: 16,
+                      fontFamily: "var(--serif)",
+                      fontSize: "var(--fs-subhead)",
                       fontWeight: 500,
+                      letterSpacing: "var(--tracking-subhead)",
                       color: "var(--text)",
                       marginBottom: 3,
                       fontVariationSettings: "'opsz' 18",
                     }}>
                       {label}
                     </div>
-                    <div style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.55 }}>
+                    <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
                       {value?.split(/\.\.\s*/).filter(s => s.trim()).slice(0, 2).map((sentence, i) => (
                         <div key={i} style={{ marginBottom: 5 }}>{sentence.trim()}</div>
                       ))}
@@ -343,16 +323,17 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           padding: "14px 16px",
           background: "var(--surface)",
           border: "1px solid var(--border-strong)",
-          borderRadius: 14,
+          borderRadius: "var(--radius-lg)",
           cursor: "pointer",
           color: "var(--accent)",
         }}
       >
         <SettingsGearIcon size={18} />
         <span style={{
-          fontFamily: "var(--font-serif)",
-          fontSize: 16,
+          fontFamily: "var(--serif)",
+          fontSize: "var(--fs-subhead)",
           fontWeight: 500,
+          letterSpacing: "var(--tracking-subhead)",
           fontVariationSettings: "'opsz' 18",
         }}>
           Settings

@@ -20,19 +20,10 @@ import {
   type SubscriptionView,
 } from "@/lib/subscription";
 
-const SECTION_LABEL_STYLE: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 500,
-  fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-  textTransform: "uppercase",
-  color: "var(--text-faint)",
-  marginBottom: 10,
-};
-
 const CARD_STYLE: React.CSSProperties = {
   background: "var(--surface)",
   border: "0.5px solid var(--border)",
-  borderRadius: 14,
+  borderRadius: "var(--radius-lg)",
   marginBottom: 24,
   overflow: "hidden",
 };
@@ -157,7 +148,7 @@ export function SubscriptionSection() {
 
   return (
     <>
-      <div style={SECTION_LABEL_STYLE}>Your subscription</div>
+      <div className="eyebrow" style={{ marginBottom: 10 }}>Your subscription</div>
 
       {hasSubscription && data ? (
         <div style={CARD_STYLE}>
@@ -189,14 +180,14 @@ export function SubscriptionSection() {
               width: "100%",
               padding: "14px 16px",
               textAlign: "left",
-              fontSize: 15,
+              fontSize: "var(--fs-body)",
               fontWeight: 500,
               color: "var(--accent)",
               background: "transparent",
               border: "none",
               borderTop: "0.5px solid var(--border)",
               cursor: busy ? "default" : "pointer",
-              fontFamily: "var(--font-sans)",
+              fontFamily: "var(--sans)",
             }}
           >
             {busy ? "Opening…" : "Manage subscription"}
@@ -206,9 +197,10 @@ export function SubscriptionSection() {
         <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>
           <div
             style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: 17,
+              fontFamily: "var(--serif)",
+              fontSize: "var(--fs-subhead)",
               fontWeight: 500,
+              letterSpacing: "var(--tracking-subhead)",
               color: "var(--text)",
               marginBottom: 6,
               fontVariationSettings: "'opsz' 18",
@@ -216,7 +208,7 @@ export function SubscriptionSection() {
           >
             Subscription activating…
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55 }}>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
             Your purchase went through. We&apos;re finalizing your access — this can take a
             moment. No need to buy again.
           </div>
@@ -225,9 +217,10 @@ export function SubscriptionSection() {
         <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>
           <div
             style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: 17,
+              fontFamily: "var(--serif)",
+              fontSize: "var(--fs-subhead)",
               fontWeight: 500,
+              letterSpacing: "var(--tracking-subhead)",
               color: "var(--text)",
               marginBottom: 6,
               fontVariationSettings: "'opsz' 18",
@@ -235,7 +228,7 @@ export function SubscriptionSection() {
           >
             Start your free trial
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: 14 }}>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginBottom: 14 }}>
             {TRIAL_DAYS} days free, then {formatPrice(PLAN_PRICES.annual)} per year or{" "}
             {formatPrice(PLAN_PRICES.monthly)} per month. Cancel anytime.
           </div>
@@ -245,11 +238,11 @@ export function SubscriptionSection() {
             style={{
               width: "100%",
               padding: "13px 16px",
-              borderRadius: 12,
+              borderRadius: "var(--radius-lg)",
               border: "none",
               background: "var(--accent)",
-              color: "#fff",
-              fontSize: 15,
+              color: "var(--bg)",
+              fontSize: "var(--fs-body)",
               fontWeight: 600,
               cursor: busy ? "default" : "pointer",
               opacity: busy ? 0.7 : 1,
@@ -261,7 +254,7 @@ export function SubscriptionSection() {
       )}
 
       {error && (
-        <div style={{ fontSize: 13, color: "var(--negative)", marginTop: -14, marginBottom: 20, lineHeight: 1.5 }}>
+        <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative)", marginTop: -14, marginBottom: 20, lineHeight: "var(--lh-body)" }}>
           {error}
         </div>
       )}
@@ -307,19 +300,17 @@ function Row({
         borderBottom: "0.5px solid var(--border)",
       }}
     >
-      <div style={{ flex: 1, fontSize: 13, color: "var(--text-dim)" }}>{label}</div>
+      <div style={{ flex: 1, fontSize: "var(--fs-caption)", color: "var(--text-dim)" }}>{label}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 15, fontWeight: 500, color: "var(--text)" }}>{value}</span>
+        <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, color: "var(--text)" }}>{value}</span>
         {badge && (
           <span
+            className="eyebrow"
             style={{
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: "0.03em",
               color: badgeColor ?? "var(--accent)",
               background: "var(--surface-elev)",
               border: "0.5px solid var(--border)",
-              borderRadius: 999,
+              borderRadius: "var(--radius-pill)",
               padding: "2px 8px",
               whiteSpace: "nowrap",
             }}

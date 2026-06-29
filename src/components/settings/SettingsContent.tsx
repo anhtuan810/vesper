@@ -26,14 +26,7 @@ const THEME_OPTIONS = [
 ];
 
 const TOAST_KEY = "volnar.currency.toastSeen";
-const SECTION_LABEL_STYLE = {
-  fontSize: 11,
-  fontWeight: 500,
-  fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-  textTransform: "uppercase" as const,
-  color: "var(--text-faint)",
-  marginBottom: 10,
-};
+const SECTION_LABEL_STYLE = { marginBottom: 10 };
 
 function ChevronRight() {
   return (
@@ -184,10 +177,10 @@ export function SettingsContent() {
             <BackArrow />
           </button>
           <div style={{
-            fontFamily: "var(--font-serif)",
-            fontSize: 28,
+            fontFamily: "var(--serif)",
+            fontSize: "var(--fs-title)",
             fontWeight: 500,
-            letterSpacing: "-0.02em",
+            letterSpacing: "var(--tracking-title)",
             color: "var(--hero)",
             fontVariationSettings: "'opsz' 30",
           }}>
@@ -196,11 +189,11 @@ export function SettingsContent() {
         </div>
 
         {/* Preferences section */}
-        <div style={SECTION_LABEL_STYLE}>Preferences</div>
+        <div className="eyebrow" style={SECTION_LABEL_STYLE}>Preferences</div>
         <div style={{
           background: "var(--surface)",
           border: "0.5px solid var(--border)",
-          borderRadius: 14,
+          borderRadius: "var(--radius-lg)",
           marginBottom: 24,
           overflow: "hidden",
         }}>
@@ -222,16 +215,17 @@ export function SettingsContent() {
             >
               <div style={{ flex: 1 }}>
                 <div style={{
-                  fontFamily: "var(--font-serif)",
-                  fontSize: 16,
+                  fontFamily: "var(--serif)",
+                  fontSize: "var(--fs-subhead)",
                   fontWeight: 500,
+                  letterSpacing: "var(--tracking-subhead)",
                   color: "var(--text)",
                   fontVariationSettings: "'opsz' 18",
                 }}>
                   Display currency
                 </div>
               </div>
-              <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, flexShrink: 0 }}>
+              <span className="tnum" style={{ fontSize: "var(--fs-meta)", color: "var(--text)", fontWeight: 500, flexShrink: 0 }}>
                 {currencyLabel}
               </span>
               <ChevronRight />
@@ -253,7 +247,7 @@ export function SettingsContent() {
                         alignItems: "center",
                         justifyContent: "space-between",
                         padding: "10px 12px",
-                        borderRadius: 10,
+                        borderRadius: "var(--radius-md)",
                         border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
                         background: isActive ? "var(--accent-soft)" : "var(--bg)",
                         cursor: currencyLoading ? "default" : "pointer",
@@ -262,15 +256,15 @@ export function SettingsContent() {
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 16, fontWeight: 500, color: isActive ? "var(--accent-text)" : "var(--text-dim)", width: 20, textAlign: "center" }}>
+                        <span style={{ fontSize: "var(--fs-subhead)", fontWeight: 500, color: isActive ? "var(--accent-text)" : "var(--text-dim)", width: 20, textAlign: "center" }}>
                           {symbol}
                         </span>
-                        <span style={{ fontSize: 13, color: isActive ? "var(--accent-text)" : "var(--text)" }}>
+                        <span style={{ fontSize: "var(--fs-meta)", color: isActive ? "var(--accent-text)" : "var(--text)" }}>
                           {label}
                         </span>
                       </div>
                       {isLoading ? (
-                        <span style={{ fontSize: 12, color: "var(--text-faint)" }}>Saving…</span>
+                        <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>Saving…</span>
                       ) : isActive ? (
                         <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />
                       ) : null}
@@ -278,7 +272,7 @@ export function SettingsContent() {
                   );
                 })}
                 {currencyError && (
-                  <div style={{ fontSize: 12, color: "var(--negative)", marginTop: 4 }}>{currencyError}</div>
+                  <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative)", marginTop: 4 }}>{currencyError}</div>
                 )}
               </div>
             )}
@@ -302,16 +296,17 @@ export function SettingsContent() {
             >
               <div style={{ flex: 1 }}>
                 <div style={{
-                  fontFamily: "var(--font-serif)",
-                  fontSize: 16,
+                  fontFamily: "var(--serif)",
+                  fontSize: "var(--fs-subhead)",
                   fontWeight: 500,
+                  letterSpacing: "var(--tracking-subhead)",
                   color: "var(--text)",
                   fontVariationSettings: "'opsz' 18",
                 }}>
                   Theme
                 </div>
               </div>
-              <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, flexShrink: 0 }}>
+              <span className="tnum" style={{ fontSize: "var(--fs-meta)", color: "var(--text)", fontWeight: 500, flexShrink: 0 }}>
                 {themeLabel}
               </span>
               <ChevronRight />
@@ -330,7 +325,7 @@ export function SettingsContent() {
                         alignItems: "center",
                         justifyContent: "space-between",
                         padding: "10px 12px",
-                        borderRadius: 10,
+                        borderRadius: "var(--radius-md)",
                         border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
                         background: isActive ? "var(--accent-soft)" : "var(--bg)",
                         cursor: "pointer",
@@ -338,7 +333,7 @@ export function SettingsContent() {
                         textAlign: "left",
                       }}
                     >
-                      <span style={{ fontSize: 13, color: isActive ? "var(--accent-text)" : "var(--text)" }}>
+                      <span style={{ fontSize: "var(--fs-meta)", color: isActive ? "var(--accent-text)" : "var(--text)" }}>
                         {label}
                       </span>
                       {isActive && (
@@ -357,17 +352,17 @@ export function SettingsContent() {
 
         {/* Account — email + sign out. On the demo account: a note + a path to a
             real subscription (sign out, then create your own account → paywall). */}
-        <div style={SECTION_LABEL_STYLE}>Account</div>
+        <div className="eyebrow" style={SECTION_LABEL_STYLE}>Account</div>
         <div style={{
           background: "var(--surface)",
           border: "0.5px solid var(--border)",
-          borderRadius: 14,
+          borderRadius: "var(--radius-lg)",
           marginBottom: 24,
           overflow: "hidden",
         }}>
           {isDemo ? (
             <>
-              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, fontFamily: "var(--font-sans)" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", fontFamily: "var(--sans)" }}>
                 You’re exploring a live demo account. Start your own subscription to track your real portfolio.
               </div>
               <button
@@ -376,13 +371,13 @@ export function SettingsContent() {
                   width: "100%",
                   padding: "14px 16px",
                   textAlign: "left",
-                  fontSize: 15,
+                  fontSize: "var(--fs-body)",
                   fontWeight: 600,
                   color: "var(--accent)",
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  fontFamily: "var(--font-sans)",
+                  fontFamily: "var(--sans)",
                 }}
               >
                 Start your subscription
@@ -391,7 +386,7 @@ export function SettingsContent() {
           ) : (
             <>
               {user?.email && (
-                <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-sans)" }}>
+                <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", fontFamily: "var(--sans)" }}>
                   {user.email}
                 </div>
               )}
@@ -401,13 +396,13 @@ export function SettingsContent() {
                   width: "100%",
                   padding: "14px 16px",
                   textAlign: "left",
-                  fontSize: 15,
+                  fontSize: "var(--fs-body)",
                   fontWeight: 500,
                   color: "var(--negative)",
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  fontFamily: "var(--font-sans)",
+                  fontFamily: "var(--sans)",
                 }}
               >
                 Sign out
@@ -417,15 +412,15 @@ export function SettingsContent() {
         </div>
 
         {/* Data & AI — short, generic standing disclosure */}
-        <div style={SECTION_LABEL_STYLE}>Data &amp; AI</div>
+        <div className="eyebrow" style={SECTION_LABEL_STYLE}>Data &amp; AI</div>
         <div style={{
           background: "var(--surface)",
           border: "0.5px solid var(--border)",
-          borderRadius: 14,
+          borderRadius: "var(--radius-lg)",
           marginBottom: 24,
           padding: "14px 16px",
         }}>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6 }}>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
             Volnar uses AI to power chat and insights. Your data is never used to
             train AI models.{" "}
             <a
@@ -439,7 +434,7 @@ export function SettingsContent() {
           </div>
           {aiConsentAt && (
             <div style={{
-              fontSize: 12,
+              fontSize: "var(--fs-caption)",
               color: "var(--text-faint)",
               marginTop: 8,
               display: "inline-flex",
@@ -454,7 +449,7 @@ export function SettingsContent() {
 
         {/* Legal note + delete */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "4px 0" }}>
-          <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", maxWidth: 320, lineHeight: 1.5 }}>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", textAlign: "center", maxWidth: 320, lineHeight: "var(--lh-body)" }}>
             {DISCLAIMER_TEXT}{" "}
             <a
               href="https://volnar.nl/terms"
@@ -470,13 +465,13 @@ export function SettingsContent() {
             <button
               onClick={() => setDeleteOpen(true)}
               style={{
-                fontSize: 13,
+                fontSize: "var(--fs-caption)",
                 fontWeight: 400,
                 color: "var(--text-faint)",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                fontFamily: "var(--font-sans)",
+                fontFamily: "var(--sans)",
                 textDecoration: "underline",
                 textUnderlineOffset: 3,
               }}
@@ -508,34 +503,35 @@ export function SettingsContent() {
               maxWidth: 380,
               background: "var(--surface)",
               border: "0.5px solid var(--border)",
-              borderRadius: 16,
+              borderRadius: "var(--radius-lg)",
               padding: "22px 20px 20px",
-              fontFamily: "var(--font-sans)",
+              fontFamily: "var(--sans)",
             }}
           >
             <div style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: 20,
+              fontFamily: "var(--serif)",
+              fontSize: "var(--fs-subhead)",
               fontWeight: 500,
+              letterSpacing: "var(--tracking-subhead)",
               color: "var(--text)",
               marginBottom: 10,
               fontVariationSettings: "'opsz' 24",
             }}>
               Delete account
             </div>
-            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: 16 }}>
+            <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginBottom: 16 }}>
               This is permanent and cannot be undone. It removes all of your portfolio
               data, diary entries, and chat history. To continue, type DELETE below.
             </div>
             {deletionNotice && (
               <div
                 style={{
-                  fontSize: 13,
+                  fontSize: "var(--fs-caption)",
                   color: "var(--amber-deep, var(--negative-text))",
-                  lineHeight: 1.5,
+                  lineHeight: "var(--lh-body)",
                   background: "rgba(175,85,48,0.08)",
                   border: "1px solid rgba(175,85,48,0.18)",
-                  borderRadius: 10,
+                  borderRadius: "var(--radius-md)",
                   padding: "10px 12px",
                   marginBottom: 16,
                 }}
@@ -557,17 +553,17 @@ export function SettingsContent() {
               style={{
                 width: "100%",
                 padding: "10px 12px",
-                borderRadius: 10,
+                borderRadius: "var(--radius-md)",
                 border: "1px solid var(--border)",
                 background: "var(--bg)",
                 color: "var(--text)",
-                fontSize: 15,
-                fontFamily: "var(--font-sans)",
+                fontSize: "var(--fs-body)",
+                fontFamily: "var(--sans)",
                 marginBottom: 14,
               }}
             />
             {deleteError && (
-              <div style={{ fontSize: 13, color: "var(--negative)", marginBottom: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative)", marginBottom: 12, lineHeight: "var(--lh-body)" }}>
                 {deleteError}
               </div>
             )}
@@ -578,14 +574,14 @@ export function SettingsContent() {
                 style={{
                   flex: 1,
                   padding: "11px 0",
-                  borderRadius: 10,
+                  borderRadius: "var(--radius-md)",
                   border: "1px solid var(--border)",
                   background: "var(--bg)",
                   color: "var(--text)",
-                  fontSize: 15,
+                  fontSize: "var(--fs-body)",
                   fontWeight: 500,
                   cursor: deleting ? "default" : "pointer",
-                  fontFamily: "var(--font-sans)",
+                  fontFamily: "var(--sans)",
                 }}
               >
                 Cancel
@@ -596,14 +592,14 @@ export function SettingsContent() {
                 style={{
                   flex: 1,
                   padding: "11px 0",
-                  borderRadius: 10,
+                  borderRadius: "var(--radius-md)",
                   border: "1px solid var(--negative)",
                   background: deleteConfirmText === "DELETE" && !deleting ? "var(--negative-soft)" : "var(--bg)",
                   color: deleteConfirmText === "DELETE" && !deleting ? "var(--negative-text)" : "var(--text-faint)",
-                  fontSize: 15,
+                  fontSize: "var(--fs-body)",
                   fontWeight: 500,
                   cursor: deleteConfirmText === "DELETE" && !deleting ? "pointer" : "default",
-                  fontFamily: "var(--font-sans)",
+                  fontFamily: "var(--sans)",
                 }}
               >
                 {deleting ? "Deleting…" : "Delete account"}
@@ -622,14 +618,14 @@ export function SettingsContent() {
             transform: "translateX(-50%)",
             background: "var(--surface)",
             border: "1px solid var(--border-strong)",
-            borderRadius: 10,
+            borderRadius: "var(--radius-md)",
             padding: "10px 18px",
-            fontSize: 13,
+            fontSize: "var(--fs-caption)",
             color: "var(--text-dim)",
             whiteSpace: "nowrap",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            boxShadow: "var(--shadow-soft)",
             zIndex: 50,
-            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--sans)",
           }}
         >
           Display only — your portfolio is unchanged.

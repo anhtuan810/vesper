@@ -18,7 +18,7 @@ function Toggle({ on, busy, onClick }: { on: boolean; busy: boolean; onClick: ()
       disabled={busy}
       aria-pressed={on}
       style={{
-        width: 44, height: 26, borderRadius: 13, border: "none", padding: 2,
+        width: 44, height: 26, borderRadius: "var(--radius-pill)", border: "none", padding: 2,
         background: on ? "var(--accent)" : "var(--border-strong)",
         cursor: busy ? "default" : "pointer", flexShrink: 0,
         opacity: busy ? 0.6 : 1, transition: "background 0.15s",
@@ -46,14 +46,15 @@ function Row({ label, sub, children }: { label: string; sub?: string; children: 
       <div style={{ flex: 1 }}>
         <div
           style={{
-            fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 500,
+            fontFamily: "var(--serif)", fontSize: "var(--fs-subhead)", fontWeight: 500,
+            letterSpacing: "var(--tracking-subhead)",
             color: "var(--text)", fontVariationSettings: "'opsz' 18",
           }}
         >
           {label}
         </div>
         {sub && (
-          <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>{sub}</div>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginTop: 2 }}>{sub}</div>
         )}
       </div>
       {children}
@@ -139,7 +140,7 @@ export function NativeSettingsRows() {
         <Toggle on={pushOn} busy={busy === "push"} onClick={togglePush} />
       </Row>
       {pushNote && (
-        <div style={{ padding: "0 16px 12px", fontSize: 12, color: "var(--text-faint)" }}>
+        <div style={{ padding: "0 16px 12px", fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>
           {pushNote}
         </div>
       )}
