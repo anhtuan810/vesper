@@ -33,7 +33,7 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
   if (isUnitEligible) {
     if (m.action === "add" && m.after_units != null) {
       return (
-        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--positive-text)" }}>
+        <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
           +{m.after_units.toLocaleString()} {noun}
         </span>
       );
@@ -41,14 +41,14 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
     if (m.action === "edit") {
       const delta = (m.after_units ?? 0) - (m.before_units ?? 0);
       if (delta !== 0) return (
-        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: delta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
+        <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: delta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
           {delta >= 0 ? "+" : ""}{delta.toLocaleString()} {noun}
         </span>
       );
     }
     if (m.action === "remove" && m.before_units != null) {
       return (
-        <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--negative-text)", textDecoration: "line-through" }}>
+        <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
           {m.before_units.toLocaleString()} {noun}
         </span>
       );
@@ -58,7 +58,7 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
   const cur = m.currency || "USD";
   if (m.action === "add" && m.after_value != null) {
     return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--positive-text)" }}>
+      <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
         +{formatMoney(m.after_value, cur, displayCurrency)}
       </span>
     );
@@ -66,19 +66,19 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
   if (m.action === "edit") {
     const valDelta = m.before_value != null && m.after_value != null ? m.after_value - m.before_value : null;
     if (valDelta !== null && valDelta !== 0) return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: valDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
+      <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
         {valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, cur, displayCurrency)}
       </span>
     );
     if (m.after_value != null) return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--text-dim)" }}>
+      <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>
         {formatMoney(m.after_value, cur, displayCurrency)}
       </span>
     );
   }
   if (m.action === "remove" && m.before_value != null) {
     return (
-      <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: "var(--mono)", color: "var(--negative-text)", textDecoration: "line-through" }}>
+      <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
         {formatMoney(m.before_value, cur, displayCurrency)}
       </span>
     );
@@ -203,8 +203,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         <h1
           className="font-serif"
           style={{
-            fontSize: 30, fontWeight: 500, letterSpacing: "-0.022em",
-            color: "var(--hero)", lineHeight: 1,
+            fontSize: "var(--fs-title)", fontWeight: 500, letterSpacing: "var(--tracking-title)",
+            color: "var(--hero)", lineHeight: "var(--lh-tight)",
             fontVariationSettings: "'opsz' 48",
           }}
         >
@@ -242,9 +242,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             boxSizing: "border-box",
             background: "var(--surface)",
             border: "1px solid var(--border)",
-            borderRadius: 12,
+            borderRadius: "var(--radius-md)",
             padding: "12px 36px 12px 42px",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             fontFamily: "var(--font-sans)",
             color: "var(--text)",
             outline: "none",
@@ -283,9 +283,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               key={key}
               onClick={() => setPeriod(key)}
               style={{
-                fontSize: 12,
+                fontSize: "var(--fs-caption)",
                 padding: "3px 9px",
-                borderRadius: 999,
+                borderRadius: "var(--radius-pill)",
                 border: `1px solid ${active ? "var(--border-strong)" : "var(--border)"}`,
                 background: active ? "var(--surface-elev)" : "transparent",
                 color: active ? "var(--text)" : "var(--text-faint)",
@@ -314,7 +314,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>to</span>
+          <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>to</span>
           <select
             value={customTo}
             onChange={(e) => setCustomTo(e.target.value)}
@@ -353,9 +353,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             className="px-4 md:px-8 py-[14px]"
           >
             <div
+              className="eyebrow"
               style={{
-                fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-                textTransform: "uppercase", color: "var(--accent-text)", opacity: 0.7,
+                color: "var(--accent-text)", opacity: 0.7,
                 marginBottom: 6,
               }}
             >
@@ -364,7 +364,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             <div
               className="font-serif"
               style={{
-                fontSize: 16, fontWeight: 400, lineHeight: 1.35,
+                fontSize: "var(--fs-subhead)", fontWeight: 400, lineHeight: "var(--lh-snug)",
                 color: "var(--text)", fontVariationSettings: "'opsz' 18",
               }}
             >
@@ -402,15 +402,15 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         <div className="text-center pt-16">
           {trimmedQuery ? (
             <>
-              <div style={{ fontSize: 15, color: "var(--text-dim)", marginBottom: 8 }}>
+              <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", marginBottom: 8 }}>
                 No entries match &ldquo;{searchQuery.trim()}&rdquo;
               </div>
-              <p style={{ fontSize: 13, color: "var(--text-faint)" }}>Try a different search term.</p>
+              <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>Try a different search term.</p>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 15, color: "var(--text-dim)", marginBottom: 8 }}>No entries for this period</div>
-              <p style={{ fontSize: 13, color: "var(--text-faint)" }}>Try a different time range.</p>
+              <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", marginBottom: 8 }}>No entries for this period</div>
+              <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>Try a different time range.</p>
             </>
           )}
         </div>
@@ -452,13 +452,13 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               <div
                 className="font-serif"
                 style={{
-                  fontSize: 19, fontWeight: 500, color: "var(--text)",
-                  letterSpacing: "-0.01em", fontVariationSettings: "'opsz' 24",
+                  fontSize: "var(--fs-subhead)", fontWeight: 500, color: "var(--text)",
+                  letterSpacing: "var(--tracking-subhead)", fontVariationSettings: "'opsz' 24",
                 }}
               >
                 {getMonthLabel(monthKey)}
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--mono)" }}>
+              <div className="tnum" style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>
                 {monthMutations.length} {monthMutations.length === 1 ? "entry" : "entries"}
               </div>
             </div>
@@ -560,12 +560,12 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         personalContext={anchorContext}
                         marketContext={null}
                         subtitle={
-                          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.3, marginBottom: anchorContext ? 2 : 0, fontFamily: "var(--mono)" }}>
+                          <div className="tnum" style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-snug)", marginBottom: anchorContext ? 2 : 0 }}>
                             · {members.length} {verb}
                           </div>
                         }
                         footer={
-                          <div style={{ marginTop: anchorContext ? 4 : 2, fontSize: 13, color: "var(--text-faint)" }}>
+                          <div style={{ marginTop: anchorContext ? 4 : 2, fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>
                             {isGroupExpanded ? "↑ Hide" : `↓ Show all ${members.length} entries`}
                           </div>
                         }
@@ -586,10 +586,10 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                           <div style={{ display: "flex", gap: 10, padding: "4px 0 4px 36px", alignItems: "baseline" }}>
                             <span style={{ flex: 1 }}>{valueNode}</span>
                             <span
+                              className="tnum"
                               style={{
-                                fontSize: 12, color: "var(--text-faint)",
-                                fontFamily: "var(--mono)",
-                                fontFeatureSettings: '"tnum" 1', flexShrink: 0,
+                                fontSize: "var(--fs-caption)", color: "var(--text-faint)",
+                                flexShrink: 0,
                               }}
                             >
                               {formatDate(date)}
@@ -612,7 +612,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
           <button
             onClick={onLoadMore}
             style={{
-              fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--font-sans)",
+              fontSize: "var(--fs-caption)", color: "var(--text-faint)", fontFamily: "var(--font-sans)",
               background: "none", border: "none", cursor: "pointer",
             }}
           >

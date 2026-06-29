@@ -25,12 +25,12 @@ export function DiaryRowContent({
       {logo}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 1 }}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 600, color: nameColor, lineHeight: 1.2 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-body)", fontFamily: "var(--sans)", fontWeight: 500, color: nameColor, lineHeight: 1.2 }}>
             {name}
           </span>
           <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
             {valueNode}
-            <span style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap" }}>
+            <span className="tnum" style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", whiteSpace: "nowrap" }}>
               {formatDate(date)}
             </span>
           </span>
@@ -40,8 +40,8 @@ export function DiaryRowContent({
           <div
             className="font-serif"
             style={{
-              fontStyle: "italic", fontSize: 12.5,
-              color: "var(--text-dim)", lineHeight: 1.35,
+              fontStyle: "italic", fontSize: "var(--fs-caption)",
+              color: "var(--text-dim)", lineHeight: "var(--lh-body)",
               fontVariationSettings: "'opsz' 14",
             }}
           >
@@ -51,12 +51,12 @@ export function DiaryRowContent({
         {marketContext && (
           <div style={{ marginTop: personalContext ? 5 : 0, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
             <span
-              className="font-mono uppercase"
-              style={{ fontSize: 10.5, letterSpacing: "0.14em", color: "var(--text-faint)", flexShrink: 0 }}
+              className="eyebrow"
+              style={{ flexShrink: 0 }}
             >
               Markets
             </span>
-            <span style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.35 }}>
+            <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-snug)" }}>
               {marketContext}
             </span>
           </div>

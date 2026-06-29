@@ -72,22 +72,23 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
         </span>
 
         <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--sans)", fontWeight: 500, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
             {move.index_label}{" "}
-            <span style={{ fontFamily: "var(--mono)", fontWeight: 500, fontFeatureSettings: '"tnum" 1', color: indexUp ? "var(--positive-text)" : "var(--negative-text)" }}>
+            <span className="tnum" style={{ fontWeight: 500, color: indexUp ? "var(--positive-text)" : "var(--negative-text)" }}>
               {pct(move.pct_change)}
             </span>
           </span>
           <span
+            className="tnum"
             style={{
-              marginLeft: "auto", fontSize: 12.5, fontWeight: 600, fontFamily: "var(--mono)",
-              fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap",
+              marginLeft: "auto", fontSize: "var(--fs-meta)", fontWeight: 500,
+              whiteSpace: "nowrap",
               color: portUp ? "var(--positive-text)" : "var(--negative-text)",
             }}
           >
             {signed(imp.total)}
           </span>
-          <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>
+          <span className="tnum" style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", whiteSpace: "nowrap" }}>
             {formatDate(move.date)}
           </span>
         </span>
@@ -110,7 +111,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
           <p
             className="font-serif"
             style={{
-              fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.45,
+              fontStyle: "italic", fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)",
               margin: 0, fontVariationSettings: "'opsz' 16",
             }}
           >
@@ -121,13 +122,14 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
               {m.map((h) => {
                 const inner = (
                   <>
-                    <span style={{ fontSize: 12, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {h.label}
                     </span>
                     <span
+                      className="tnum"
                       style={{
-                        fontFamily: "var(--mono)", fontSize: 12, fontWeight: 500,
-                        fontFeatureSettings: '"tnum" 1', whiteSpace: "nowrap", flexShrink: 0,
+                        fontSize: "var(--fs-caption)", fontWeight: 500,
+                        whiteSpace: "nowrap", flexShrink: 0,
                         color: h.impact >= 0 ? "var(--positive-text)" : "var(--negative-text)",
                       }}
                     >

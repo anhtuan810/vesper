@@ -94,7 +94,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "8px 0" }}>
           <div
             style={{
-              width: 32, height: 32, borderRadius: 9,
+              width: 32, height: 32, borderRadius: "var(--radius-md)",
               background: "var(--accent-soft)",
               border: "1px solid var(--border)",
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -109,13 +109,13 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
             </span>
           </div>
           <span
-            style={{ fontSize: 13, color: "var(--text-faint)", letterSpacing: "0.04em" }}
+            style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}
           >
             Reading the period…
           </span>
         </div>
       ) : summaryError ? (
-        <div style={{ fontSize: 13, color: "var(--text-faint)", lineHeight: 1.5, padding: "4px 0" }}>
+        <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)", padding: "4px 0" }}>
           {summaryError}
         </div>
       ) : (
@@ -123,7 +123,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
           {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i, arr) => (
             <li
               key={i}
-              style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 6 : 0 }}
+              style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginBottom: i < arr.length - 1 ? 6 : 0 }}
             >
               {line.replace(/^•\s*/, "• ")}
             </li>

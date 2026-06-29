@@ -125,25 +125,25 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
 
   return (
     <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border-strong)" }}>
-      <div style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 7 }}>
+      <div className="eyebrow" style={{ color: "var(--accent)", marginBottom: 7 }}>
         Looking back · {verdict.lookbackLabel}
       </div>
-      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.55, margin: 0 }}>{line}</p>
+      <p style={{ fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: 0 }}>{line}</p>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        style={{ marginTop: 9, background: "none", border: "none", padding: 0, fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.03em", color: "var(--text-dim)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
+        style={{ marginTop: 9, background: "none", border: "none", padding: 0, fontFamily: "var(--mono)", fontSize: "var(--fs-micro)", letterSpacing: "0.03em", color: "var(--text-dim)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
       >
         {open ? "Hide how this is figured" : "How this is figured"}
       </button>
       {open && (
         <div style={{ marginTop: 11, display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "var(--text-dim)", lineHeight: 1.55 }}>{calc}</p>
+          <p style={{ margin: 0, fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>{calc}</p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 5 }}>
             {notes.map((n, i) => (
-              <li key={i} style={{ position: "relative", paddingLeft: 15, fontSize: 12, color: "var(--text-faint)", lineHeight: 1.5 }}>
-                <span style={{ position: "absolute", left: 2, top: 7, width: 4, height: 4, borderRadius: 99, background: "var(--text-faint)" }} aria-hidden="true" />
+              <li key={i} style={{ position: "relative", paddingLeft: 15, fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)" }}>
+                <span style={{ position: "absolute", left: 2, top: 7, width: 4, height: 4, borderRadius: "var(--radius-pill)", background: "var(--text-faint)" }} aria-hidden="true" />
                 {n}
               </li>
             ))}
@@ -202,16 +202,16 @@ export function MobileDecisionJournal({
           that decision) — no in-panel stepper or divider, so the panel reads as
           one continuous block aligned with the holdings below. The date sits as a
           quiet eyebrow above the title so the entry is still anchored in time. */}
-      <div style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 7 }}>
+      <div className="eyebrow" style={{ marginBottom: 7 }}>
         {shortDate(mDate(m))}
       </div>
-      <h3 className="font-serif" style={{ fontSize: 21, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--hero)", lineHeight: 1.15, margin: "0 0 10px" }}>
+      <h3 className="font-serif" style={{ fontSize: "var(--fs-subhead)", fontWeight: 500, letterSpacing: "var(--tracking-subhead)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 10px" }}>
         {decisionTitle(m)}
       </h3>
       {m.market_context && (
-        <p style={{ fontStyle: "italic", fontSize: 14.5, color: "var(--text)", lineHeight: 1.5, margin: "0 0 9px" }}>{m.market_context}</p>
+        <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: "0 0 9px" }}>{m.market_context}</p>
       )}
-      <p style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.55, margin: 0 }}>
+      <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
         {own ? m.personal_context
           : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
           : "Recorded automatically — no note attached."}
@@ -219,8 +219,8 @@ export function MobileDecisionJournal({
       {points.length > 0 && (
         <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           {points.map((p, i) => (
-            <li key={i} style={{ position: "relative", paddingLeft: 17, fontSize: 14.5, color: "var(--text-dim)", lineHeight: 1.5, fontFeatureSettings: '"tnum" 1' }}>
-              <span style={{ position: "absolute", left: 2, top: 9, width: 5, height: 5, borderRadius: 99, background: "var(--text-faint)" }} aria-hidden="true" />
+            <li key={i} style={{ position: "relative", paddingLeft: 17, fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ position: "absolute", left: 2, top: 9, width: 5, height: 5, borderRadius: "var(--radius-pill)", background: "var(--text-faint)" }} aria-hidden="true" />
               {p}
             </li>
           ))}
