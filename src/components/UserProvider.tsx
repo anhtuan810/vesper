@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { isAuthRetryableFetchError, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { bumpApiCacheGeneration, isNativeBuild } from "@/lib/api";
-import { CHAT_HISTORY_PREFIX } from "@/lib/constants";
+import { purgeClientCaches } from "@/lib/client-cache";
 import { resetPortfolioRevision } from "@/lib/portfolio-revision";
 
 interface UserContextValue {
@@ -38,32 +38,6 @@ const UserContext = createContext<UserContextValue>({
 
 export function useUserContext(): UserContextValue {
   return useContext(UserContext);
-}
-
-// Wipes every client-side cache that holds account figures so no value from a
-// previous account can render against the next session. sessionStorage SWR /
-// bootstrap mirrors (assets, prices, vitals, diary, profile baseline, plus
-// transient handoffs) all live under the `volnar`/`vitals.` namespaces; chat
-// history is the only account data in localStorage. The module-level in-memory
-// caches (vitals, insight) are userId-tagged and self-invalidate, and the
-// portfolio-revision counter is reset by the caller.
-function purgeClientCaches(): void {
-  try {
-    const toRemove: string[] = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const k = sessionStorage.key(i);
-      if (k && (k.startsWith("volnar") || k.startsWith("vitals."))) toRemove.push(k);
-    }
-    toRemove.forEach((k) => sessionStorage.removeItem(k));
-  } catch {}
-  try {
-    const toRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(CHAT_HISTORY_PREFIX)) toRemove.push(k);
-    }
-    toRemove.forEach((k) => localStorage.removeItem(k));
-  } catch {}
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {

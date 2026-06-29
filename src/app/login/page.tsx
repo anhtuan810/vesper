@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { isNative } from "@/lib/platform";
 import { apiFetch } from "@/lib/api";
+import { purgeClientCaches } from "@/lib/client-cache";
 import { signInWithGoogleNative, signInWithAppleNative } from "@/lib/native/auth-native";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
@@ -284,6 +285,14 @@ function LoginInner() {
               const { access_token, refresh_token, expires_at } = await res.json();
               const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
               if (sessionError) throw new Error();
+              // Purge any chat/figure caches a PREVIOUS demo session left in this
+              // browser. The shared-account demo reuses one user id across entries,
+              // so adopting the session fires no id-change in onAuthStateChange and
+              // its purge never runs — a stale conversation would otherwise survive
+              // the server-side reseed (the web path handles this via the
+              // pre-hydration script in layout.tsx). Runs BEFORE demo_expires_at is
+              // written below, which lives outside the purged namespaces.
+              purgeClientCaches();
               // Native has no demo_expires_at cookie (cookies don't cross the
               // capacitor origin) — stash the deadline for the expiry wall. Kept
               // outside the volnar* namespace the sign-out purge clears, so the

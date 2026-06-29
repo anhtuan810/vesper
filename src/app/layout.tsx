@@ -82,6 +82,24 @@ const isNativeBuild = process.env.NEXT_PUBLIC_BUILD_TARGET === "native";
 const NATIVE_THEME_SCRIPT =
   `try{var t=localStorage.getItem("volnar.theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}`;
 
+// Web only: /demo sets a `volnar_demo_reseed` cookie when it reseeds the demo
+// account. The shared-account demo reuses one user id across entries, so the
+// per-user localStorage chat cache (use-chat-session) and the sessionStorage
+// figure mirrors survive the server-side wipe and a stale conversation/value
+// would resurface in a "fresh" demo. The chat hook reads localStorage in a mount
+// effect (which fires before any ancestor React effect could purge it), so the
+// clear has to run pre-hydration — like the theme script above. Matches the chat
+// (localStorage) + `volnar`/`vitals.` (sessionStorage) keys purgeClientCaches
+// clears, but never `volnar.theme` or the demo cookies. Consumes the cookie so it
+// only fires once per entry; the short Max-Age caps it if the clear ever throws.
+const DEMO_RESEED_PURGE_SCRIPT =
+  `try{if(document.cookie.indexOf("volnar_demo_reseed=")!==-1){` +
+  `for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i);` +
+  `if(k&&(k.indexOf("volnar.chat.history.")===0||k.indexOf("volnar_chat_history_")===0)){localStorage.removeItem(k);}}` +
+  `for(var j=sessionStorage.length-1;j>=0;j--){var s=sessionStorage.key(j);` +
+  `if(s&&(s.indexOf("volnar")===0||s.indexOf("vitals.")===0)){sessionStorage.removeItem(s);}}` +
+  `document.cookie="volnar_demo_reseed=; Max-Age=0; path=/";}}catch(e){}`;
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -107,8 +125,10 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-bg text-fg">
         {isNativeBuild && (
-          // eslint-disable-next-line @next/next/no-sync-scripts
           <script dangerouslySetInnerHTML={{ __html: NATIVE_THEME_SCRIPT }} />
+        )}
+        {!isNativeBuild && (
+          <script dangerouslySetInnerHTML={{ __html: DEMO_RESEED_PURGE_SCRIPT }} />
         )}
         <PreloadResources />
         <ThemeProvider initialTheme={theme}>

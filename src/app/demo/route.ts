@@ -61,6 +61,22 @@ export async function GET(request: NextRequest) {
   const redirectTo = (path: string) => NextResponse.redirect(new URL(path, request.url));
   const response = redirectTo("/");
 
+  // Signal the client (the pre-hydration purge script in layout.tsx) that this
+  // entry reseeded the demo account, so it clears any chat/figure caches a
+  // PREVIOUS demo session left in this browser before the app reads them. The
+  // shared-account demo reuses one user id across entries, so the per-user
+  // localStorage chat cache (use-chat-session) survives the server-side wipe and
+  // a stale conversation would otherwise resurface in a "fresh" demo. Only the
+  // success paths return this `response` (failures build their own redirect to
+  // /login), so the flag ships only when a reseed actually happened. Readable
+  // (non-HttpOnly so the script can see it), short-lived, consumed on first load.
+  response.cookies.set("volnar_demo_reseed", String(Date.now()), {
+    httpOnly: false,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60,
+  });
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
