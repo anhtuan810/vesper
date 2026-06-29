@@ -11,12 +11,14 @@ function formatCurrency(eur: number, displayCurrency: string): string {
 }
 
 function formatFull(eur: number, displayCurrency: string): string {
-  return eur.toLocaleString("en-US", {
-    style: "currency",
-    currency: displayCurrency.toUpperCase(),
+  // nl-NL number grammar (period thousands) + a manual symbol, matching the
+  // app's formatMoney everywhere else — never en-US commas.
+  const sym = displayCurrency.toUpperCase() === "EUR" ? "€" : "$";
+  const n = new Intl.NumberFormat("nl-NL", {
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
-  });
+  }).format(Math.round(eur));
+  return `${sym}${n}`;
 }
 
 function youMarkerX(netWorthEur: number): number {

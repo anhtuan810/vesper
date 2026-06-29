@@ -11,12 +11,14 @@ function formatCurrency(eur: number, displayCurrency: string): string {
 }
 
 function formatFull(eur: number, displayCurrency: string): string {
-  return eur.toLocaleString("en-US", {
-    style: "currency",
-    currency: displayCurrency.toUpperCase(),
+  // nl-NL number grammar (period thousands) + a manual symbol, matching the
+  // app's formatMoney everywhere else — never en-US commas.
+  const sym = displayCurrency.toUpperCase() === "EUR" ? "€" : "$";
+  const n = new Intl.NumberFormat("nl-NL", {
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
-  });
+  }).format(Math.round(eur));
+  return `${sym}${n}`;
 }
 
 function youMarkerX(netWorthEur: number): number {
@@ -74,18 +76,24 @@ export function PerspectiveCard({
         globally — a position most reach only after decades of compounding.
       </div>
 
-      {/* Net worth — the card's signature figure */}
-      <div
-        style={{
-          fontFamily: "var(--serif)",
-          fontSize: "var(--fs-metric)",
-          fontWeight: 600,
-          letterSpacing: "var(--tracking-hero)",
-          color: "var(--hero)",
-          marginBottom: 18,
-        }}
-      >
-        <span className="tnum">{nwFull}</span> · your wealth today
+      {/* Net worth — the card's signature figure; the label is a quiet caption */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+        <span
+          className="tnum"
+          style={{
+            fontFamily: "var(--serif)",
+            fontSize: "var(--fs-metric)",
+            fontWeight: 600,
+            letterSpacing: "var(--tracking-hero)",
+            color: "var(--hero)",
+            lineHeight: 1,
+          }}
+        >
+          {nwFull}
+        </span>
+        <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)" }}>
+          your wealth today
+        </span>
       </div>
 
       {/* Wealth distribution chart */}
