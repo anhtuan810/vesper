@@ -1,15 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { NavBar } from "@/components/NavBar";
 import { VitalsContent } from "@/components/vitals/VitalsContent";
 import { DesktopVitals } from "@/components/overview/DesktopVitals";
 import { WebShell } from "@/components/desktop/WebShell";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
+import { apiFetch } from "@/lib/api";
+import type { MarketHighlight } from "@/lib/market-highlights";
 
 export default function VitalsPage() {
   const router = useRouter();
   const isDesktop = useIsDesktop();
+  const [marketHighlights, setMarketHighlights] = useState<MarketHighlight[]>([]);
+
+  // Mobile only: pull the daily market-news highlights for the Markets block at
+  // the top of the page (desktop renders DesktopVitals, which doesn't show it).
+  useEffect(() => {
+    if (isDesktop !== false) return;
+    const controller = new AbortController();
+    apiFetch("/api/market-highlights", { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => { if (body?.marketHighlights) setMarketHighlights(body.marketHighlights); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [isDesktop]);
 
   // Neutral background until the device class is known — avoids a hydration flash.
   if (isDesktop === undefined) {
@@ -49,7 +65,7 @@ export default function VitalsPage() {
           padding: "0 0 110px",
         }}
       >
-        <VitalsContent />
+        <VitalsContent marketHighlights={marketHighlights} />
       </div>
     </div>
   );

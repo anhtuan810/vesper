@@ -155,15 +155,14 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
 }
 
 export function MobileDecisionJournal({
-  decisions, selectedId, onSelect, displayCurrency,
+  decisions, selectedId, displayCurrency,
 }: {
   decisions: Mutation[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
   displayCurrency: DisplayCurrency;
 }) {
-  // Controlled by the shared selection (a tapped chart dot or the stepper). When
-  // nothing is selected, default to the newest decision so the panel is never empty.
+  // Controlled by the shared selection (a tapped chart dot). When nothing is
+  // selected, default to the newest decision so the panel is never empty.
   const index = useMemo(() => {
     const i = decisions.findIndex((d) => d.id === selectedId);
     return i >= 0 ? i : 0;
@@ -196,31 +195,16 @@ export function MobileDecisionJournal({
   const own = hasOwnNote(m);
   const points = decisionPoints(m, displayCurrency);
   const verdict = verdicts[`${m.id}|${displayCurrency}`];
-  const canOlder = index < decisions.length - 1;
-  const canNewer = index > 0;
 
   return (
-    <section style={{ marginTop: 4, marginBottom: 22, paddingTop: 18, borderTop: "1px solid var(--border-strong)" }}>
-      {/* stepper — ‹  n / total · date  › */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 14 }}>
-        <button
-          type="button" aria-label="Older decision" disabled={!canOlder}
-          onClick={() => { const n = decisions[Math.min(index + 1, decisions.length - 1)]; if (n) onSelect(n.id); }}
-          style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", color: "var(--text-dim)", fontSize: 19, lineHeight: 1, cursor: canOlder ? "pointer" : "default", opacity: canOlder ? 1 : 0.3 }}
-        >‹</button>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 11.5, letterSpacing: "0.04em", color: "var(--text-dim)", display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ textTransform: "uppercase", letterSpacing: "0.12em", fontSize: 10, color: "var(--text-faint)" }}>Journal</span>
-          <span style={{ color: "var(--text)", fontFeatureSettings: '"tnum" 1' }}><b style={{ color: "var(--accent)", fontWeight: 700 }}>{index + 1}</b> / {decisions.length}</span>
-          <span style={{ color: "var(--accent)" }}>{shortDate(mDate(m))}</span>
-        </div>
-        <button
-          type="button" aria-label="Newer decision" disabled={!canNewer}
-          onClick={() => { const n = decisions[Math.max(index - 1, 0)]; if (n) onSelect(n.id); }}
-          style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", color: "var(--text-dim)", fontSize: 19, lineHeight: 1, cursor: canNewer ? "pointer" : "default", opacity: canNewer ? 1 : 0.3 }}
-        >›</button>
+    <section style={{ marginTop: 8, marginBottom: 22 }}>
+      {/* Entry detail. Selection is driven by the chart dots (tap a marker to show
+          that decision) — no in-panel stepper or divider, so the panel reads as
+          one continuous block aligned with the holdings below. The date sits as a
+          quiet eyebrow above the title so the entry is still anchored in time. */}
+      <div style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 500, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 7 }}>
+        {shortDate(mDate(m))}
       </div>
-
-      {/* entry detail */}
       <h3 className="font-serif" style={{ fontSize: 21, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--hero)", lineHeight: 1.15, margin: "0 0 10px" }}>
         {decisionTitle(m)}
       </h3>

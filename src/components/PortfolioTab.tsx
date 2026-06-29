@@ -25,7 +25,6 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import { requestExplore } from "@/lib/scenario/explore";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
-import type { MarketHighlight } from "@/lib/market-highlights";
 import { firstSnapshotDate } from "@/lib/networth-history";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_COLOR, CATEGORY_ORDER, ALL_CATEGORIES,
@@ -63,11 +62,10 @@ interface PortfolioTabProps {
   initialSnapshots?: SnapshotPoint[];
   valuesSettled: boolean;
   mutations: Mutation[];
-  marketHighlights: MarketHighlight[];
 }
 
 export function PortfolioTab({
-  assets, grossTotal, netTotal, initialSnapshots, valuesSettled, mutations, marketHighlights,
+  assets, grossTotal, netTotal, initialSnapshots, valuesSettled, mutations,
 }: PortfolioTabProps) {
   const router = useRouter();
   const isDesktop = useIsDesktop();
@@ -388,16 +386,18 @@ export function PortfolioTab({
         )}
       </div>
 
-      {/* Decision journal — step through past decisions and see each one's
-          reasoning + the "Looking back" Decision Verdict, synced with the chart
-          dots (mirrors the desktop Overview's selected-entry panel). */}
+      {/* Decision journal — the selected decision's reasoning + the "Looking
+          back" Decision Verdict. Selection comes from the chart dots (tap a
+          marker). Bleeds to the same -mx-4 column as the hero, chart and
+          Holdings so the entry text lines up with them instead of sitting inset. */}
       {!liquidOnly && navDecisions.length > 0 && (
-        <MobileDecisionJournal
-          decisions={navDecisions}
-          selectedId={selectedDecisionId}
-          onSelect={setSelectedDecisionId}
-          displayCurrency={displayCurrency}
-        />
+        <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
+          <MobileDecisionJournal
+            decisions={navDecisions}
+            selectedId={selectedDecisionId}
+            displayCurrency={displayCurrency}
+          />
+        </div>
       )}
 
       {/* Portfolio summary — three compact rows (Projection, Worth knowing,
@@ -410,7 +410,6 @@ export function PortfolioTab({
           <PortfolioSummaryCard
             netTotal={netTotal}
             snapshots={fullSnapshots}
-            marketHighlights={marketHighlights}
             onExplore={handleExplore}
           />
         </div>

@@ -151,7 +151,6 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       : !sufficientHistory && earliestDate != null
         ? `since ${fmtSelectedDate(earliestDate)}`
         : RANGE_LABEL[range];
-  const annotation = !showSelected && !showPct && includesHoldingsChange ? " · includes added holdings" : "";
 
   if (!currencyLoaded || !valuesSettled) {
     return (
@@ -209,7 +208,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
             </svg>
             {sign}{formattedAbs}{showPct && formattedPct != null ? ` (${formattedPct}%)` : ""}
           </span>
-          <span style={{ color: "var(--text-faint)", fontSize: 13, fontFamily: "var(--mono)" }}>{label}{annotation}</span>
+          <span style={{ color: "var(--text-faint)", fontSize: 13, fontFamily: "var(--mono)" }}>{label}</span>
         </div>
       )}
     </div>
