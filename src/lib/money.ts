@@ -15,10 +15,15 @@ interface CurrencyMeta {
   locale: string;
 }
 
+// nl-NL number grammar (period thousands, comma decimals: €6.025,50) for every
+// display currency — matching the rest of the app's figures (the chart axis,
+// percentages, unit counts all hard-code nl-NL) and the brand's stated
+// formatting. Previously en-US (comma thousands), which made money read
+// inconsistently against everything else.
 const CURRENCY_META: Record<DisplayCurrency, CurrencyMeta> = {
-  EUR: { symbol: "€", locale: "en-US" },
-  USD: { symbol: "$", locale: "en-US" },
-  GBP: { symbol: "£", locale: "en-US" },
+  EUR: { symbol: "€", locale: "nl-NL" },
+  USD: { symbol: "$", locale: "nl-NL" },
+  GBP: { symbol: "£", locale: "nl-NL" },
 };
 
 const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
