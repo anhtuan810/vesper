@@ -76,9 +76,9 @@ export function NavBar({
         <span
           className="font-mono"
           style={{
-            fontSize: 11,
+            fontSize: "var(--fs-micro)",
             padding: "1px 6px",
-            borderRadius: 999,
+            borderRadius: "var(--radius-pill)",
             background: tab === "diary" ? "rgba(255,255,255,0.12)" : "var(--surface)",
             color: tab === "diary" ? "var(--text)" : "var(--text-faint)",
           }}
@@ -102,7 +102,7 @@ export function NavBar({
       {!empty && lastUpdated && (
         <span
           className="font-mono text-faint hidden sm:inline"
-          style={{ fontSize: 11, letterSpacing: "0.04em" }}
+          style={{ fontSize: "var(--fs-micro)", letterSpacing: "0.04em" }}
         >
           {formatRelativeTime(lastUpdated)}
         </span>
@@ -116,7 +116,7 @@ export function NavBar({
           position: "relative",
           width: 28,
           height: 28,
-          borderRadius: 6,
+          borderRadius: "var(--radius-md)",
           opacity: refreshing ? 0.4 : 1,
         }}
       >
@@ -162,7 +162,7 @@ export function NavBar({
           onClick={() => router.push("/settings")}
           aria-label="Settings"
           className="flex items-center justify-center text-faint hover:text-dim transition-colors"
-          style={{ width: 28, height: 28, borderRadius: 6 }}
+          style={{ width: 28, height: 28, borderRadius: "var(--radius-md)" }}
         >
           <svg
             viewBox="0 0 24 24"

@@ -36,11 +36,8 @@ export function HoldingsGroup({
           WebkitTapHighlightColor: "transparent",
         }}
       >
-        <span style={{
-          fontSize: 15,
-          fontWeight: 600,
-          letterSpacing: "-0.01em",
-          color: "var(--text)",
+        <span className="eyebrow" style={{
+          color: "var(--text-dim)",
           flexShrink: 0,
           minWidth: 104,
           textAlign: "left",
@@ -54,7 +51,7 @@ export function HoldingsGroup({
           flex: 1,
           height: 6,
           background: "var(--surface-elev)",
-          borderRadius: 999,
+          borderRadius: "var(--radius-pill)",
           overflow: "hidden",
           position: "relative",
         }}>
@@ -64,17 +61,15 @@ export function HoldingsGroup({
             height: "100%",
             width: `${barPct}%`,
             minWidth: 8,
-            borderRadius: 999,
+            borderRadius: "var(--radius-pill)",
             background: barColor,
           }} />
         </div>
 
         {/* Group total */}
-        <span style={{
-          fontSize: 15,
+        <span className="tnum" style={{
+          fontSize: "var(--fs-meta)",
           fontWeight: 500,
-          fontFamily: "var(--mono)",
-          fontVariantNumeric: "tabular-nums",
           color: "var(--text)",
           flexShrink: 0,
         }}>

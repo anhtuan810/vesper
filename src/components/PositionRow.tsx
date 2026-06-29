@@ -72,7 +72,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
     <Link href={`/asset?id=${asset.id}`} className="block">
       <div
         className="flex items-center border-b border-border-strong last:border-0 gap-3"
-        style={{ paddingTop: 9, paddingBottom: 9 }}
+        style={{ paddingTop: "var(--space-row)", paddingBottom: "var(--space-row)" }}
       >
         <AssetLogo
           type={asset.type}
@@ -84,11 +84,11 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
 
         {/* Name + sub-line */}
         <div className="flex-1 min-w-0">
-          <div className="text-fg leading-snug truncate" style={{ fontSize: 15, fontWeight: 500 }}>
+          <div className="text-fg truncate" style={{ fontSize: "var(--fs-body)", fontWeight: 500, lineHeight: 1.2 }}>
             {asset.name}
           </div>
           {sub && (
-            <div className="text-dim mt-0.5 truncate" style={{ fontSize: 12, fontFamily: "var(--mono)" }}>
+            <div className="text-dim mt-0.5 truncate" style={{ fontSize: "var(--fs-caption)", fontFamily: "var(--mono)" }}>
               {sub}
             </div>
           )}
@@ -103,23 +103,23 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
           ) : (
             <>
               <div
-                className={isTradeable && chg !== null ? (up ? "text-positive-text" : "text-negative-text") : "text-fg"}
-                style={{ fontSize: 13, fontWeight: 500, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}
+                className={`tnum ${isTradeable && chg !== null ? (up ? "text-positive-text" : "text-negative-text") : "text-fg"}`}
+                style={{ fontSize: "var(--fs-meta)", fontWeight: 500 }}
               >
                 {formatMoney(displayValue, asset.currency || "USD", displayCurrency)}
               </div>
               {isTradeable && chg !== null && (
                 <div
-                  className={`mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
-                  style={{ fontSize: 12, fontWeight: 500, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}
+                  className={`tnum mt-0.5 ${up ? "text-positive-text" : "text-negative-text"}`}
+                  style={{ fontSize: "var(--fs-meta)", fontWeight: 500 }}
                 >
                   {fmtPct.format(chg)}%
                 </div>
               )}
               {isRealEstate && Number.isFinite(ownedFraction) && (
                 <div
-                  className="mt-0.5 text-dim"
-                  style={{ fontSize: 12, fontWeight: 500, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}
+                  className="tnum mt-0.5 text-dim"
+                  style={{ fontSize: "var(--fs-meta)", fontWeight: 500 }}
                 >
                   {ownedFraction >= 1 ? "Owned outright" : `${Math.round(ownedFraction * 100)}% owned`}
                 </div>

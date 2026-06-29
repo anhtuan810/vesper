@@ -13,11 +13,11 @@ const pillStyle: CSSProperties = {
   display: "flex", alignItems: "center", gap: 4,
   background: "transparent",
   border: "0.5px solid rgba(151,112,61,0.18)",
-  borderRadius: 999,
+  borderRadius: "var(--radius-pill)",
   padding: "5px 10px",
-  color: "#97703D",
+  color: "var(--accent)",
   fontFamily: "var(--sans)",
-  fontSize: 12,
+  fontSize: "var(--fs-caption)",
   cursor: "pointer",
   minHeight: 44,
 };
@@ -36,9 +36,9 @@ function ExampleRow({
       onClick={onClick}
       style={{
         display: "flex", alignItems: "center", gap: 12,
-        background: "#FCF8F0",
+        background: "var(--surface)",
         border: "0.5px solid rgba(0,0,0,0.06)",
-        borderRadius: 12,
+        borderRadius: "var(--radius-md)",
         padding: "10px 12px",
         textAlign: "left",
         width: "100%",
@@ -46,24 +46,24 @@ function ExampleRow({
       }}
     >
       <div style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: "#EBDFCB",
+        width: 32, height: 32, borderRadius: "var(--radius-md)",
+        background: "var(--accent-soft)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        flexShrink: 0, color: "#97703D",
+        flexShrink: 0, color: "var(--accent)",
       }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontFamily: "var(--sans)",
-          fontSize: 12, color: "#7C7268",
+          fontSize: "var(--fs-caption)", color: "var(--text-dim)",
         }}>
           {label}
         </div>
         <div style={{
           fontFamily: "var(--serif)",
-          fontStyle: "italic", fontSize: 13,
-          color: "#6F5226", lineHeight: 1.3,
+          fontStyle: "italic", fontSize: "var(--fs-meta)",
+          color: "#6F5226", lineHeight: "var(--lh-snug)",
           marginTop: 1,
         }}>
           {example}
@@ -195,10 +195,10 @@ export function PortfolioEmptyState() {
       <div style={{
         display: "inline-flex", alignItems: "center", gap: 5,
         background: "var(--accent-soft)", color: "var(--accent-text)",
-        borderRadius: 999, padding: "4px 9px",
+        borderRadius: "var(--radius-pill)", padding: "4px 9px",
       }}>
         <LockIcon size={14} />
-        <span style={{ fontFamily: "var(--sans)", fontSize: 12, fontWeight: 500 }}>
+        <span style={{ fontFamily: "var(--sans)", fontSize: "var(--fs-caption)", fontWeight: 500 }}>
           Private · stays on your device
         </span>
       </div>
@@ -207,7 +207,8 @@ export function PortfolioEmptyState() {
       <h1 style={{
         fontFamily: "var(--serif)",
         fontStyle: "italic", fontWeight: 400,
-        fontSize: 23, lineHeight: 1.3, color: "var(--hero)",
+        fontSize: "var(--fs-title)", lineHeight: "var(--lh-snug)", color: "var(--hero)",
+        letterSpacing: "var(--tracking-title)",
         margin: "16px 0 0",
       }}>
         Throw anything at me.
@@ -216,7 +217,7 @@ export function PortfolioEmptyState() {
       {/* Sub-headline */}
       <p style={{
         fontFamily: "var(--sans)",
-        fontSize: 15, color: "var(--text-dim)", lineHeight: 1.5,
+        fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)",
         margin: "6px 0 0",
       }}>
         A sentence, a screenshot, a CSV, a photo of a statement — I&apos;ll sort it.
@@ -225,7 +226,7 @@ export function PortfolioEmptyState() {
       {/* Informational-only disclaimer — muted line beneath the opener */}
       <p style={{
         fontFamily: "var(--sans)",
-        fontSize: 12, color: "var(--text-faint)", lineHeight: 1.45,
+        fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)",
         margin: "8px 0 0",
       }}>
         {DISCLAIMER_TEXT}
@@ -237,7 +238,7 @@ export function PortfolioEmptyState() {
         className="es-input-wrap"
         style={{
           marginTop: 22,
-          background: "#FCF8F0", borderRadius: 18,
+          background: "var(--surface)", borderRadius: "var(--radius-xl)",
           border: "1px solid rgba(151,112,61,0.38)",
           boxShadow: "0 1px 2px rgba(20,30,25,0.04), 0 10px 28px rgba(151,112,61,0.09)",
           padding: "12px 12px 10px",
@@ -250,8 +251,8 @@ export function PortfolioEmptyState() {
             onClick={() => { setFocused(true); requestAnimationFrame(() => textareaRef.current?.focus()); }}
             style={{
               fontFamily: "var(--sans)",
-              fontSize: 16, color: "#8C8478",
-              padding: "6px 6px 10px", lineHeight: 1.5,
+              fontSize: "var(--fs-subhead)", color: "var(--text-faint)",
+              padding: "6px 6px 10px", lineHeight: "var(--lh-body)",
               cursor: "text", userSelect: "none",
               opacity: showPlaceholder ? 1 : 0,
               pointerEvents: showPlaceholder ? "auto" : "none",
@@ -279,8 +280,8 @@ export function PortfolioEmptyState() {
               border: "none", outline: "none",
               resize: "none",
               fontFamily: "var(--sans)",
-              fontSize: 16,
-              color: "#6F5226", lineHeight: 1.5,
+              fontSize: "var(--fs-subhead)",
+              color: "#6F5226", lineHeight: "var(--lh-body)",
               padding: "6px 6px 4px",
               minHeight: 23, maxHeight: 92,
               overflowY: "hidden",
@@ -322,9 +323,9 @@ export function PortfolioEmptyState() {
             disabled={!hasContent}
             style={{
               width: 32, height: 32, borderRadius: "50%",
-              background: hasContent ? "#97703D" : "#D8CFC0",
+              background: hasContent ? "var(--accent)" : "#D8CFC0",
               border: "none",
-              color: hasContent ? "#FBF7EF" : "#FCF8F0",
+              color: hasContent ? "var(--bg)" : "var(--surface)",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: hasContent ? "pointer" : "default",
               transition: "background 0.15s, transform 0.1s",
@@ -342,7 +343,7 @@ export function PortfolioEmptyState() {
       <div style={{ marginTop: 16 }}>
         <p style={{
           fontFamily: "var(--sans)",
-          fontSize: 12, color: "var(--text-faint)",
+          fontSize: "var(--fs-caption)", color: "var(--text-faint)",
           margin: "0 0 8px",
         }}>
           Try starting with —

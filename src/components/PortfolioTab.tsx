@@ -403,11 +403,11 @@ export function PortfolioTab({
           aria-expanded={allExpanded}
           aria-label={allExpanded ? "Collapse all holdings" : "Expand all holdings"}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleAll(); } }}
+          className="eyebrow"
           style={{
             cursor: "pointer", WebkitTapHighlightColor: "transparent",
             padding: "2px 0 0", marginBottom: 0,
-            fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-            textTransform: "uppercase", color: "var(--text-faint)",
+            color: "var(--text-faint)",
           }}
         >
           Holdings · {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
@@ -441,14 +441,12 @@ export function PortfolioTab({
           <div style={{ marginTop: 28 }}>
             <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
               <div
-                style={{
-                  fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
-                  textTransform: "uppercase", color: "var(--text-faint)",
-                }}
+                className="eyebrow"
+                style={{ color: "var(--text-faint)" }}
               >
                 Future income
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
+              <div className="tnum" style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)" }}>
                 {formatMoney(
                   incomePensions.reduce((s, a) => {
                     const native = (a as { annual_income?: number | null }).annual_income ?? 0;
@@ -459,7 +457,7 @@ export function PortfolioTab({
                 )} / year
               </div>
             </div>
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.45 }}>
+            <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginBottom: 12, lineHeight: "var(--lh-body)" }}>
               Not part of net worth — future income you&apos;ll receive, not a holding you own today.
             </div>
             {/* Each pension renders as an INDIVIDUAL asset row — same element,
@@ -472,16 +470,16 @@ export function PortfolioTab({
                 <Link key={a.id} href={`/asset?id=${a.id}`} className="block">
                   <div
                     className="flex items-center border-b border-border-strong last:border-0 gap-3"
-                    style={{ paddingTop: 9, paddingBottom: 9 }}
+                    style={{ paddingTop: "var(--space-row)", paddingBottom: "var(--space-row)" }}
                   >
                     <AssetLogo type={a.type} symbol={a.symbol ?? null} name={a.name} size={32} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-fg leading-snug truncate" style={{ fontSize: 15, fontWeight: 500 }}>
+                      <div className="text-fg truncate" style={{ fontSize: "var(--fs-body)", fontWeight: 500, lineHeight: 1.2 }}>
                         {a.name}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-fg" style={{ fontSize: 13, fontWeight: 500, fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
+                      <div className="text-fg tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500 }}>
                         {formatMoney((a as { annual_income?: number | null }).annual_income ?? 0, a.currency || "USD", displayCurrency)} / year
                       </div>
                     </div>
