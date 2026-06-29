@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import {
   NetWorthChart,
@@ -13,17 +12,14 @@ import {
   convertPointToDisplay,
   buildLiveRates,
 } from "@/components/NetWorthChart";
-import { PortfolioSummaryCard } from "@/components/PortfolioSummaryCard";
 import { MobileDecisionJournal, notableDecisions, decisionTitle, mDate, shortDate } from "@/components/MobileDecisionJournal";
 import { PositionRow } from "@/components/PositionRow";
 import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
 import { useSparklines, useDisplayCurrency, useLiquidIntraday } from "@/lib/hooks";
-import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { toDisplay, formatMoney } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
-import { requestExplore } from "@/lib/scenario/explore";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { firstSnapshotDate } from "@/lib/networth-history";
 import {
@@ -67,8 +63,6 @@ interface PortfolioTabProps {
 export function PortfolioTab({
   assets, grossTotal, netTotal, initialSnapshots, valuesSettled, mutations,
 }: PortfolioTabProps) {
-  const router = useRouter();
-  const isDesktop = useIsDesktop();
   const displayCurrency = useDisplayCurrency();
 
   // Income pensions (db/state) are off-balance future income — they are kept out
@@ -76,13 +70,6 @@ export function PortfolioTab({
   // every total, and surfaced separately in the "Future income" section below.
   const netWorthAssets = useMemo(() => assets.filter((a) => !isIncomePension(a)), [assets]);
   const incomePensions = useMemo(() => assets.filter((a) => isIncomePension(a)), [assets]);
-
-  // Open scenario explore in chat: desktop seeds the mounted panel in place,
-  // mobile navigates to /chat (which reads the flag on mount).
-  const handleExplore = () => {
-    const handled = requestExplore(!!isDesktop);
-    if (!handled) router.push("/chat");
-  };
 
   const symbols = useMemo(
     () => netWorthAssets.map((a) => a.symbol).filter((s): s is string => !!s),
@@ -396,21 +383,6 @@ export function PortfolioTab({
             decisions={navDecisions}
             selectedId={selectedDecisionId}
             displayCurrency={displayCurrency}
-          />
-        </div>
-      )}
-
-      {/* Portfolio summary — three compact rows (Projection, Worth knowing,
-          Markets) held in one contained card. Bleeds to the same width as the
-          hero/chart and Holdings (-mx-4 md:mx-0) so the card's edges line up
-          with the net-worth number and the Holdings header instead of sitting
-          inset/indented. The card's own surface + border keeps it from floating. */}
-      {assets.length > 0 && (
-        <div className="-mx-4 md:mx-0 mb-3" style={{ maxWidth: 660 }}>
-          <PortfolioSummaryCard
-            netTotal={netTotal}
-            snapshots={fullSnapshots}
-            onExplore={handleExplore}
           />
         </div>
       )}

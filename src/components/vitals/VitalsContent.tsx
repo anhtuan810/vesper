@@ -7,8 +7,6 @@ import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
 import type { DormantVital } from "@/components/vitals/LibraryExpander";
-import { MarketsHighlights } from "@/components/MarketsHighlights";
-import type { MarketHighlight } from "@/lib/market-highlights";
 import { ordinalSuffix } from "@/lib/utils";
 import { ConcentrationBars } from "@/components/vitals/charts/ConcentrationBars";
 import { RealAssetBullet } from "@/components/vitals/charts/RealAssetBullet";
@@ -783,9 +781,10 @@ interface VitalsContentProps {
    *  built-in header is off — used by the desktop Vitals page, which supplies its
    *  own Twilight header but still needs the include/exclude-Property control. */
   renderToggleInline?: boolean;
-  /** Daily market-news highlights, surfaced as a "Markets" block at the top.
-   *  Passed only by the mobile Vitals page; desktop omits it (so it doesn't show). */
-  marketHighlights?: MarketHighlight[];
+  /** Optional node rendered just under the page title, above the Pulse. The mobile
+   *  Vitals page passes the relocated Portfolio summary card here; desktop omits
+   *  it (so it doesn't show). */
+  topSlot?: React.ReactNode;
 }
 
 export function VitalsContent({
@@ -793,7 +792,7 @@ export function VitalsContent({
   libraryPosition = "bottom",
   showHeader = true,
   renderToggleInline = false,
-  marketHighlights,
+  topSlot,
 }: VitalsContentProps = {}) {
   const router = useRouter();
   const { data, isLoading, error } = useVitals();
@@ -1103,27 +1102,15 @@ export function VitalsContent({
       />
     ) : null;
 
-  // Markets block — the daily market-news carousel, surfaced at the top of the
-  // Vitals page (it used to sit in the Portfolio summary card). Rendered only when
-  // the host passes highlights (mobile Vitals page). Sits at the content-column
-  // edge so its "Markets" eyebrow lines up with the "Active vitals" eyebrow below.
-  const marketBlock = marketHighlights && marketHighlights.length > 0 ? (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 500, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 4 }}>
-        Markets
-      </div>
-      <MarketsHighlights marketHighlights={marketHighlights} />
-    </div>
-  ) : null;
-
   // ── Full render ────────────────────────────────────────────────────────────
   return (
     <>
       {/* 1. Page title */}
       {pageTitle}
 
-      {/* Markets — top of the Vitals page (mobile only). */}
-      {marketBlock}
+      {/* Host slot — the relocated Portfolio summary card on mobile (Projection +
+          Worth knowing + Markets); omitted on desktop. */}
+      {topSlot && <div style={{ marginBottom: 16 }}>{topSlot}</div>}
 
       {/* 2. Pulse banner — lens-aware: liquid pulse when Property is off,
              all-assets pulse otherwise. Falls back to all-assets pulse if

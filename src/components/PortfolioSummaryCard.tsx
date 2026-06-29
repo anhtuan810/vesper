@@ -3,29 +3,33 @@
 import { useState } from "react";
 import { ProjectionTeaser } from "@/components/scenario/ProjectionTeaser";
 import { InsightBand } from "@/components/InsightBand";
+import { MarketsHighlights } from "@/components/MarketsHighlights";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
+import type { MarketHighlight } from "@/lib/market-highlights";
 
 interface PortfolioSummaryCardProps {
   netTotal: number;
   snapshots: SnapshotPoint[];
+  marketHighlights: MarketHighlight[];
   onExplore: () => void;
 }
 
 const DIVIDER = <div style={{ borderTop: "0.5px solid var(--border)" }} />;
 
-// "Portfolio summary" — two compact, hairline-separated rows (Projection and
-// Worth knowing) held in ONE contained card (surface + hairline border + radius)
-// so the block reads as a single designed object lifted off the page instead of
-// loose floating text. Each slot self-reports whether it rendered anything; the
-// divider is drawn only when BOTH rows are visible, so a hidden projection or an
-// absent insight never leaves a stray hairline. When nothing renders, the card
-// collapses to nothing (no empty box). The Markets row now lives at the top of
-// the Vitals page instead.
-export function PortfolioSummaryCard({ netTotal, snapshots, onExplore }: PortfolioSummaryCardProps) {
+// "Portfolio summary" — three compact, hairline-separated rows (Projection,
+// Worth knowing, Markets) held in ONE contained card (surface + hairline border
+// + radius) so the block reads as a single designed object lifted off the page
+// instead of loose floating text. Each slot self-reports whether it rendered
+// anything; a divider is drawn only between two visible rows, so a hidden
+// projection, an absent insight, or empty markets never leaves a stray hairline.
+// When nothing renders, the card collapses to nothing (no empty box). Now hosted
+// at the top of the Vitals page (via PortfolioSummaryCardLoader).
+export function PortfolioSummaryCard({ netTotal, snapshots, marketHighlights, onExplore }: PortfolioSummaryCardProps) {
   const [showProjection, setShowProjection] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
+  const [showMarket, setShowMarket] = useState(false);
 
-  const anyVisible = showProjection || showInsight;
+  const anyVisible = showProjection || showInsight || showMarket;
 
   return (
     <div
@@ -46,6 +50,8 @@ export function PortfolioSummaryCard({ netTotal, snapshots, onExplore }: Portfol
       />
       {showProjection && showInsight && DIVIDER}
       <InsightBand onVisibleChange={setShowInsight} />
+      {(showProjection || showInsight) && showMarket && DIVIDER}
+      <MarketsHighlights marketHighlights={marketHighlights} onVisibleChange={setShowMarket} />
     </div>
   );
 }
