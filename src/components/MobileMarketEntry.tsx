@@ -7,7 +7,11 @@ import type { DiaryMarketMove } from "@/lib/diary-market-moves";
 // impact on the user's portfolio — the phone equivalent of DesktopMarketEntry.
 // DiaryTab renders this when a swing is `expanded` (the largest by |impact| in
 // its month, above the floor); smaller swings keep the compact DiaryMarketRow.
-// Same deterministic narrative as the desktop card, restyled for the phone list.
+//
+// Highlighted as an AUTO entry the same way the desktop Journal (.mktentry) and
+// the marketing journal do: a soft left-fading reserves-lane wash + a 3px left
+// accent stripe + an "Auto · Market" tag, so an entry Volnar logged itself reads
+// distinctly from the user's own decisions.
 
 function ActivityIcon({ color }: { color: string }) {
   return (
@@ -39,17 +43,27 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
       (m[1] ? `, with ${m[1].label} ${m[1].impact >= 0 ? "up" : "down"} ${money(m[1].impact)}` : "") + ".";
 
   return (
-    <div style={{ display: "flex", gap: 10, padding: "12px 0", borderBottom: "0.5px solid var(--border)", alignItems: "flex-start" }}>
+    <div
+      style={{
+        display: "flex", gap: 10, alignItems: "flex-start",
+        padding: "12px 13px 13px 14px",
+        // Auto-entry highlight — soft reserves-lane wash fading right + a 3px left
+        // accent stripe, matching the desktop Journal's .mktentry treatment.
+        background: "linear-gradient(90deg, var(--cat-reserves-soft), transparent 76%)",
+        boxShadow: "inset 3px 0 0 var(--cat-reserves-band)",
+        borderBottom: "0.5px solid var(--border)",
+      }}
+    >
       {/* Market glyph — distinguishes an auto market entry from an asset row. */}
       <div
         aria-hidden
         style={{
           width: 28, height: 28, flexShrink: 0, marginTop: 1,
           display: "flex", alignItems: "center", justifyContent: "center",
-          borderRadius: "50%", border: "1px solid var(--border)",
+          borderRadius: "50%", border: "1px solid var(--cat-reserves-band)",
         }}
       >
-        <ActivityIcon color="var(--text-faint)" />
+        <ActivityIcon color="var(--cat-reserves-band)" />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -66,9 +80,21 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
           </span>
         </div>
 
-        {/* Auto · Market · date eyebrow */}
-        <div style={{ fontSize: 10.5, fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-faint)", marginTop: 4 }}>
-          Auto · Market · {formatDate(move.date)}
+        {/* Auto · Market tag (left) · date (right) */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700,
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              color: "var(--cat-reserves-band)", background: "var(--surface)",
+              border: "0.5px solid var(--border)", borderRadius: 5, padding: "2px 7px",
+            }}
+          >
+            Auto · Market
+          </span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-faint)", whiteSpace: "nowrap" }}>
+            {formatDate(move.date)}
+          </span>
         </div>
 
         {/* Narrative */}
