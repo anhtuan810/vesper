@@ -18,26 +18,60 @@
 
   /* Canonical type scale — the single source of truth for text sizing across the
      app surfaces (charts and the marketing site keep their own display type).
-     The small-text band is deliberately sparse so similar elements match: don't
-     reintroduce in-between sizes (no 9.5 / 11.5 / 12.5 / 14). Floor is 11px.
-       --fs-micro    eyebrow / uppercase micro-labels
-       --fs-caption  sub-lines, secondary captions
-       --fs-meta     secondary values, tertiary body
-       --fs-body     default body, list-item titles, emphasis
-       --fs-subhead  small section headings
-       --fs-title    section titles
-     Headings/display above this (≥19px) are sized per-component. */
+     EIGHT steps, deliberately sparse so similar elements match — do NOT
+     reintroduce in-between sizes (no 9.5 / 10.5 / 11.5 / 12.5 / 13.5 / 14.5).
+     Floor is 11px.
+       --fs-micro    eyebrow / uppercase micro-labels  (mono, .eyebrow)
+       --fs-caption  dates, sub-lines, secondary captions
+       --fs-meta     numeric values, tertiary body      (mono numbers, .tnum)
+       --fs-body     default body, list-item names, emphasis
+       --fs-subhead  small section headings, field labels, month headers
+       --fs-title    every screen title
+       --fs-metric   a card's signature figure (vital metric, demoted hero)
+       --fs-hero     THE net-worth figure — the one big moment */
   --fs-micro:   11px;
   --fs-caption: 12px;
   --fs-meta:    13px;
-  --fs-body:    15px;
+  --fs-body:    14px;
   --fs-subhead: 16px;
-  --fs-title:   17px;
+  --fs-title:   20px;
+  --fs-metric:  28px;
+  --fs-hero:    38px;
 
   /* Canonical tracking for uppercase micro-labels (eyebrows, section headers,
-     chip labels). One value everywhere so every label tracks identically —
-     tuned tight for a clean, modern read with Geist. */
+     chip labels). One value everywhere so every label tracks identically. */
   --tracking-label: 0.12em;
+
+  /* Display tracking — negative, one per heading role, so headings stop
+     hardcoding their own letter-spacing. */
+  --tracking-hero:    -0.02em;
+  --tracking-title:   -0.018em;
+  --tracking-subhead: -0.01em;
+
+  /* Spacing grid — 8px base. Replaces inline padding/margin literals so every
+     gap is intentional and vertical rhythm holds across surfaces. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-row:  10px;  /* the one list-row vertical padding */
+  --space-card: 16px;  /* the one card inner padding */
+
+  /* Line-heights as tokens so body / narrative stop wobbling across 1.35–1.6. */
+  --lh-tight: 1.1;
+  --lh-snug:  1.3;
+  --lh-body:  1.5;
+
+  /* Pill radius token so even fully-round elements aren't bare 999. */
+  --radius-pill: 999px;
+
+  /* One warm shadow — replaces ad-hoc near-black Material drop shadows. Reserve
+     for floating elements (toasts, sheets); the hairline --border is the
+     default separator everywhere else. */
+  --shadow-soft: 0 2px 12px rgba(34, 30, 38, 0.10);
 }
 
 :root,
@@ -337,4 +371,27 @@ html.native-app [contenteditable="true"] {
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-faint);
+}
+
+/* Canonical uppercase micro-label — the ONE eyebrow spec used app-wide (section
+   headers, card eyebrows, "From Portfolio", "Markets", date eyebrows, badges).
+   Mono / 500 / 0.12em / uppercase / faint. On a tinted band, override the color
+   only — never the size, weight, or tracking. */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Tabular mono numerals — the ONE numeric convention (retires the
+   fontVariantNumeric vs fontFeatureSettings split). Put on every money / share /
+   percent / date figure so columns align; pair with a --fs-* size and a
+   semantic color (--positive-text gains, --negative-text losses). */
+.tnum {
+  font-family: var(--mono);
+  font-feature-settings: "tnum" 1;
 }
