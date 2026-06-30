@@ -380,26 +380,17 @@ export function PortfolioTab({
           marker). Bleeds to the same -mx-5 column as the hero, chart and
           Holdings so the entry text lines up with them instead of sitting inset. */}
       {!liquidOnly && (
-        // The selected decision lives in its OWN card — a contained "moment" that
-        // reads apart from the edge-to-edge Holdings rows below it (no -mx bleed, so
-        // it sits inset within the column and lifts off the page). A gold left-rule
-        // + a chart cue tie it to the highlighted point on the chart above.
+        // The selected decision sits on a soft, full-bleed warm wash — a quiet
+        // "zone" that reads apart from the edge-to-edge Holdings rows below without
+        // a bordered box. The chart cue ties it to the highlighted point above.
         <div className="-mx-5 md:mx-0" style={{ maxWidth: 660, marginBottom: 24 }}>
           <div
             style={{
-              position: "relative",
-              overflow: "hidden",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-lg)",
-              boxShadow: "var(--shadow-soft)",
+              background:
+                "linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), color-mix(in srgb, var(--accent) 2%, transparent))",
               padding: "var(--space-5)",
             }}
           >
-            <div
-              aria-hidden="true"
-              style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: "var(--accent)", opacity: 0.55 }}
-            />
             {navDecisions.length > 0 ? (
               <>
                 <div
@@ -416,7 +407,7 @@ export function PortfolioTab({
                 />
               </>
             ) : (
-              // No logged decisions yet — keep the card visible and explain it fills
+              // No logged decisions yet — keep the zone visible and explain it fills
               // in once there's data, rather than leaving a blank gap.
               <>
                 <div className="eyebrow" style={{ marginBottom: 7 }}>Journal</div>
