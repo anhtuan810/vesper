@@ -77,7 +77,9 @@ export function PortfolioTab({
   );
   const sparklines = useSparklines(symbols, "1W");
 
-  const [range, setRange] = useState<Range>("1M");
+  // Default to the full history ("All") so the Overview opens on the complete
+  // arc — the same lens the desktop leads with.
+  const [range, setRange] = useState<Range>("All");
   // The FULL DB-backed snapshot history (range=All) — fetched once and kept as
   // the single authority for data extent. Coverage (`trackingSinceDate`), the
   // marker decision, and pill-disable all derive from this, never from a
@@ -155,7 +157,7 @@ export function PortfolioTab({
     setLiquidOnly(v);
     try { sessionStorage.setItem(LIQUID_ONLY_KEY, String(v)); } catch {}
     // 1D is liquid-only; leaving the liquid view drops back to the default window.
-    if (!v && range === "1D") setRange("1M");
+    if (!v && range === "1D") setRange("All");
   };
 
   // Per-asset liquid display values (display currency) — stocks + ETF + crypto,
@@ -377,13 +379,24 @@ export function PortfolioTab({
           back" Decision Verdict. Selection comes from the chart dots (tap a
           marker). Bleeds to the same -mx-5 column as the hero, chart and
           Holdings so the entry text lines up with them instead of sitting inset. */}
-      {!liquidOnly && navDecisions.length > 0 && (
+      {!liquidOnly && (
         <div className="-mx-5 md:mx-0" style={{ maxWidth: 660 }}>
-          <MobileDecisionJournal
-            decisions={navDecisions}
-            selectedId={selectedDecisionId}
-            displayCurrency={displayCurrency}
-          />
+          {navDecisions.length > 0 ? (
+            <MobileDecisionJournal
+              decisions={navDecisions}
+              selectedId={selectedDecisionId}
+              displayCurrency={displayCurrency}
+            />
+          ) : (
+            // No logged decisions yet — keep the section visible and explain that
+            // it fills in once there's data, rather than leaving a blank gap.
+            <section style={{ marginTop: "var(--space-2)", marginBottom: 22 }}>
+              <div className="eyebrow" style={{ marginBottom: 7 }}>Journal</div>
+              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+                Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
+              </p>
+            </section>
+          )}
         </div>
       )}
 
