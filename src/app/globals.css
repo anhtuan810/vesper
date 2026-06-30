@@ -89,6 +89,38 @@
      for floating elements (toasts, sheets); the hairline --border is the
      default separator everywhere else. */
   --shadow-soft: 0 2px 12px rgba(34, 30, 38, 0.10);
+
+  /* Display tracking for the wordmark — tighter than a heading. Lets Logo stop
+     hardcoding -0.04em. */
+  --tracking-wordmark: -0.04em;
+
+  /* Z-index scale — the ONE place stacking order is declared, so overlays stop
+     using unrelated magic numbers (9999 / 9500 / 9000 / 200 / 100 …). Each layer
+     sits above the previous: nav < banner < dropdown < backdrop < modal < toast
+     < paywall < app-lock. */
+  --z-base:     0;
+  --z-sticky:   10;   /* sticky top nav / bottom nav */
+  --z-banner:   20;   /* demo banner */
+  --z-dropdown: 30;   /* menus, popovers */
+  --z-backdrop: 40;   /* scrims behind sheets/modals */
+  --z-modal:    50;   /* sheets, dialogs */
+  --z-toast:    60;   /* undo toast, transient notices */
+  --z-paywall:  70;   /* access gate */
+  --z-app-lock: 80;   /* biometric lock — above everything */
+
+  /* Control geometry — buttons, pills, segmented controls, inputs. One height +
+     pad + radius so controls stop reinventing their own. --control-h is also the
+     iOS minimum tap target. */
+  --control-h:      44px;
+  --control-h-sm:   36px;
+  --control-pad-x:  var(--space-4);
+  --control-radius: var(--radius-md);
+
+  /* Focus ring — one width/offset/colour so keyboard focus is uniform and
+     themeable (was reimplemented 3+ ways at 2/2.5/3px in different colours). */
+  --focus-ring-width:  2.5px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color:  var(--accent);
 }
 
 :root,
@@ -114,9 +146,13 @@
   --accent:        #97703D;
   --accent-soft:   #EBDFCB;
   --accent-text:   #8F6A38;
-  --positive:      #97703D;
-  --positive-soft: #EBDFCB;
-  --positive-text: #8F6A38;
+  /* Readable ink on a filled --accent surface (primary buttons). */
+  --on-accent:     #FCF8F0;
+  /* Gains read in the brand gold — positive is intentionally the accent, aliased
+     (not duplicated) so a future accent change keeps gains in sync. */
+  --positive:      var(--accent);
+  --positive-soft: var(--accent-soft);
+  --positive-text: var(--accent-text);
   --negative:      #AF5530;
   --negative-soft: #EDD9CC;
   --negative-text: #8A3F22;
@@ -179,9 +215,13 @@
   --accent:        #CBAA6C;
   --accent-soft:   rgba(203, 170, 108, 0.16);
   --accent-text:   #D8BC82;
-  --positive:      #CBAA6C;
-  --positive-soft: rgba(203, 170, 108, 0.16);
-  --positive-text: #D8BC82;
+  /* Readable ink on a filled --accent surface — dark, because the gold lifts in
+     dark mode. */
+  --on-accent:     #14141E;
+  /* Gains read in the brand gold — aliased to the accent (see light theme). */
+  --positive:      var(--accent);
+  --positive-soft: var(--accent-soft);
+  --positive-text: var(--accent-text);
   --negative:      #DB9070;
   --negative-soft: rgba(219, 144, 112, 0.14);
   --negative-text: #ECB199;
@@ -242,6 +282,7 @@
   --color-accent:        var(--accent);
   --color-accent-soft:   var(--accent-soft);
   --color-accent-text:   var(--accent-text);
+  --color-on-accent:     var(--on-accent);
   --color-positive:      var(--positive);
   --color-positive-soft: var(--positive-soft);
   --color-positive-text: var(--positive-text);
@@ -272,6 +313,18 @@
   --color-cat-crypto-edge:   var(--cat-crypto-edge);
   --color-cat-tangible-band: var(--cat-tangible-band);
   --color-cat-tangible-edge: var(--cat-tangible-edge);
+  /* Semantic font ROLES exposed as Tailwind utilities — font-display / font-ui /
+     font-label / font-numeric. THIS is the font API for markup: components use
+     these (class or var) and never the raw families below, so swapping a face is
+     one edit at the role layer (:root, lines ~24-27). Inlined (not emitted to
+     :root) so each resolves against the role var in the cascade. */
+  --font-display:            var(--font-display);
+  --font-ui:                 var(--font-ui);
+  --font-label:              var(--font-label);
+  --font-numeric:            var(--font-numeric);
+  /* Raw FAMILY utilities — kept only so any not-yet-migrated font-serif/-sans/
+     -mono class still resolves. Do NOT reach for these in new code; prefer the
+     roles above. */
   --font-serif:              var(--serif);
   --font-sans:               var(--sans);
   --font-mono:               var(--mono);
@@ -382,8 +435,9 @@ html.native-app [contenteditable="true"] {
    `.vhome .ad-eyebrow`). Base values match the previous inline styles exactly,
    so mobile/native rendering is unchanged. marginBottom stays inline. */
 .ad-eyebrow {
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
+  line-height: 1;
   font-family: var(--font-label);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
@@ -411,4 +465,70 @@ html.native-app [contenteditable="true"] {
 .tnum {
   font-family: var(--font-numeric);
   font-feature-settings: "tnum" 1;
+}
+
+/* ── Reusable surface + control primitives ───────────────────────────────────
+   The app surface had no card / button / pill primitive, so each was hand-rolled
+   inline dozens of times (surface+border+radius+pad, or a gold fill + readable
+   label). These compose the tokens above; reach for them instead of re-deriving
+   the chrome. All type goes through the --font-* role layer. */
+
+/* The default card: paper surface, hairline border, one radius, one inner pad. */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-card);
+}
+/* Lifted card — floating/elevated panels (sheets, popovers). */
+.card-elev {
+  background: var(--surface-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-card);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Base control — buttons, segmented items. min-height is the iOS tap minimum. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding: 0 var(--control-pad-x);
+  border-radius: var(--control-radius);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Primary — the gold fill with readable ink in both themes. */
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 1px solid transparent;
+}
+/* Ghost — quiet bordered control on the page surface. */
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+/* Pill — fully-round chip/affordance; pair with a size + colour. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+}
+
+/* One keyboard-focus ring (token-driven) — add .focus-ring to any focusable so
+   focus is uniform and themeable rather than reimplemented per surface. */
+.focus-ring:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
