@@ -179,10 +179,10 @@ export function PortfolioEmptyState() {
     >
       <style>{`
         .es-pill { transition: background 0.12s, transform 0.1s; }
-        .es-pill:hover { background: rgba(151,112,61,0.07) !important; }
+        .es-pill:hover { background: color-mix(in srgb, var(--accent) 7%, transparent) !important; }
         .es-pill:active { transform: scale(0.97); }
         .es-example { transition: border-color 0.15s; cursor: pointer; }
-        .es-example:hover { border-color: rgba(151,112,61,0.22) !important; }
+        .es-example:hover { border-color: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
         .es-example:active { transform: scale(0.99); }
         .es-input-wrap { transition: box-shadow 0.15s, border-color 0.15s; }
         .es-input-wrap:focus-within { border-color: var(--accent) !important; box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-soft) !important; }
@@ -239,7 +239,7 @@ export function PortfolioEmptyState() {
         style={{
           marginTop: 22,
           background: "var(--surface)", borderRadius: "var(--radius-xl)",
-          border: "1px solid rgba(151,112,61,0.38)",
+          border: "1px solid color-mix(in srgb, var(--accent) 38%, transparent)",
           boxShadow: "var(--shadow-soft)",
           padding: "var(--space-3) var(--space-3) var(--space-row)",
         }}

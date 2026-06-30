@@ -258,7 +258,7 @@ export function PerspectiveCard({
                     background: "var(--accent)",
                     border: "2px solid var(--perspective-dot-border)",
                     transform: "translateX(-50%)",
-                    boxShadow: "0 0 0 0.5px rgba(151,112,61,0.3)",
+                    boxShadow: "0 0 0 0.5px color-mix(in srgb, var(--accent) 30%, transparent)",
                   }}
                 />
               </div>
