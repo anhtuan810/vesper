@@ -77,8 +77,8 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-  --space-row:  10px;  /* the one list-row vertical padding */
-  --space-card: 16px;  /* the one card inner padding */
+  --space-row:  8px;   /* the one list-row vertical padding (Nocturne: tightened from 10) */
+  --space-card: 14px;  /* the one card inner padding (Nocturne: tightened from 16) */
 
   /* Line-heights as tokens so body / narrative stop wobbling across 1.35–1.6. */
   --lh-tight: 1.1;

@@ -891,7 +891,7 @@ export function VitalsContent({
   ) : null;
 
   const pageTitle = showHeader ? (
-    <div style={{ marginBottom: "var(--space-5)", paddingTop: "var(--space-8)" }}>
+    <div style={{ marginBottom: "var(--space-4)", paddingTop: "var(--space-6)" }}>
       <div
         style={{
           display: "flex",

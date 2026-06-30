@@ -385,8 +385,8 @@ export function PortfolioTab({
         // text aligns with the hero and Holdings (no inset). The "journal" feeling
         // comes from the mono dateline, the upright-serif reflection, and the
         // dotted perforation into the collapsible "Looking back" (MobileDecisionJournal).
-        <div className="-mx-5 md:mx-0" style={{ maxWidth: 660, marginBottom: 24 }}>
-          <div style={{ paddingTop: "var(--space-6)" }}>
+        <div className="-mx-5 md:mx-0" style={{ maxWidth: 660, marginBottom: 16 }}>
+          <div style={{ paddingTop: "var(--space-4)" }}>
             {navDecisions.length > 0 ? (
               <MobileDecisionJournal
                 decisions={navDecisions}
@@ -458,7 +458,7 @@ export function PortfolioTab({
         {/* Future income — income pensions (db/state). Off-balance: shown below
             the net-worth holdings, never added to any total or the allocation. */}
         {incomePensions.length > 0 && (
-          <div style={{ marginTop: "var(--space-8)" }}>
+          <div style={{ marginTop: "var(--space-6)" }}>
             <div className="flex items-baseline justify-between" style={{ marginBottom: "var(--space-2)" }}>
               <div
                 className="eyebrow"
