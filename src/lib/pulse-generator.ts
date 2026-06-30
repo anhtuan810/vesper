@@ -52,7 +52,10 @@ function buildThinPulse(
 // The [v2] marker in SYSTEM_PROMPT_ALL is intentional: it forces a fresh
 // generation whenever the system prompt changes, because the route treats any
 // cached detail that doesn't carry the PULSE_VER prefix as stale.
-const NUMBER_FORMAT_RULE = `Write every number in European (Dutch) notation: a comma for the decimal separator and a period for thousands — e.g. 67,5%, €1,2M, €365.000. Never use a period as a decimal separator (never "67.5%").`;
+// LANGUAGE first, then number grammar. The explicit "in English" guard exists
+// because an earlier "(Dutch) notation" phrasing made the model write the whole
+// sentence in Dutch — we want English prose with continental number formatting.
+const NUMBER_FORMAT_RULE = `Write the sentence in ENGLISH. Format numbers in the continental European style only — a comma for the decimal separator and a period for thousands (e.g. 67,5%, €1,2M, €365.000); never a period as the decimal separator (never "67.5%"). The number style does NOT change the language: the prose stays English.`;
 
 const SYSTEM_PROMPT_ALL = `Emit ONE synthesis sentence, 15–25 words, describing the current state across the active portfolio Vitals. Mark key numbers and nouns with *asterisks* — the frontend converts them to emphasis. Tone: a private banker reading the chart aloud — calm, declarative, no coaching, no exclamation, no emoji. Plain text only; no quotes, no markdown beyond the *asterisks*. ${NUMBER_FORMAT_RULE} CRITICAL framing rule: when concentration.value.topPositionIsRealEstate is true, the home is a STRUCTURAL ANCHOR — never a concentration risk. All concentration commentary must reference investableTopPositionPct (the investable book), not the gross figure or the home position itself. Do not use phrases like "concentration risk" or "concentrated in" in reference to the home or real estate.
 
