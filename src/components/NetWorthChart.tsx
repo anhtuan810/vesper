@@ -146,7 +146,7 @@ function formatXLabel(date: string, range: Range): string {
 }
 
 const CHART_PAD_TOP = 6;
-const CHART_PAD_RIGHT = 8;   // room for end-point halo (r=6) to sit inside the viewBox
+const CHART_PAD_RIGHT = 0;   // draw to the full width so the right edge (today) aligns with the content edge / "Now"; the end-point halo overflows into the margin (svg overflow:visible)
 const CHART_PAD_BOTTOM = 8;  // same — prevents clipping when current value is near niceMin
 
 function buildPath(
@@ -583,7 +583,7 @@ export function NetWorthChart(props: Props) {
               preserveAspectRatio="none"
               width="100%"
               height={H}
-              style={{ display: "block" }}
+              style={{ display: "block", overflow: "visible" }}
             >
               {/* Stacked asset-class bands — bottom (property) to top (reserves),
                   painted under the net-worth line so the trajectory reads identically.
@@ -799,13 +799,15 @@ export function NetWorthChart(props: Props) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "auto 1fr auto",
+          // 1fr | auto | 1fr keeps the pill bar at the EXACT centre regardless of
+          // the side labels' widths; "Jan '21" pins left, "Now" pins right.
+          gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
           gap: 8,
           marginTop: 8,
         }}
       >
-        <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
+        <span style={{ justifySelf: "start", fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
           {showLabels ? formatXLabel(displaySeries[0].date, range) : ""}
         </span>
 
@@ -862,9 +864,21 @@ export function NetWorthChart(props: Props) {
           </div>
         </div>
 
-        <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
+        {/* "Now" jumps the hero back to today's live value (clears any scrub). */}
+        <button
+          type="button"
+          onClick={() => setSelectedIndex(null)}
+          aria-label="Jump to today"
+          style={{
+            justifySelf: "end", background: "none", border: "none", padding: "2px 0", margin: 0,
+            cursor: showLabels ? "pointer" : "default",
+            fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)",
+            color: selectedIndex !== null ? "var(--accent-text)" : "var(--text-faint)",
+            lineHeight: 1, whiteSpace: "nowrap", transition: "color 0.15s",
+          }}
+        >
           {showLabels ? "Now" : ""}
-        </span>
+        </button>
       </div>
     </div>
   );
