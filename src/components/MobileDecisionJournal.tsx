@@ -112,7 +112,7 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
       </button>
       {open && (
         <div style={{ marginTop: 11, display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ margin: 0, fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>{calc}</p>
+          <p style={{ margin: 0, fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>{calc}</p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 5 }}>
             {notes.map((n, i) => (
               <li key={i} style={{ position: "relative", paddingLeft: 15, fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)" }}>
@@ -179,7 +179,7 @@ export function MobileDecisionJournal({
       <div className="eyebrow" style={{ marginBottom: 7 }}>
         {shortDate(mDate(m))}
       </div>
-      <h3 className="font-display" style={{ fontSize: "var(--fs-subhead)", fontWeight: 500, letterSpacing: "var(--tracking-subhead)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 10px" }}>
+      <h3 className="font-display" style={{ fontSize: "var(--fs-title)", fontWeight: 500, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 10px" }}>
         {decisionTitle(m)}
       </h3>
       {/* The reflection in a diary voice — italic serif, clamped to two lines so
