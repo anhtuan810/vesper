@@ -62,7 +62,6 @@ function verdictEligible(m: Mutation): boolean {
 
 // ── verdict stamp (mobile-styled; mirrors the desktop VerdictStamp copy) ──
 function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
-  const [open, setOpen] = useState(false);
   const cur = verdict.currency as DisplayCurrency;
   const fmt = (v: number) => formatMoney(v, cur, cur);
   const money = fmt(verdict.figure);
@@ -102,27 +101,10 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
         Looking back · {verdict.lookbackLabel}
       </div>
       <p style={{ fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: 0 }}>{line}</p>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        style={{ marginTop: 9, background: "none", border: "none", padding: 0, fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-dim)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
-      >
-        {open ? "Hide how this is figured" : "How this is figured"}
-      </button>
-      {open && (
-        <div style={{ marginTop: 11, display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ margin: 0, fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>{calc}</p>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-            {notes.map((n, i) => (
-              <li key={i} style={{ position: "relative", paddingLeft: 15, fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)" }}>
-                <span style={{ position: "absolute", left: 2, top: 7, width: 4, height: 4, borderRadius: "var(--radius-pill)", background: "var(--text-faint)" }} aria-hidden="true" />
-                {n}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* The figuring, flat — no dropdown, no bulleted layers. The calculation
+          reads as a quiet continuation; the caveats fold into one fine-print line. */}
+      <p style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: "var(--space-3) 0 0" }}>{calc}</p>
+      <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)", margin: "var(--space-2) 0 0" }}>{notes.join(" ")}</p>
     </div>
   );
 }
