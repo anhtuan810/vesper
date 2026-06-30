@@ -384,7 +384,7 @@ export function PortfolioTab({
         // reads apart from the edge-to-edge Holdings rows below it (no -mx bleed, so
         // it sits inset within the column and lifts off the page). A gold left-rule
         // + a chart cue tie it to the highlighted point on the chart above.
-        <div style={{ maxWidth: 660, marginBottom: 24 }}>
+        <div className="-mx-5 md:mx-0" style={{ maxWidth: 660, marginBottom: 24 }}>
           <div
             style={{
               position: "relative",
