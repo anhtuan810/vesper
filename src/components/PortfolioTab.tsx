@@ -380,23 +380,52 @@ export function PortfolioTab({
           marker). Bleeds to the same -mx-5 column as the hero, chart and
           Holdings so the entry text lines up with them instead of sitting inset. */}
       {!liquidOnly && (
-        <div className="-mx-5 md:mx-0" style={{ maxWidth: 660 }}>
-          {navDecisions.length > 0 ? (
-            <MobileDecisionJournal
-              decisions={navDecisions}
-              selectedId={selectedDecisionId}
-              displayCurrency={displayCurrency}
+        // The selected decision lives in its OWN card — a contained "moment" that
+        // reads apart from the edge-to-edge Holdings rows below it (no -mx bleed, so
+        // it sits inset within the column and lifts off the page). A gold left-rule
+        // + a chart cue tie it to the highlighted point on the chart above.
+        <div style={{ maxWidth: 660, marginBottom: 24 }}>
+          <div
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "var(--shadow-soft)",
+              padding: "var(--space-5)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: "var(--accent)", opacity: 0.55 }}
             />
-          ) : (
-            // No logged decisions yet — keep the section visible and explain that
-            // it fills in once there's data, rather than leaving a blank gap.
-            <section style={{ marginTop: "var(--space-2)", marginBottom: 22 }}>
-              <div className="eyebrow" style={{ marginBottom: 7 }}>Journal</div>
-              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
-                Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
-              </p>
-            </section>
-          )}
+            {navDecisions.length > 0 ? (
+              <>
+                <div
+                  className="eyebrow"
+                  style={{ color: "var(--accent-text)", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 12 }}
+                >
+                  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "var(--radius-pill)", background: "var(--accent)" }} />
+                  Selected on the chart
+                </div>
+                <MobileDecisionJournal
+                  decisions={navDecisions}
+                  selectedId={selectedDecisionId}
+                  displayCurrency={displayCurrency}
+                />
+              </>
+            ) : (
+              // No logged decisions yet — keep the card visible and explain it fills
+              // in once there's data, rather than leaving a blank gap.
+              <>
+                <div className="eyebrow" style={{ marginBottom: 7 }}>Journal</div>
+                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+                  Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
+                </p>
+              </>
+            )}
+          </div>
         </div>
       )}
 

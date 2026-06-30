@@ -197,7 +197,9 @@ export function MobileDecisionJournal({
   const verdict = verdicts[`${m.id}|${displayCurrency}`];
 
   return (
-    <section style={{ marginTop: 8, marginBottom: 22 }}>
+    // Margins are 0 — the entry now lives inside the journal card (PortfolioTab),
+    // whose padding owns the spacing.
+    <section style={{ margin: 0 }}>
       {/* Entry detail. Selection is driven by the chart dots (tap a marker to show
           that decision) — no in-panel stepper or divider, so the panel reads as
           one continuous block aligned with the holdings below. The date sits as a
