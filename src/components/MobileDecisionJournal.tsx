@@ -131,7 +131,7 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
           layers) and one fine-print caveat line, each rising a beat apart. */}
       {open && (
         <div style={{ marginTop: "var(--space-4)" }}>
-          <p className="lookback-rise" style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-subhead)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0, animationDelay: "0s" }}>
+          <p className="lookback-rise" style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0, animationDelay: "0s" }}>
             {headline.map((part, i) => (
               <span key={i}>
                 {part}
@@ -202,10 +202,10 @@ export function MobileDecisionJournal({
       <div style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "var(--space-3)" }}>
         {shortDate(mDate(m))}
       </div>
-      <h3 className="font-display" style={{ fontSize: "var(--fs-title)", fontWeight: 500, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 var(--space-2)" }}>
+      <h3 className="font-display" style={{ fontSize: "15px", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 var(--space-2)" }}>
         {decisionTitle(m)}
       </h3>
-      <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-subhead)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>
+      <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>
         {own ? m.personal_context
           : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
           : "Recorded automatically — no note attached."}
