@@ -64,6 +64,26 @@ function fmtPct(n: number): string {
   }).format(n);
 }
 
+// Net worth / Liquid segmented control — a single rounded pill bar with the
+// active segment raised on a soft chip (the redesign's mockup idiom), replacing
+// the earlier two-word eyebrow toggle.
+function LiquidToggle({ liquidOnly, onSetLiquid }: { liquidOnly: boolean; onSetLiquid: (v: boolean) => void }) {
+  const seg = (active: boolean) => ({
+    fontSize: "var(--fs-micro)", letterSpacing: "0.04em", fontWeight: 500,
+    padding: "6px 13px", borderRadius: "var(--radius-pill)", border: "none",
+    cursor: "pointer", whiteSpace: "nowrap" as const, transition: "all 0.15s",
+    background: active ? "var(--surface-elev)" : "transparent",
+    color: active ? "var(--accent-text)" : "var(--text-faint)",
+    boxShadow: active ? "var(--shadow-soft)" : "none",
+  });
+  return (
+    <div style={{ display: "inline-flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3, gap: 2, marginBottom: "var(--space-3)" }}>
+      <button type="button" onClick={() => onSetLiquid(false)} aria-pressed={!liquidOnly} className="font-numeric" style={seg(!liquidOnly)}>Net worth</button>
+      <button type="button" onClick={() => onSetLiquid(true)} aria-pressed={liquidOnly} className="font-numeric" style={seg(liquidOnly)}>Liquid</button>
+    </div>
+  );
+}
+
 export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled, mutations, liquidOnly, onSetLiquid }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
 
@@ -155,11 +175,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   if (!currencyLoaded || !valuesSettled) {
     return (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-          <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
-          <span style={{ width: 3, height: 3, borderRadius: "var(--radius-pill)", background: "var(--text-faint)", opacity: 0.6 }} />
-          <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
-        </div>
+        <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
         <div
           className="bg-surface-elev rounded-lg animate-pulse"
           style={{ height: 42, width: "60%", maxWidth: 280 }}
@@ -177,15 +193,11 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
 
   return (
     <div>
-      {/* Eyebrow toggle — "Net worth · Liquid"; active word inks/600, inactive
-          faints/500. Drives liquidOnly (number/series/delta already follow it). */}
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-        <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
-        <span style={{ width: 3, height: 3, borderRadius: "var(--radius-pill)", background: "var(--text-faint)", opacity: 0.6 }} />
-        <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
-      </div>
+      {/* Net worth / Liquid segmented toggle — drives liquidOnly (number/series/
+          delta already follow it). */}
+      <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
 
-      {/* Hero number — serif, monochrome */}
+      {/* Hero number — monochrome */}
       <div
         className="font-display leading-none"
         style={{

@@ -385,8 +385,18 @@ export function PortfolioTab({
         // text aligns with the hero and Holdings (no inset). The "journal" feeling
         // comes from the mono dateline, the upright-serif reflection, and the
         // dotted perforation into the collapsible "Looking back" (MobileDecisionJournal).
-        <div className="-mx-5 md:mx-0" style={{ maxWidth: 660, marginBottom: 16 }}>
-          <div style={{ paddingTop: "var(--space-4)" }}>
+        <div style={{ maxWidth: 660, marginBottom: "var(--space-5)" }}>
+          {/* Section header — "Journal · latest" with an Open link to the full
+              Journal tab, mirroring the redesign mockup. */}
+          <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", marginBottom: "var(--space-3)" }}>
+            <span className="eyebrow">Journal · latest</span>
+            <Link href="/diary" className="font-numeric" style={{ fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", textDecoration: "none", whiteSpace: "nowrap" }}>
+              Open ›
+            </Link>
+          </div>
+          {/* The latest decision lives in a bordered card (the entry's own padding
+              comes from the card). */}
+          <div className="card">
             {navDecisions.length > 0 ? (
               <MobileDecisionJournal
                 decisions={navDecisions}
@@ -396,12 +406,9 @@ export function PortfolioTab({
             ) : (
               // No logged decisions yet — keep the zone visible and explain it fills
               // in once there's data, rather than leaving a blank gap.
-              <>
-                <div className="eyebrow" style={{ marginBottom: 7 }}>Journal</div>
-                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
-                  Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
-                </p>
-              </>
+              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+                Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
+              </p>
             )}
           </div>
         </div>

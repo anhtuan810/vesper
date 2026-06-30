@@ -809,7 +809,10 @@ export function NetWorthChart(props: Props) {
           {showLabels ? formatXLabel(displaySeries[0].date, range) : ""}
         </span>
 
-        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          {/* One rounded segmented bar holds all the range pills; the active one
+              raises onto a soft chip (the redesign mockup idiom). */}
+          <div style={{ display: "inline-flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3 }}>
           {RANGES.map((r) => {
             const start = rangeStartDate(r);
             // 1D is intraday-liquid only: enabled purely by liquidOnly, never
@@ -826,12 +829,10 @@ export function NetWorthChart(props: Props) {
                 onClick={() => { if (!disabled) onRangeChange(r); }}
                 aria-pressed={active}
                 style={{
-                  // 44px tall hit target (iOS minimum) with the visual chip kept
-                  // small inside — the button itself is a transparent tap area.
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: "var(--control-h)",
+                  minHeight: 30,
                   padding: 0,
                   background: "none",
                   border: "none",
@@ -845,11 +846,10 @@ export function NetWorthChart(props: Props) {
                     fontSize: "var(--fs-micro)",
                     fontWeight: active ? 600 : 500,
                     lineHeight: 1,
-                    padding: "5px 5px",
-                    borderRadius: "var(--radius-md)",
-                    color: disabled ? "var(--text-faint)" : active ? "var(--text)" : "var(--text-dim)",
+                    padding: "5px 9px",
+                    borderRadius: "var(--radius-pill)",
+                    color: disabled ? "var(--text-faint)" : active ? "var(--accent-text)" : "var(--text-dim)",
                     background: active ? "var(--surface-elev)" : "transparent",
-                    boxShadow: active ? "var(--shadow-soft)" : "none",
                     whiteSpace: "nowrap",
                     transition: "all 0.15s",
                   }}
@@ -859,6 +859,7 @@ export function NetWorthChart(props: Props) {
               </button>
             );
           })}
+          </div>
         </div>
 
         <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
