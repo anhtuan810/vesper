@@ -47,7 +47,9 @@ export default function VitalsPage() {
         style={{
           maxWidth: 520,
           margin: "0 auto",
-          padding: "0 0 110px",
+          // Clear the fixed bottom nav + the iOS home-indicator safe area, plus a
+          // comfortable gap — composes instead of a fixed 110px guess.
+          padding: "0 0 calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-8))",
         }}
       >
         {/* The Portfolio summary card (Projection + Worth knowing + Markets) was

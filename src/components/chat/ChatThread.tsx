@@ -549,8 +549,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 className="flex items-center justify-center text-faint hover:text-dim transition-colors"
                 style={{
                   flexShrink: 0,
-                  width: 32,
-                  height: 32,
+                  width: 40,
+                  height: 40,
                   borderRadius: "50%",
                   background: "transparent",
                   border: "none",
@@ -608,11 +608,11 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 className="flex items-center justify-center"
                 style={{
                   flexShrink: 0,
-                  width: 34,
-                  height: 34,
+                  width: 40,
+                  height: 40,
                   borderRadius: "50%",
                   background: canSend ? "var(--accent)" : "var(--surface-elev)",
-                  color: canSend ? "var(--bg)" : "var(--text-faint)",
+                  color: canSend ? "var(--on-accent)" : "var(--text-faint)",
                   border: "none",
                   cursor: canSend ? "pointer" : "default",
                   opacity: canSend ? 1 : 0.5,

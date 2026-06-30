@@ -156,9 +156,9 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
     return (
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-          <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
+          <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
           <span style={{ width: 3, height: 3, borderRadius: "var(--radius-pill)", background: "var(--text-faint)", opacity: 0.6 }} />
-          <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
+          <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
         </div>
         <div
           className="bg-surface-elev rounded-lg animate-pulse"
@@ -180,9 +180,9 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       {/* Eyebrow toggle — "Net worth · Liquid"; active word inks/600, inactive
           faints/500. Drives liquidOnly (number/series/delta already follow it). */}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-        <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
+        <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
         <span style={{ width: 3, height: 3, borderRadius: "var(--radius-pill)", background: "var(--text-faint)", opacity: 0.6 }} />
-        <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
+        <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: "var(--space-2) var(--space-1)", margin: "calc(-1 * var(--space-2)) calc(-1 * var(--space-1))", cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
       </div>
 
       {/* Hero number — serif, monochrome */}

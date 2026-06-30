@@ -209,7 +209,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
   return (
     <div style={fillWidth
       ? { maxWidth: "none", margin: 0, padding: 0 }
-      : { maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
+      : { maxWidth: 520, margin: "0 auto", padding: "0 0 calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-8))" }}>
 
       {/* Name as page title + fingerprint as supporting line */}
       <div style={{ paddingTop: "var(--space-8)", marginBottom: 26 }}>

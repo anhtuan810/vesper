@@ -345,9 +345,9 @@ export function PortfolioTab({
   return (
     <>
       {/* Hero + chart — constrained so the chart never stretches past a readable aspect ratio.
-          -mx-4 (mobile) bleeds left/right to cancel the page wrapper's px-4 so the hero number,
-          chart and range pills sit flush with the full-bleed market/insight band edges. */}
-      <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
+          -mx-5 (mobile) bleeds left/right to cancel the page wrapper's px-5 (20px) so the hero
+          number, chart and range pills sit flush with the full-bleed market/insight band edges. */}
+      <div className="-mx-5 md:mx-0" style={{ maxWidth: 660 }}>
         <div className="mb-5">
           <NetWorthHero netTotal={heroTotal} range={range} selectedPoint={selectedPoint} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onSetLiquid={setLiquid} />
         </div>
@@ -375,10 +375,10 @@ export function PortfolioTab({
 
       {/* Decision journal — the selected decision's reasoning + the "Looking
           back" Decision Verdict. Selection comes from the chart dots (tap a
-          marker). Bleeds to the same -mx-4 column as the hero, chart and
+          marker). Bleeds to the same -mx-5 column as the hero, chart and
           Holdings so the entry text lines up with them instead of sitting inset. */}
       {!liquidOnly && navDecisions.length > 0 && (
-        <div className="-mx-4 md:mx-0" style={{ maxWidth: 660 }}>
+        <div className="-mx-5 md:mx-0" style={{ maxWidth: 660 }}>
           <MobileDecisionJournal
             decisions={navDecisions}
             selectedId={selectedDecisionId}
@@ -391,7 +391,7 @@ export function PortfolioTab({
           Mobile: bleed to the band edge with no inner padding (md:px-4 only) so
           the group headers and rows sit flush at the same left/right column as
           the hero and the full-bleed market band. Desktop keeps the 16px inset. */}
-      <div className="-mx-4 md:-mx-8 md:px-4">
+      <div className="-mx-5 md:-mx-8 md:px-4">
         {/* Demoted from a 26px serif title to the app's small uppercase
             section-label idiom (PERSPECTIVE / INDICATIVE VALUE) — the category
             rows below self-describe, so the header only needs to carry the

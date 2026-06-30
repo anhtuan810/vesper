@@ -824,24 +824,38 @@ export function NetWorthChart(props: Props) {
                 key={r}
                 disabled={disabled}
                 onClick={() => { if (!disabled) onRangeChange(r); }}
+                aria-pressed={active}
                 style={{
-                  fontFamily: "var(--font-numeric)",
-                  fontSize: "var(--fs-micro)",
-                  fontWeight: active ? 600 : 500,
-                  lineHeight: 1,
-                  padding: "5px 5px",
-                  borderRadius: "var(--radius-md)",
-                  color: disabled ? "var(--text-faint)" : active ? "var(--text)" : "var(--text-dim)",
-                  background: active ? "var(--surface-elev)" : "transparent",
-                  boxShadow: active ? "var(--shadow-soft)" : "none",
+                  // 44px tall hit target (iOS minimum) with the visual chip kept
+                  // small inside — the button itself is a transparent tap area.
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "var(--control-h)",
+                  padding: 0,
+                  background: "none",
                   border: "none",
                   cursor: disabled ? "default" : "pointer",
                   opacity: disabled ? 0.45 : 1,
-                  whiteSpace: "nowrap",
-                  transition: "all 0.15s",
                 }}
               >
-                {r}
+                <span
+                  style={{
+                    fontFamily: "var(--font-numeric)",
+                    fontSize: "var(--fs-micro)",
+                    fontWeight: active ? 600 : 500,
+                    lineHeight: 1,
+                    padding: "5px 5px",
+                    borderRadius: "var(--radius-md)",
+                    color: disabled ? "var(--text-faint)" : active ? "var(--text)" : "var(--text-dim)",
+                    background: active ? "var(--surface-elev)" : "transparent",
+                    boxShadow: active ? "var(--shadow-soft)" : "none",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {r}
+                </span>
               </button>
             );
           })}
