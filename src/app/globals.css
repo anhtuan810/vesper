@@ -6,9 +6,26 @@
    (body + labels) and IBM Plex Mono into --font-mono (numeric/label detail).
    Each role below references its own font variable with a graceful fallback. */
 :root {
+  /* ── Typography, in three layers ─────────────────────────────────────────
+     1. FAMILIES — the actual typefaces, loaded by next/font (layout.tsx,
+        overview/page.tsx, marketing/page.tsx) and exposed as --font-serif /
+        --font-sans / --font-mono. To swap a typeface, change the loader; the
+        roles below follow automatically.
+     2. ROLES — what each font is FOR. This is the ONE place to change which
+        family a role uses, or to give a role its own new typeface later (e.g.
+        point --font-label at a different family from --font-ui).
+     3. USAGE — components reference the ROLES (or the .eyebrow / .tnum
+        utilities), never a raw family. */
   --serif: var(--font-serif), Georgia, serif;
   --sans:  var(--font-sans), system-ui, sans-serif;
   --mono:  var(--font-mono), "SF Mono", monospace;
+
+  /* Semantic font roles — change a role's typeface HERE (one line each). */
+  --font-display: var(--serif);  /* wordmark · screen titles · net-worth figure · italic notes */
+  --font-ui:      var(--sans);   /* body · list names · buttons · nav — everything structural */
+  --font-label:   var(--sans);   /* uppercase micro-labels (eyebrows) — sans, NOT mono */
+  --font-numeric: var(--mono);   /* tabular figures: money · % · shares · dates */
+
   --nav-height: 56px;
   --radius-md:  10px;
   --radius-lg:  14px;
@@ -366,8 +383,8 @@ html.native-app [contenteditable="true"] {
    so mobile/native rendering is unchanged. marginBottom stays inline. */
 .ad-eyebrow {
   font-size: 11px;
-  font-weight: 500;
-  font-family: var(--mono);
+  font-weight: 600;
+  font-family: var(--font-label);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-faint);
@@ -375,23 +392,23 @@ html.native-app [contenteditable="true"] {
 
 /* Canonical uppercase micro-label — the ONE eyebrow spec used app-wide (section
    headers, card eyebrows, "From Portfolio", "Markets", date eyebrows, badges).
-   Mono / 500 / 0.12em / uppercase / faint. On a tinted band, override the color
-   only — never the size, weight, or tracking. */
+   Label role / 600 / 0.12em / uppercase / faint (sans, via --font-label). On a
+   tinted band, override the colour only — never the family, size, or tracking. */
 .eyebrow {
-  font-family: var(--mono);
+  font-family: var(--font-label);
   font-size: var(--fs-micro);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-faint);
 }
 
-/* Tabular mono numerals — the ONE numeric convention (retires the
-   fontVariantNumeric vs fontFeatureSettings split). Put on every money / share /
-   percent / date figure so columns align; pair with a --fs-* size and a
-   semantic color (--positive-text gains, --negative-text losses). */
+/* Tabular numerals — the ONE numeric convention (retires the fontVariantNumeric
+   vs fontFeatureSettings split). Put on every money / share / percent / date
+   figure so columns align; pair with a --fs-* size and a semantic colour
+   (--positive-text gains, --negative-text losses). Family via --font-numeric. */
 .tnum {
-  font-family: var(--mono);
+  font-family: var(--font-numeric);
   font-feature-settings: "tnum" 1;
 }

@@ -86,10 +86,10 @@ export function DemoBanner() {
       >
         <span
           style={{
-            fontFamily: "var(--font-serif)",
-            fontSize: "var(--fs-subhead)",
+            fontFamily: "var(--font-ui)",
+            fontSize: "var(--fs-body)",
+            fontWeight: 500,
             color: "var(--accent)",
-            fontVariationSettings: "'opsz' 14",
           }}
         >
           Demo account{" "}

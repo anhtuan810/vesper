@@ -260,7 +260,7 @@ function LoginInner() {
 
         <div className="flex items-center" style={{ gap: 12, margin: "20px 0 14px" }}>
           <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          <span style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase" }}>or</span>
+          <span style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--font-label)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase" }}>or</span>
           <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
 

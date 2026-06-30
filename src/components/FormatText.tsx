@@ -56,8 +56,9 @@ function ChangesBlock({ content }: { content: string }) {
     >
       <div
         style={{
-          fontFamily: "var(--mono)",
+          fontFamily: "var(--font-label)",
           fontSize: 11,
+          fontWeight: 600,
           letterSpacing: "var(--tracking-label)",
           textTransform: "uppercase",
           color: "var(--accent)",
@@ -76,7 +77,7 @@ function ChangesBlock({ content }: { content: string }) {
               justifyContent: "space-between",
               alignItems: "baseline",
               padding: "3px 0",
-              fontFamily: "var(--mono)",
+              fontFamily: "var(--font-numeric)",
               fontSize: 12,
             }}
           >

@@ -107,7 +107,7 @@ export function PropertyMap({ asset }: Props) {
           onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Update the address for ${asset.name}`)}`)}
           style={{ background: "none", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "5px 14px", cursor: "pointer" }}
         >
-          <span style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", fontFamily: "var(--mono)" }}>
+          <span style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", fontFamily: "var(--font-label)" }}>
             {asset.address?.trim() ? "Update address" : "Add address"}
           </span>
         </button>
