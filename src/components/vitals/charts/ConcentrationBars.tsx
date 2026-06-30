@@ -2,25 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AssetLogo } from "@/components/AssetLogo";
+import { CATEGORY_MAP, CATEGORY_COLOR } from "@/lib/categories";
 
-// Distinct per-asset-class hues for the concentration bars. There are more
-// series (9) than the app's 5 category tokens, so forcing them onto --cat-*
-// causes collisions (two classes share a colour) and semantic drift; this stays
-// a deliberate, distinct palette instead.
-const ASSET_COLOR: Record<string, string> = {
-  real_estate: '#5E6A4A',
-  crypto:      '#B0552F',
-  pension:     '#7A8C6A',
-  cash:        '#9A8F82',
-  stocks:      '#5E7488',
-  etf:         '#7E92A6',
-  bonds:       '#8C7B5E',
-  gold:        '#97703D',
-  other:       '#A89F90',
-};
-
+// Colour each position by its semantic CATEGORY (property / markets / crypto /
+// reserves) via the live --category-* tokens — the SAME source the Holdings
+// groups and the net-worth chart use — so an asset reads the same colour on
+// every screen (property blue, markets green, …). Positions in one category
+// share its colour; the label and bar length tell them apart. Unknown types
+// fall to reserves, matching categoryBreakdown().
 function colorFor(type: string): string {
-  return ASSET_COLOR[type] ?? ASSET_COLOR.other;
+  return CATEGORY_COLOR[CATEGORY_MAP[type] ?? "reserves"] ?? CATEGORY_COLOR.reserves;
 }
 
 function fmtPct(v: number): string {
