@@ -20,6 +20,7 @@ Shared principles across all three:
 | File | Name | Feel | Palette | Type |
 |------|------|------|---------|------|
 | `nocturne.html` | **Nocturne** *(recommended)* | Dark premium trading terminal | Near-black slate · brass accent | Inter · IBM Plex Mono |
+| `nocturne-light.html` | **Nocturne Light** | Light companion to Nocturne (same family) | Cool slate-paper · brass accent | Inter · IBM Plex Mono |
 | `daylight.html` | **Daylight** | Light, Swiss-precise, high-density | Off-white · evergreen accent | Plus Jakarta Sans · IBM Plex Mono |
 | `atelier.html` | **Atelier** | Near-monochrome editorial / "private office" | Warm paper · ink-indigo accent | Fraunces (display) · Inter · IBM Plex Mono |
 
