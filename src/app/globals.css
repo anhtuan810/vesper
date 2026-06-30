@@ -158,10 +158,10 @@
   --negative-text: #8A3F22;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
   --nav-surface:   rgba(243, 236, 224, 0.85);
-  --category-public-markets: #117A52;
+  --category-public-markets: #5A8268;
   --category-reserves:       #A89968;
-  --category-property:       #3F7CA8;
-  --category-crypto:         #E0922A;
+  --category-property:       #5E7E96;
+  --category-crypto:         #C27A3A;
   --surface-deep:  #E7DFD0;
   --accent-deep:   #6F5226;
   --negative-deep: #7E3A1F;
@@ -169,27 +169,27 @@
   --amber-deep:    #8A5E22;
   --amber-soft:    rgba(176, 122, 46, 0.13);
   --bg-deep:           #EAE2D4;
-  --cat-property:      #3F7CA8;
-  --cat-property-soft: #DCE7EF;
-  --cat-markets:       #117A52;
-  --cat-markets-soft:  #D5E5DD;
+  --cat-property:      #5E7E96;
+  --cat-property-soft: #DEE6EA;
+  --cat-markets:       #5A8268;
+  --cat-markets-soft:  #DDE7E0;
   --cat-reserves:      #A89968;
   --cat-reserves-soft: #ECE3D0;
-  --cat-crypto:        #E0922A;
-  --cat-crypto-soft:   #F6E6D1;
+  --cat-crypto:        #C27A3A;
+  --cat-crypto-soft:   #F0E2D2;
   --cat-tangible:      #8C7B5E;
   --cat-tangible-soft: #E8E1D2;
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band:  #3F7CA8;
-  --cat-property-edge:  #2F6189;
-  --cat-markets-band:   #117A52;
-  --cat-markets-edge:   #0C5C3E;
+  --cat-property-band:  #5E7E96;
+  --cat-property-edge:  #46606F;
+  --cat-markets-band:   #5A8268;
+  --cat-markets-edge:   #45634E;
   --cat-reserves-band:  #A89968;
   --cat-reserves-edge:  #877A4C;
-  --cat-crypto-band:    #E0922A;
-  --cat-crypto-edge:    #B5731C;
+  --cat-crypto-band:    #C27A3A;
+  --cat-crypto-edge:    #A0612C;
   --cat-tangible-band:  #BCAE94;
   --cat-tangible-edge:  #7E6F54;
   /* PerspectiveCard translucent surfaces — light values */
