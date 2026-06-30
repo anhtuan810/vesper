@@ -182,10 +182,9 @@ export function MobileDecisionJournal({
       <h3 className="font-display" style={{ fontSize: "var(--fs-subhead)", fontWeight: 500, letterSpacing: "var(--tracking-subhead)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 10px" }}>
         {decisionTitle(m)}
       </h3>
-      {m.market_context && (
-        <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: "0 0 9px" }}>{m.market_context}</p>
-      )}
-      <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+      {/* The reflection in a diary voice — italic serif, clamped to two lines so
+          the Overview stays compact; the full note lives in the Journal tab. */}
+      <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
         {own ? m.personal_context
           : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
           : "Recorded automatically — no note attached."}

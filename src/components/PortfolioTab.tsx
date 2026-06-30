@@ -380,17 +380,13 @@ export function PortfolioTab({
           marker). Bleeds to the same -mx-5 column as the hero, chart and
           Holdings so the entry text lines up with them instead of sitting inset. */}
       {!liquidOnly && (
-        // The selected decision sits on a soft, full-bleed warm wash — a quiet
-        // "zone" that reads apart from the edge-to-edge Holdings rows below without
-        // a bordered box. The chart cue ties it to the highlighted point above.
+        // The selected decision reads as a journal entry, not a box: no surface or
+        // border, just a hairline parting it from the chart above. Its text aligns
+        // with the hero and Holdings (no inset). The "journal" feeling comes from
+        // the dateline + the reflection set in an italic serif diary voice
+        // (MobileDecisionJournal), clamped so it stays short.
         <div className="-mx-5 md:mx-0" style={{ maxWidth: 660, marginBottom: 24 }}>
-          <div
-            style={{
-              background:
-                "linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), color-mix(in srgb, var(--accent) 2%, transparent))",
-              padding: "var(--space-5)",
-            }}
-          >
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: "var(--space-5)" }}>
             {navDecisions.length > 0 ? (
               <MobileDecisionJournal
                 decisions={navDecisions}
