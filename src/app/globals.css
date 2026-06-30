@@ -38,9 +38,9 @@
 
   /* Canonical type scale — the single source of truth for text sizing across the
      app surfaces (charts and the marketing site keep their own display type).
-     EIGHT steps, deliberately sparse so similar elements match — do NOT
-     reintroduce in-between sizes (no 9.5 / 10.5 / 11.5 / 12.5 / 13.5 / 14.5).
-     Floor is 11px.
+     EIGHT steps, deliberately sparse so similar elements match. Tightened for a
+     denser, IBKR-like information read (numbers/body/titles stepped down, the
+     hero kept as the one big moment). Floor is 11px for labels.
        --fs-micro    eyebrow / uppercase micro-labels  (mono, .eyebrow)
        --fs-caption  dates, sub-lines, secondary captions
        --fs-meta     numeric values, tertiary body      (mono numbers, .tnum)
@@ -50,13 +50,13 @@
        --fs-metric   a card's signature figure (vital metric, demoted hero)
        --fs-hero     THE net-worth figure — the one big moment */
   --fs-micro:   11px;
-  --fs-caption: 12px;
-  --fs-meta:    13px;
-  --fs-body:    14px;
-  --fs-subhead: 16px;
-  --fs-title:   20px;
-  --fs-metric:  28px;
-  --fs-hero:    38px;
+  --fs-caption: 11.5px;
+  --fs-meta:    12px;
+  --fs-body:    13px;
+  --fs-subhead: 14px;
+  --fs-title:   17px;
+  --fs-metric:  24px;
+  --fs-hero:    33px;
 
   /* Canonical tracking for uppercase micro-labels (eyebrows, section headers,
      chip labels). One value everywhere so every label tracks identically. */
@@ -83,8 +83,8 @@
   /* Line-heights as tokens so body / narrative stop wobbling across 1.35–1.6. */
   --lh-tight: 1.1;
   --lh-snug:  1.3;
-  --lh-read:  1.4;  /* reading line-height for multi-line serif prose (tighter than body, not cramped) */
-  --lh-body:  1.5;
+  --lh-read:  1.38; /* reading line-height for multi-line prose (tighter than body, not cramped) */
+  --lh-body:  1.45;
 
   /* Pill radius token so even fully-round elements aren't bare 999. */
   --radius-pill: 999px;
