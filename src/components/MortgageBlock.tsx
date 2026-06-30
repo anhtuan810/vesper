@@ -172,7 +172,7 @@ export function MortgageBlock({ asset }: Props) {
 
   const rows = [
     { label: "Balance", value: formatMoney(balance, asset.currency || "USD", displayCurrency), meta: null },
-    { label: "Rate", value: rate != null ? `${rate.toFixed(2)}%` : "—", meta: null },
+    { label: "Rate", value: rate != null ? `${rate.toFixed(2).replace(".", ",")}%` : "—", meta: null },
     { label: "Payment", value: effectivePayment != null ? formatMoney(effectivePayment, asset.currency || "USD", displayCurrency) : "Not set", meta: effectivePayment != null ? "per month" : null },
     { label: "Type", value: typeLabel, meta: null },
     { label: "Mortgage-free", value: mortgageFreeValue, meta: mortgageFreeMeta },

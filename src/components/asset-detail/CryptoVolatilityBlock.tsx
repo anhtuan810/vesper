@@ -26,7 +26,7 @@ function CryptoVolatilityBlockInner({ asset, symbol }: { asset: Asset; symbol: s
   const low = closes.length ? Math.min(...closes) : null;
   const range =
     high != null && low != null && high > 0
-      ? (((high - low) / high) * 100).toFixed(2)
+      ? (((high - low) / high) * 100).toFixed(2).replace(".", ",")
       : null;
 
   const sym = currencySymbol(asset.currency);
@@ -34,8 +34,8 @@ function CryptoVolatilityBlockInner({ asset, symbol }: { asset: Asset; symbol: s
   const fmtPrice = (n: number | null) => {
     if (n == null) return "—";
     const formatted = n >= 1000
-      ? n.toLocaleString("en", { maximumFractionDigits: 0 })
-      : n.toFixed(2);
+      ? n.toLocaleString("nl-NL", { maximumFractionDigits: 0 })
+      : n.toFixed(2).replace(".", ",");
     return `${sym}${formatted}`;
   };
 

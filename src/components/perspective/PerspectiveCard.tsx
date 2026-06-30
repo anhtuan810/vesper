@@ -5,7 +5,7 @@ import { ordinalSuffix } from "@/lib/utils";
 
 function formatCurrency(eur: number, displayCurrency: string): string {
   const sym = displayCurrency.toUpperCase() === "EUR" ? "€" : "$";
-  if (eur >= 1_000_000) return `${sym}${(eur / 1_000_000).toFixed(1)}M`;
+  if (eur >= 1_000_000) return `${sym}${(eur / 1_000_000).toFixed(1).replace(".", ",")}M`;
   if (eur >= 1_000) return `${sym}${Math.round(eur / 1_000)}k`;
   return `${sym}${Math.round(eur)}`;
 }
@@ -30,7 +30,7 @@ function youMarkerX(netWorthEur: number): number {
 // up to the impossible "100th"/"100%". Below 99, show a whole number; at or
 // above 99, keep one decimal (e.g. "99.9th").
 function formatPercentile(pct: number): string {
-  return pct >= 99 ? pct.toFixed(1) : String(Math.round(pct));
+  return pct >= 99 ? pct.toFixed(1).replace(".", ",") : String(Math.round(pct));
 }
 
 export function PerspectiveCard({

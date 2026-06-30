@@ -34,7 +34,7 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
     if (m.action === "add" && m.after_units != null) {
       return (
         <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
-          +{m.after_units.toLocaleString()} {noun}
+          +{m.after_units.toLocaleString("nl-NL")} {noun}
         </span>
       );
     }
@@ -42,14 +42,14 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
       const delta = (m.after_units ?? 0) - (m.before_units ?? 0);
       if (delta !== 0) return (
         <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: delta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
-          {delta >= 0 ? "+" : ""}{delta.toLocaleString()} {noun}
+          {delta >= 0 ? "+" : ""}{delta.toLocaleString("nl-NL")} {noun}
         </span>
       );
     }
     if (m.action === "remove" && m.before_units != null) {
       return (
         <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
-          {m.before_units.toLocaleString()} {noun}
+          {m.before_units.toLocaleString("nl-NL")} {noun}
         </span>
       );
     }

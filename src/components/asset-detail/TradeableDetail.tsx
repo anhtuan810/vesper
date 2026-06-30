@@ -196,7 +196,7 @@ export function TradeableDetail({ asset }: Props) {
             </div>
             {asset.units != null && (
               <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
-                {asset.units.toLocaleString("en")} {noun}
+                {asset.units.toLocaleString("nl-NL")} {noun}
               </div>
             )}
           </div>
@@ -233,7 +233,7 @@ export function TradeableDetail({ asset }: Props) {
               const isUp = scrubInfo.pct >= 0;
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2)}%</DeltaPill>
+                  <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2).replace(".", ",")}%</DeltaPill>
                   <span style={{ color: "var(--text-faint)", fontSize: 13, fontFamily: "var(--mono)" }}>{scrubInfo.label}</span>
                 </div>
               );
@@ -257,7 +257,7 @@ export function TradeableDetail({ asset }: Props) {
                   const dateLabel = `since ${formatDate(earliestBuyDate.toISOString())}`;
                   return (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
-                      {pct !== null && <span style={{ fontWeight: 500 }}>{pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2)}%</span>}
+                      {pct !== null && <span style={{ fontWeight: 500 }}>{pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2).replace(".", ",")}%</span>}
                       <span>{dateLabel}</span>
                     </div>
                   );
@@ -267,7 +267,7 @@ export function TradeableDetail({ asset }: Props) {
               const isUp = periodInfo.pct >= 0;
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(periodInfo.pct).toFixed(2)}%</DeltaPill>
+                  <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(periodInfo.pct).toFixed(2).replace(".", ",")}%</DeltaPill>
                   <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{periodInfo.label}</span>
                 </div>
               );
@@ -277,7 +277,7 @@ export function TradeableDetail({ asset }: Props) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <DeltaPill isPositive={up}>
                     {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), assetCur, displayCurrency)} · `}
-                    {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2)}%
+                    {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2).replace(".", ",")}%
                   </DeltaPill>
                   <span style={{ color: "var(--text-faint)", fontSize: 13 }}>today</span>
                 </div>
@@ -325,7 +325,7 @@ export function TradeableDetail({ asset }: Props) {
                     fontFamily: "var(--mono)",
                     fontFeatureSettings: '"tnum" 1',
                   }}>
-                    {totalReturnAbs >= 0 ? "+" : "−"}{Math.abs((livePrice - avgBuyPrice) / avgBuyPrice * 100).toFixed(1)}%
+                    {totalReturnAbs >= 0 ? "+" : "−"}{Math.abs((livePrice - avgBuyPrice) / avgBuyPrice * 100).toFixed(1).replace(".", ",")}%
                   </span>
                 )}
               </div>
@@ -368,12 +368,12 @@ export function TradeableDetail({ asset }: Props) {
               if (m.before_units != null && m.after_units != null) {
                 // Both unit fields present: show unit delta
                 const d = m.after_units - m.before_units;
-                if (d !== 0) { delta = `${d >= 0 ? "+" : ""}${d.toLocaleString()} ${noun}`; deltaPositive = d >= 0; }
+                if (d !== 0) { delta = `${d >= 0 ? "+" : ""}${d.toLocaleString("nl-NL")} ${noun}`; deltaPositive = d >= 0; }
               } else if (m.action === "add" && m.after_units != null && m.before_units == null) {
                 // Initial buy: both fields technically partial — show as add
-                delta = `+${m.after_units.toLocaleString()} ${noun}`;
+                delta = `+${m.after_units.toLocaleString("nl-NL")} ${noun}`;
               } else if (m.action === "remove" && m.before_units != null && m.after_units == null) {
-                delta = `−${m.before_units.toLocaleString()} ${noun}`; deltaPositive = false;
+                delta = `−${m.before_units.toLocaleString("nl-NL")} ${noun}`; deltaPositive = false;
               } else if (m.after_value != null) {
                 // No unit data: fall back to signed value delta
                 const mCur = m.currency || assetCur;

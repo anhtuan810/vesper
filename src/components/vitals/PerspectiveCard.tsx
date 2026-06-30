@@ -5,7 +5,7 @@ import { ordinalSuffix } from "@/lib/utils";
 
 function formatCurrency(eur: number, displayCurrency: string): string {
   const sym = displayCurrency.toUpperCase() === "EUR" ? "€" : "$";
-  if (eur >= 1_000_000) return `${sym}${(eur / 1_000_000).toFixed(1)}M`;
+  if (eur >= 1_000_000) return `${sym}${(eur / 1_000_000).toFixed(1).replace(".", ",")}M`;
   if (eur >= 1_000) return `${sym}${Math.round(eur / 1_000)}k`;
   return `${sym}${Math.round(eur)}`;
 }

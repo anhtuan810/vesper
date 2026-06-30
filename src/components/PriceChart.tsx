@@ -31,10 +31,10 @@ function fmtYLabel(value: number, currency: string): string {
   const sign = value < 0 ? "−" : "";
   const abs = Math.abs(value);
   const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(n);
+    new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(n);
   if (abs >= 1_000_000) return `${sign}${sym}${fmt(abs / 1_000_000)}M`;
   if (abs >= 1_000) return `${sign}${sym}${fmt(abs / 1_000)}K`;
-  return `${sign}${sym}${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(abs)}`;
+  return `${sign}${sym}${new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(abs)}`;
 }
 
 interface NiceLevels { niceMin: number; niceMax: number; labels: number[] }

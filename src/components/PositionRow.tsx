@@ -12,7 +12,7 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 
 const TRADEABLE_TYPES: ReadonlySet<string> = new Set(["stocks", "etf", "crypto", "gold"]);
 
-const fmtPct = new Intl.NumberFormat("en-US", {
+const fmtPct = new Intl.NumberFormat("nl-NL", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
   signDisplay: "always",
@@ -37,14 +37,14 @@ function subLine(asset: LiveAsset): string {
     if (asset.units != null) {
       const unitLabel =
         asset.type === "stocks" || asset.type === "etf" ? "shares" : "units";
-      parts.push(`${asset.units.toLocaleString()} ${unitLabel}`);
+      parts.push(`${asset.units.toLocaleString("nl-NL")} ${unitLabel}`);
     }
     // country intentionally omitted for all tradeables
     return parts.join(" · ");
   }
 
   // Static positions (cash, pension, bonds, other): no country
-  if (asset.units != null) return `${asset.units.toLocaleString()} units`;
+  if (asset.units != null) return `${asset.units.toLocaleString("nl-NL")} units`;
   return "";
 }
 

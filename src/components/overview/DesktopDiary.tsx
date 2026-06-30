@@ -24,9 +24,9 @@ function diaryValue(m: Mutation, dc: DisplayCurrency): Val {
   const unitEligible = m.asset_type != null && TRADEABLE_TYPES.has(m.asset_type) && (m.before_units != null || m.after_units != null);
   const noun = unitNoun(m.asset_type);
   if (unitEligible) {
-    if (m.action === "add" && m.after_units != null) return { text: `+${m.after_units.toLocaleString()} ${noun}`, cls: "up" };
-    if (m.action === "edit") { const d = (m.after_units ?? 0) - (m.before_units ?? 0); if (d !== 0) return { text: `${d >= 0 ? "+" : "−"}${Math.abs(d).toLocaleString()} ${noun}`, cls: d >= 0 ? "up" : "dn" }; }
-    if (m.action === "remove" && m.before_units != null) return { text: `${m.before_units.toLocaleString()} ${noun}`, cls: "strike" };
+    if (m.action === "add" && m.after_units != null) return { text: `+${m.after_units.toLocaleString("nl-NL")} ${noun}`, cls: "up" };
+    if (m.action === "edit") { const d = (m.after_units ?? 0) - (m.before_units ?? 0); if (d !== 0) return { text: `${d >= 0 ? "+" : "−"}${Math.abs(d).toLocaleString("nl-NL")} ${noun}`, cls: d >= 0 ? "up" : "dn" }; }
+    if (m.action === "remove" && m.before_units != null) return { text: `${m.before_units.toLocaleString("nl-NL")} ${noun}`, cls: "strike" };
   }
   const cur = m.currency || "USD";
   if (m.action === "add" && m.after_value != null) return { text: `+${formatMoney(m.after_value, cur, dc)}`, cls: "up" };
