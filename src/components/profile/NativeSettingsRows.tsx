@@ -39,7 +39,7 @@ function Row({ label, sub, children }: { label: string; sub?: string; children: 
   return (
     <div
       style={{
-        display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
+        display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "14px var(--space-card)",
         borderTop: "0.5px solid var(--border)",
       }}
     >
@@ -140,7 +140,7 @@ export function NativeSettingsRows() {
         <Toggle on={pushOn} busy={busy === "push"} onClick={togglePush} />
       </Row>
       {pushNote && (
-        <div style={{ padding: "0 16px 12px", fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>
+        <div style={{ padding: "0 var(--space-card) var(--space-3)", fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>
           {pushNote}
         </div>
       )}

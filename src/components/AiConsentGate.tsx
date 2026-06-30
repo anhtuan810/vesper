@@ -92,7 +92,7 @@ export function AiConsentGate() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 20,
+        padding: "var(--space-5)",
         zIndex: 200,
       }}
     >
@@ -109,20 +109,20 @@ export function AiConsentGate() {
           background: "var(--surface)",
           border: "0.5px solid var(--border)",
           borderRadius: "var(--radius-md)",
-          padding: "24px 22px 22px",
+          padding: "var(--space-6) var(--space-5) var(--space-5)",
           fontFamily: "var(--font-ui)",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.28)",
+          boxShadow: "var(--shadow-soft)",
         }}
       >
         <div
           id="ai-consent-title"
           style={{
             fontFamily: "var(--font-display)",
-            fontSize: 22,
+            fontSize: "var(--fs-title)",
             fontWeight: 500,
             color: "var(--hero)",
-            marginBottom: 12,
-            letterSpacing: "-0.01em",
+            marginBottom: "var(--space-3)",
+            letterSpacing: "var(--tracking-title)",
             fontVariationSettings: "'opsz' 26",
           }}
         >
@@ -131,7 +131,7 @@ export function AiConsentGate() {
 
         <div
           id="ai-consent-body"
-          style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.6 }}
+          style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}
         >
           <p style={{ margin: "0 0 12px" }}>
             To power the chat assistant and insights, Volnar sends your portfolio
@@ -159,7 +159,7 @@ export function AiConsentGate() {
         </div>
 
         {error && (
-          <div style={{ fontSize: 13, color: "var(--negative)", marginTop: 14, lineHeight: 1.5 }}>
+          <div style={{ fontSize: "var(--fs-meta)", color: "var(--negative-text)", marginTop: "var(--space-4)", lineHeight: "var(--lh-body)" }}>
             {error}
           </div>
         )}
@@ -170,13 +170,13 @@ export function AiConsentGate() {
           disabled={submitting}
           style={{
             width: "100%",
-            marginTop: 20,
+            marginTop: "var(--space-5)",
             padding: "12px 0",
             borderRadius: "var(--radius-md)",
             border: "none",
             background: "var(--hero)",
             color: "var(--surface)",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             fontWeight: 600,
             cursor: submitting ? "default" : "pointer",
             fontFamily: "var(--font-ui)",

@@ -81,7 +81,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
   return (
     <div
       className="bg-surface rounded-2xl border border-border mb-5"
-      style={{ padding: "16px 20px" }}
+      style={{ padding: "var(--space-4) var(--space-5)" }}
     >
       <style>{`
         @keyframes volnarPulse {
@@ -103,7 +103,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
           >
             <span
               className="font-display text-accent"
-              style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144", lineHeight: 1 }}
+              style={{ fontSize: "var(--fs-subhead)", fontWeight: 400, fontVariationSettings: "'opsz' 144", lineHeight: "var(--lh-tight)" }}
             >
               V
             </span>

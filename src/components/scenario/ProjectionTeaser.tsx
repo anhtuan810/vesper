@@ -156,7 +156,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           display: "block",
           background: "none",
           border: "none",
-          padding: "5px 0",
+          padding: "var(--space-1) 0",
           cursor: "pointer",
           opacity: shown ? 1 : 0,
           transform: shown ? "translateY(0)" : "translateY(3px)",
@@ -166,7 +166,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
         {/* Sentence + CTA share one line — the clause trails the statement inline
             (in accent-text) rather than sitting on its own row, so the projection
             costs a single compact row instead of two. */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-2)" }}>
           <TrendingUpIcon size={13} color="var(--text-faint)" />
           <div
             className="font-display"
@@ -174,8 +174,8 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
               flex: 1,
               minWidth: 0,
               fontStyle: "italic",
-              fontSize: 13,
-              lineHeight: 1.45,
+              fontSize: "var(--fs-meta)",
+              lineHeight: "var(--lh-body)",
               color: "var(--text)",
               letterSpacing: "0.005em",
             }}

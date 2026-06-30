@@ -56,7 +56,7 @@ export function BondBlock({ asset }: Props) {
       <div className="ad-eyebrow" style={{ marginBottom: 12 }}>
         Bond details
       </div>
-      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
         {rows.map((row, idx) => (
           <div key={row.label} style={{
             display: "flex",
@@ -66,7 +66,7 @@ export function BondBlock({ asset }: Props) {
             borderBottom: idx < rows.length - 1 ? "0.5px solid var(--border)" : "none",
             gap: 14,
           }}>
-            <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
+            <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
               <span style={row.isin ? {
                 fontFamily: "var(--font-ui)",

@@ -48,11 +48,11 @@ export function CashWaterfall({ data }: Props) {
   return (
     <svg viewBox="0 0 320 96" style={{ width: '100%', height: 96, display: 'block' }}>
       {/* Baseline */}
-      <line x1={0} y1={BASELINE_Y} x2={320} y2={BASELINE_Y} stroke="rgba(28,28,24,0.20)" strokeWidth={0.7} />
+      <line x1={0} y1={BASELINE_Y} x2={320} y2={BASELINE_Y} stroke="var(--border-strong)" strokeWidth={0.7} />
 
       {/* Gridlines */}
-      <line x1={0} y1={30} x2={320} y2={30} stroke="rgba(28,28,24,0.08)" strokeWidth={0.4} strokeDasharray="1 3" />
-      <line x1={0} y1={66} x2={320} y2={66} stroke="rgba(28,28,24,0.08)" strokeWidth={0.4} strokeDasharray="1 3" />
+      <line x1={0} y1={30} x2={320} y2={30} stroke="var(--border)" strokeWidth={0.4} strokeDasharray="1 3" />
+      <line x1={0} y1={66} x2={320} y2={66} stroke="var(--border)" strokeWidth={0.4} strokeDasharray="1 3" />
 
       {/* Savings rect (positive, going up from baseline) */}
       <rect x={savingsX} y={savingsTop} width={rectW} height={savingsH} fill="var(--accent)" opacity={0.88} />
@@ -63,7 +63,7 @@ export function CashWaterfall({ data }: Props) {
         fontSize={12}
         fill="var(--positive-text)"
         fontWeight={600}
-        style={{ fontFeatureSettings: "'tnum'" }}
+        className="tnum"
       >
         {fmtPct(savingsRatePct)}
       </text>
@@ -77,7 +77,7 @@ export function CashWaterfall({ data }: Props) {
         y1={inflationTop}
         x2={inflationX}
         y2={inflationTop}
-        stroke="rgba(28,28,24,0.18)"
+        stroke="var(--border-strong)"
         strokeWidth={0.7}
         strokeDasharray="2 2"
       />
@@ -91,7 +91,7 @@ export function CashWaterfall({ data }: Props) {
         fontSize={12}
         fill="var(--negative-text)"
         fontWeight={600}
-        style={{ fontFeatureSettings: "'tnum'" }}
+        className="tnum"
       >
         {fmtPct(-inflationDragPct)}
       </text>
@@ -105,7 +105,7 @@ export function CashWaterfall({ data }: Props) {
         y1={inflationBottom}
         x2={taxX}
         y2={inflationBottom}
-        stroke="rgba(28,28,24,0.18)"
+        stroke="var(--border-strong)"
         strokeWidth={0.7}
         strokeDasharray="2 2"
       />
@@ -119,7 +119,7 @@ export function CashWaterfall({ data }: Props) {
         fontSize={12}
         fill="var(--negative-text)"
         fontWeight={600}
-        style={{ fontFeatureSettings: "'tnum'" }}
+        className="tnum"
       >
         {fmtPct(-box3TaxPct)}
       </text>
@@ -133,7 +133,7 @@ export function CashWaterfall({ data }: Props) {
         y1={taxBottom}
         x2={resultX}
         y2={taxBottom}
-        stroke="rgba(28,28,24,0.18)"
+        stroke="var(--border-strong)"
         strokeWidth={0.7}
       />
 
@@ -157,7 +157,7 @@ export function CashWaterfall({ data }: Props) {
             fontSize={13}
             fill="var(--negative-text)"
             fontWeight={700}
-            style={{ fontFeatureSettings: "'tnum'" }}
+            className="tnum"
           >
             {fmtPct(realYieldPct)}
           </text>

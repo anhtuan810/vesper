@@ -41,13 +41,13 @@ export function AppGate() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 22,
-        padding: 24,
+        gap: "var(--space-6)",
+        padding: "var(--space-6)",
         textAlign: "center",
       }}
     >
       <VolnarLogo size={52} className="logo-pulse" />
-      <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5, minHeight: 20 }}>
+      <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", minHeight: 20 }}>
         {message}
       </div>
       <div style={{ display: "flex", gap: 6 }} aria-hidden="true">

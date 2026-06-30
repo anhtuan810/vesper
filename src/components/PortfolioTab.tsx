@@ -406,7 +406,7 @@ export function PortfolioTab({
           className="eyebrow"
           style={{
             cursor: "pointer", WebkitTapHighlightColor: "transparent",
-            padding: "2px 0 0", marginBottom: 0,
+            padding: "var(--space-1) 0 0", marginBottom: 0,
             color: "var(--text-faint)",
           }}
         >
@@ -438,8 +438,8 @@ export function PortfolioTab({
         {/* Future income — income pensions (db/state). Off-balance: shown below
             the net-worth holdings, never added to any total or the allocation. */}
         {incomePensions.length > 0 && (
-          <div style={{ marginTop: 28 }}>
-            <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
+          <div style={{ marginTop: "var(--space-8)" }}>
+            <div className="flex items-baseline justify-between" style={{ marginBottom: "var(--space-2)" }}>
               <div
                 className="eyebrow"
                 style={{ color: "var(--text-faint)" }}
@@ -457,7 +457,7 @@ export function PortfolioTab({
                 )} / year
               </div>
             </div>
-            <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginBottom: 12, lineHeight: "var(--lh-body)" }}>
+            <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginBottom: "var(--space-3)", lineHeight: "var(--lh-body)" }}>
               Not part of net worth — future income you&apos;ll receive, not a holding you own today.
             </div>
             {/* Each pension renders as an INDIVIDUAL asset row — same element,
@@ -474,7 +474,7 @@ export function PortfolioTab({
                   >
                     <AssetLogo type={a.type} symbol={a.symbol ?? null} name={a.name} size={32} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-fg truncate" style={{ fontSize: "var(--fs-body)", fontWeight: 500, lineHeight: 1.2 }}>
+                      <div className="text-fg truncate" style={{ fontSize: "var(--fs-body)", fontWeight: 500, lineHeight: "var(--lh-tight)" }}>
                         {a.name}
                       </div>
                     </div>

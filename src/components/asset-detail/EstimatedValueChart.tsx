@@ -154,7 +154,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
         Indicative value
       </div>
 
-      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: 16 }}>
+      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "var(--space-card)" }}>
         {/* Header: latest indicative value (or the scrubbed point) */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 12 }}>
           <div style={{ fontFamily: "var(--font-numeric)", fontSize: 18, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.01em", fontFeatureSettings: '"tnum" 1' }}>
@@ -210,13 +210,13 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
         {/* Legend */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 12 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
-            <span style={{ width: 9, height: 9, borderRadius: "50%", border: `1.8px solid ${stroke}`, background: "var(--surface)" }} />
+            <span style={{ width: 9, height: 9, borderRadius: "var(--radius-pill)", border: `1.8px solid ${stroke}`, background: "var(--surface)" }} />
             Purchase {money(purchase.value)}
           </span>
         </div>
 
         {/* Honest label: indicative, region, reference period, baseline note. */}
-        <div style={{ fontSize: 11, color: "var(--text-faint)", lineHeight: 1.5, marginTop: 12 }}>
+        <div style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: "var(--lh-body)", marginTop: 12 }}>
           Indicative value, based on {region} price trends since purchase — not an appraisal.
           {data.asOfPeriod ? ` Index as of ${data.asOfPeriod}.` : ""}
           {data.clamped ? " Series starts at the 1995 index baseline." : ""}

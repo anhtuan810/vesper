@@ -18,7 +18,7 @@ export function Logo({ size = 24, className }: LogoProps) {
           fontFamily: "var(--font-ui)",
           fontWeight: 600,
           fontSize: `${size * 0.85}px`,
-          letterSpacing: "-0.04em",
+          letterSpacing: "var(--tracking-wordmark)",
           lineHeight: 1,
           color: "var(--text)",
         }}

@@ -79,7 +79,7 @@ export function NavBar({
             fontSize: "var(--fs-micro)",
             padding: "1px 6px",
             borderRadius: "var(--radius-pill)",
-            background: tab === "diary" ? "rgba(255,255,255,0.12)" : "var(--surface)",
+            background: tab === "diary" ? "var(--surface-elev)" : "var(--surface)",
             color: tab === "diary" ? "var(--text)" : "var(--text-faint)",
           }}
         >

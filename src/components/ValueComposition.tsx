@@ -12,9 +12,9 @@ export function ValueComposition({ propertyValue, mortgageBalance }: Props) {
 
   return (
     <div style={{ display: "flex", width: "100%", height: 8, borderRadius: "var(--radius-pill)", overflow: "hidden", background: "var(--surface-elev)" }}>
-      <div style={{ width: `${equityPct}%`, height: "100%", background: "var(--accent)", borderRadius: mortgagePct > 0 ? "999px 0 0 999px" : "var(--radius-pill)" }} />
+      <div style={{ width: `${equityPct}%`, height: "100%", background: "var(--accent)", borderRadius: mortgagePct > 0 ? "var(--radius-pill) 0 0 var(--radius-pill)" : "var(--radius-pill)" }} />
       {mortgagePct > 0 && (
-        <div style={{ flex: 1, height: "100%", background: "rgba(26, 31, 46, 0.15)", borderRadius: "0 999px 999px 0" }} />
+        <div style={{ flex: 1, height: "100%", background: "var(--border-strong)", borderRadius: "0 var(--radius-pill) var(--radius-pill) 0" }} />
       )}
     </div>
   );

@@ -49,7 +49,7 @@ function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
 
 // Category accent (matches the chart bands + the mockup's class colours).
 const CAT_DOT: Record<string, string> = {
-  property: "var(--prop)", markets: "var(--eq)", crypto: "var(--cry)", reserves: "var(--res)",
+  property: "var(--cat-property)", markets: "var(--cat-markets)", crypto: "var(--cat-crypto)", reserves: "var(--cat-reserves)",
 };
 
 const fmtPct = (n: number, decimals = 0) =>
@@ -1001,7 +1001,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
       </section>
 
       {/* ── Private by design ── */}
-      <section className={`sec${reveal ? " rv rv-4" : ""}`} style={{ marginBottom: 8 }}>
+      <section className={`sec${reveal ? " rv rv-4" : ""}`} style={{ marginBottom: "var(--space-2)" }}>
         <div className="trust">
           <span className="t">Private by design.</span>
           <div className="items">
@@ -1030,7 +1030,7 @@ function VitalCard<T>({ name, v, render }: {
     return (
       <div className="vital">
         <div className="vt-top"><span className="vt-name">{name}</span><span className="vt-band">—</span></div>
-        <div className="vt-val" style={{ color: "var(--muted)" }}>—</div>
+        <div className="vt-val" style={{ color: "var(--text-dim)" }}>—</div>
         <div className="vt-read">Not enough data yet.</div>
       </div>
     );
@@ -1074,7 +1074,7 @@ function HoldingGroup({ category, label, total, pct, items, historical, displayC
   const [open, setOpen] = useState(false);
   const [maxH, setMaxH] = useState(0);
   const posRef = useRef<HTMLDivElement>(null);
-  const accent = CAT_DOT[category] ?? "var(--green)";
+  const accent = CAT_DOT[category] ?? "var(--accent)";
   const panelId = `vh-pos-${category}`;
 
   const toggle = () => {

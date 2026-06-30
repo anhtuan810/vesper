@@ -106,7 +106,7 @@ export function AppLock() {
         position: "fixed", inset: 0, zIndex: 9999,
         background: "var(--bg)",
         display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", gap: 20,
+        alignItems: "center", justifyContent: "center", gap: "var(--space-5)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
@@ -115,9 +115,9 @@ export function AppLock() {
         onClick={prompt}
         className="font-numeric"
         style={{
-          padding: "12px 32px", borderRadius: 12, border: "none",
+          padding: "var(--space-3) var(--space-8)", borderRadius: "var(--radius-md)", border: "none",
           background: "var(--accent)", color: "var(--bg)",
-          fontSize: 13, fontWeight: 600, letterSpacing: "0.04em",
+          fontSize: "var(--fs-meta)", fontWeight: 600, letterSpacing: "var(--tracking-label)",
           cursor: "pointer",
         }}
       >

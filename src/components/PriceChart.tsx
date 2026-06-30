@@ -291,11 +291,11 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
         >
           {showEmpty ? (
             <div style={{ height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>No data</div>
+              <div style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>No data</div>
             </div>
           ) : loading ? (
             <div style={{ height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.1em", fontFamily: "var(--font-ui)" }}>
+              <div style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)", letterSpacing: "var(--tracking-label)", fontFamily: "var(--font-ui)" }}>
                 loading
               </div>
             </div>
@@ -355,7 +355,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
                   transform: "translateY(-50%)",
                   right: 0,
                   fontFamily: "var(--font-numeric)",
-                  fontSize: 11,
+                  fontSize: "var(--fs-micro)",
                   color: "var(--text-faint)",
                   textAlign: "right",
                   lineHeight: 1,
@@ -372,7 +372,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
       {/* Range pills */}
       <div
         className="flex gap-1 mt-2"
-        style={{ padding: 3, borderRadius: 8, marginRight: 40 }}
+        style={{ padding: 3, borderRadius: "var(--radius-md)", marginRight: 40 }}
       >
         {RANGES.map((r) => (
           <button
@@ -381,12 +381,12 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
             className="flex-1 text-center"
             style={{
               padding: "5px 0",
-              fontSize: 12,
+              fontSize: "var(--fs-caption)",
               fontWeight: 500,
-              borderRadius: 6,
+              borderRadius: "var(--radius-md)",
               color: range === r ? "var(--text)" : "var(--text-dim)",
               background: range === r ? "var(--surface-elev)" : "transparent",
-              boxShadow: range === r ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+              boxShadow: range === r ? "var(--shadow-soft)" : "none",
               border: "none",
               cursor: "pointer",
               transition: "all 0.15s",

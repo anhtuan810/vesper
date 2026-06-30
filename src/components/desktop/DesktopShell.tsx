@@ -33,17 +33,10 @@ const clampVitals = (w: number) => Math.min(VITALS_MAX, Math.max(VITALS_MIN, w))
 const panelHeaderStyle: React.CSSProperties = {
   flexShrink: 0,
   height: 44,
-  padding: "0 20px",
+  padding: "0 var(--space-5)",
   display: "flex",
   alignItems: "center",
   borderBottom: "0.5px solid var(--border)",
-};
-const panelLabelStyle: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  fontFamily: "var(--font-numeric)", letterSpacing: "var(--tracking-label)",
-  textTransform: "uppercase",
-  color: "var(--text-dim)",
 };
 
 type DragTarget = "vitals" | "chat";
@@ -274,9 +267,9 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
           }}
         >
           <div style={panelHeaderStyle}>
-            <span style={panelLabelStyle}>Vitals</span>
+            <span className="eyebrow">Vitals</span>
           </div>
-          <div className="desk-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px" }}>
+          <div className="desk-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "var(--space-card)" }}>
             <VitalsContent layout="grid" libraryPosition="top" showHeader={false} />
           </div>
         </aside>
@@ -294,7 +287,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
             borderRight: "1px solid var(--border)",
           }}
         >
-          <div style={{ maxWidth: MAIN_MAX_WIDTH, margin: "0 auto", padding: "20px 20px 40px" }}>
+          <div style={{ maxWidth: MAIN_MAX_WIDTH, margin: "0 auto", padding: "var(--space-5) var(--space-5) var(--space-8)" }}>
             {children}
           </div>
         </main>
@@ -311,7 +304,7 @@ export function DesktopShell({ tab, children }: DesktopShellProps) {
           }}
         >
           <div style={panelHeaderStyle}>
-            <span style={panelLabelStyle}>Assistant</span>
+            <span className="eyebrow">Assistant</span>
           </div>
 
           <ChatThread

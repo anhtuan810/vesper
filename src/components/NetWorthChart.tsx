@@ -770,7 +770,7 @@ export function NetWorthChart(props: Props) {
                 </div>
               )}
               {hoveredDot.title && (
-                <div style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--text)", lineHeight: 1.2 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--text)", lineHeight: "var(--lh-tight)" }}>
                   {hoveredDot.title}
                 </div>
               )}
@@ -833,7 +833,7 @@ export function NetWorthChart(props: Props) {
                   borderRadius: "var(--radius-md)",
                   color: disabled ? "var(--text-faint)" : active ? "var(--text)" : "var(--text-dim)",
                   background: active ? "var(--surface-elev)" : "transparent",
-                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  boxShadow: active ? "var(--shadow-soft)" : "none",
                   border: "none",
                   cursor: disabled ? "default" : "pointer",
                   opacity: disabled ? 0.45 : 1,

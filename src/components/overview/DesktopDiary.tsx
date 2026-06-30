@@ -157,11 +157,11 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
         ))}
       </div>
       {period === "custom" && (
-        <div className="flex items-center gap-1.5" style={{ marginBottom: 20 }}>
+        <div className="flex items-center gap-1.5" style={{ marginBottom: "var(--space-5)" }}>
           <select value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={SELECT_STYLE}>
             {monthOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <span style={{ fontSize: 13, color: "var(--muted)" }}>to</span>
+          <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)" }}>to</span>
           <select value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={SELECT_STYLE}>
             {monthOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>

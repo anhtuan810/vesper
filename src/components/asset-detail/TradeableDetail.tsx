@@ -38,8 +38,8 @@ function rangeToStartDate(range: Range): Date {
 function DeltaPill({ isPositive, children }: { isPositive: boolean; children: ReactNode }) {
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px",
-      borderRadius: 999, fontSize: 13, fontWeight: 500, fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1',
+      display: "inline-flex", alignItems: "center", gap: "var(--space-1)", padding: "3px 9px",
+      borderRadius: "var(--radius-pill)", fontSize: "var(--fs-meta)", fontWeight: 500, fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1',
       background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)",
       color: isPositive ? "var(--positive-text)" : "var(--negative-text)",
     }}>
@@ -56,7 +56,7 @@ function DeltaPill({ isPositive, children }: { isPositive: boolean; children: Re
 function ActivityDate({ dateStr }: { dateStr: string }) {
   return (
     <div style={{
-      fontSize: 13,
+      fontSize: "var(--fs-meta)",
       color: "var(--text-faint)",
       fontFamily: "var(--font-numeric)",
       fontFeatureSettings: '"tnum" 1',
@@ -185,11 +185,11 @@ export function TradeableDetail({ asset }: Props) {
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <div style={{
               fontFamily: "var(--font-display)",
-              fontSize: 22,
+              fontSize: "var(--fs-title)",
               fontWeight: 500,
               color: "var(--hero)",
-              letterSpacing: "-0.01em",
-              lineHeight: 1.05,
+              letterSpacing: "var(--tracking-subhead)",
+              lineHeight: "var(--lh-tight)",
               fontVariationSettings: "'opsz' 24",
             }}>
               {asset.name}
@@ -212,7 +212,7 @@ export function TradeableDetail({ asset }: Props) {
             style={{
               fontSize: 54,
               fontWeight: 600,
-              letterSpacing: "-0.02em",
+              letterSpacing: "var(--tracking-hero)",
               color: "var(--hero)",
               fontVariationSettings: "'opsz' 60",
               marginBottom: 10,
@@ -244,7 +244,7 @@ export function TradeableDetail({ asset }: Props) {
                 const ageMs = now.getTime() - earliestBuyDate.getTime();
                 // Case C: position added today
                 if (ageMs < ONE_DAY_MS) {
-                  return <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Just added</div>;
+                  return <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-faint)" }}>Just added</div>;
                 }
                 const chartRangeStart = rangeToStartDate(periodInfo.range);
                 const effectiveStartMs = Math.max(chartRangeStart.getTime(), earliestBuyDate.getTime());
@@ -268,7 +268,7 @@ export function TradeableDetail({ asset }: Props) {
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(periodInfo.pct).toFixed(2).replace(".", ",")}%</DeltaPill>
-                  <span style={{ color: "var(--text-faint)", fontSize: 13 }}>{periodInfo.label}</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-meta)" }}>{periodInfo.label}</span>
                 </div>
               );
             }
@@ -279,11 +279,11 @@ export function TradeableDetail({ asset }: Props) {
                     {dailyAbs != null && `${dailyAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(dailyAbs), assetCur, displayCurrency)} · `}
                     {up ? "+" : "−"}{Math.abs(dailyChg).toFixed(2).replace(".", ",")}%
                   </DeltaPill>
-                  <span style={{ color: "var(--text-faint)", fontSize: 13 }}>today</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-meta)" }}>today</span>
                 </div>
               );
             }
-            return <div style={{ fontSize: 13, color: "var(--text-faint)" }}>No live data</div>;
+            return <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-faint)" }}>No live data</div>;
           })()}
         </div>
 
@@ -298,12 +298,12 @@ export function TradeableDetail({ asset }: Props) {
           <div style={{
             background: "var(--surface)",
             border: "0.5px solid var(--border)",
-            borderRadius: 14,
+            borderRadius: "var(--radius-lg)",
             overflow: "hidden",
           }}>
             {/* Current value */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
-              <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Current value</span>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "var(--space-row) var(--space-card)", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
+              <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Current value</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-numeric)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
                   {formatMoney(currentValue, assetCur, displayCurrency)}
@@ -311,8 +311,8 @@ export function TradeableDetail({ asset }: Props) {
               </div>
             </div>
             {/* Total return */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
-              <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Total return</span>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "var(--space-row) var(--space-card)", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
+              <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Total return</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-numeric)", fontSize: 17, fontWeight: 500, color: totalReturnAbs != null && totalReturnAbs < 0 ? "var(--negative-text)" : "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
                   {totalReturnAbs != null ? `${totalReturnAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(totalReturnAbs), assetCur, displayCurrency)}` : "—"}
@@ -331,8 +331,8 @@ export function TradeableDetail({ asset }: Props) {
               </div>
             </div>
             {/* Avg buy */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 16px", gap: 14, minHeight: 58 }}>
-              <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Avg buy</span>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "var(--space-row) var(--space-card)", gap: 14, minHeight: 58 }}>
+              <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Avg buy</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontFamily: "var(--font-numeric)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
                   {avgBuyPrice != null ? formatMoney(avgBuyPrice, assetCur, displayCurrency) : "—"}
@@ -396,7 +396,7 @@ export function TradeableDetail({ asset }: Props) {
               return (
                 <div
                   key={m.id}
-                  style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)", ...(linkToJournal ? { cursor: "pointer" } : {}) }}
+                  style={{ display: "flex", gap: 14, padding: "var(--space-row) 0", borderBottom: "0.5px solid var(--border)", ...(linkToJournal ? { cursor: "pointer" } : {}) }}
                   {...(linkToJournal ? {
                     role: "button",
                     tabIndex: 0,

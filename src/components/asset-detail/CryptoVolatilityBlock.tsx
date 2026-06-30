@@ -41,13 +41,10 @@ function CryptoVolatilityBlockInner({ asset, symbol }: { asset: Asset; symbol: s
 
   return (
     <div
-      className="rounded-xl border border-border mb-4"
-      style={{ background: "var(--surface)", padding: "14px 16px" }}
+      className="border border-border mb-4"
+      style={{ background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: "14px 16px" }}
     >
-      <div
-        className="font-numeric text-faint uppercase mb-3"
-        style={{ fontSize: 11, letterSpacing: "0.18em" }}
-      >
+      <div className="eyebrow mb-3">
         24h range
       </div>
       {loading ? (
@@ -67,15 +64,12 @@ function CryptoVolatilityBlockInner({ asset, symbol }: { asset: Asset; symbol: s
             { label: "range",    value: range ? `${range}%` : "—" },
           ].map(({ label, value }) => (
             <div key={label}>
-              <div
-                className="font-numeric text-faint uppercase mb-1"
-                style={{ fontSize: 11, letterSpacing: "0.12em" }}
-              >
+              <div className="eyebrow mb-1">
                 {label}
               </div>
               <div
-                className="font-numeric text-fg"
-                style={{ fontSize: 13, fontWeight: 500 }}
+                className="tnum text-fg"
+                style={{ fontSize: "var(--fs-meta)", fontWeight: 500 }}
               >
                 {value}
               </div>

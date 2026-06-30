@@ -67,7 +67,7 @@ export function RealAssetBullet({ data }: Props) {
           fontSize={11}
           fill="var(--hero)"
           fontWeight={600}
-          style={{ fontFeatureSettings: "'tnum'" }}
+          className="tnum"
         >
           EU median 63%
         </text>

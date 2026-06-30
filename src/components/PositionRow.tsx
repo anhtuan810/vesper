@@ -84,7 +84,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
 
         {/* Name + sub-line */}
         <div className="flex-1 min-w-0">
-          <div className="text-fg truncate" style={{ fontSize: "var(--fs-body)", fontWeight: 500, lineHeight: 1.2 }}>
+          <div className="text-fg truncate" style={{ fontSize: "var(--fs-body)", fontWeight: 500, lineHeight: "var(--lh-tight)" }}>
             {asset.name}
           </div>
           {sub && (

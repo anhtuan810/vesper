@@ -10,11 +10,11 @@ import {
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 
 const pillStyle: CSSProperties = {
-  display: "flex", alignItems: "center", gap: 4,
+  display: "flex", alignItems: "center", gap: "var(--space-1)",
   background: "transparent",
-  border: "0.5px solid rgba(151,112,61,0.18)",
+  border: "0.5px solid var(--accent)",
   borderRadius: "var(--radius-pill)",
-  padding: "5px 10px",
+  padding: "var(--space-1) var(--space-row)",
   color: "var(--accent)",
   fontFamily: "var(--font-ui)",
   fontSize: "var(--fs-caption)",
@@ -35,11 +35,11 @@ function ExampleRow({
       className="es-example"
       onClick={onClick}
       style={{
-        display: "flex", alignItems: "center", gap: 12,
+        display: "flex", alignItems: "center", gap: "var(--space-3)",
         background: "var(--surface)",
-        border: "0.5px solid rgba(0,0,0,0.06)",
+        border: "0.5px solid var(--border)",
         borderRadius: "var(--radius-md)",
-        padding: "10px 12px",
+        padding: "var(--space-row) var(--space-3)",
         textAlign: "left",
         width: "100%",
         transition: "border-color 0.15s, transform 0.1s",
@@ -63,7 +63,7 @@ function ExampleRow({
         <div style={{
           fontFamily: "var(--font-display)",
           fontStyle: "italic", fontSize: "var(--fs-meta)",
-          color: "#6F5226", lineHeight: "var(--lh-snug)",
+          color: "var(--accent-deep)", lineHeight: "var(--lh-snug)",
           marginTop: 1,
         }}>
           {example}
@@ -175,7 +175,7 @@ export function PortfolioEmptyState() {
     <div
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      style={{ paddingTop: 22 }}
+      style={{ paddingTop: "var(--space-5)" }}
     >
       <style>{`
         .es-pill { transition: background 0.12s, transform 0.1s; }
@@ -185,7 +185,7 @@ export function PortfolioEmptyState() {
         .es-example:hover { border-color: rgba(151,112,61,0.22) !important; }
         .es-example:active { transform: scale(0.99); }
         .es-input-wrap { transition: box-shadow 0.15s, border-color 0.15s; }
-        .es-input-wrap:focus-within { border-color: rgba(151,112,61,0.5) !important; box-shadow: 0 0 0 2px rgba(151,112,61,0.18), 0 10px 28px rgba(151,112,61,0.09) !important; }
+        .es-input-wrap:focus-within { border-color: var(--accent) !important; box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-soft) !important; }
         .es-send:active { transform: scale(0.94); }
       `}</style>
 
@@ -193,9 +193,9 @@ export function PortfolioEmptyState() {
 
       {/* Privacy pill */}
       <div style={{
-        display: "inline-flex", alignItems: "center", gap: 5,
+        display: "inline-flex", alignItems: "center", gap: "var(--space-1)",
         background: "var(--accent-soft)", color: "var(--accent-text)",
-        borderRadius: "var(--radius-pill)", padding: "4px 9px",
+        borderRadius: "var(--radius-pill)", padding: "var(--space-1) var(--space-2)",
       }}>
         <LockIcon size={14} />
         <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-caption)", fontWeight: 500 }}>
@@ -240,8 +240,8 @@ export function PortfolioEmptyState() {
           marginTop: 22,
           background: "var(--surface)", borderRadius: "var(--radius-xl)",
           border: "1px solid rgba(151,112,61,0.38)",
-          boxShadow: "0 1px 2px rgba(20,30,25,0.04), 0 10px 28px rgba(151,112,61,0.09)",
-          padding: "12px 12px 10px",
+          boxShadow: "var(--shadow-soft)",
+          padding: "var(--space-3) var(--space-3) var(--space-row)",
         }}
       >
         {/* Placeholder / textarea */}
@@ -281,7 +281,7 @@ export function PortfolioEmptyState() {
               resize: "none",
               fontFamily: "var(--font-ui)",
               fontSize: "var(--fs-subhead)",
-              color: "#6F5226", lineHeight: "var(--lh-body)",
+              color: "var(--accent-deep)", lineHeight: "var(--lh-body)",
               padding: "6px 6px 4px",
               minHeight: 23, maxHeight: 92,
               overflowY: "hidden",
@@ -290,7 +290,7 @@ export function PortfolioEmptyState() {
         </div>
 
         {/* Action row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-1)", marginTop: "var(--space-1)" }}>
           {/* Photo pill */}
           <button
             className="es-pill"
@@ -323,7 +323,7 @@ export function PortfolioEmptyState() {
             disabled={!hasContent}
             style={{
               width: 32, height: 32, borderRadius: "50%",
-              background: hasContent ? "var(--accent)" : "#D8CFC0",
+              background: hasContent ? "var(--accent)" : "var(--border-strong)",
               border: "none",
               color: hasContent ? "var(--bg)" : "var(--surface)",
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -340,7 +340,7 @@ export function PortfolioEmptyState() {
 
       {/* ─── Section 3: Examples list ────────────────────────────────────── */}
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: "var(--space-4)" }}>
         <p style={{
           fontFamily: "var(--font-ui)",
           fontSize: "var(--fs-caption)", color: "var(--text-faint)",
@@ -349,7 +349,7 @@ export function PortfolioEmptyState() {
           Try starting with —
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
           <ExampleRow
             icon={<QuoteIcon size={16} />}
             label="A sentence"
@@ -378,7 +378,7 @@ export function PortfolioEmptyState() {
       </div>
 
       {/* Bottom spacer before tab nav */}
-      <div style={{ height: 18 }} />
+      <div style={{ height: "var(--space-5)" }} />
 
       {/* Hidden file inputs */}
       <input

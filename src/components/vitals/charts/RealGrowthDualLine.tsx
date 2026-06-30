@@ -27,11 +27,11 @@ export function RealGrowthDualLine({ data }: Props) {
             <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <line x1={0} y1={64} x2={W} y2={64} stroke="rgba(28,28,24,0.10)" strokeWidth={0.5} strokeDasharray="2 3" />
+        <line x1={0} y1={64} x2={W} y2={64} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="2 3" />
         <line x1={0} y1={40} x2={W} y2={40} stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" />
-        <line x1={0} y1={40} x2={W} y2={40} stroke="#7A8C6A" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" />
+        <line x1={0} y1={40} x2={W} y2={40} stroke="var(--text-dim)" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" />
         <circle cx={W} cy={40} r={3.8} fill="var(--accent)" stroke="var(--surface)" strokeWidth={1.5} />
-        <circle cx={W} cy={40} r={3.2} fill="#7A8C6A" stroke="var(--surface)" strokeWidth={1.5} />
+        <circle cx={W} cy={40} r={3.2} fill="var(--text-dim)" stroke="var(--surface)" strokeWidth={1.5} />
         <text x={0} y={82} fontSize={11} fill="var(--text-faint)">—</text>
         <text x={W} y={82} textAnchor="end" fontSize={11} fill="var(--text-faint)">today</text>
       </svg>
@@ -93,7 +93,7 @@ export function RealGrowthDualLine({ data }: Props) {
       <line
         x1={todayX} y1={Y_TOP}
         x2={todayX} y2={Y_BOT}
-        stroke="rgba(28,28,24,0.10)"
+        stroke="var(--border)"
         strokeWidth={0.5}
         strokeDasharray="2 3"
       />
@@ -105,11 +105,11 @@ export function RealGrowthDualLine({ data }: Props) {
       <path d={nomPath} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 
       {/* Real line (dashed) */}
-      <path d={realPath} fill="none" stroke="#7A8C6A" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={realPath} fill="none" stroke="var(--text-dim)" strokeWidth={1.4} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
 
       {/* End-point dots */}
       <circle cx={nomEndX} cy={nomEndY} r={3.8} fill="var(--accent)" stroke="var(--surface)" strokeWidth={1.5} />
-      <circle cx={realEndX} cy={realEndY} r={3.2} fill="#7A8C6A" stroke="var(--surface)" strokeWidth={1.5} />
+      <circle cx={realEndX} cy={realEndY} r={3.2} fill="var(--text-dim)" stroke="var(--surface)" strokeWidth={1.5} />
 
       {/* Pill labels near right edge */}
       <rect x={262} y={9} width={48} height={13} rx={6.5} fill="var(--surface-elev)" />

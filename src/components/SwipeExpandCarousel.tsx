@@ -101,7 +101,7 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
                         far edge. The swipe dots (row-level, right) stay put. */}
                     <span
                       className="font-display"
-                      style={{ fontSize: 13, fontStyle: "italic", lineHeight: 1.45, color: "var(--text)" }}
+                      style={{ fontSize: "var(--fs-meta)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
                     >
                       {item.title}
                       {item.detail && (
@@ -128,13 +128,13 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
                         style={{
                           display: "block", width: "100%", textAlign: "left", marginTop: 4,
                           background: "none", border: "none", cursor: "pointer", padding: 0,
-                          fontSize: 13, lineHeight: 1.4, color: "var(--text)", opacity: 0.6,
+                          fontSize: "var(--fs-meta)", lineHeight: "var(--lh-snug)", color: "var(--text)", opacity: 0.6,
                         }}
                       >
                         {item.detail}
                       </button>
                     ) : (
-                      <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.4, color: "var(--text)", opacity: 0.6 }}>
+                      <div style={{ marginTop: 4, fontSize: "var(--fs-meta)", lineHeight: "var(--lh-snug)", color: "var(--text)", opacity: 0.6 }}>
                         {item.detail}
                       </div>
                     )

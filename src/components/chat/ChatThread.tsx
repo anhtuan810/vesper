@@ -184,14 +184,14 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           scrollbarWidth: "none",
           display: "flex",
           flexDirection: "column",
-          gap: 22,
+          gap: "var(--space-5)",
         }
       : {
-          padding: "20px 20px 8px",
+          padding: "var(--space-5) var(--space-5) var(--space-2)",
           scrollbarWidth: "none",
           display: "flex",
           flexDirection: "column",
-          gap: 18,
+          gap: "var(--space-4)",
         };
 
     const emptyText = isPage
@@ -216,18 +216,18 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       <>
         {remaining !== null && remaining <= 10 && (
           <div
-            className="font-numeric text-accent text-right"
-            style={{ fontSize: "var(--fs-micro)", paddingBottom: 4 }}
+            className="tnum text-accent text-right"
+            style={{ fontSize: "var(--fs-micro)", paddingBottom: "var(--space-1)" }}
           >
             {remaining === 0 ? "Limit reached" : `${remaining} left today`}
           </div>
         )}
         {input.length >= 400 && (
           <div
-            className="font-numeric"
+            className="tnum"
             style={{
               fontSize: "var(--fs-micro)",
-              paddingBottom: 4,
+              paddingBottom: "var(--space-1)",
               color: input.length >= 500 ? "var(--negative)" : "var(--accent)",
             }}
           >
@@ -241,10 +241,10 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     const disclaimer = (
       <div
         className="text-faint text-center"
-        style={{ fontSize: "var(--fs-micro)", lineHeight: "var(--lh-snug)", paddingTop: 6 }}
+        style={{ fontSize: "var(--fs-micro)", lineHeight: "var(--lh-snug)", paddingTop: "var(--space-2)" }}
       >
         {isDemo && (
-          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", paddingBottom: 4 }}>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", paddingBottom: "var(--space-1)" }}>
             This is a demo. Anything you enter is deleted when your session ends — nothing is stored.
           </div>
         )}
@@ -312,7 +312,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 <div className="eyebrow" style={{
                   color: "var(--accent-text)",
                   opacity: 0.7,
-                  marginBottom: 6,
+                  marginBottom: "var(--space-2)",
                 }}>
                   From Portfolio
                 </div>
@@ -434,7 +434,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 />
                 <div
                   className="font-display"
-                  style={{ fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginTop: 10 }}
+                  style={{ fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginTop: "var(--space-row)" }}
                 >
                   {seedMessage.cone.line}
                 </div>

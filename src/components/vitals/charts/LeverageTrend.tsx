@@ -75,9 +75,9 @@ export function LeverageTrend({ data }: Props) {
     <div style={{ position: 'relative' }}>
       <svg viewBox="0 0 320 78" style={{ width: '100%', height: 78, display: 'block' }}>
         {/* Risk zone bands */}
-        <rect x={0} y={0}  width={320} height={12} fill="rgba(176,85,47,0.09)" />
-        <rect x={0} y={12} width={320} height={14} fill="rgba(176,122,46,0.09)" />
-        <rect x={0} y={26} width={320} height={50} fill="rgba(46,139,94,0.06)" />
+        <rect x={0} y={0}  width={320} height={12} fill="var(--negative-soft)" />
+        <rect x={0} y={12} width={320} height={14} fill="var(--cat-crypto-soft)" />
+        <rect x={0} y={26} width={320} height={50} fill="var(--positive-soft)" />
 
         {/* Zone labels */}
         <text x={315} y={9}  textAnchor="end" fontSize={11} fill="var(--text-faint)">75%</text>
@@ -85,7 +85,7 @@ export function LeverageTrend({ data }: Props) {
 
         {/* NL avg dashed line */}
         <line x1={0} y1={nlAvgY} x2={320} y2={nlAvgY} stroke="var(--text-dim)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.5} />
-        <text x={5} y={nlAvgY - 2} fontSize={11} fill="var(--text-dim)" style={{ fontFeatureSettings: "'tnum'" }}>
+        <text x={5} y={nlAvgY - 2} fontSize={11} fill="var(--text-dim)" className="tnum">
           NL avg {NL_AVG_LTV_PCT}%
         </text>
 
@@ -115,8 +115,7 @@ export function LeverageTrend({ data }: Props) {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          marginTop: 4,
-          fontFeatureSettings: "'tnum'",
+          marginTop: 'var(--space-1)',
         }}
       >
         <span className="tnum" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-faint)' }}>{pastLabel}</span>

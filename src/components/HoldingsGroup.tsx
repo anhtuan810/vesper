@@ -26,10 +26,10 @@ export function HoldingsGroup({
           width: "100%",
           display: "flex",
           alignItems: "center",
-          gap: 14,
+          gap: "var(--space-4)",
           // Generous top spacing sets each class apart from the previous class's
           // rows; the tighter bottom keeps the header tied to its own rows.
-          padding: "16px 0 10px",
+          padding: "var(--space-4) 0 var(--space-row)",
           background: "none",
           border: "none",
           cursor: "pointer",
@@ -85,7 +85,7 @@ export function HoldingsGroup({
         }}
       >
         <div style={{ overflow: "hidden" }}>
-          <div style={{ paddingBottom: 4 }}>{children}</div>
+          <div style={{ paddingBottom: "var(--space-1)" }}>{children}</div>
         </div>
       </div>
     </div>

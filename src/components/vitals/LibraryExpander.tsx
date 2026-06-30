@@ -111,7 +111,7 @@ export function LibraryExpander({
   return (
     <div
       style={{
-        background: "rgba(248,244,236,0.55)",
+        background: "var(--surface-elev)",
         border: "0.5px solid var(--border)",
         borderRadius: "var(--radius-md)",
         padding: "13px 14px",
@@ -132,7 +132,7 @@ export function LibraryExpander({
           <div
             style={{ display: "flex", alignItems: "baseline", gap: 8 }}
           >
-            <span style={{ fontSize: "var(--fs-body)", color: "var(--text)", fontWeight: 500, lineHeight: 1.2 }}>
+            <span style={{ fontSize: "var(--fs-body)", color: "var(--text)", fontWeight: 500, lineHeight: "var(--lh-snug)" }}>
               Library
             </span>
             <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>
@@ -181,7 +181,7 @@ export function LibraryExpander({
               style={{
                 display: "flex",
                 gap: 12,
-                padding: "11px 0",
+                padding: "var(--space-row) 0",
                 borderBottom:
                   i < dormantVitals.length - 1
                     ? "0.5px solid var(--border)"
@@ -215,7 +215,7 @@ export function LibraryExpander({
                     gap: 8,
                   }}
                 >
-                  <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, lineHeight: 1.2, color: "var(--text)" }}>
+                  <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, lineHeight: "var(--lh-snug)", color: "var(--text)" }}>
                     {vital.label}
                   </span>
                   <span

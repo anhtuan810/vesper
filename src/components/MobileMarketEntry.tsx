@@ -72,7 +72,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
         </span>
 
         <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, color: "var(--text)", lineHeight: "var(--lh-tight)", whiteSpace: "nowrap" }}>
             {move.index_label}{" "}
             <span className="tnum" style={{ fontWeight: 500, color: indexUp ? "var(--positive-text)" : "var(--negative-text)" }}>
               {pct(move.pct_change)}

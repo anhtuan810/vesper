@@ -34,7 +34,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
 
   if (result.kind === "portfolio_change") {
     return (
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: "var(--space-3)" }}>
         <ScenarioComparisonCard
           current={result.current}
           scenario={result.scenario}
@@ -50,7 +50,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
   if (result.kind === "present") {
     const hasLeverage = !!(result.current.leverage && result.scenario.leverage);
     return (
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: "var(--space-3)" }}>
         <ScenarioComparisonCard
           current={result.current}
           scenario={result.scenario}
@@ -63,7 +63,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
 
   if (result.kind === "shock") {
     return (
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: "var(--space-3)" }}>
         <ScenarioComparisonCard
           current={result.current}
           scenario={result.scenario}
@@ -83,7 +83,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
   if (result.kind === "hypothetical_buy") {
     return (
       <div style={cardShell}>
-        <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>
+        <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", marginBottom: 8 }}>
           {result.amountLabel} · {fmtBuyDate(result.buyDate)}
         </div>
         <GrowthChart series={result.series} symbol={result.symbol} />
@@ -111,15 +111,15 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
 }
 
 const cardShell: React.CSSProperties = {
-  marginTop: 12,
+  marginTop: "var(--space-3)",
   padding: "14px 14px 12px",
   background: "var(--surface)",
   border: "0.5px solid var(--border)",
-  borderRadius: 14,
+  borderRadius: "var(--radius-lg)",
 };
 const estimateNote: React.CSSProperties = {
   fontStyle: "italic",
-  fontSize: 13,
+  fontSize: "var(--fs-meta)",
   color: "var(--text-faint)",
   marginTop: 10,
 };
@@ -127,6 +127,6 @@ const legendRow: React.CSSProperties = {
   display: "flex",
   gap: 16,
   marginTop: 10,
-  fontSize: 13,
+  fontSize: "var(--fs-meta)",
   color: "var(--text-dim)",
 };

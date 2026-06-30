@@ -103,7 +103,7 @@ export function StaticDetail({ asset }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
           <div style={{
             width: 44, height: 44,
-            borderRadius: 10,
+            borderRadius: "var(--radius-md)",
             background: "var(--surface)",
             border: "0.5px solid var(--border-strong)",
             overflow: "hidden",
@@ -120,7 +120,7 @@ export function StaticDetail({ asset }: Props) {
             fontWeight: 500,
             color: "var(--hero)",
             letterSpacing: "-0.01em",
-            lineHeight: 1.05,
+            lineHeight: "var(--lh-tight)",
             fontVariationSettings: "'opsz' 24",
           }}>
             {asset.name}
@@ -150,7 +150,7 @@ export function StaticDetail({ asset }: Props) {
               alignItems: "center",
               gap: 4,
               padding: "4px 10px",
-              borderRadius: 999,
+              borderRadius: "var(--radius-pill)",
               fontSize: 13,
               fontWeight: 500,
               fontFamily: "var(--font-numeric)",

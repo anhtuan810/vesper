@@ -40,7 +40,7 @@ export function MarketsHighlights({ marketHighlights, onVisibleChange }: Markets
   const items = marketHighlights.map((m) => ({ title: m.title, detail: m.detail }));
 
   return (
-    <div style={{ padding: "5px 0" }}>
+    <div style={{ padding: "var(--space-1) 0" }}>
       <SwipeExpandCarousel
         icon={<ActivityIcon color="var(--text-faint)" />}
         items={items}

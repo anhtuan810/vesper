@@ -68,7 +68,7 @@ export function SuggestionStrip({
       style={{
         borderRadius: "var(--radius-md)",
         padding: "9px 11px",
-        marginTop: 10,
+        marginTop: "var(--space-row)",
         display: "flex",
         gap: 8,
         alignItems: "flex-start",
@@ -83,7 +83,7 @@ export function SuggestionStrip({
             fontSize: labelFontSize,
             opacity: 0.82,
             marginBottom: 3,
-            lineHeight: 1,
+            lineHeight: "var(--lh-tight)",
             color,
           }}
         >

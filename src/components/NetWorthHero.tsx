@@ -155,7 +155,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   if (!currencyLoaded || !valuesSettled) {
     return (
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
           <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
           <span style={{ width: 3, height: 3, borderRadius: "var(--radius-pill)", background: "var(--text-faint)", opacity: 0.6 }} />
           <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
@@ -179,7 +179,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
     <div>
       {/* Eyebrow toggle — "Net worth · Liquid"; active word inks/600, inactive
           faints/500. Drives liquidOnly (number/series/delta already follow it). */}
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
         <button onClick={() => onSetLiquid(false)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text-faint)" : "var(--text)" }}>Net worth</button>
         <span style={{ width: 3, height: 3, borderRadius: "var(--radius-pill)", background: "var(--text-faint)", opacity: 0.6 }} />
         <button onClick={() => onSetLiquid(true)} className="eyebrow" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liquidOnly ? "var(--text)" : "var(--text-faint)" }}>Liquid</button>
@@ -201,7 +201,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
 
       {/* Change pill — compact tinted, mirrors the asset-detail delta pill */}
       {formattedAbs != null && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 9 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
           <span className="tnum" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: "var(--radius-pill)", fontSize: "var(--fs-meta)", fontWeight: 500, background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)", color: isPositive ? "var(--positive-text)" : "var(--negative-text)" }}>
             <svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
               {isPositive ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" /> : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}

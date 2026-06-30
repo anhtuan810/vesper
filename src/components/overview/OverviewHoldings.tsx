@@ -3,6 +3,13 @@
 import { useRef, useState } from "react";
 import { HOLDINGS, type HoldingGroup, type Position } from "./data";
 
+// Map each group's scoped mockup token to its canonical category token, so the
+// category tint adapts to dark mode (the raw hex / scoped --eq/--prop/--res/--cry don't).
+const CAT_TOKEN: Record<string, string> = {
+  "--eq": "var(--cat-markets)", "--prop": "var(--cat-property)",
+  "--res": "var(--cat-reserves)", "--cry": "var(--cat-crypto)",
+};
+
 function Logo({ badge, color }: { badge: string; color: string }) {
   if (badge === "house") {
     return (
@@ -47,7 +54,7 @@ function Group({ group, index }: { group: HoldingGroup; index: number }) {
   const [maxH, setMaxH] = useState(0);
   const posRef = useRef<HTMLDivElement>(null);
   const panelId = `hg-pos-${index}`;
-  const accent = `var(${group.token})`;
+  const accent = CAT_TOKEN[group.token] ?? `var(${group.token})`;
 
   const toggle = () => {
     const el = posRef.current;
@@ -76,7 +83,7 @@ function Group({ group, index }: { group: HoldingGroup; index: number }) {
       </button>
       <div className="hg-pos" id={panelId} ref={posRef} style={{ maxHeight: maxH }}>
         {group.positions.map((p) => (
-          <PositionRow key={p.name} p={p} color={group.color} />
+          <PositionRow key={p.name} p={p} color={accent} />
         ))}
       </div>
     </div>

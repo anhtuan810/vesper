@@ -26,7 +26,7 @@ const THEME_OPTIONS = [
 ];
 
 const TOAST_KEY = "volnar.currency.toastSeen";
-const SECTION_LABEL_STYLE = { marginBottom: 10 };
+const SECTION_LABEL_STYLE = { marginBottom: "var(--space-row)" };
 
 function ChevronRight() {
   return (
@@ -168,7 +168,7 @@ export function SettingsContent() {
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
 
         {/* Back + page title */}
-        <div style={{ padding: "12px 0 18px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ padding: "var(--space-3) 0 18px", display: "flex", alignItems: "center", gap: "var(--space-row)" }}>
           <button
             onClick={() => router.back()}
             style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -6, color: "var(--text)", background: "none", border: "none", cursor: "pointer" }}
@@ -246,7 +246,7 @@ export function SettingsContent() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "10px 12px",
+                        padding: "var(--space-row) var(--space-3)",
                         borderRadius: "var(--radius-md)",
                         border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
                         background: isActive ? "var(--accent-soft)" : "var(--bg)",
@@ -324,7 +324,7 @@ export function SettingsContent() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "10px 12px",
+                        padding: "var(--space-row) var(--space-3)",
                         borderRadius: "var(--radius-md)",
                         border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
                         background: isActive ? "var(--accent-soft)" : "var(--bg)",
@@ -504,7 +504,7 @@ export function SettingsContent() {
               background: "var(--surface)",
               border: "0.5px solid var(--border)",
               borderRadius: "var(--radius-lg)",
-              padding: "22px 20px 20px",
+              padding: "22px var(--space-5) var(--space-5)",
               fontFamily: "var(--font-ui)",
             }}
           >
@@ -529,8 +529,8 @@ export function SettingsContent() {
                   fontSize: "var(--fs-caption)",
                   color: "var(--amber-deep, var(--negative-text))",
                   lineHeight: "var(--lh-body)",
-                  background: "rgba(175,85,48,0.08)",
-                  border: "1px solid rgba(175,85,48,0.18)",
+                  background: "var(--negative-soft)",
+                  border: "1px solid var(--negative-deep)",
                   borderRadius: "var(--radius-md)",
                   padding: "10px 12px",
                   marginBottom: 16,
@@ -619,7 +619,7 @@ export function SettingsContent() {
             background: "var(--surface)",
             border: "1px solid var(--border-strong)",
             borderRadius: "var(--radius-md)",
-            padding: "10px 18px",
+            padding: "var(--space-row) 18px",
             fontSize: "var(--fs-caption)",
             color: "var(--text-dim)",
             whiteSpace: "nowrap",

@@ -14,8 +14,9 @@ interface Props {
   birthYear: number | null;
 }
 
-// Pension type color token (tokens.ts) — the lighter green used for the growth
-// portion of the contributed/growth split.
+// The muted sage used for the growth portion of the contributed/growth split.
+// No --cat-* token matches this hue (they're blue/green/tan/orange/khaki), so it
+// stays a deliberate one-off rather than borrowing an unrelated category colour.
 const PENSION_GROWTH_COLOR = "#7A8C6A";
 
 function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; fromCurrency: string; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
@@ -126,7 +127,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
         {/* Identity */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 10,
+            width: 44, height: 44, borderRadius: "var(--radius-md)",
             background: "var(--surface)", border: "0.5px solid var(--border-strong)",
             overflow: "hidden", flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -143,7 +144,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
             </div>
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              padding: "3px 9px", borderRadius: 999,
+              padding: "3px 9px", borderRadius: "var(--radius-pill)",
               background: "var(--surface-elev)", color: "var(--text-dim)",
               fontSize: 12, fontWeight: 500, letterSpacing: "0.01em",
             }}>
@@ -185,7 +186,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
             )}
             <span style={{
               display: "inline-flex", alignItems: "center",
-              padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 500,
+              padding: "4px 10px", borderRadius: "var(--radius-pill)", fontSize: "var(--fs-caption)", fontWeight: 500,
               background: "var(--surface-elev)", color: "var(--text-dim)", letterSpacing: "0.01em",
             }}>
               Counts toward net worth
@@ -200,7 +201,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
 
         {/* Details */}
         {detailRows.length > 0 && (
-          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 26 }}>
+          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 26 }}>
             {detailRows.map((row, idx) => (
               <div key={row.label} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -219,7 +220,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
 
         {/* Projection */}
         {projection && (
-          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: 16, marginBottom: 26 }}>
+          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16, marginBottom: 26 }}>
             <div className="ad-eyebrow" style={{ marginBottom: 8 }}>
               Projected at {accessAge} (in {yta} {yta === 1 ? "year" : "years"})
             </div>
@@ -232,18 +233,18 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
             </div>
 
             {/* Contributed vs Growth split bar (ValueComposition style) */}
-            <div style={{ display: "flex", width: "100%", height: 8, borderRadius: 999, overflow: "hidden", background: "var(--surface-elev)", marginBottom: 12 }}>
+            <div style={{ display: "flex", width: "100%", height: 8, borderRadius: "var(--radius-pill)", overflow: "hidden", background: "var(--surface-elev)", marginBottom: 12 }}>
               <div style={{ width: `${contributedPct}%`, height: "100%", background: "var(--accent)", borderRadius: growthPct > 0 ? "999px 0 0 999px" : 999 }} />
               {growthPct > 0 && (
                 <div style={{ flex: 1, height: "100%", background: PENSION_GROWTH_COLOR, borderRadius: "0 999px 999px 0" }} />
               )}
             </div>
             <div style={{ display: "flex", gap: 18, marginBottom: 14 }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-dim)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-meta)", color: "var(--text-dim)" }}>
                 <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--accent)" }} />
                 Contributed {formatMoney(projection.contributed, cur, displayCurrency)}
               </span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-dim)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-meta)", color: "var(--text-dim)" }}>
                 <span style={{ width: 8, height: 8, borderRadius: 999, background: PENSION_GROWTH_COLOR }} />
                 Growth {formatMoney(projection.growth, cur, displayCurrency)}
               </span>
@@ -260,8 +261,8 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
 
         {/* Locked note */}
         {accessAge != null && (
-          <div style={{ background: "var(--surface-elev)", borderRadius: 12, padding: "12px 16px", marginBottom: 26 }}>
-            <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.45 }}>
+          <div style={{ background: "var(--surface-elev)", borderRadius: "var(--radius-md)", padding: "var(--space-3) var(--space-card)", marginBottom: 26 }}>
+            <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
               {accessYear != null
                 ? `Locked until ${accessYear}. Shows as locked in liquidity.`
                 : `Locked until age ${accessAge}. Shows as locked in liquidity.`}

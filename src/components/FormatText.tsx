@@ -16,7 +16,7 @@ function formatInline(str: string) {
             fontWeight: 600,
             color: "var(--text)",
             background: "var(--accent-soft)",
-            borderRadius: 4,
+            borderRadius: "var(--radius-md)",
             padding: "0 3px",
             margin: "0 -1px",
             boxDecorationBreak: "clone",
@@ -47,22 +47,18 @@ function ChangesBlock({ content }: { content: string }) {
   return (
     <div
       style={{
-        marginTop: 10,
-        padding: 12,
+        marginTop: "var(--space-row)",
+        padding: "var(--space-3)",
         background: "var(--accent-soft)",
-        border: "1px solid rgba(176,122,46,0.18)",
-        borderRadius: 12,
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
       }}
     >
       <div
+        className="eyebrow"
         style={{
-          fontFamily: "var(--font-label)",
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "var(--tracking-label)",
-          textTransform: "uppercase",
           color: "var(--accent)",
-          marginBottom: 8,
+          marginBottom: "var(--space-2)",
         }}
       >
         Changes
@@ -72,18 +68,18 @@ function ChangesBlock({ content }: { content: string }) {
         return (
           <div
             key={i}
+            className="tnum"
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "baseline",
               padding: "3px 0",
-              fontFamily: "var(--font-numeric)",
-              fontSize: 12,
+              fontSize: "var(--fs-caption)",
             }}
           >
             <span style={{ color: "var(--text)", minWidth: 0, overflowWrap: "break-word" }}>{name?.trim()}</span>
             {rest.length > 0 && (
-              <span style={{ color: "var(--positive)", flexShrink: 0, marginLeft: 8 }}>{rest.join("·").trim()}</span>
+              <span style={{ color: "var(--positive-text)", flexShrink: 0, marginLeft: 8 }}>{rest.join("·").trim()}</span>
             )}
           </div>
         );
@@ -132,7 +128,7 @@ export function FormatText({ text }: FormatTextProps) {
               }
 
               if (line.trim() === "---") {
-                return <hr key={i} style={{ border: "none", borderTop: "1px solid var(--border)", margin: "8px 0" }} />;
+                return <hr key={i} style={{ border: "none", borderTop: "1px solid var(--border)", margin: "var(--space-2) 0" }} />;
               }
 
               if (line.trim() === "") {

@@ -104,14 +104,14 @@ export function ScenarioComparisonCard({
   const hasLeverage = !!(c.leverage && s.leverage);
 
   return (
-    <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "16px 16px 8px" }}>
+    <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "16px 16px 8px" }}>
       <div style={{ ...eyebrowStyle, marginBottom: 14 }}>{title}</div>
 
       {/* Net worth */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 4 }}>{netWorthLabel}</div>
-          <div className="font-display" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--hero)", lineHeight: 1 }}>
+          <div className="font-display" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "var(--tracking-hero)", color: "var(--hero)", lineHeight: 1 }}>
             {m(s.netWorthUsd)}
           </div>
         </div>
@@ -142,7 +142,7 @@ export function ScenarioComparisonCard({
 
       {/* LTV callout — the sharper read for leveraged property */}
       {showLtvCallout && hasLeverage && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--negative-soft)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", marginBottom: 12, borderRadius: "var(--radius-md)", background: "var(--negative-soft)" }}>
           <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>Mortgage LTV</span>
           <span style={{ fontSize: 15, fontWeight: 600, color: "var(--negative-text)", fontFamily: "var(--font-numeric)" }}>
             {fmtPct(c.leverage!.ltvPct)} <span style={{ opacity: 0.6 }}>→</span> {fmtPct(s.leverage!.ltvPct)}
@@ -156,7 +156,7 @@ export function ScenarioComparisonCard({
       {/* Before/after stacked bars that visibly shift */}
       {allocationBar && (
         <div style={{ margin: "2px 0 10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "var(--space-1)" }}>
             <span style={{ width: 34, fontSize: 12, color: "var(--text-faint)" }}>Now</span>
             <div style={{ flex: 1 }}><AllocationBar alloc={curAlloc} /></div>
           </div>
@@ -209,6 +209,6 @@ const statRowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "7px 0",
+  padding: "var(--space-2) 0",
   borderBottom: "0.5px solid var(--border)",
 };

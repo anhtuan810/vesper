@@ -240,10 +240,10 @@ export default function ChatPage() {
         .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 1.2s ease infinite;margin:0 2px; }
         .chat-dot:nth-child(2){animation-delay:.2s}.chat-dot:nth-child(3){animation-delay:.4s}
         .chat-composer-gradient {
-          background: linear-gradient(180deg, rgba(245,241,234,0) 0%, var(--bg) 30%, var(--bg) 100%);
+          background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 0%, transparent) 0%, var(--bg) 30%, var(--bg) 100%);
         }
         [data-theme="dark"] .chat-composer-gradient {
-          background: linear-gradient(180deg, rgba(20,17,13,0) 0%, var(--bg) 30%, var(--bg) 100%);
+          background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 0%, transparent) 0%, var(--bg) 30%, var(--bg) 100%);
         }
       `}</style>
 
@@ -265,8 +265,8 @@ export default function ChatPage() {
           // fixed positioning would otherwise escape.
           maxWidth: 720,
           margin: "0 auto",
-          paddingLeft: 20,
-          paddingRight: 20,
+          paddingLeft: "var(--space-5)",
+          paddingRight: "var(--space-5)",
         }}
       >
         <div

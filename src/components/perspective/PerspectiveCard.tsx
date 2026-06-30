@@ -122,10 +122,10 @@ export function PerspectiveCard({
         >
           <defs>
             <linearGradient id="dens3" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stopColor="#97703D" stopOpacity="0.05" />
-              <stop offset="50%" stopColor="#97703D" stopOpacity="0.10" />
-              <stop offset="80%" stopColor="#97703D" stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#97703D" stopOpacity="0.04" />
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.05" />
+              <stop offset="50%" stopColor="var(--accent)" stopOpacity="0.10" />
+              <stop offset="80%" stopColor="var(--accent)" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.04" />
             </linearGradient>
           </defs>
           {/* Density fill */}
@@ -231,7 +231,7 @@ export function PerspectiveCard({
               <div
                 style={{
                   height: 3,
-                  background: "rgba(151,112,61,0.18)",
+                  background: "var(--accent-soft)",
                   borderRadius: "var(--radius-pill)",
                   position: "relative",
                 }}

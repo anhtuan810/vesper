@@ -77,7 +77,7 @@ function ProfilePreview() {
     fontSize: "var(--fs-caption)",
     color: "var(--text-faint)",
     lineHeight: "var(--lh-body)",
-    margin: "10px 2px 24px",
+    margin: "var(--space-row) 2px var(--space-6)",
   };
 
   return (
@@ -97,14 +97,14 @@ function ProfilePreview() {
       </p>
 
       {/* Perspective preview */}
-      <div className="eyebrow" style={{ marginBottom: 10 }}>Perspective</div>
+      <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>Perspective</div>
       <div style={{ ...card, padding: "var(--space-card)" }}>
         <GhostBar width={84} height={9} />
         <div style={{ height: 14 }} />
         <GhostBar width="52%" height={24} />
-        <div style={{ height: 16 }} />
+        <div style={{ height: "var(--space-4)" }} />
         <GhostBar width="100%" />
-        <div style={{ height: 8 }} />
+        <div style={{ height: "var(--space-2)" }} />
         <GhostBar width="78%" />
       </div>
       <p style={caption}>
@@ -113,13 +113,13 @@ function ProfilePreview() {
       </p>
 
       {/* Profile preview — the same fields the extractor fills from chat. */}
-      <div className="eyebrow" style={{ marginBottom: 10 }}>Profile</div>
+      <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>Profile</div>
       <div style={card}>
         {PROFILE_FIELDS.map(({ key, label }, idx) => (
           <div
             key={key}
             style={{
-              padding: "14px 16px",
+              padding: "14px var(--space-card)",
               borderBottom: idx === PROFILE_FIELDS.length - 1 ? "none" : "0.5px solid var(--border)",
             }}
           >
@@ -129,7 +129,7 @@ function ProfilePreview() {
               fontWeight: 500,
               letterSpacing: "var(--tracking-subhead)",
               color: "var(--text-faint)",
-              marginBottom: 10,
+              marginBottom: "var(--space-row)",
               fontVariationSettings: "'opsz' 18",
             }}>
               {label}
@@ -212,7 +212,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       : { maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
 
       {/* Name as page title + fingerprint as supporting line */}
-      <div style={{ paddingTop: 32, marginBottom: 26 }}>
+      <div style={{ paddingTop: "var(--space-8)", marginBottom: 26 }}>
         <div style={{
           fontFamily: "var(--font-display)",
           fontSize: "var(--fs-title)",
@@ -248,7 +248,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {/* Perspective section */}
       {perspective && (
         <>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>
+          <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>
             Perspective
           </div>
           <PerspectiveCard data={perspective} displayCurrency={displayCurrency} />
@@ -258,7 +258,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {/* Context section — hidden entirely if extractor hasn't populated any fields yet */}
       {visibleFields.length > 0 && (
         <>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>
+          <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>
             Context
           </div>
           <div style={{
@@ -277,8 +277,8 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
-                    gap: 12,
-                    padding: "14px 16px",
+                    gap: "var(--space-3)",
+                    padding: "14px var(--space-card)",
                     borderBottom: isLast ? "none" : "0.5px solid var(--border)",
                   }}
                 >
@@ -296,7 +296,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
                     </div>
                     <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
                       {value?.split(/\.\.\s*/).filter(s => s.trim()).slice(0, 2).map((sentence, i) => (
-                        <div key={i} style={{ marginBottom: 5 }}>{sentence.trim()}</div>
+                        <div key={i} style={{ marginBottom: "var(--space-1)" }}>{sentence.trim()}</div>
                       ))}
                     </div>
                   </div>
@@ -319,8 +319,8 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 10,
-          padding: "14px 16px",
+          gap: "var(--space-row)",
+          padding: "14px var(--space-card)",
           background: "var(--surface)",
           border: "1px solid var(--border-strong)",
           borderRadius: "var(--radius-lg)",

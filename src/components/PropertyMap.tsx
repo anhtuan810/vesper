@@ -28,14 +28,13 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
         position: "absolute",
         bottom: 10,
         right: 10,
-        background: "rgba(255, 255, 255, 0.9)",
+        background: "var(--surface-elev)",
         backdropFilter: "blur(8px)",
-        borderRadius: 999,
+        borderRadius: "var(--radius-pill)",
         padding: "6px 12px",
-        fontSize: 12,
+        fontSize: "var(--fs-caption)",
         fontWeight: 500,
         color: "var(--text)",
-        letterSpacing: "0.02em",
         display: "flex",
         alignItems: "center",
         gap: 5,
@@ -66,7 +65,7 @@ export function PropertyMap({ asset }: Props) {
     position: "relative",
     width: "100%",
     height: MAP_HEIGHT,
-    borderRadius: 14,
+    borderRadius: "var(--radius-lg)",
     overflow: "hidden",
     background: "var(--surface-elev)",
   };
@@ -87,8 +86,8 @@ export function PropertyMap({ asset }: Props) {
           transform: "translate(-50%, -50%)",
           width: 20, height: 20, borderRadius: "50%",
           background: "var(--accent)",
-          border: "3px solid rgba(255,255,255,0.9)",
-          boxShadow: "0 0 0 4px rgba(151, 112, 61, 0.25), 0 2px 6px rgba(0,0,0,0.25)",
+          border: "3px solid var(--surface-elev)",
+          boxShadow: "var(--shadow-soft)",
           pointerEvents: "none",
         }} />
         <OpenInMapsOverlay asset={asset} />
@@ -100,14 +99,14 @@ export function PropertyMap({ asset }: Props) {
   if (!asset.latitude || !asset.longitude) {
     return (
       <div style={{ ...containerStyle, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontSize: 12, color: "var(--text-dim)", letterSpacing: "0.04em", textAlign: "center", padding: "0 24px", fontFamily: "var(--font-ui)" }}>
+        <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)", textAlign: "center", padding: "0 24px", fontFamily: "var(--font-ui)" }}>
           {asset.address?.trim() ? "Couldn't locate this address on the map" : "No address on file"}
         </div>
         <button
           onClick={() => router.push(`/chat?seed=${encodeURIComponent(`Update the address for ${asset.name}`)}`)}
-          style={{ background: "none", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "5px 14px", cursor: "pointer" }}
+          style={{ background: "none", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-md)", padding: "5px 14px", cursor: "pointer" }}
         >
-          <span style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase", fontFamily: "var(--font-label)" }}>
+          <span className="eyebrow" style={{ color: "var(--accent)" }}>
             {asset.address?.trim() ? "Update address" : "Add address"}
           </span>
         </button>
@@ -162,8 +161,8 @@ function MapLibreMap({ asset, skipCaching, onCached }: MapLibreMapProps) {
       el.style.cssText = `
         width: 20px; height: 20px; border-radius: 50%;
         background: var(--accent);
-        border: 3px solid rgba(255,255,255,0.9);
-        box-shadow: 0 0 0 4px rgba(151, 112, 61, 0.25), 0 2px 6px rgba(0,0,0,0.25);
+        border: 3px solid var(--surface-elev);
+        box-shadow: var(--shadow-soft);
       `;
       new ml.Marker({ element: el })
         .setLngLat([asset.longitude!, asset.latitude!])

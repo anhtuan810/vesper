@@ -190,8 +190,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
     <>
       <style>{`
         @keyframes diaryHighlight {
-          0%   { outline: 2px solid rgba(176,122,46,0.75); outline-offset: 2px; border-radius: 6px; }
-          100% { outline: 2px solid rgba(176,122,46,0);    outline-offset: 2px; border-radius: 6px; }
+          0%   { outline: 2px solid color-mix(in srgb, var(--amber) 75%, transparent); outline-offset: 2px; border-radius: 6px; }
+          100% { outline: 2px solid color-mix(in srgb, var(--amber) 0%, transparent);  outline-offset: 2px; border-radius: 6px; }
         }
         .diary-row { cursor: pointer; }
         .diary-row:hover { background-color: var(--surface-elev); }
@@ -199,7 +199,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       `}</style>
 
       {/* Page title */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: "var(--space-3)" }}>
         <h1
           className="font-display"
           style={{
@@ -213,7 +213,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       </div>
 
       {/* Search input */}
-      <div style={{ position: "relative", marginBottom: 8 }}>
+      <div style={{ position: "relative", marginBottom: "var(--space-2)" }}>
         <svg
           viewBox="0 0 256 256"
           fill="none"
@@ -243,7 +243,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             background: "var(--surface)",
             border: "1px solid var(--border)",
             borderRadius: "var(--radius-md)",
-            padding: "12px 36px 12px 42px",
+            padding: "var(--space-3) 36px var(--space-3) 42px",
             fontSize: "var(--fs-body)",
             fontFamily: "var(--font-ui)",
             color: "var(--text)",
@@ -263,7 +263,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               transform: "translateY(-50%)",
               background: "none", border: "none", padding: 0,
               cursor: "pointer", color: "var(--text-faint)",
-              fontSize: 16, lineHeight: 1,
+              fontSize: "var(--fs-subhead)", lineHeight: 1,
             }}
           >
             ×
@@ -402,14 +402,14 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         <div className="text-center pt-16">
           {trimmedQuery ? (
             <>
-              <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", marginBottom: 8 }}>
+              <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", marginBottom: "var(--space-2)" }}>
                 No entries match &ldquo;{searchQuery.trim()}&rdquo;
               </div>
               <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>Try a different search term.</p>
             </>
           ) : (
             <>
-              <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", marginBottom: 8 }}>No entries for this period</div>
+              <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", marginBottom: "var(--space-2)" }}>No entries for this period</div>
               <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>Try a different time range.</p>
             </>
           )}
@@ -446,7 +446,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             <div
               style={{
                 display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                margin: "16px 0 8px",
+                margin: "var(--space-4) 0 var(--space-2)",
               }}
             >
               <div
@@ -583,7 +583,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                           className="last:border-0"
                           style={{ borderBottom: "0.5px solid var(--border)" }}
                         >
-                          <div style={{ display: "flex", gap: 10, padding: "4px 0 4px 36px", alignItems: "baseline" }}>
+                          <div style={{ display: "flex", gap: "var(--space-row)", padding: "var(--space-1) 0 var(--space-1) 36px", alignItems: "baseline" }}>
                             <span style={{ flex: 1 }}>{valueNode}</span>
                             <span
                               className="tnum"

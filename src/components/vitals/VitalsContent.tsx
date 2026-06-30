@@ -730,7 +730,7 @@ function CardSkeleton() {
         border: "0.5px solid var(--border)",
         borderRadius: "var(--radius-lg)",
         height: 180,
-        marginBottom: 10,
+        marginBottom: "var(--space-row)",
         opacity: 0.45,
       }}
     />
@@ -871,7 +871,7 @@ export function VitalsContent({
       onClick={toggleShowProperty}
       style={{
         height: 26,
-        padding: "0 12px",
+        padding: "0 var(--space-3)",
         borderRadius: "var(--radius-pill)",
         border: `0.5px solid ${showProperty ? "var(--accent-soft)" : "var(--border)"}`,
         background: showProperty ? "var(--accent-soft)" : "transparent",
@@ -880,8 +880,7 @@ export function VitalsContent({
         fontWeight: 500,
         cursor: "pointer",
         transition: "background 0.15s, border-color 0.15s, color 0.15s",
-        letterSpacing: "0.01em",
-        lineHeight: 1,
+        lineHeight: "var(--lh-tight)",
         display: "flex",
         alignItems: "center",
         whiteSpace: "nowrap",
@@ -892,7 +891,7 @@ export function VitalsContent({
   ) : null;
 
   const pageTitle = showHeader ? (
-    <div style={{ marginBottom: 20, paddingTop: "var(--space-8)" }}>
+    <div style={{ marginBottom: "var(--space-5)", paddingTop: "var(--space-8)" }}>
       <div
         style={{
           display: "flex",
@@ -929,7 +928,7 @@ export function VitalsContent({
       <>
         {pageTitle}
         <SkeletonStripLine />
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: "var(--space-5)" }}>
           <div
             style={{
               background: "var(--surface-elev)",
@@ -986,7 +985,7 @@ export function VitalsContent({
             fontSize: "var(--fs-body)",
             color: "var(--text-dim)",
             lineHeight: "var(--lh-body)",
-            marginBottom: 20,
+            marginBottom: "var(--space-5)",
           }}
         >
           Add your first asset to see your Vitals.
@@ -1004,7 +1003,6 @@ export function VitalsContent({
             fontWeight: 600,
             border: "none",
             cursor: "pointer",
-            letterSpacing: "0.01em",
           }}
         >
           Get started
@@ -1140,7 +1138,7 @@ export function VitalsContent({
         // Mobile: one card holding the narrative pulse (gold lead) + the relocated
         // signals (projection / worth knowing / markets) on the surface below.
         return (
-          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: "var(--space-4)" }}>
             {pulseSentence ? (
               <div style={{ background: "var(--accent-soft)", padding: "11px 15px 12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
@@ -1170,7 +1168,7 @@ export function VitalsContent({
       {/* 3. Active vitals eyebrow — with the property lens toggle on its right
              for headerless desktop hosts (mobile keeps the plain eyebrow). */}
       {inlineToggleNode ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
           <span className="eyebrow">
             Active vitals &middot; {activeVitals.length}
           </span>

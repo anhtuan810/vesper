@@ -181,17 +181,17 @@ export function MortgageBlock({ asset }: Props) {
   return (
     <>
       {/* Stat list */}
-      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 0 }}>
+      <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 0 }}>
         {rows.map((row, idx) => (
           <div key={row.label} style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "10px 16px",
+            padding: "var(--space-row) var(--space-card)",
             borderBottom: idx < rows.length - 1 ? "0.5px solid var(--border)" : "none",
-            gap: 14,
+            gap: "var(--space-4)",
           }}>
-            <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
+            <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
               <span style={{ fontFamily: "var(--font-numeric)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1 }}>
                 {row.value}
@@ -211,8 +211,8 @@ export function MortgageBlock({ asset }: Props) {
         <div style={{
           background: "var(--surface)",
           border: "0.5px solid var(--border)",
-          borderRadius: 14,
-          padding: 12,
+          borderRadius: "var(--radius-lg)",
+          padding: "var(--space-3)",
           marginTop: -14,
         }}>
           {/* Interaction target: touch/pointer scrubbing along the payoff curve */}
@@ -247,16 +247,14 @@ export function MortgageBlock({ asset }: Props) {
               )}
             </svg>
           </div>
-          <div style={{
+          <div className="tnum" style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             marginTop: 8,
             padding: "0 2px",
-            fontSize: 12,
+            fontSize: "var(--fs-caption)",
             color: "var(--text-faint)",
-            fontFeatureSettings: '"tnum" 1',
-            fontFamily: "var(--font-numeric)",
           }}>
             {scrubI !== null ? (
               <>
@@ -276,9 +274,9 @@ export function MortgageBlock({ asset }: Props) {
                   color: "var(--accent-text)",
                   fontWeight: 500,
                   padding: "2px 8px",
-                  borderRadius: 999,
-                  fontSize: 11,
-                  letterSpacing: "0.04em",
+                  borderRadius: "var(--radius-pill)",
+                  fontSize: "var(--fs-micro)",
+                  letterSpacing: "var(--tracking-label)",
                 }}>
                   TODAY
                 </span>

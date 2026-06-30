@@ -148,7 +148,7 @@ export function SubscriptionSection() {
 
   return (
     <>
-      <div className="eyebrow" style={{ marginBottom: 10 }}>Your subscription</div>
+      <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>Your subscription</div>
 
       {hasSubscription && data ? (
         <div style={CARD_STYLE}>
@@ -178,7 +178,7 @@ export function SubscriptionSection() {
             disabled={busy}
             style={{
               width: "100%",
-              padding: "14px 16px",
+              padding: "14px var(--space-card)",
               textAlign: "left",
               fontSize: "var(--fs-body)",
               fontWeight: 500,
@@ -194,7 +194,7 @@ export function SubscriptionSection() {
           </button>
         </div>
       ) : activating ? (
-        <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>
+        <div style={{ ...CARD_STYLE, padding: "18px var(--space-card)" }}>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -214,7 +214,7 @@ export function SubscriptionSection() {
           </div>
         </div>
       ) : (
-        <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>
+        <div style={{ ...CARD_STYLE, padding: "18px var(--space-card)" }}>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -237,7 +237,7 @@ export function SubscriptionSection() {
             disabled={busy}
             style={{
               width: "100%",
-              padding: "13px 16px",
+              padding: "13px var(--space-card)",
               borderRadius: "var(--radius-lg)",
               border: "none",
               background: "var(--accent)",
@@ -254,7 +254,7 @@ export function SubscriptionSection() {
       )}
 
       {error && (
-        <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative)", marginTop: -14, marginBottom: 20, lineHeight: "var(--lh-body)" }}>
+        <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative)", marginTop: -14, marginBottom: "var(--space-5)", lineHeight: "var(--lh-body)" }}>
           {error}
         </div>
       )}
@@ -295,13 +295,13 @@ function Row({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 12,
-        padding: "14px 16px",
+        gap: "var(--space-3)",
+        padding: "14px var(--space-card)",
         borderBottom: "0.5px solid var(--border)",
       }}
     >
       <div style={{ flex: 1, fontSize: "var(--fs-caption)", color: "var(--text-dim)" }}>{label}</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
         <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, color: "var(--text)" }}>{value}</span>
         {badge && (
           <span
@@ -311,7 +311,7 @@ function Row({
               background: "var(--surface-elev)",
               border: "0.5px solid var(--border)",
               borderRadius: "var(--radius-pill)",
-              padding: "2px 8px",
+              padding: "2px var(--space-2)",
               whiteSpace: "nowrap",
             }}
           >

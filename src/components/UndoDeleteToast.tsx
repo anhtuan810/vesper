@@ -86,22 +86,21 @@ export function UndoDeleteToast() {
         background: "var(--surface)",
         border: "1px solid var(--border-strong)",
         borderRadius: "var(--radius-md)",
-        padding: "10px 14px",
+        padding: "var(--space-row) var(--space-4)",
         boxShadow: "var(--shadow-soft)",
         maxWidth: "calc(100vw - 32px)",
       }}
     >
-      <span className="font-numeric text-dim" style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>
+      <span className="font-ui text-dim" style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>
         {error ? error : `Deleted ${name}`}
       </span>
       <button
         onClick={handleUndo}
         disabled={restoring}
-        className="font-numeric uppercase text-accent hover:opacity-80 transition-opacity"
+        className="eyebrow text-accent hover:opacity-80 transition-opacity"
         style={{
           fontSize: "var(--fs-caption)",
-          padding: "4px 10px",
-          letterSpacing: "var(--tracking-label)",
+          padding: "var(--space-1) var(--space-row)",
           background: "none",
           border: "1px solid var(--border-strong)",
           borderRadius: "var(--radius-md)",
@@ -116,9 +115,9 @@ export function UndoDeleteToast() {
         aria-label="Dismiss"
         className="text-faint hover:text-dim transition-colors"
         style={{
-          fontSize: 15,
+          fontSize: "var(--fs-subhead)",
           lineHeight: 1,
-          padding: "0 4px",
+          padding: "0 var(--space-1)",
           background: "none",
           border: "none",
           cursor: "pointer",

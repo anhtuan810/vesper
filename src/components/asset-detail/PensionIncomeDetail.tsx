@@ -14,6 +14,8 @@ interface Props {
   birthYear: number | null;
 }
 
+// Muted sage for the growth split — a deliberate one-off (no --cat-* token
+// matches this hue), kept literal rather than borrowing an unrelated category.
 const PENSION_GROWTH_COLOR = "#7A8C6A";
 
 function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; fromCurrency: string; displayCurrency: ReturnType<typeof useDisplayCurrency> }) {
@@ -107,7 +109,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
         {/* Identity */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 10,
+            width: 44, height: 44, borderRadius: "var(--radius-md)",
             background: "var(--surface)", border: "0.5px solid var(--border-strong)",
             overflow: "hidden", flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -147,7 +149,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             }}>
               <HeroPrice amount={annual} fromCurrency={cur} displayCurrency={displayCurrency} />
             </span>
-            <span style={{ fontSize: 16, fontWeight: 500, color: "var(--text-faint)" }}>/ year</span>
+            <span style={{ fontSize: "var(--fs-subhead)", fontWeight: 500, color: "var(--text-faint)" }}>/ year</span>
           </div>
           <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
             ≈ {formatMoney(monthly, cur, displayCurrency)} / month{accessAge != null ? `, from age ${accessAge}` : ""}
@@ -160,8 +162,8 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
         </div>
 
         {/* Off-balance banner */}
-        <div style={{ background: "var(--surface-elev)", borderRadius: 12, padding: "12px 16px", marginBottom: 26 }}>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.45 }}>
+        <div style={{ background: "var(--surface-elev)", borderRadius: "var(--radius-md)", padding: "var(--space-3) var(--space-card)", marginBottom: 26 }}>
+          <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
             Not counted in net worth. This is future income you&apos;ll receive, not a holding you own today.
           </div>
         </div>
@@ -172,11 +174,11 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {currentAge != null && (
                 <>
-                  <span style={{ width: 9, height: 9, borderRadius: 999, background: "var(--text-dim)", flexShrink: 0 }} />
-                  <div style={{ flex: 1, height: 2, background: "var(--border-strong)", borderRadius: 999 }} />
+                  <span style={{ width: 9, height: 9, borderRadius: "var(--radius-pill)", background: "var(--text-dim)", flexShrink: 0 }} />
+                  <div style={{ flex: 1, height: 2, background: "var(--border-strong)", borderRadius: "var(--radius-pill)" }} />
                 </>
               )}
-              <span style={{ width: 11, height: 11, borderRadius: 999, background: PENSION_GROWTH_COLOR, flexShrink: 0 }} />
+              <span style={{ width: 11, height: 11, borderRadius: "var(--radius-pill)", background: PENSION_GROWTH_COLOR, flexShrink: 0 }} />
               {currentAge == null && <div style={{ flex: 1 }} />}
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
@@ -193,7 +195,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
         )}
 
         {/* Details */}
-        <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 14, overflow: "hidden", marginBottom: 26 }}>
+        <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 26 }}>
           {detailRows.map((row, idx) => (
             <div key={row.label} style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",

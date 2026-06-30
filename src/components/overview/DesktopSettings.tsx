@@ -107,12 +107,12 @@ export function DesktopSettings() {
 
   return (
     <div className="st-wrap">
-      <div className="sec-top" style={{ marginBottom: 24 }}>
+      <div className="sec-top" style={{ marginBottom: "var(--space-6)" }}>
         <div><span className="eyebrow">Settings</span><h2>Preferences <span className="g">and account.</span></h2></div>
       </div>
 
       {/* Preferences */}
-      <span className="eyebrow" style={{ display: "block", marginBottom: 12 }}>Preferences</span>
+      <span className="eyebrow" style={{ display: "block", marginBottom: "var(--space-3)" }}>Preferences</span>
       <div className="st-card">
         <button className="st-row" onClick={() => setExpandedPref(expandedPref === "currency" ? null : "currency")}>
           <span className="st-name">Display currency</span>
@@ -126,8 +126,8 @@ export function DesktopSettings() {
               const on = displayCurrency === currency;
               return (
                 <button key={currency} className={`st-opt${on ? " on" : ""}`} onClick={() => handleCurrencySelect(currency)} disabled={!!currencyLoading}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ width: 18, textAlign: "center", fontWeight: 600 }}>{symbol}</span>{label}</span>
-                  {currencyLoading === currency ? <span style={{ fontSize: 12, color: "var(--faint)" }}>Saving…</span> : on ? <span className="dot" /> : null}
+                  <span style={{ display: "flex", alignItems: "center", gap: "var(--space-row)" }}><span style={{ width: 18, textAlign: "center", fontWeight: 600 }}>{symbol}</span>{label}</span>
+                  {currencyLoading === currency ? <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}>Saving…</span> : on ? <span className="dot" /> : null}
                 </button>
               );
             })}
@@ -146,14 +146,14 @@ export function DesktopSettings() {
                 {label}{currentTheme === value && <span className="dot" />}
               </button>
             ))}
-            <div className="st-val" style={{ marginTop: 4 }}>The desktop site always uses the light theme; this also sets the theme on mobile.</div>
+            <div className="st-val" style={{ marginTop: "var(--space-1)" }}>The desktop site always uses the light theme; this also sets the theme on mobile.</div>
           </div>
         )}
         <NativeSettingsRows />
       </div>
 
       {/* Account */}
-      <span className="eyebrow" style={{ display: "block", marginBottom: 12 }}>Account</span>
+      <span className="eyebrow" style={{ display: "block", marginBottom: "var(--space-3)" }}>Account</span>
       <div className="st-card">
         {isDemo ? (
           <>
@@ -169,15 +169,15 @@ export function DesktopSettings() {
       </div>
 
       {/* Data & AI */}
-      <span className="eyebrow" style={{ display: "block", marginBottom: 12 }}>Data &amp; AI</span>
+      <span className="eyebrow" style={{ display: "block", marginBottom: "var(--space-3)" }}>Data &amp; AI</span>
       <div className="st-card" style={{ padding: "15px 20px" }}>
-        <div style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.6 }}>
+        <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
           Volnar uses AI to power chat and insights. Your data is never used to train AI models.{" "}
           <a className="st-link" href="https://volnar.nl/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
         </div>
         {aiConsentAt && (
-          <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5 }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />AI processing acknowledged
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginTop: "var(--space-2)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 5, height: 5, borderRadius: "var(--radius-pill)", background: "var(--positive)", display: "inline-block" }} />AI processing acknowledged
           </div>
         )}
       </div>

@@ -99,16 +99,16 @@ function LoginInner() {
   }
 
   const oauthButtonStyle: React.CSSProperties = {
-    padding: "15px 22px",
-    borderRadius: 14,
+    padding: "16px 24px",
+    borderRadius: "var(--radius-lg)",
     background: "var(--surface)",
     border: "1px solid var(--border-strong)",
     color: "var(--text)",
-    fontSize: 15,
+    fontSize: "var(--fs-subhead)",
     fontWeight: 500,
     cursor: "pointer",
     minHeight: 54,
-    boxShadow: "0 1px 2px rgba(26,24,22,0.04)",
+    boxShadow: "var(--shadow-soft)",
   };
 
   // Demo entry as a full-width featured button (previously a small text link) so
@@ -121,12 +121,12 @@ function LoginInner() {
     justifyContent: "center",
     gap: 8,
     width: "100%",
-    padding: "15px 22px",
-    borderRadius: 14,
+    padding: "16px 24px",
+    borderRadius: "var(--radius-lg)",
     background: "var(--accent-soft)",
     border: "1px solid var(--accent)",
     color: "var(--accent-text)",
-    fontSize: 15,
+    fontSize: "var(--fs-subhead)",
     fontWeight: 600,
     cursor: "pointer",
     minHeight: 54,
@@ -154,7 +154,7 @@ function LoginInner() {
         }}
       >
         <VolnarLogo size={52} className="logo-pulse" />
-        <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.5, minHeight: 20 }}>
+        <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", minHeight: 20 }}>
           Preparing your demo account…
         </div>
         <div style={{ display: "flex", gap: 6 }} aria-hidden="true">
@@ -195,7 +195,7 @@ function LoginInner() {
               style={{
                 fontFamily: "var(--font-display)",
                 fontWeight: 500, fontSize: 30,
-                letterSpacing: "-0.02em", lineHeight: 1,
+                letterSpacing: "var(--tracking-hero)", lineHeight: 1,
                 fontVariationSettings: "'opsz' 32",
                 color: "var(--hero)",
               }}
@@ -205,7 +205,7 @@ function LoginInner() {
           </div>
           <h1
             className="font-display text-hero mx-auto"
-            style={{ fontSize: "clamp(26px,7vw,32px)", fontWeight: 500, lineHeight: 1.12, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 36", maxWidth: 340 }}
+            style={{ fontSize: "clamp(26px,7vw,32px)", fontWeight: 500, lineHeight: 1.12, letterSpacing: "var(--tracking-hero)", fontVariationSettings: "'opsz' 36", maxWidth: 340 }}
           >
             Quiet confidence{" "}
             <span className="italic font-normal text-dim">over your portfolio.</span>
@@ -242,10 +242,10 @@ function LoginInner() {
             <div
               className="font-numeric"
               style={{
-                fontSize: 12, color: "var(--negative)",
-                padding: "10px 14px", borderRadius: 10,
-                background: "rgba(175,85,48,0.08)",
-                border: "1px solid rgba(175,85,48,0.18)",
+                fontSize: "var(--fs-caption)", color: "var(--negative)",
+                padding: "10px 14px", borderRadius: "var(--radius-md)",
+                background: "var(--negative-soft)",
+                border: "1px solid var(--negative)",
               }}
             >
               {error}
@@ -255,12 +255,12 @@ function LoginInner() {
 
         <style>{`
           .demo-cta { transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
-          .demo-cta:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+          .demo-cta:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
         `}</style>
 
         <div className="flex items-center" style={{ gap: 12, margin: "20px 0 14px" }}>
           <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          <span style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--font-label)", letterSpacing: "var(--tracking-label)", textTransform: "uppercase" }}>or</span>
+          <span className="eyebrow">or</span>
           <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
 
@@ -316,7 +316,7 @@ function LoginInner() {
 
         <p
           className="text-center font-numeric text-faint mt-10"
-          style={{ fontSize: 11, letterSpacing: "0.04em", lineHeight: 1.6 }}
+          style={{ fontSize: "var(--fs-micro)", letterSpacing: "0.04em", lineHeight: "var(--lh-body)" }}
         >
           By continuing you agree to our{" "}
           <a

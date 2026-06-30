@@ -26,7 +26,7 @@ export function DrawdownBars({ data }: Props) {
   const rowStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    gap: 9,
+    gap: 'var(--space-2)',
   };
 
   const labelStyle = (combined: boolean): React.CSSProperties => ({
@@ -50,8 +50,6 @@ export function DrawdownBars({ data }: Props) {
     textAlign: 'right',
     fontSize: combined ? 'var(--fs-meta)' : 'var(--fs-caption)',
     color: 'var(--negative-text)',
-    fontFamily: 'var(--font-numeric)',
-    fontFeatureSettings: "'tnum'",
     fontWeight: combined ? 600 : 500,
   });
 
@@ -73,7 +71,7 @@ export function DrawdownBars({ data }: Props) {
               }}
             />
           </span>
-          <span style={valueStyle(false)}>{fmt(r.value)}</span>
+          <span className="tnum" style={valueStyle(false)}>{fmt(r.value)}</span>
         </div>
       ))}
 
@@ -81,8 +79,8 @@ export function DrawdownBars({ data }: Props) {
       <div
         style={{
           ...rowStyle,
-          paddingTop: 7,
-          marginTop: 2,
+          paddingTop: 'var(--space-2)',
+          marginTop: 'var(--space-1)',
           borderTop: '0.5px dashed var(--border)',
         }}
       >
@@ -100,7 +98,7 @@ export function DrawdownBars({ data }: Props) {
             }}
           />
         </span>
-        <span style={valueStyle(true)}>{fmt(combinedShockEur)}</span>
+        <span className="tnum" style={valueStyle(true)}>{fmt(combinedShockEur)}</span>
       </div>
     </div>
   );

@@ -266,7 +266,7 @@ export function Paywall() {
       }}
     >
       <div style={{ width: "100%", maxWidth: 420, margin: "auto 0" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginBottom: 22 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-6)" }}>
           <VolnarLogo size={48} />
           <h1
             style={{
@@ -289,7 +289,7 @@ export function Paywall() {
         </div>
 
         {/* Plan options — annual highlighted */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-row)", marginBottom: "var(--space-5)" }}>
           <PlanOption
             label="Annual"
             price={annualPrice}
@@ -330,7 +330,7 @@ export function Paywall() {
           disabled={busy}
           style={{
             width: "100%",
-            padding: "15px 22px",
+            padding: "var(--space-4) var(--space-5)",
             borderRadius: "var(--radius-lg)",
             border: "none",
             background: "var(--accent)",
@@ -355,8 +355,8 @@ export function Paywall() {
             justifyContent: "center",
             gap: 6,
             width: "100%",
-            marginTop: 10,
-            padding: "12px 18px",
+            marginTop: "var(--space-row)",
+            padding: "var(--space-3) var(--space-5)",
             borderRadius: "var(--radius-md)",
             border: "none",
             background: "none",
@@ -522,7 +522,7 @@ function PlanOption({
         display: "flex",
         alignItems: "center",
         gap: 12,
-        padding: "16px 18px",
+        padding: "var(--space-card) var(--space-5)",
         borderRadius: "var(--radius-lg)",
         border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`,
         background: selected ? "var(--accent-soft)" : "var(--surface)",

@@ -82,7 +82,7 @@ export function DemoExpiryWall() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 22,
+        gap: "var(--space-6)",
         padding:
           "calc(env(safe-area-inset-top, 0px) + 40px) 24px calc(env(safe-area-inset-bottom, 0px) + 32px)",
         textAlign: "center",
@@ -108,7 +108,7 @@ export function DemoExpiryWall() {
       <button
         onClick={signOut}
         style={{
-          padding: "14px 22px",
+          padding: "var(--space-4) var(--space-5)",
           borderRadius: "var(--radius-lg)",
           border: "none",
           background: "var(--accent)",

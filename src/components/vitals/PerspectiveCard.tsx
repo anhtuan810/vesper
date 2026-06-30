@@ -49,7 +49,7 @@ export function PerspectiveCard({
         style={{
           paddingTop: 18,
           paddingBottom: 14,
-          marginTop: 10,
+          marginTop: "var(--space-row)",
           display: "flex",
           alignItems: "center",
           gap: 11,
@@ -235,7 +235,7 @@ export function PerspectiveCard({
                   style={{
                     fontSize: "var(--fs-body)",
                     fontWeight: 500,
-                    lineHeight: 1.2,
+                    lineHeight: "var(--lh-snug)",
                     color: "var(--text)",
                   }}
                 >
@@ -250,7 +250,7 @@ export function PerspectiveCard({
                 <div
                   style={{
                     height: 3,
-                    background: "rgba(151,112,61,0.18)",
+                    background: "var(--accent-soft)",
                     borderRadius: "var(--radius-pill)",
                     position: "relative",
                   }}
@@ -277,7 +277,7 @@ export function PerspectiveCard({
                       background: "var(--accent)",
                       border: "2px solid var(--perspective-dot-border)",
                       transform: "translateX(-50%)",
-                      boxShadow: "0 0 0 0.5px rgba(151,112,61,0.3)",
+                      boxShadow: "0 0 0 0.5px var(--border-strong)",
                     }}
                   />
                 </div>
@@ -311,7 +311,6 @@ export function PerspectiveCard({
                   style={{
                     fontSize: "var(--fs-caption)",
                     color: "var(--text-faint)",
-                    letterSpacing: "0.04em",
                     marginTop: 2,
                   }}
                 >

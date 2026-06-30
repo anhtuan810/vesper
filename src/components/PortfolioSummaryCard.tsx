@@ -61,7 +61,7 @@ export function PortfolioSummaryCard({ netTotal, snapshots, marketHighlights, on
         background: "var(--surface)",
         border: "0.5px solid var(--border)",
         borderRadius: "var(--radius-lg)",
-        padding: anyVisible ? "5px 16px" : 0,
+        padding: anyVisible ? "var(--space-1) var(--space-4)" : 0,
         transition: "padding 0.2s ease",
       }}
     >

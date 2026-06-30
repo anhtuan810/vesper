@@ -1,6 +1,9 @@
 import type { LiquidityPostureValue } from '@/lib/vitals/liquidityPosture';
 
 // Fixed tier colors — constant across themes
+// A deliberately muted liquidity-tier palette (kept as literals — these tiers
+// aren't asset categories, and the --cat-* tokens read more saturated than this
+// quiet ramp intends). sameDay stays the brand accent.
 const TIER_COLORS = {
   sameDay:     'var(--accent)',
   market1w:    '#6E9478',
@@ -93,7 +96,7 @@ export function LiquidityStack({ data }: Props) {
       </svg>
 
       {/* Legend row */}
-      <div style={{ display: 'flex', gap: 11, flexWrap: 'wrap', marginTop: 6 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', marginTop: 'var(--space-2)' }}>
         {legendData.map((item, i) => (
           <span
             key={i}

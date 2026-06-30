@@ -133,7 +133,7 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        style={{ marginTop: 9, background: "none", border: "none", padding: 0, fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", letterSpacing: "0.03em", color: "var(--text-dim)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
+        style={{ marginTop: 9, background: "none", border: "none", padding: 0, fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-dim)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
       >
         {open ? "Hide how this is figured" : "How this is figured"}
       </button>
@@ -219,7 +219,7 @@ export function MobileDecisionJournal({
       {points.length > 0 && (
         <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           {points.map((p, i) => (
-            <li key={i} style={{ position: "relative", paddingLeft: 17, fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", fontVariantNumeric: "tabular-nums" }}>
+            <li key={i} className="tnum" style={{ position: "relative", paddingLeft: 17, fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
               <span style={{ position: "absolute", left: 2, top: 9, width: 5, height: 5, borderRadius: "var(--radius-pill)", background: "var(--text-faint)" }} aria-hidden="true" />
               {p}
             </li>

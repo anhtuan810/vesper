@@ -101,14 +101,14 @@ export function RealEstateDetail({ asset }: Props) {
             fontWeight: 500,
             color: "var(--hero)",
             letterSpacing: "-0.02em",
-            lineHeight: 1.05,
+            lineHeight: "var(--lh-tight)",
             fontVariationSettings: "'opsz' 24",
             marginBottom: 4,
           }}>
             {asset.name}
           </div>
           {asset.address && (
-            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{asset.address}</div>
+            <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)" }}>{asset.address}</div>
           )}
         </div>
 
@@ -134,10 +134,10 @@ export function RealEstateDetail({ asset }: Props) {
           {/* Compact metadata line: value · size · owned since · years */}
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
             {currencyLoaded ? [
-              <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500, fontFamily: "var(--font-numeric)" }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
-              asset.size_sqm ? <span key="size" style={{ fontFamily: "var(--font-numeric)" }}>{asset.size_sqm} m²</span> : null,
-              ownedSinceLabel ? <span key="since" style={{ fontFamily: "var(--font-numeric)" }}>owned since {ownedSinceLabel}</span> : null,
-              yearsOwned ? <span key="yrs" style={{ fontFamily: "var(--font-numeric)" }}>{yearsOwned} yrs</span> : null,
+              <span key="val">of <span className="tnum" style={{ color: "var(--text)", fontWeight: 500 }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
+              asset.size_sqm ? <span key="size" className="tnum">{asset.size_sqm} m²</span> : null,
+              ownedSinceLabel ? <span key="since" className="tnum">owned since {ownedSinceLabel}</span> : null,
+              yearsOwned ? <span key="yrs" className="tnum">{yearsOwned} yrs</span> : null,
             ].filter(Boolean).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep${i}`} style={{ color: "var(--text-faint)" }}> · </span>, el], []) : null}
           </div>
         </div>

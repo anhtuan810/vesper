@@ -45,7 +45,7 @@ export function VitalCard({
         border: "0.5px solid var(--border)",
         borderRadius: "var(--radius-lg)",
         padding: "var(--space-card)",
-        marginBottom: 10,
+        marginBottom: "var(--space-row)",
         ...(fillHeight ? { display: "flex", flexDirection: "column", height: "100%" } : {}),
       }}
     >
@@ -56,7 +56,7 @@ export function VitalCard({
           justifyContent: "space-between",
           alignItems: "flex-start",
           marginBottom: 11,
-          gap: 12,
+          gap: "var(--space-3)",
         }}
       >
         {/* Left: eyebrow → hero+subline */}
@@ -68,7 +68,7 @@ export function VitalCard({
             style={{
               display: "flex",
               alignItems: "baseline",
-              gap: 8,
+              gap: "var(--space-2)",
               marginTop: 6,
             }}
           >
@@ -110,7 +110,7 @@ export function VitalCard({
           >
             <span
               className="eyebrow"
-              style={{ lineHeight: 1 }}
+              style={{ lineHeight: "var(--lh-tight)" }}
             >
               {rightStat.label}
             </span>
@@ -120,7 +120,7 @@ export function VitalCard({
                 fontSize: "var(--fs-meta)",
                 fontWeight: 500,
                 color: "var(--text)",
-                lineHeight: 1,
+                lineHeight: "var(--lh-tight)",
               }}
             >
               {rightStat.value}

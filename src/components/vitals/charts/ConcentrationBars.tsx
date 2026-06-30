@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { AssetLogo } from "@/components/AssetLogo";
 
+// Distinct per-asset-class hues for the concentration bars. There are more
+// series (9) than the app's 5 category tokens, so forcing them onto --cat-*
+// causes collisions (two classes share a colour) and semantic drift; this stays
+// a deliberate, distinct palette instead.
 const ASSET_COLOR: Record<string, string> = {
   real_estate: '#5E6A4A',
   crypto:      '#B0552F',
@@ -38,7 +42,7 @@ interface Props {
 const LABEL_W = 104;
 const VALUE_W = 46;
 const BAR_H = 9;
-const ROW_GAP = 7;
+const ROW_GAP = 8;
 const HEADER_H = 18;
 
 export function ConcentrationBars({ positions }: Props) {
@@ -97,7 +101,6 @@ export function ConcentrationBars({ positions }: Props) {
           color: "var(--text-faint)",
           whiteSpace: "nowrap",
           pointerEvents: "none",
-          letterSpacing: "0.02em",
         }}
       >
         balanced ≤ 35%
@@ -113,7 +116,7 @@ export function ConcentrationBars({ positions }: Props) {
             top: 0,
             bottom: 0,
             width: 0,
-            borderLeft: "1px dashed rgba(28,28,24,0.25)",
+            borderLeft: "1px dashed var(--border-strong)",
             pointerEvents: "none",
             zIndex: 0,
           }}
@@ -146,7 +149,7 @@ export function ConcentrationBars({ positions }: Props) {
                   boundaries, never mid-word). The bar row below keeps the same
                   LABEL_W offset so bars and the threshold line stay aligned. */}
               {isExpanded && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
                   <AssetLogo type={pos.type} symbol={pos.symbol ?? null} name={pos.name} size={18} />
                   <div style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-caption)", lineHeight: "var(--lh-snug)", color: "var(--text)", overflowWrap: "break-word" }}>
                     {pos.name}
@@ -231,7 +234,7 @@ export function ConcentrationBars({ positions }: Props) {
         <div
           className="tnum"
           style={{
-            marginTop: ROW_GAP + 1,
+            marginTop: ROW_GAP,
             paddingLeft: LABEL_W,
             fontSize: "var(--fs-caption)",
             color: "var(--text-faint)",

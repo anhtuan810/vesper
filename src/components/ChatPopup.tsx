@@ -139,8 +139,8 @@ export default function ChatPopup({
         className="fixed bottom-8 right-8 flex items-center justify-center text-bg bg-accent hover:opacity-90 transition-opacity"
         style={{
           width: 52, height: 52, borderRadius: "var(--radius-lg)",
-          boxShadow: "0 8px 24px rgba(151,112,61,0.3)",
-          fontSize: 18,
+          boxShadow: "var(--shadow-soft)",
+          fontSize: "var(--fs-subhead)",
         }}
       >
         {hasNew ? (
@@ -210,7 +210,7 @@ export default function ChatPopup({
             background: "var(--surface-elev)",
             border: "none",
             cursor: "pointer",
-            fontSize: 16,
+            fontSize: "var(--fs-subhead)",
           }}
         >
           ×
