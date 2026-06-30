@@ -40,7 +40,7 @@ function VitalsIcon({ active }: { active: boolean }) {
 
 const STATIC_TABS = [
   {
-    label: "Portfolio",
+    label: "Overview",
     href: "/",
     icon: null,
   },
@@ -55,7 +55,7 @@ const STATIC_TABS = [
     icon: null, // rendered as elevated ring — see render loop below
   },
   {
-    label: "Diary",
+    label: "Journal",
     href: "/diary",
     icon: (
       <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" className="w-[24px] h-[24px]">
@@ -110,7 +110,7 @@ export function BottomNav() {
           const isChat = label === "Chat";
 
           let iconEl: React.ReactNode;
-          if (label === "Portfolio") {
+          if (label === "Overview") {
             iconEl = <PortfolioIcon active={active} />;
           } else if (label === "Chat") {
             iconEl = (
