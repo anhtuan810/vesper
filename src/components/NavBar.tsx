@@ -74,7 +74,7 @@ export function NavBar({
       {t.charAt(0).toUpperCase() + t.slice(1)}
       {t === "diary" && mutationCount > 0 && (
         <span
-          className="font-mono"
+          className="font-numeric"
           style={{
             fontSize: "var(--fs-micro)",
             padding: "1px 6px",
@@ -101,7 +101,7 @@ export function NavBar({
       )}
       {!empty && lastUpdated && (
         <span
-          className="font-mono text-faint hidden sm:inline"
+          className="font-numeric text-faint hidden sm:inline"
           style={{ fontSize: "var(--fs-micro)", letterSpacing: "0.04em" }}
         >
           {formatRelativeTime(lastUpdated)}

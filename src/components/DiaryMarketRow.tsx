@@ -22,13 +22,13 @@ export function DiaryMarketRow({ move }: DiaryMarketRowProps) {
           display: "flex", alignItems: "center", justifyContent: "center",
           borderRadius: "50%", border: "1px solid var(--border)",
           fontSize: "var(--fs-meta)", color: "var(--text-faint)",
-          fontFamily: "var(--font-sans)",
+          fontFamily: "var(--font-ui)",
         }}
       >
         ~
       </div>
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-body)", fontFamily: "var(--sans)", fontWeight: 500, color: "var(--text-dim)" }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, color: "var(--text-dim)" }}>
           {move.index_label}{" "}
           <span className="tnum" style={{ color: positive ? "var(--positive-text)" : "var(--negative-text)" }}>
             {fmtPct.format(move.pct_change)}%

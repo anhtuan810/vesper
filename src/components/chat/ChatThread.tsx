@@ -216,7 +216,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       <>
         {remaining !== null && remaining <= 10 && (
           <div
-            className="font-mono text-accent text-right"
+            className="font-numeric text-accent text-right"
             style={{ fontSize: "var(--fs-micro)", paddingBottom: 4 }}
           >
             {remaining === 0 ? "Limit reached" : `${remaining} left today`}
@@ -224,7 +224,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         )}
         {input.length >= 400 && (
           <div
-            className="font-mono"
+            className="font-numeric"
             style={{
               fontSize: "var(--fs-micro)",
               paddingBottom: 4,
@@ -326,7 +326,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                   border: msg.from === "user" ? "0.5px solid var(--border)" : "none",
                   boxShadow: msg.from === "user" ? "var(--shadow-soft)" : "none",
                   color: "var(--text)",
-                  fontFamily: "var(--sans)",
+                  fontFamily: "var(--font-ui)",
                   fontSize: msgFontSize,
                   lineHeight: msg.from === "user" ? userLineHeight : "var(--lh-body)",
                   overflowWrap: "break-word",
@@ -404,7 +404,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 background: "transparent",
                 border: "none",
                 color: "var(--text)",
-                fontFamily: "var(--sans)",
+                fontFamily: "var(--font-ui)",
                 fontSize: seedFontSize,
                 lineHeight: "var(--lh-body)",
                 overflowWrap: "break-word",
@@ -433,7 +433,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                   symbol={seedMessage.cone.symbol}
                 />
                 <div
-                  className="font-serif"
+                  className="font-display"
                   style={{ fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginTop: 10 }}
                 >
                   {seedMessage.cone.line}
@@ -589,7 +589,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                   background: "transparent",
                   border: "none",
                   resize: "none",
-                  fontFamily: "var(--sans)",
+                  fontFamily: "var(--font-ui)",
                   fontSize: "var(--fs-body)",
                   lineHeight: "var(--lh-body)",
                   color: "var(--text)",
@@ -751,7 +751,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               style={{
                 background: "transparent",
                 border: "none",
-                fontFamily: "var(--sans)",
+                fontFamily: "var(--font-ui)",
                 fontSize: "var(--fs-body)",
                 color: "var(--text)",
               }}

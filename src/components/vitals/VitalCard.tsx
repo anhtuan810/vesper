@@ -75,7 +75,7 @@ export function VitalCard({
             <div
               className="tnum"
               style={{
-                fontFamily: "var(--serif)",
+                fontFamily: "var(--font-display)",
                 fontSize: "var(--fs-metric)",
                 fontWeight: 600,
                 letterSpacing: "var(--tracking-hero)",

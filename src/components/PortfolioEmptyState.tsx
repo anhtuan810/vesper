@@ -16,7 +16,7 @@ const pillStyle: CSSProperties = {
   borderRadius: "var(--radius-pill)",
   padding: "5px 10px",
   color: "var(--accent)",
-  fontFamily: "var(--sans)",
+  fontFamily: "var(--font-ui)",
   fontSize: "var(--fs-caption)",
   cursor: "pointer",
   minHeight: 44,
@@ -55,13 +55,13 @@ function ExampleRow({
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: "var(--sans)",
+          fontFamily: "var(--font-ui)",
           fontSize: "var(--fs-caption)", color: "var(--text-dim)",
         }}>
           {label}
         </div>
         <div style={{
-          fontFamily: "var(--serif)",
+          fontFamily: "var(--font-display)",
           fontStyle: "italic", fontSize: "var(--fs-meta)",
           color: "#6F5226", lineHeight: "var(--lh-snug)",
           marginTop: 1,
@@ -198,14 +198,14 @@ export function PortfolioEmptyState() {
         borderRadius: "var(--radius-pill)", padding: "4px 9px",
       }}>
         <LockIcon size={14} />
-        <span style={{ fontFamily: "var(--sans)", fontSize: "var(--fs-caption)", fontWeight: 500 }}>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-caption)", fontWeight: 500 }}>
           Private · stays on your device
         </span>
       </div>
 
       {/* Headline */}
       <h1 style={{
-        fontFamily: "var(--serif)",
+        fontFamily: "var(--font-display)",
         fontStyle: "italic", fontWeight: 400,
         fontSize: "var(--fs-title)", lineHeight: "var(--lh-snug)", color: "var(--hero)",
         letterSpacing: "var(--tracking-title)",
@@ -216,7 +216,7 @@ export function PortfolioEmptyState() {
 
       {/* Sub-headline */}
       <p style={{
-        fontFamily: "var(--sans)",
+        fontFamily: "var(--font-ui)",
         fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)",
         margin: "6px 0 0",
       }}>
@@ -225,7 +225,7 @@ export function PortfolioEmptyState() {
 
       {/* Informational-only disclaimer — muted line beneath the opener */}
       <p style={{
-        fontFamily: "var(--sans)",
+        fontFamily: "var(--font-ui)",
         fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)",
         margin: "8px 0 0",
       }}>
@@ -250,7 +250,7 @@ export function PortfolioEmptyState() {
           <div
             onClick={() => { setFocused(true); requestAnimationFrame(() => textareaRef.current?.focus()); }}
             style={{
-              fontFamily: "var(--sans)",
+              fontFamily: "var(--font-ui)",
               fontSize: "var(--fs-subhead)", color: "var(--text-faint)",
               padding: "6px 6px 10px", lineHeight: "var(--lh-body)",
               cursor: "text", userSelect: "none",
@@ -279,7 +279,7 @@ export function PortfolioEmptyState() {
               background: "transparent",
               border: "none", outline: "none",
               resize: "none",
-              fontFamily: "var(--sans)",
+              fontFamily: "var(--font-ui)",
               fontSize: "var(--fs-subhead)",
               color: "#6F5226", lineHeight: "var(--lh-body)",
               padding: "6px 6px 4px",
@@ -342,7 +342,7 @@ export function PortfolioEmptyState() {
 
       <div style={{ marginTop: 16 }}>
         <p style={{
-          fontFamily: "var(--sans)",
+          fontFamily: "var(--font-ui)",
           fontSize: "var(--fs-caption)", color: "var(--text-faint)",
           margin: "0 0 8px",
         }}>

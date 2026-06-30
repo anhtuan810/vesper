@@ -110,14 +110,14 @@ export function AiConsentGate() {
           border: "0.5px solid var(--border)",
           borderRadius: "var(--radius-md)",
           padding: "24px 22px 22px",
-          fontFamily: "var(--font-sans)",
+          fontFamily: "var(--font-ui)",
           boxShadow: "0 12px 40px rgba(0,0,0,0.28)",
         }}
       >
         <div
           id="ai-consent-title"
           style={{
-            fontFamily: "var(--font-serif)",
+            fontFamily: "var(--font-display)",
             fontSize: 22,
             fontWeight: 500,
             color: "var(--hero)",
@@ -179,7 +179,7 @@ export function AiConsentGate() {
             fontSize: 15,
             fontWeight: 600,
             cursor: submitting ? "default" : "pointer",
-            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--font-ui)",
           }}
         >
           {submitting ? "Saving…" : "Continue"}

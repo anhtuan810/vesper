@@ -40,7 +40,7 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
         alignItems: "center",
         gap: 5,
         textDecoration: "none",
-        fontFamily: "var(--font-sans)",
+        fontFamily: "var(--font-ui)",
       }}
     >
       <svg width="11" height="11" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round">
@@ -100,7 +100,7 @@ export function PropertyMap({ asset }: Props) {
   if (!asset.latitude || !asset.longitude) {
     return (
       <div style={{ ...containerStyle, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontSize: 12, color: "var(--text-dim)", letterSpacing: "0.04em", textAlign: "center", padding: "0 24px", fontFamily: "var(--font-sans)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-dim)", letterSpacing: "0.04em", textAlign: "center", padding: "0 24px", fontFamily: "var(--font-ui)" }}>
           {asset.address?.trim() ? "Couldn't locate this address on the map" : "No address on file"}
         </div>
         <button

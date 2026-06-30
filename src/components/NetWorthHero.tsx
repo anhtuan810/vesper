@@ -187,7 +187,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
 
       {/* Hero number — serif, monochrome */}
       <div
-        className="font-serif leading-none"
+        className="font-display leading-none"
         style={{
           fontSize: "var(--fs-hero)",
           fontWeight: 600,
@@ -208,7 +208,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
             </svg>
             {sign}{formattedAbs}{showPct && formattedPct != null ? ` (${formattedPct}%)` : ""}
           </span>
-          <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-caption)", fontFamily: "var(--mono)" }}>{label}</span>
+          <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-caption)", fontFamily: "var(--font-numeric)" }}>{label}</span>
         </div>
       )}
     </div>

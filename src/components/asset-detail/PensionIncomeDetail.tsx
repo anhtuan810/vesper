@@ -116,7 +116,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
           </div>
           <div>
             <div style={{
-              fontFamily: "var(--font-serif)", fontSize: 22, fontWeight: 500,
+              fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500,
               color: "var(--hero)", letterSpacing: "-0.01em", lineHeight: 1.05,
               fontVariationSettings: "'opsz' 24", marginBottom: 6,
             }}>
@@ -141,7 +141,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
             <span style={{
-              fontFamily: "var(--font-serif)", fontSize: 48, fontWeight: 600,
+              fontFamily: "var(--font-display)", fontSize: 48, fontWeight: 600,
               letterSpacing: "-0.03em", color: "var(--hero)", lineHeight: 1,
               fontVariationSettings: "'opsz' 60",
             }}>
@@ -149,11 +149,11 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             </span>
             <span style={{ fontSize: 16, fontWeight: 500, color: "var(--text-faint)" }}>/ year</span>
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
             ≈ {formatMoney(monthly, cur, displayCurrency)} / month{accessAge != null ? `, from age ${accessAge}` : ""}
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--mono)" }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
               Native currency: {asset.currency} · {formatMoney(annual, asset.currency, asset.currency as DisplayCurrency)} / year
             </div>
           )}
@@ -181,11 +181,11 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
               {currentAge != null && (
-                <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
+                <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
                   Now · age {currentAge}
                 </div>
               )}
-              <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, textAlign: currentAge != null ? "right" : "left", fontFamily: "var(--mono)" }}>
+              <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500, textAlign: currentAge != null ? "right" : "left", fontFamily: "var(--font-numeric)" }}>
                 Income begins · age {accessAge}
               </div>
             </div>
@@ -203,7 +203,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
             }}>
               <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
               <span style={{
-                fontFamily: "var(--mono)", fontSize: 16, fontWeight: 500,
+                fontFamily: "var(--font-numeric)", fontSize: 16, fontWeight: 500,
                 color: row.muted ? "var(--text-faint)" : "var(--hero)",
                 fontStyle: row.muted ? "italic" : "normal",
                 letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1, textAlign: "right",

@@ -58,7 +58,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
       </div>
       <div
         style={{
-          fontFamily: "var(--serif)",
+          fontFamily: "var(--font-display)",
           fontSize: "var(--fs-body)",
           fontStyle: "italic",
           lineHeight: "var(--lh-body)",

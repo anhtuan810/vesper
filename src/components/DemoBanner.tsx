@@ -80,7 +80,7 @@ export function DemoBanner() {
           background: "var(--accent-soft)",
           border: "0.5px solid var(--accent)",
           boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-          fontFamily: "var(--font-sans)",
+          fontFamily: "var(--font-ui)",
           whiteSpace: "nowrap",
         }}
       >
@@ -110,7 +110,7 @@ export function DemoBanner() {
           className="demo-banner-link"
           onClick={signOut}
           style={{
-            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--font-ui)",
             fontSize: "var(--fs-body)",
             fontWeight: 500,
             color: "var(--accent)",

@@ -102,7 +102,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
             }}
           >
             <span
-              className="font-serif text-accent"
+              className="font-display text-accent"
               style={{ fontSize: 18, fontWeight: 400, fontVariationSettings: "'opsz' 144", lineHeight: 1 }}
             >
               V
@@ -123,7 +123,7 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
           {(summary ?? "").split("\n").filter(l => l.trim()).map((line, i, arr) => (
             <li
               key={i}
-              style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginBottom: i < arr.length - 1 ? 6 : 0 }}
+              style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", marginBottom: i < arr.length - 1 ? 6 : 0 }}
             >
               {line.replace(/^•\s*/, "• ")}
             </li>

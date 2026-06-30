@@ -193,7 +193,7 @@ export default function Dashboard() {
           <div className="text-sm text-dim mb-2">Failed to load your portfolio.</div>
           <button
             onClick={() => window.location.reload()}
-            className="font-mono text-accent hover:underline"
+            className="font-numeric text-accent hover:underline"
             style={{ fontSize: 13 }}
           >
             Reload
@@ -259,7 +259,7 @@ export default function Dashboard() {
             <button
               onClick={refreshPrices}
               disabled={refreshing}
-              className="font-mono uppercase shrink-0 ml-3"
+              className="font-numeric uppercase shrink-0 ml-3"
               style={{
                 fontSize: 11,
                 color: "var(--negative)",

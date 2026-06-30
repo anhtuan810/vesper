@@ -69,12 +69,12 @@ export function BondBlock({ asset }: Props) {
             <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
               <span style={row.isin ? {
-                fontFamily: "var(--font-sans)",
+                fontFamily: "var(--font-ui)",
                 fontSize: 13,
                 color: "var(--text-dim)",
                 letterSpacing: "0.02em",
               } : {
-                fontFamily: "var(--mono)",
+                fontFamily: "var(--font-numeric)",
                 fontSize: 16,
                 fontWeight: 500,
                 color: "var(--hero)",
@@ -85,7 +85,7 @@ export function BondBlock({ asset }: Props) {
                 {row.value}
               </span>
               {row.meta && (
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
                   {row.meta}
                 </span>
               )}

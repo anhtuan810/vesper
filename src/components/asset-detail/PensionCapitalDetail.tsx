@@ -135,7 +135,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
           </div>
           <div>
             <div style={{
-              fontFamily: "var(--font-serif)", fontSize: 22, fontWeight: 500,
+              fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500,
               color: "var(--hero)", letterSpacing: "-0.01em", lineHeight: 1.05,
               fontVariationSettings: "'opsz' 24", marginBottom: 6,
             }}>
@@ -159,7 +159,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
             Value
           </div>
           <div style={{
-            fontFamily: "var(--font-serif)", fontSize: 48, fontWeight: 600,
+            fontFamily: "var(--font-display)", fontSize: 48, fontWeight: 600,
             letterSpacing: "-0.03em", color: "var(--hero)", lineHeight: 1,
             fontVariationSettings: "'opsz' 60", marginBottom: 10,
           }}>
@@ -170,7 +170,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "4px 10px", borderRadius: 999, fontSize: 13, fontWeight: 500,
-                fontFamily: "var(--mono)",
+                fontFamily: "var(--font-numeric)",
                 fontFeatureSettings: '"tnum" 1',
                 background: thisYearDelta >= 0 ? "var(--positive-soft)" : "var(--negative-soft)",
                 color: thisYearDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)",
@@ -192,7 +192,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
             </span>
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--mono)" }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
               Native currency: {asset.currency} · {formatMoney(asset.value, asset.currency, asset.currency as DisplayCurrency)}
             </div>
           )}
@@ -209,7 +209,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
                 gap: 14,
               }}>
                 <span style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1, textAlign: "right" }}>
+                <span style={{ fontFamily: "var(--font-numeric)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1, textAlign: "right" }}>
                   {row.value}
                 </span>
               </div>
@@ -224,7 +224,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
               Projected at {accessAge} (in {yta} {yta === 1 ? "year" : "years"})
             </div>
             <div style={{
-              fontFamily: "var(--font-serif)", fontSize: 34, fontWeight: 600,
+              fontFamily: "var(--font-display)", fontSize: 34, fontWeight: 600,
               letterSpacing: "-0.02em", color: "var(--hero)", lineHeight: 1,
               fontVariationSettings: "'opsz' 40", marginBottom: 16,
             }}>
@@ -250,7 +250,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
             </div>
 
             <div style={{
-              fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 13,
+              fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 13,
               color: "var(--text-dim)", lineHeight: 1.4, fontVariationSettings: "'opsz' 14",
             }}>
               {PENSION_PROJECTION_DISCLAIMER}

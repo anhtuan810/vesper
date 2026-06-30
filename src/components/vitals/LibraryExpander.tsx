@@ -215,7 +215,7 @@ export function LibraryExpander({
                     gap: 8,
                   }}
                 >
-                  <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--sans)", fontWeight: 500, lineHeight: 1.2, color: "var(--text)" }}>
+                  <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, lineHeight: 1.2, color: "var(--text)" }}>
                     {vital.label}
                   </span>
                   <span

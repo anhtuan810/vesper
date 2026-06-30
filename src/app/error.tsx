@@ -17,7 +17,7 @@ export default function ErrorPage({
   return (
     <div
       className="min-h-screen bg-bg flex items-center justify-center"
-      style={{ fontFamily: "var(--sans)" }}
+      style={{ fontFamily: "var(--font-ui)" }}
     >
       <div className="text-center">
         <div className="text-sm font-semibold text-fg mb-2">Something went wrong</div>

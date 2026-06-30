@@ -262,7 +262,7 @@ export function Paywall() {
         alignItems: "center",
         padding:
           "calc(env(safe-area-inset-top, 0px) + 40px) 24px calc(env(safe-area-inset-bottom, 0px) + 32px)",
-        fontFamily: "var(--font-sans)",
+        fontFamily: "var(--font-ui)",
       }}
     >
       <div style={{ width: "100%", maxWidth: 420, margin: "auto 0" }}>
@@ -270,7 +270,7 @@ export function Paywall() {
           <VolnarLogo size={48} />
           <h1
             style={{
-              fontFamily: "var(--font-serif)",
+              fontFamily: "var(--font-display)",
               fontSize: "var(--fs-title)",
               fontWeight: 500,
               letterSpacing: "var(--tracking-title)",
@@ -364,7 +364,7 @@ export function Paywall() {
             fontSize: "var(--fs-body)",
             fontWeight: 500,
             cursor: busy ? "default" : "pointer",
-            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--font-ui)",
           }}
         >
           Explore the demo account first
@@ -467,7 +467,7 @@ export function Paywall() {
               textAlign: "center",
               marginTop: 8,
               opacity: 0.65,
-              fontFamily: "var(--font-sans)",
+              fontFamily: "var(--font-ui)",
             }}
           >
             build {process.env.NEXT_PUBLIC_BUILD_SHA}
@@ -485,7 +485,7 @@ export function Paywall() {
               cursor: "pointer",
               textDecoration: "underline",
               textUnderlineOffset: 3,
-              fontFamily: "var(--font-sans)",
+              fontFamily: "var(--font-ui)",
             }}
           >
             Sign out
@@ -546,7 +546,7 @@ function PlanOption({
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span
             style={{
-              fontFamily: "var(--font-serif)",
+              fontFamily: "var(--font-display)",
               fontSize: "var(--fs-subhead)",
               fontWeight: 500,
               letterSpacing: "var(--tracking-subhead)",

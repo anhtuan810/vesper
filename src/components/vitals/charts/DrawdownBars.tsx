@@ -50,7 +50,7 @@ export function DrawdownBars({ data }: Props) {
     textAlign: 'right',
     fontSize: combined ? 'var(--fs-meta)' : 'var(--fs-caption)',
     color: 'var(--negative-text)',
-    fontFamily: 'var(--mono)',
+    fontFamily: 'var(--font-numeric)',
     fontFeatureSettings: "'tnum'",
     fontWeight: combined ? 600 : 500,
   });

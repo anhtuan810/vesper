@@ -45,7 +45,7 @@ function CryptoVolatilityBlockInner({ asset, symbol }: { asset: Asset; symbol: s
       style={{ background: "var(--surface)", padding: "14px 16px" }}
     >
       <div
-        className="font-mono text-faint uppercase mb-3"
+        className="font-numeric text-faint uppercase mb-3"
         style={{ fontSize: 11, letterSpacing: "0.18em" }}
       >
         24h range
@@ -68,13 +68,13 @@ function CryptoVolatilityBlockInner({ asset, symbol }: { asset: Asset; symbol: s
           ].map(({ label, value }) => (
             <div key={label}>
               <div
-                className="font-mono text-faint uppercase mb-1"
+                className="font-numeric text-faint uppercase mb-1"
                 style={{ fontSize: 11, letterSpacing: "0.12em" }}
               >
                 {label}
               </div>
               <div
-                className="font-mono text-fg"
+                className="font-numeric text-fg"
                 style={{ fontSize: 13, fontWeight: 500 }}
               >
                 {value}

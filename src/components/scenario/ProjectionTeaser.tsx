@@ -169,7 +169,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
           <TrendingUpIcon size={13} color="var(--text-faint)" />
           <div
-            className="font-serif"
+            className="font-display"
             style={{
               flex: 1,
               minWidth: 0,

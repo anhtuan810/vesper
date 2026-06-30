@@ -115,7 +115,7 @@ export function StaticDetail({ asset }: Props) {
             <AssetIcon asset={asset} />
           </div>
           <div style={{
-            fontFamily: "var(--font-serif)",
+            fontFamily: "var(--font-display)",
             fontSize: 22,
             fontWeight: 500,
             color: "var(--hero)",
@@ -133,7 +133,7 @@ export function StaticDetail({ asset }: Props) {
             {asset.type === "bonds" ? "Market value" : "Balance"}
           </div>
           <div style={{
-            fontFamily: "var(--font-serif)",
+            fontFamily: "var(--font-display)",
             fontSize: 48,
             fontWeight: 600,
             letterSpacing: "-0.03em",
@@ -153,7 +153,7 @@ export function StaticDetail({ asset }: Props) {
               borderRadius: 999,
               fontSize: 13,
               fontWeight: 500,
-              fontFamily: "var(--mono)",
+              fontFamily: "var(--font-numeric)",
               fontFeatureSettings: '"tnum" 1',
               background: thisYearDelta >= 0 ? "var(--positive-soft)" : "var(--negative-soft)",
               color: thisYearDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)",
@@ -172,7 +172,7 @@ export function StaticDetail({ asset }: Props) {
               asset viewed in EUR makes clear the hero is a converted figure and
               shows the original native amount. */}
           {asset.currency && asset.currency !== displayCurrency && (
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--mono)" }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
               Native currency: {asset.currency} · {formatMoney(asset.value, asset.currency, asset.currency as DisplayCurrency)}
             </div>
           )}
@@ -210,7 +210,7 @@ export function StaticDetail({ asset }: Props) {
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
-                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
                     {dateStr ? formatDate(dateStr) : "—"}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -218,7 +218,7 @@ export function StaticDetail({ asset }: Props) {
                       <div style={{
                         fontSize: 15,
                         fontWeight: 500,
-                        fontFamily: "var(--mono)",
+                        fontFamily: "var(--font-numeric)",
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
                         marginBottom: 2,
                       }}>
@@ -227,7 +227,7 @@ export function StaticDetail({ asset }: Props) {
                     )}
                     {m.personal_context && (
                       <div style={{
-                        fontFamily: "var(--font-serif)",
+                        fontFamily: "var(--font-display)",
                         fontStyle: "italic",
                         fontSize: 13,
                         color: "var(--text-dim)",

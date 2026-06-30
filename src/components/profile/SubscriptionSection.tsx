@@ -187,7 +187,7 @@ export function SubscriptionSection() {
               border: "none",
               borderTop: "0.5px solid var(--border)",
               cursor: busy ? "default" : "pointer",
-              fontFamily: "var(--sans)",
+              fontFamily: "var(--font-ui)",
             }}
           >
             {busy ? "Opening…" : "Manage subscription"}
@@ -197,7 +197,7 @@ export function SubscriptionSection() {
         <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>
           <div
             style={{
-              fontFamily: "var(--serif)",
+              fontFamily: "var(--font-display)",
               fontSize: "var(--fs-subhead)",
               fontWeight: 500,
               letterSpacing: "var(--tracking-subhead)",
@@ -217,7 +217,7 @@ export function SubscriptionSection() {
         <div style={{ ...CARD_STYLE, padding: "18px 16px" }}>
           <div
             style={{
-              fontFamily: "var(--serif)",
+              fontFamily: "var(--font-display)",
               fontSize: "var(--fs-subhead)",
               fontWeight: 500,
               letterSpacing: "var(--tracking-subhead)",

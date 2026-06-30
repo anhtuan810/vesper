@@ -41,7 +41,7 @@ const panelHeaderStyle: React.CSSProperties = {
 const panelLabelStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 600,
-  fontFamily: "var(--mono)", letterSpacing: "var(--tracking-label)",
+  fontFamily: "var(--font-numeric)", letterSpacing: "var(--tracking-label)",
   textTransform: "uppercase",
   color: "var(--text-dim)",
 };

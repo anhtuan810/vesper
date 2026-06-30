@@ -82,7 +82,7 @@ export function ProjectionChart({
 
         {/* x labels (HTML overlay so fonts aren't stretched by preserveAspectRatio) */}
         <span style={{ position: "absolute", bottom: 0, left: `${(xT / Math.max(w, 1)) * 100}%`, transform: "translateX(-50%)", fontSize: 10, color: "var(--text-faint)" }}>today</span>
-        <span style={{ position: "absolute", bottom: 0, right: 0, fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--mono)" }}>{horizonYear}</span>
+        <span style={{ position: "absolute", bottom: 0, right: 0, fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-numeric)" }}>{horizonYear}</span>
       </div>
 
       {/* Y-axis labels */}
@@ -99,7 +99,7 @@ export function ProjectionChart({
               color: "var(--text-faint)",
               lineHeight: 1,
               pointerEvents: "none",
-              fontFamily: "var(--mono)",
+              fontFamily: "var(--font-numeric)",
             }}
           >
             {compactMoney(v, symbol)}

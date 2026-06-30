@@ -177,7 +177,7 @@ export function SettingsContent() {
             <BackArrow />
           </button>
           <div style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontSize: "var(--fs-title)",
             fontWeight: 500,
             letterSpacing: "var(--tracking-title)",
@@ -215,7 +215,7 @@ export function SettingsContent() {
             >
               <div style={{ flex: 1 }}>
                 <div style={{
-                  fontFamily: "var(--serif)",
+                  fontFamily: "var(--font-display)",
                   fontSize: "var(--fs-subhead)",
                   fontWeight: 500,
                   letterSpacing: "var(--tracking-subhead)",
@@ -296,7 +296,7 @@ export function SettingsContent() {
             >
               <div style={{ flex: 1 }}>
                 <div style={{
-                  fontFamily: "var(--serif)",
+                  fontFamily: "var(--font-display)",
                   fontSize: "var(--fs-subhead)",
                   fontWeight: 500,
                   letterSpacing: "var(--tracking-subhead)",
@@ -362,7 +362,7 @@ export function SettingsContent() {
         }}>
           {isDemo ? (
             <>
-              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", fontFamily: "var(--sans)" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", fontFamily: "var(--font-ui)" }}>
                 You’re exploring a live demo account. Start your own subscription to track your real portfolio.
               </div>
               <button
@@ -377,7 +377,7 @@ export function SettingsContent() {
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  fontFamily: "var(--sans)",
+                  fontFamily: "var(--font-ui)",
                 }}
               >
                 Start your subscription
@@ -386,7 +386,7 @@ export function SettingsContent() {
           ) : (
             <>
               {user?.email && (
-                <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", fontFamily: "var(--sans)" }}>
+                <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", fontFamily: "var(--font-ui)" }}>
                   {user.email}
                 </div>
               )}
@@ -402,7 +402,7 @@ export function SettingsContent() {
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  fontFamily: "var(--sans)",
+                  fontFamily: "var(--font-ui)",
                 }}
               >
                 Sign out
@@ -471,7 +471,7 @@ export function SettingsContent() {
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                fontFamily: "var(--sans)",
+                fontFamily: "var(--font-ui)",
                 textDecoration: "underline",
                 textUnderlineOffset: 3,
               }}
@@ -505,11 +505,11 @@ export function SettingsContent() {
               border: "0.5px solid var(--border)",
               borderRadius: "var(--radius-lg)",
               padding: "22px 20px 20px",
-              fontFamily: "var(--sans)",
+              fontFamily: "var(--font-ui)",
             }}
           >
             <div style={{
-              fontFamily: "var(--serif)",
+              fontFamily: "var(--font-display)",
               fontSize: "var(--fs-subhead)",
               fontWeight: 500,
               letterSpacing: "var(--tracking-subhead)",
@@ -558,7 +558,7 @@ export function SettingsContent() {
                 background: "var(--bg)",
                 color: "var(--text)",
                 fontSize: "var(--fs-body)",
-                fontFamily: "var(--sans)",
+                fontFamily: "var(--font-ui)",
                 marginBottom: 14,
               }}
             />
@@ -581,7 +581,7 @@ export function SettingsContent() {
                   fontSize: "var(--fs-body)",
                   fontWeight: 500,
                   cursor: deleting ? "default" : "pointer",
-                  fontFamily: "var(--sans)",
+                  fontFamily: "var(--font-ui)",
                 }}
               >
                 Cancel
@@ -599,7 +599,7 @@ export function SettingsContent() {
                   fontSize: "var(--fs-body)",
                   fontWeight: 500,
                   cursor: deleteConfirmText === "DELETE" && !deleting ? "pointer" : "default",
-                  fontFamily: "var(--sans)",
+                  fontFamily: "var(--font-ui)",
                 }}
               >
                 {deleting ? "Deleting…" : "Delete account"}
@@ -625,7 +625,7 @@ export function SettingsContent() {
             whiteSpace: "nowrap",
             boxShadow: "var(--shadow-soft)",
             zIndex: 50,
-            fontFamily: "var(--sans)",
+            fontFamily: "var(--font-ui)",
           }}
         >
           Display only — your portfolio is unchanged.

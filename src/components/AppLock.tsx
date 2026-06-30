@@ -113,7 +113,7 @@ export function AppLock() {
       <VolnarLogo size={44} />
       <button
         onClick={prompt}
-        className="font-mono"
+        className="font-numeric"
         style={{
           padding: "12px 32px", borderRadius: 12, border: "none",
           background: "var(--accent)", color: "var(--bg)",

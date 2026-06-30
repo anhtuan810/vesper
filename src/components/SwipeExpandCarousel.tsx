@@ -100,7 +100,7 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
                         as a tight unit instead of stranding the chevron at the
                         far edge. The swipe dots (row-level, right) stay put. */}
                     <span
-                      className="font-serif"
+                      className="font-display"
                       style={{ fontSize: 13, fontStyle: "italic", lineHeight: 1.45, color: "var(--text)" }}
                     >
                       {item.title}

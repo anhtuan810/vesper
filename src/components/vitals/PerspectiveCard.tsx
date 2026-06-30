@@ -88,7 +88,7 @@ export function PerspectiveCard({
           <div
             className="tnum"
             style={{
-              fontFamily: "var(--serif)",
+              fontFamily: "var(--font-display)",
               fontSize: "var(--fs-hero)",
               fontWeight: 600,
               letterSpacing: "var(--tracking-hero)",
@@ -103,7 +103,7 @@ export function PerspectiveCard({
         {/* Italic synthesis sentence */}
         <div
           style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontSize: "var(--fs-body)",
             fontStyle: "italic",
             lineHeight: "var(--lh-body)",
@@ -383,7 +383,7 @@ export function PerspectiveCard({
         {/* Closing italic line */}
         <div
           style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontSize: "var(--fs-body)",
             fontStyle: "italic",
             lineHeight: "var(--lh-body)",

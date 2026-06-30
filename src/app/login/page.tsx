@@ -193,7 +193,7 @@ function LoginInner() {
             <VolnarLogo size={56} />
             <span
               style={{
-                fontFamily: "var(--serif)",
+                fontFamily: "var(--font-display)",
                 fontWeight: 500, fontSize: 30,
                 letterSpacing: "-0.02em", lineHeight: 1,
                 fontVariationSettings: "'opsz' 32",
@@ -204,7 +204,7 @@ function LoginInner() {
             </span>
           </div>
           <h1
-            className="font-serif text-hero mx-auto"
+            className="font-display text-hero mx-auto"
             style={{ fontSize: "clamp(26px,7vw,32px)", fontWeight: 500, lineHeight: 1.12, letterSpacing: "-0.02em", fontVariationSettings: "'opsz' 36", maxWidth: 340 }}
           >
             Quiet confidence{" "}
@@ -240,7 +240,7 @@ function LoginInner() {
 
           {error && (
             <div
-              className="font-mono"
+              className="font-numeric"
               style={{
                 fontSize: 12, color: "var(--negative)",
                 padding: "10px 14px", borderRadius: 10,
@@ -315,7 +315,7 @@ function LoginInner() {
         </a>
 
         <p
-          className="text-center font-mono text-faint mt-10"
+          className="text-center font-numeric text-faint mt-10"
           style={{ fontSize: 11, letterSpacing: "0.04em", lineHeight: 1.6 }}
         >
           By continuing you agree to our{" "}

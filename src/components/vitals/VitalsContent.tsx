@@ -902,7 +902,7 @@ export function VitalsContent({
       >
         <div
           style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontSize: "var(--fs-title)",
             fontWeight: 500,
             letterSpacing: "var(--tracking-title)",
@@ -954,7 +954,7 @@ export function VitalsContent({
         {pageTitle}
         <div
           style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontStyle: "italic",
             fontSize: "var(--fs-body)",
             color: "var(--text-dim)",
@@ -981,7 +981,7 @@ export function VitalsContent({
         {pageTitle}
         <div
           style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontStyle: "italic",
             fontSize: "var(--fs-body)",
             color: "var(--text-dim)",
@@ -1152,7 +1152,7 @@ export function VitalsContent({
                   </div>
                 </div>
                 <div
-                  style={{ fontFamily: "var(--serif)", fontSize: "var(--fs-body)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
+                  style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
                   dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
                 />
               </div>

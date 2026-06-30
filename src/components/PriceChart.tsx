@@ -295,7 +295,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
             </div>
           ) : loading ? (
             <div style={{ height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.1em", fontFamily: "var(--font-sans)" }}>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.1em", fontFamily: "var(--font-ui)" }}>
                 loading
               </div>
             </div>
@@ -354,7 +354,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
                   top: `${(1 - (value - niceMin) / (niceMax - niceMin)) * 100}%`,
                   transform: "translateY(-50%)",
                   right: 0,
-                  fontFamily: "var(--mono)",
+                  fontFamily: "var(--font-numeric)",
                   fontSize: 11,
                   color: "var(--text-faint)",
                   textAlign: "right",
@@ -390,7 +390,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
               border: "none",
               cursor: "pointer",
               transition: "all 0.15s",
-              fontFamily: "var(--font-sans)",
+              fontFamily: "var(--font-ui)",
             }}
           >
             {r}

@@ -46,7 +46,7 @@ function Row({ label, sub, children }: { label: string; sub?: string; children: 
       <div style={{ flex: 1 }}>
         <div
           style={{
-            fontFamily: "var(--serif)", fontSize: "var(--fs-subhead)", fontWeight: 500,
+            fontFamily: "var(--font-display)", fontSize: "var(--fs-subhead)", fontWeight: 500,
             letterSpacing: "var(--tracking-subhead)",
             color: "var(--text)", fontVariationSettings: "'opsz' 18",
           }}

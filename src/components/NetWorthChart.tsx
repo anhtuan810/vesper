@@ -561,7 +561,7 @@ export function NetWorthChart(props: Props) {
                   {fmtYLabel(currentValue, displayCurrency)}
                 </div>
               )}
-              <div style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>
+              <div style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>
                 Tracking since {formatDate(trackingSinceDate ?? new Date().toISOString().slice(0, 10))}
               </div>
             </div>
@@ -732,7 +732,7 @@ export function NetWorthChart(props: Props) {
                 <div key={category} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                     <span style={{ width: 8, height: 8, borderRadius: 2, background: CATEGORY_COLOR[category], flexShrink: 0, display: "inline-block" }} />
-                    <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-caption)", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
                       {CATEGORY_LABEL_SHORT[category]}
                     </span>
                   </div>
@@ -770,7 +770,7 @@ export function NetWorthChart(props: Props) {
                 </div>
               )}
               {hoveredDot.title && (
-                <div style={{ fontFamily: "var(--sans)", fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--text)", lineHeight: 1.2 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--text)", lineHeight: 1.2 }}>
                   {hoveredDot.title}
                 </div>
               )}
@@ -805,7 +805,7 @@ export function NetWorthChart(props: Props) {
           marginTop: 8,
         }}
       >
-        <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
           {showLabels ? formatXLabel(displaySeries[0].date, range) : ""}
         </span>
 
@@ -825,7 +825,7 @@ export function NetWorthChart(props: Props) {
                 disabled={disabled}
                 onClick={() => { if (!disabled) onRangeChange(r); }}
                 style={{
-                  fontFamily: "var(--mono)",
+                  fontFamily: "var(--font-numeric)",
                   fontSize: "var(--fs-micro)",
                   fontWeight: active ? 600 : 500,
                   lineHeight: 1,
@@ -847,7 +847,7 @@ export function NetWorthChart(props: Props) {
           })}
         </div>
 
-        <span style={{ fontFamily: "var(--mono)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
           {showLabels ? "Now" : ""}
         </span>
       </div>

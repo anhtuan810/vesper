@@ -25,7 +25,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
           horizonYear={result.cone.horizonYear}
           symbol={result.cone.symbol}
         />
-        <div className="font-serif" style={estimateNote}>
+        <div className="font-display" style={estimateNote}>
           Estimate, not advice.
         </div>
       </div>
@@ -87,7 +87,7 @@ export function ScenarioResultCard({ result }: { result: ScenarioResult }) {
           {result.amountLabel} · {fmtBuyDate(result.buyDate)}
         </div>
         <GrowthChart series={result.series} symbol={result.symbol} />
-        <div className="font-serif" style={estimateNote}>
+        <div className="font-display" style={estimateNote}>
           Estimate, not advice.
         </div>
       </div>

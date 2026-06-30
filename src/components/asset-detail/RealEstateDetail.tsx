@@ -96,7 +96,7 @@ export function RealEstateDetail({ asset }: Props) {
         {/* Identity */}
         <div style={{ marginBottom: 14 }}>
           <div style={{
-            fontFamily: "var(--font-serif)",
+            fontFamily: "var(--font-display)",
             fontSize: 24,
             fontWeight: 500,
             color: "var(--hero)",
@@ -118,7 +118,7 @@ export function RealEstateDetail({ asset }: Props) {
             Equity
           </div>
           <div style={{
-            fontFamily: "var(--font-serif)",
+            fontFamily: "var(--font-display)",
             fontSize: 44,
             fontWeight: 600,
             letterSpacing: "-0.03em",
@@ -134,10 +134,10 @@ export function RealEstateDetail({ asset }: Props) {
           {/* Compact metadata line: value · size · owned since · years */}
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
             {currencyLoaded ? [
-              <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500, fontFamily: "var(--mono)" }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
-              asset.size_sqm ? <span key="size" style={{ fontFamily: "var(--mono)" }}>{asset.size_sqm} m²</span> : null,
-              ownedSinceLabel ? <span key="since" style={{ fontFamily: "var(--mono)" }}>owned since {ownedSinceLabel}</span> : null,
-              yearsOwned ? <span key="yrs" style={{ fontFamily: "var(--mono)" }}>{yearsOwned} yrs</span> : null,
+              <span key="val">of <span style={{ color: "var(--text)", fontWeight: 500, fontFamily: "var(--font-numeric)" }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
+              asset.size_sqm ? <span key="size" style={{ fontFamily: "var(--font-numeric)" }}>{asset.size_sqm} m²</span> : null,
+              ownedSinceLabel ? <span key="since" style={{ fontFamily: "var(--font-numeric)" }}>owned since {ownedSinceLabel}</span> : null,
+              yearsOwned ? <span key="yrs" style={{ fontFamily: "var(--font-numeric)" }}>{yearsOwned} yrs</span> : null,
             ].filter(Boolean).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, <span key={`sep${i}`} style={{ color: "var(--text-faint)" }}> · </span>, el], []) : null}
           </div>
         </div>
@@ -198,7 +198,7 @@ export function RealEstateDetail({ asset }: Props) {
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
-                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--mono)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
                     {dateStr ? formatDate(dateStr) : "—"}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -206,7 +206,7 @@ export function RealEstateDetail({ asset }: Props) {
                       <div style={{
                         fontSize: 15,
                         fontWeight: 500,
-                        fontFamily: "var(--mono)",
+                        fontFamily: "var(--font-numeric)",
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
                         marginBottom: m.personal_context ? 2 : 0,
                       }}>
@@ -215,7 +215,7 @@ export function RealEstateDetail({ asset }: Props) {
                     )}
                     {m.personal_context && (
                       <div style={{
-                        fontFamily: "var(--font-serif)",
+                        fontFamily: "var(--font-display)",
                         fontStyle: "italic",
                         fontSize: 13,
                         color: "var(--text-dim)",

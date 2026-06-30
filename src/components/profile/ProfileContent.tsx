@@ -84,7 +84,7 @@ function ProfilePreview() {
     <div>
       {/* Intro — sets the expectation in the app's calm, serif voice. */}
       <p style={{
-        fontFamily: "var(--serif)",
+        fontFamily: "var(--font-display)",
         fontStyle: "italic",
         fontSize: "var(--fs-body)",
         color: "var(--text-dim)",
@@ -124,7 +124,7 @@ function ProfilePreview() {
             }}
           >
             <div style={{
-              fontFamily: "var(--serif)",
+              fontFamily: "var(--font-display)",
               fontSize: "var(--fs-subhead)",
               fontWeight: 500,
               letterSpacing: "var(--tracking-subhead)",
@@ -214,7 +214,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       {/* Name as page title + fingerprint as supporting line */}
       <div style={{ paddingTop: 32, marginBottom: 26 }}>
         <div style={{
-          fontFamily: "var(--serif)",
+          fontFamily: "var(--font-display)",
           fontSize: "var(--fs-title)",
           fontWeight: 500,
           letterSpacing: "var(--tracking-title)",
@@ -227,7 +227,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
         </div>
         {profile?.fingerprint && (
           <div style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontStyle: "italic",
             fontSize: "var(--fs-body)",
             color: "var(--text-dim)",
@@ -284,7 +284,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontFamily: "var(--serif)",
+                      fontFamily: "var(--font-display)",
                       fontSize: "var(--fs-subhead)",
                       fontWeight: 500,
                       letterSpacing: "var(--tracking-subhead)",
@@ -330,7 +330,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
       >
         <SettingsGearIcon size={18} />
         <span style={{
-          fontFamily: "var(--serif)",
+          fontFamily: "var(--font-display)",
           fontSize: "var(--fs-subhead)",
           fontWeight: 500,
           letterSpacing: "var(--tracking-subhead)",

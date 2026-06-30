@@ -66,7 +66,7 @@ export function ScenarioCueLine({
       type="button"
       onClick={handleClick}
       aria-label={ariaLabel}
-      className="group font-serif rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="group font-display rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       style={{
         display: "block",
         textAlign: "left",

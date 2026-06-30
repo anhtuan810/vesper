@@ -63,7 +63,7 @@ export function PerspectiveCard({
       {/* Synthesis sentence — visual lead */}
       <div
         style={{
-          fontFamily: "var(--serif)",
+          fontFamily: "var(--font-display)",
           fontSize: "var(--fs-body)",
           fontStyle: "italic",
           lineHeight: "var(--lh-body)",
@@ -81,7 +81,7 @@ export function PerspectiveCard({
         <span
           className="tnum"
           style={{
-            fontFamily: "var(--serif)",
+            fontFamily: "var(--font-display)",
             fontSize: "var(--fs-metric)",
             fontWeight: 600,
             letterSpacing: "var(--tracking-hero)",
@@ -214,7 +214,7 @@ export function PerspectiveCard({
               <div
                 style={{
                   fontSize: "var(--fs-body)",
-                  fontFamily: "var(--sans)",
+                  fontFamily: "var(--font-ui)",
                   fontWeight: 500,
                   lineHeight: 1.2,
                   color: "var(--text)",
@@ -362,7 +362,7 @@ export function PerspectiveCard({
       {/* Closing italic line */}
       <div
         style={{
-          fontFamily: "var(--serif)",
+          fontFamily: "var(--font-display)",
           fontSize: "var(--fs-body)",
           fontStyle: "italic",
           lineHeight: "var(--lh-body)",

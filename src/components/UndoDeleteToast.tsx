@@ -91,13 +91,13 @@ export function UndoDeleteToast() {
         maxWidth: "calc(100vw - 32px)",
       }}
     >
-      <span className="font-mono text-dim" style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>
+      <span className="font-numeric text-dim" style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>
         {error ? error : `Deleted ${name}`}
       </span>
       <button
         onClick={handleUndo}
         disabled={restoring}
-        className="font-mono uppercase text-accent hover:opacity-80 transition-opacity"
+        className="font-numeric uppercase text-accent hover:opacity-80 transition-opacity"
         style={{
           fontSize: "var(--fs-caption)",
           padding: "4px 10px",

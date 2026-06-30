@@ -133,7 +133,7 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        style={{ marginTop: 9, background: "none", border: "none", padding: 0, fontFamily: "var(--mono)", fontSize: "var(--fs-micro)", letterSpacing: "0.03em", color: "var(--text-dim)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
+        style={{ marginTop: 9, background: "none", border: "none", padding: 0, fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", letterSpacing: "0.03em", color: "var(--text-dim)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
       >
         {open ? "Hide how this is figured" : "How this is figured"}
       </button>
@@ -205,11 +205,11 @@ export function MobileDecisionJournal({
       <div className="eyebrow" style={{ marginBottom: 7 }}>
         {shortDate(mDate(m))}
       </div>
-      <h3 className="font-serif" style={{ fontSize: "var(--fs-subhead)", fontWeight: 500, letterSpacing: "var(--tracking-subhead)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 10px" }}>
+      <h3 className="font-display" style={{ fontSize: "var(--fs-subhead)", fontWeight: 500, letterSpacing: "var(--tracking-subhead)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 10px" }}>
         {decisionTitle(m)}
       </h3>
       {m.market_context && (
-        <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: "0 0 9px" }}>{m.market_context}</p>
+        <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: "0 0 9px" }}>{m.market_context}</p>
       )}
       <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
         {own ? m.personal_context

@@ -86,13 +86,13 @@ export function DemoExpiryWall() {
         padding:
           "calc(env(safe-area-inset-top, 0px) + 40px) 24px calc(env(safe-area-inset-bottom, 0px) + 32px)",
         textAlign: "center",
-        fontFamily: "var(--font-sans)",
+        fontFamily: "var(--font-ui)",
       }}
     >
       <VolnarLogo size={48} />
       <p
         style={{
-          fontFamily: "var(--font-serif)",
+          fontFamily: "var(--font-display)",
           fontSize: "var(--fs-title)",
           fontWeight: 500,
           color: "var(--hero)",
@@ -118,7 +118,7 @@ export function DemoExpiryWall() {
           cursor: "pointer",
           minHeight: 52,
           minWidth: 220,
-          fontFamily: "var(--font-sans)",
+          fontFamily: "var(--font-ui)",
         }}
       >
         Create a free account

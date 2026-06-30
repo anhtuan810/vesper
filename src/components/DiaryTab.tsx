@@ -201,7 +201,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       {/* Page title */}
       <div style={{ marginBottom: 12 }}>
         <h1
-          className="font-serif"
+          className="font-display"
           style={{
             fontSize: "var(--fs-title)", fontWeight: 500, letterSpacing: "var(--tracking-title)",
             color: "var(--hero)", lineHeight: "var(--lh-tight)",
@@ -245,7 +245,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             borderRadius: "var(--radius-md)",
             padding: "12px 36px 12px 42px",
             fontSize: "var(--fs-body)",
-            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--font-ui)",
             color: "var(--text)",
             outline: "none",
             caretColor: "var(--accent)",
@@ -291,7 +291,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 color: active ? "var(--text)" : "var(--text-faint)",
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                fontFamily: "var(--font-sans)",
+                fontFamily: "var(--font-ui)",
                 cursor: "pointer",
                 transition: "all 0.15s",
               }}
@@ -362,7 +362,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               Worth knowing
             </div>
             <div
-              className="font-serif"
+              className="font-display"
               style={{
                 fontSize: "var(--fs-subhead)", fontWeight: 400, lineHeight: "var(--lh-snug)",
                 color: "var(--text)", fontVariationSettings: "'opsz' 18",
@@ -450,7 +450,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
               }}
             >
               <div
-                className="font-serif"
+                className="font-display"
                 style={{
                   fontSize: "var(--fs-subhead)", fontWeight: 500, color: "var(--text)",
                   letterSpacing: "var(--tracking-subhead)", fontVariationSettings: "'opsz' 24",
@@ -612,7 +612,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
           <button
             onClick={onLoadMore}
             style={{
-              fontSize: "var(--fs-caption)", color: "var(--text-faint)", fontFamily: "var(--font-sans)",
+              fontSize: "var(--fs-caption)", color: "var(--text-faint)", fontFamily: "var(--font-ui)",
               background: "none", border: "none", cursor: "pointer",
             }}
           >

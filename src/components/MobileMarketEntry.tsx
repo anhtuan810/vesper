@@ -72,7 +72,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
         </span>
 
         <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--sans)", fontWeight: 500, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
             {move.index_label}{" "}
             <span className="tnum" style={{ fontWeight: 500, color: indexUp ? "var(--positive-text)" : "var(--negative-text)" }}>
               {pct(move.pct_change)}
@@ -109,7 +109,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
       {open && (
         <div style={{ padding: "0 0 11px 36px" }}>
           <p
-            className="font-serif"
+            className="font-display"
             style={{
               fontStyle: "italic", fontSize: "var(--fs-caption)", color: "var(--text-dim)", lineHeight: "var(--lh-body)",
               margin: 0, fontVariationSettings: "'opsz' 16",

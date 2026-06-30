@@ -25,7 +25,7 @@ export function DiaryRowContent({
       {logo}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 1 }}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-body)", fontFamily: "var(--sans)", fontWeight: 500, color: nameColor, lineHeight: 1.2 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500, color: nameColor, lineHeight: 1.2 }}>
             {name}
           </span>
           <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
@@ -38,7 +38,7 @@ export function DiaryRowContent({
         {subtitle}
         {personalContext && (
           <div
-            className="font-serif"
+            className="font-display"
             style={{
               fontStyle: "italic", fontSize: "var(--fs-caption)",
               color: "var(--text-dim)", lineHeight: "var(--lh-body)",
