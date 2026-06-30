@@ -392,20 +392,11 @@ export function PortfolioTab({
             }}
           >
             {navDecisions.length > 0 ? (
-              <>
-                <div
-                  className="eyebrow"
-                  style={{ color: "var(--accent-text)", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 12 }}
-                >
-                  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "var(--radius-pill)", background: "var(--accent)" }} />
-                  Selected on the chart
-                </div>
-                <MobileDecisionJournal
-                  decisions={navDecisions}
-                  selectedId={selectedDecisionId}
-                  displayCurrency={displayCurrency}
-                />
-              </>
+              <MobileDecisionJournal
+                decisions={navDecisions}
+                selectedId={selectedDecisionId}
+                displayCurrency={displayCurrency}
+              />
             ) : (
               // No logged decisions yet — keep the zone visible and explain it fills
               // in once there's data, rather than leaving a blank gap.

@@ -44,35 +44,8 @@ export function decisionTitle(m: Mutation): string {
 function hasOwnNote(m: Mutation): boolean {
   return !!m.personal_context && m.personal_context !== STARTING_POSITION_CTX;
 }
-function impactRaw(m: Mutation): number {
-  if (m.action === "add") return m.after_value ?? 0;
-  if (m.action === "remove") return -(m.before_value ?? 0);
-  return (m.after_value ?? 0) - (m.before_value ?? 0);
-}
 const fmtUnits = (n: number) =>
   new Intl.NumberFormat("nl-NL", { maximumFractionDigits: n % 1 === 0 ? 0 : 4 }).format(n);
-
-function decisionPoints(m: Mutation, displayCurrency: DisplayCurrency): string[] {
-  const cur = m.currency || "USD";
-  const amt = impactRaw(m);
-  const money = (v: number) => formatMoney(Math.abs(v), cur, displayCurrency);
-  const noun = m.asset_type ? unitNoun(m.asset_type) : "units";
-  const pts: string[] = [];
-  if (m.action === "add") {
-    if (m.after_units != null) pts.push(`Added ${fmtUnits(m.after_units)} ${noun}${amt ? `, about ${money(amt)}` : ""}.`);
-    else if (amt) pts.push(`Added about ${money(amt)} to the position.`);
-  } else if (m.action === "remove") {
-    if (m.before_units != null) pts.push(`Closed ${fmtUnits(m.before_units)} ${noun}${amt ? `, about ${money(amt)}` : ""}.`);
-    else if (amt) pts.push(`Took about ${money(amt)} out of the position.`);
-  } else {
-    if (m.before_units != null && m.after_units != null && m.before_units !== m.after_units)
-      pts.push(`Holding moved from ${fmtUnits(m.before_units)} to ${fmtUnits(m.after_units)} ${noun}.`);
-    if (m.before_value != null && m.after_value != null)
-      pts.push(`Value moved from ${formatMoney(m.before_value, cur, displayCurrency)} to ${formatMoney(m.after_value, cur, displayCurrency)}.`);
-    else if (amt) pts.push(`A ${amt < 0 ? "decrease" : "increase"} of about ${money(amt)} that day.`);
-  }
-  return pts;
-}
 
 function verdictEligible(m: Mutation): boolean {
   if (!m.symbol) return false;
@@ -124,7 +97,7 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
   }
 
   return (
-    <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border-strong)" }}>
+    <div style={{ marginTop: "var(--space-6)" }}>
       <div className="eyebrow" style={{ color: "var(--accent)", marginBottom: 7 }}>
         Looking back · {verdict.lookbackLabel}
       </div>
@@ -193,7 +166,6 @@ export function MobileDecisionJournal({
   if (decisions.length === 0 || !m) return null;
 
   const own = hasOwnNote(m);
-  const points = decisionPoints(m, displayCurrency);
   const verdict = verdicts[`${m.id}|${displayCurrency}`];
 
   return (
@@ -218,16 +190,6 @@ export function MobileDecisionJournal({
           : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
           : "Recorded automatically — no note attached."}
       </p>
-      {points.length > 0 && (
-        <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-          {points.map((p, i) => (
-            <li key={i} style={{ position: "relative", paddingLeft: 16, fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)" }}>
-              <span style={{ position: "absolute", left: 2, top: 8, width: 4, height: 4, borderRadius: "var(--radius-pill)", background: "var(--text-faint)" }} aria-hidden="true" />
-              {p}
-            </li>
-          ))}
-        </ul>
-      )}
       {verdict && <VerdictStamp verdict={verdict} unitLabel={m.asset_type ? unitNoun(m.asset_type) : "units"} />}
     </section>
   );
