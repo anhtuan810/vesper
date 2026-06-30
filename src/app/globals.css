@@ -80,6 +80,7 @@
   /* Line-heights as tokens so body / narrative stop wobbling across 1.35–1.6. */
   --lh-tight: 1.1;
   --lh-snug:  1.3;
+  --lh-read:  1.4;  /* reading line-height for multi-line serif prose (tighter than body, not cramped) */
   --lh-body:  1.5;
 
   /* Pill radius token so even fully-round elements aren't bare 999. */

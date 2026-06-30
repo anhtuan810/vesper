@@ -105,7 +105,7 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
   return (
     <div>
       {/* The passage of time — a finely-dotted perforation across the entry. */}
-      <div className="perforation" style={{ margin: "var(--space-5) 0" }} role="separator" aria-label="time passes" />
+      <div className="perforation" style={{ margin: "var(--space-4) 0" }} role="separator" aria-label="time passes" />
       {/* The hinge is the control: an italic-serif line with an em-rule lead-in
           and a chevron that rotates when the look-back is open. */}
       <button
@@ -131,7 +131,7 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
           layers) and one fine-print caveat line, each rising a beat apart. */}
       {open && (
         <div style={{ marginTop: "var(--space-4)" }}>
-          <p className="lookback-rise" style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-subhead)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: 0, animationDelay: "0s" }}>
+          <p className="lookback-rise" style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-subhead)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0, animationDelay: "0s" }}>
             {headline.map((part, i) => (
               <span key={i}>
                 {part}
@@ -141,8 +141,8 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
               </span>
             ))}
           </p>
-          <p className="lookback-rise" style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: "var(--space-3) 0 0", animationDelay: "0.05s" }}>{calc}</p>
-          <p className="lookback-rise" style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: "var(--lh-body)", margin: "var(--space-2) 0 0", animationDelay: "0.1s" }}>{notes.join(" ")}</p>
+          <p className="lookback-rise" style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0", animationDelay: "0.05s" }}>{calc}</p>
+          <p className="lookback-rise" style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0", animationDelay: "0.1s" }}>{notes.join(" ")}</p>
         </div>
       )}
     </div>
@@ -202,10 +202,10 @@ export function MobileDecisionJournal({
       <div style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "var(--space-3)" }}>
         {shortDate(mDate(m))}
       </div>
-      <h3 className="font-display" style={{ fontSize: "var(--fs-title)", fontWeight: 500, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 10px" }}>
+      <h3 className="font-display" style={{ fontSize: "var(--fs-title)", fontWeight: 500, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 var(--space-2)" }}>
         {decisionTitle(m)}
       </h3>
-      <p style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-subhead)", color: "var(--text)", lineHeight: "var(--lh-body)", margin: 0 }}>
+      <p style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-subhead)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>
         {own ? m.personal_context
           : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
           : "Recorded automatically — no note attached."}
