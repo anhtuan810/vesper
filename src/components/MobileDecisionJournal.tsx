@@ -202,7 +202,7 @@ export function MobileDecisionJournal({
       <div style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "var(--space-3)" }}>
         {shortDate(mDate(m))}
       </div>
-      <h3 className="font-display" style={{ fontSize: "15px", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 var(--space-2)" }}>
+      <h3 className="font-display" style={{ fontSize: "var(--fs-subhead)", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 var(--space-2)" }}>
         {decisionTitle(m)}
       </h3>
       <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>

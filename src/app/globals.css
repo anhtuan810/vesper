@@ -27,7 +27,10 @@
   --font-display: var(--sans);   /* wordmark · screen titles · net-worth figure · italic notes */
   --font-ui:      var(--sans);   /* body · list names · buttons · nav — everything structural */
   --font-label:   var(--sans);   /* uppercase micro-labels (eyebrows) — sans, NOT mono */
-  --font-numeric: var(--mono);   /* tabular figures: money · % · shares · dates */
+  /* One UI family: numeric detail now uses the sans too (Inter), with tabular
+     figures coming from font-feature-settings "tnum" (body + .tnum) rather than
+     a separate monospace — so money, %, shares and dates match everything else. */
+  --font-numeric: var(--sans);   /* tabular figures: money · % · shares · dates */
 
   --nav-height: 56px;
   --radius-md:  10px;
@@ -404,13 +407,13 @@ body {
   scrollbar-gutter: stable;
 }
 
-/* SVG chart labels (axis numbers, percentile ticks) pick up the brand mono,
-   matching the marketing charts. A CSS rule outranks the SVG `font-family`
-   presentation attribute, so the per-element fontFamily="system-ui" fallbacks
-   adopt this without editing every chart. Marketing scopes its own SVG label
-   fonts at higher specificity (.tw .vc-lbl), so it is unaffected. */
+/* SVG chart labels (axis numbers, percentile ticks) follow the one UI family
+   (sans). A CSS rule outranks the SVG `font-family` presentation attribute, so
+   the per-element fontFamily="system-ui" fallbacks adopt this without editing
+   every chart. Marketing scopes its own SVG label fonts at higher specificity
+   (.tw .vc-lbl), so it is unaffected. */
 svg text {
-  font-family: var(--mono);
+  font-family: var(--sans);
 }
 
 /* Native app shell only (html.native-app is set by NativeBootstrap inside the
