@@ -204,7 +204,7 @@ export function PerspectiveCard({
             key={row.region}
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               padding: "11px 0",
               borderTop: "0.5px solid var(--border-strong)",
             }}
@@ -234,6 +234,9 @@ export function PerspectiveCard({
                   background: "var(--accent-soft)",
                   borderRadius: "var(--radius-pill)",
                   position: "relative",
+                  // Drop the bar onto the country-name's baseline row so name,
+                  // bar and percentile read as one line (rows are top-aligned).
+                  marginTop: "var(--space-2)",
                 }}
               >
                 <div
