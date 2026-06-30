@@ -21,7 +21,10 @@
   --mono:  var(--font-mono), "SF Mono", monospace;
 
   /* Semantic font roles — change a role's typeface HERE (one line each). */
-  --font-display: var(--serif);  /* wordmark · screen titles · net-worth figure · italic notes */
+  /* Nocturne points display at the sans (Inter), not the serif: the wordmark,
+     screen titles and big figures read as a modern instrument rather than an
+     editorial letter. (The Atelier direction is the one that keeps the serif.) */
+  --font-display: var(--sans);   /* wordmark · screen titles · net-worth figure · italic notes */
   --font-ui:      var(--sans);   /* body · list names · buttons · nav — everything structural */
   --font-label:   var(--sans);   /* uppercase micro-labels (eyebrows) — sans, NOT mono */
   --font-numeric: var(--mono);   /* tabular figures: money · % · shares · dates */
@@ -126,148 +129,151 @@
 
 :root,
 [data-theme="light"] {
-  /* "Twilight" — the warm-paper + gold ground ported from the marketing site:
-     a cream page, near-black warm ink, and a single gold brand accent (gains
-     read in gold too). Markets keep a steel-blue lane, property an olive lane,
-     so the categorical chart palette stays legible against the gold. */
-  --bg:            #F3ECE0;
-  --surface:       #FCF8F0;
-  --surface-elev:  #F2ECDF;
+  /* "Nocturne · Light" — the daylight half of the redesign: cool slate-paper,
+     near-black ink, and a single restrained brass accent. Gains read in a calm
+     green (deliberately NOT the accent), losses in muted clay. Markets = green,
+     property = steel-blue, crypto = amber, reserves = olive — hue-separated so
+     the categorical chart palette stays legible against the brass. */
+  --bg:            #F7F8FA;
+  --surface:       #FFFFFF;
+  --surface-elev:  #EEF0F4;
   /* Lighter center/elevated column surface — the desktop focal area sits on this,
      a hair brighter than the paper page and lifted off it. */
-  --surface-center: #FBF6EC;
-  /* Gold used by data bars. */
-  --data-bar:      #8F6A38;
-  --border:        rgba(34, 30, 38, 0.08);
-  --border-strong: rgba(34, 30, 38, 0.13);
-  --text:          #221E26;
-  --text-dim:      #7C7268;
-  --text-faint:    #8C8478;
-  --hero:          #1A1A24;
-  --accent:        #97703D;
-  --accent-soft:   #EBDFCB;
-  --accent-text:   #8F6A38;
-  /* Readable ink on a filled --accent surface (primary buttons). */
-  --on-accent:     #FCF8F0;
-  /* Gains read in the brand gold — positive is intentionally the accent, aliased
-     (not duplicated) so a future accent change keeps gains in sync. */
-  --positive:      var(--accent);
-  --positive-soft: var(--accent-soft);
-  --positive-text: var(--accent-text);
-  --negative:      #AF5530;
-  --negative-soft: #EDD9CC;
-  --negative-text: #8A3F22;
+  --surface-center: #FBFCFD;
+  /* Brass used by data bars. */
+  --data-bar:      #9C7A37;
+  --border:        rgba(18, 22, 30, 0.08);
+  --border-strong: rgba(18, 22, 30, 0.14);
+  --text:          #171A20;
+  --text-dim:      #565D69;
+  --text-faint:    #868D99;
+  --hero:          #0A0C10;
+  --accent:        #9C7A37;
+  --accent-soft:   rgba(156, 122, 55, 0.12);
+  --accent-text:   #7E6026;
+  /* Readable ink on a filled --accent (brass) surface (primary buttons). */
+  --on-accent:     #FBFBF8;
+  /* Gains read in a calm green — Nocturne keeps brand (brass) and performance
+     signal (green) distinct, rather than aliasing gains to the accent. */
+  --positive:      #2E8B5E;
+  --positive-soft: rgba(46, 139, 94, 0.12);
+  --positive-text: #277A52;
+  --negative:      #B4502E;
+  --negative-soft: rgba(180, 80, 46, 0.12);
+  --negative-text: #9A4326;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
-  --nav-surface:   rgba(243, 236, 224, 0.85);
-  --category-public-markets: #5A8268;
-  --category-reserves:       #A89968;
-  --category-property:       #5E7E96;
-  --category-crypto:         #C27A3A;
-  --surface-deep:  #E7DFD0;
-  --accent-deep:   #6F5226;
-  --negative-deep: #7E3A1F;
+  --nav-surface:   rgba(247, 248, 250, 0.85);
+  --category-public-markets: #3E8E6B;
+  --category-reserves:       #948A66;
+  --category-property:       #4E7398;
+  --category-crypto:         #C2832F;
+  --surface-deep:  #E7E9ED;
+  --accent-deep:   #7E6026;
+  --negative-deep: #7E3A22;
   --amber:         #B07A2E;
   --amber-deep:    #8A5E22;
   --amber-soft:    rgba(176, 122, 46, 0.13);
-  --bg-deep:           #EAE2D4;
-  --cat-property:      #5E7E96;
-  --cat-property-soft: #DEE6EA;
-  --cat-markets:       #5A8268;
-  --cat-markets-soft:  #DDE7E0;
-  --cat-reserves:      #A89968;
-  --cat-reserves-soft: #ECE3D0;
-  --cat-crypto:        #C27A3A;
-  --cat-crypto-soft:   #F0E2D2;
+  --bg-deep:           #EDEEF1;
+  --cat-property:      #4E7398;
+  --cat-property-soft: rgba(78, 115, 152, 0.14);
+  --cat-markets:       #3E8E6B;
+  --cat-markets-soft:  rgba(62, 142, 107, 0.14);
+  --cat-reserves:      #948A66;
+  --cat-reserves-soft: rgba(148, 138, 102, 0.14);
+  --cat-crypto:        #C2832F;
+  --cat-crypto-soft:   rgba(194, 131, 47, 0.14);
   --cat-tangible:      #8C7B5E;
-  --cat-tangible-soft: #E8E1D2;
+  --cat-tangible-soft: rgba(140, 123, 94, 0.14);
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band:  #5E7E96;
-  --cat-property-edge:  #46606F;
-  --cat-markets-band:   #5A8268;
-  --cat-markets-edge:   #45634E;
-  --cat-reserves-band:  #A89968;
-  --cat-reserves-edge:  #877A4C;
-  --cat-crypto-band:    #C27A3A;
-  --cat-crypto-edge:    #A0612C;
-  --cat-tangible-band:  #BCAE94;
-  --cat-tangible-edge:  #7E6F54;
+  --cat-property-band:  #4E7398;
+  --cat-property-edge:  #3A5872;
+  --cat-markets-band:   #3E8E6B;
+  --cat-markets-edge:   #2F6E52;
+  --cat-reserves-band:  #948A66;
+  --cat-reserves-edge:  #6F6A4D;
+  --cat-crypto-band:    #C2832F;
+  --cat-crypto-edge:    #9C6726;
+  --cat-tangible-band:  #B9AC92;
+  --cat-tangible-edge:  #8C7B5E;
   /* PerspectiveCard translucent surfaces — light values */
   --perspective-card-grad-start: var(--accent-soft);
-  --perspective-card-grad-end:   rgba(151, 112, 61, 0.10);
-  --perspective-panel:           rgba(252, 248, 240, 0.55);
-  --perspective-chip-bg:         rgba(252, 248, 240, 0.65);
-  --perspective-dot-border:      #FCF8F0;
+  --perspective-card-grad-end:   rgba(156, 122, 55, 0.05);
+  --perspective-panel:           rgba(255, 255, 255, 0.55);
+  --perspective-chip-bg:         rgba(255, 255, 255, 0.65);
+  --perspective-dot-border:      #FFFFFF;
 }
 
 [data-theme="dark"] {
-  --bg:            #14141E;
-  --surface:       #1D1D29;
-  --surface-elev:  #21212F;
-  --surface-center: #191925;
-  --data-bar:      #D8BC82;
-  --border:        rgba(236, 231, 220, 0.10);
-  --border-strong: rgba(236, 231, 220, 0.16);
-  --text:          #ECE7DC;
-  --text-dim:      #9E99A8;
-  --text-faint:    #827E90;
-  --hero:          #FFFCF2;
-  --accent:        #CBAA6C;
-  --accent-soft:   rgba(203, 170, 108, 0.16);
-  --accent-text:   #D8BC82;
-  /* Readable ink on a filled --accent surface — dark, because the gold lifts in
-     dark mode. */
-  --on-accent:     #14141E;
-  /* Gains read in the brand gold — aliased to the accent (see light theme). */
-  --positive:      var(--accent);
-  --positive-soft: var(--accent-soft);
-  --positive-text: var(--accent-text);
-  --negative:      #DB9070;
-  --negative-soft: rgba(219, 144, 112, 0.14);
-  --negative-text: #ECB199;
+  /* "Nocturne · Dark" — the hero of the redesign: near-black slate, hairline
+     grid, the same brass accent lifted for dark. Gains calm green, losses muted
+     clay. The trading-terminal mood, kept calm for value investors. */
+  --bg:            #0E1116;
+  --surface:       #151922;
+  --surface-elev:  #1B202B;
+  --surface-center: #12161D;
+  --data-bar:      #CBA75E;
+  --border:        rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --text:          #E7EAF0;
+  --text-dim:      #9AA3B2;
+  --text-faint:    #697184;
+  --hero:          #FAFBFD;
+  --accent:        #CBA75E;
+  --accent-soft:   rgba(203, 167, 94, 0.14);
+  --accent-text:   #DCBE82;
+  /* Readable ink on a filled --accent (brass) surface — dark, the brass lifts. */
+  --on-accent:     #11131A;
+  /* Gains read in a calm green — distinct from the brass accent (see light). */
+  --positive:      #5FB58A;
+  --positive-soft: rgba(95, 181, 138, 0.15);
+  --positive-text: #7FC7A2;
+  --negative:      #D08763;
+  --negative-soft: rgba(208, 135, 99, 0.15);
+  --negative-text: #E0A488;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
-  --nav-surface:   rgba(18, 18, 28, 0.82);
-  --category-public-markets: #A2C2A2;
-  --category-reserves:       #CBAA6C;
-  --category-property:       #8FA8C2;
-  --category-crypto:         #D97A6A;
+  --nav-surface:   rgba(14, 17, 22, 0.82);
+  --category-public-markets: #6FAE8B;
+  --category-reserves:       #A9A382;
+  --category-property:       #6E8FB0;
+  --category-crypto:         #D6A14E;
   --surface-deep:  rgba(255, 255, 255, 0.06);
-  --accent-deep:   #E0C88A;
-  --negative-deep: #E6AE92;
+  --accent-deep:   #E0C281;
+  --negative-deep: #E0A488;
   --amber:         #D9A24A;
   --amber-deep:    #E6BE7A;
   --amber-soft:    rgba(217, 162, 74, 0.18);
-  --bg-deep:           #101019;
-  --cat-property:      #8FA8C2;
-  --cat-property-soft: rgba(143, 168, 194, 0.14);
-  --cat-markets:       #A2C2A2;
-  --cat-markets-soft:  rgba(146, 172, 146, 0.14);
-  --cat-reserves:      #CBAA6C;
-  --cat-reserves-soft: rgba(203, 170, 108, 0.14);
-  --cat-crypto:        #D97A6A;
-  --cat-crypto-soft:   rgba(217, 122, 106, 0.14);
+  --bg-deep:           #0A0C10;
+  --cat-property:      #6E8FB0;
+  --cat-property-soft: rgba(110, 143, 176, 0.16);
+  --cat-markets:       #6FAE8B;
+  --cat-markets-soft:  rgba(111, 174, 139, 0.16);
+  --cat-reserves:      #A9A382;
+  --cat-reserves-soft: rgba(169, 163, 130, 0.16);
+  --cat-crypto:        #D6A14E;
+  --cat-crypto-soft:   rgba(214, 161, 78, 0.16);
   --cat-tangible:      #B5A48A;
-  --cat-tangible-soft: rgba(181, 164, 138, 0.14);
+  --cat-tangible-soft: rgba(181, 164, 138, 0.16);
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band: #5E7488;
-  --cat-property-edge: #475968;
-  --cat-markets-band:  #5E6A4A;
-  --cat-markets-edge:  #47503A;
-  --cat-reserves-band: #C7A86E;
-  --cat-reserves-edge: #A8854A;
-  --cat-crypto-band:   #C06A44;
-  --cat-crypto-edge:   #9E5234;
+  --cat-property-band: #56708C;
+  --cat-property-edge: #6E8FB0;
+  --cat-markets-band:  #4E7A5E;
+  --cat-markets-edge:  #6FAE8B;
+  --cat-reserves-band: #8C8568;
+  --cat-reserves-edge: #A9A382;
+  --cat-crypto-band:   #B0843A;
+  --cat-crypto-edge:   #D6A14E;
   --cat-tangible-band: rgba(181, 164, 138, 0.30);
   --cat-tangible-edge: #B5A48A;
   /* PerspectiveCard translucent surfaces — dark values */
-  --perspective-card-grad-start: rgba(203, 170, 108, 0.22);
-  --perspective-card-grad-end:   rgba(203, 170, 108, 0.07);
-  --perspective-panel:           rgba(236, 231, 220, 0.06);
-  --perspective-chip-bg:         rgba(236, 231, 220, 0.08);
-  --perspective-dot-border:      #1D1D29;
+  --perspective-card-grad-start: rgba(203, 167, 94, 0.20);
+  --perspective-card-grad-end:   rgba(203, 167, 94, 0.06);
+  --perspective-panel:           rgba(231, 234, 240, 0.06);
+  --perspective-chip-bg:         rgba(231, 234, 240, 0.08);
+  --perspective-dot-border:      #151922;
 }
 
 @theme inline {
