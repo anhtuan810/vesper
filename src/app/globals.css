@@ -227,10 +227,10 @@
   --negative-text: #ECB199;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
   --nav-surface:   rgba(18, 18, 28, 0.82);
-  --category-public-markets: #8FA8C2;
+  --category-public-markets: #A2C2A2;
   --category-reserves:       #CBAA6C;
-  --category-property:       #A2C2A2;
-  --category-crypto:         #B79ECC;
+  --category-property:       #8FA8C2;
+  --category-crypto:         #D97A6A;
   --surface-deep:  rgba(255, 255, 255, 0.06);
   --accent-deep:   #E0C88A;
   --negative-deep: #E6AE92;
@@ -238,10 +238,10 @@
   --amber-deep:    #E6BE7A;
   --amber-soft:    rgba(217, 162, 74, 0.18);
   --bg-deep:           #101019;
-  --cat-property:      #A2C2A2;
-  --cat-property-soft: rgba(146, 172, 146, 0.14);
-  --cat-markets:       #8FA8C2;
-  --cat-markets-soft:  rgba(143, 168, 194, 0.14);
+  --cat-property:      #8FA8C2;
+  --cat-property-soft: rgba(143, 168, 194, 0.14);
+  --cat-markets:       #A2C2A2;
+  --cat-markets-soft:  rgba(146, 172, 146, 0.14);
   --cat-reserves:      #CBAA6C;
   --cat-reserves-soft: rgba(203, 170, 108, 0.14);
   --cat-crypto:        #D97A6A;
@@ -251,10 +251,10 @@
   /* Saturated band-fill + top-edge tokens for the net-worth stacked-area
      chart — distinct from the -soft wash tokens (which stay reserved for
      chips/pills and must not change). */
-  --cat-property-band: #5E6A4A;
-  --cat-property-edge: #47503A;
-  --cat-markets-band:  #5E7488;
-  --cat-markets-edge:  #475968;
+  --cat-property-band: #5E7488;
+  --cat-property-edge: #475968;
+  --cat-markets-band:  #5E6A4A;
+  --cat-markets-edge:  #47503A;
   --cat-reserves-band: #C7A86E;
   --cat-reserves-edge: #A8854A;
   --cat-crypto-band:   #C06A44;
