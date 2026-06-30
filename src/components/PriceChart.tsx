@@ -369,10 +369,10 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
         )}
       </div>
 
-      {/* Range pills */}
+      {/* Range pills — one rounded segmented bar (matches the Overview chart) */}
       <div
-        className="flex gap-1 mt-2"
-        style={{ padding: 3, borderRadius: "var(--radius-md)", marginRight: 40 }}
+        className="flex gap-0.5 mt-2"
+        style={{ padding: 3, borderRadius: "var(--radius-pill)", marginRight: 40, background: "var(--surface)", border: "1px solid var(--border)" }}
       >
         {RANGES.map((r) => (
           <button
@@ -382,11 +382,10 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
             style={{
               padding: "5px 0",
               fontSize: "var(--fs-caption)",
-              fontWeight: 500,
-              borderRadius: "var(--radius-md)",
-              color: range === r ? "var(--text)" : "var(--text-dim)",
+              fontWeight: range === r ? 600 : 500,
+              borderRadius: "var(--radius-pill)",
+              color: range === r ? "var(--accent-text)" : "var(--text-dim)",
               background: range === r ? "var(--surface-elev)" : "transparent",
-              boxShadow: range === r ? "var(--shadow-soft)" : "none",
               border: "none",
               cursor: "pointer",
               transition: "all 0.15s",

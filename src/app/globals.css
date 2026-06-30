@@ -490,6 +490,10 @@ html.native-app [contenteditable="true"] {
   border-radius: var(--radius-lg);
   padding: var(--space-card);
 }
+/* Holdings card — the category groups carry their own hairline dividers, so the
+   last group's border would double the card's bottom edge: drop it. */
+.holds-card > div:last-of-type { border-bottom: none !important; }
+
 /* Lifted card — floating/elevated panels (sheets, popovers). */
 .card-elev {
   background: var(--surface-elev);

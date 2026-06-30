@@ -349,7 +349,7 @@ export function PortfolioTab({
       {/* Hero + chart — constrained so the chart never stretches past a readable aspect ratio.
           -mx-5 (mobile) bleeds left/right to cancel the page wrapper's px-5 (20px) so the hero
           number, chart and range pills sit flush with the full-bleed market/insight band edges. */}
-      <div className="-mx-5 md:mx-0" style={{ maxWidth: 660 }}>
+      <div style={{ maxWidth: 660 }}>
         <div className="mb-5">
           <NetWorthHero netTotal={heroTotal} range={range} selectedPoint={selectedPoint} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onSetLiquid={setLiquid} />
         </div>
@@ -414,32 +414,31 @@ export function PortfolioTab({
         </div>
       )}
 
-      {/* Holdings list — 4 semantic categories.
-          Mobile: bleed to the band edge with no inner padding (md:px-4 only) so
-          the group headers and rows sit flush at the same left/right column as
-          the hero and the full-bleed market band. Desktop keeps the 16px inset. */}
-      <div className="-mx-5 md:-mx-8 md:px-4">
-        {/* Demoted from a 26px serif title to the app's small uppercase
-            section-label idiom (PERSPECTIVE / INDICATIVE VALUE) — the category
-            rows below self-describe, so the header only needs to carry the
-            position count and the collapse/expand-all tap affordance. */}
-        <div
-          onClick={toggleAll}
-          role="button"
-          tabIndex={0}
-          aria-expanded={allExpanded}
-          aria-label={allExpanded ? "Collapse all holdings" : "Expand all holdings"}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleAll(); } }}
-          className="eyebrow"
-          style={{
-            cursor: "pointer", WebkitTapHighlightColor: "transparent",
-            padding: "var(--space-1) 0 0", marginBottom: 0,
-            color: "var(--text-faint)",
-          }}
-        >
-          Holdings · {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
+      {/* Holdings — section header (count + expand-all) above a bordered card
+          that boxes the category groups, matching the redesign mockup. */}
+      <div>
+        <div className="flex items-center justify-between" style={{ marginBottom: "var(--space-3)" }}>
+          <div
+            onClick={toggleAll}
+            role="button"
+            tabIndex={0}
+            aria-expanded={allExpanded}
+            aria-label={allExpanded ? "Collapse all holdings" : "Expand all holdings"}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleAll(); } }}
+            className="eyebrow"
+            style={{ cursor: "pointer", WebkitTapHighlightColor: "transparent", color: "var(--text-faint)" }}
+          >
+            Holdings · {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
+          </div>
+          <button
+            onClick={toggleAll}
+            className="font-ui"
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", whiteSpace: "nowrap" }}
+          >
+            {allExpanded ? "Collapse all" : "Expand all"}
+          </button>
         </div>
-        <div>
+        <div className="card holds-card" style={{ padding: "var(--space-1) var(--space-card)" }}>
           {groups.map((group) => (
             <HoldingsGroup
               key={group.category}
