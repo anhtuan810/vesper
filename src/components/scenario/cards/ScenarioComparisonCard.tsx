@@ -110,12 +110,12 @@ export function ScenarioComparisonCard({
       {/* Net worth */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 4 }}>{netWorthLabel}</div>
-          <div className="font-display" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "var(--tracking-hero)", color: "var(--hero)", lineHeight: 1 }}>
+          <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", marginBottom: 4 }}>{netWorthLabel}</div>
+          <div className="font-display" style={{ fontSize: "var(--fs-metric)", fontWeight: 600, letterSpacing: "var(--tracking-hero)", color: "var(--hero)", lineHeight: 1 }}>
             {m(s.netWorthUsd)}
           </div>
         </div>
-        <div style={{ textAlign: "right", fontSize: 13 }}>
+        <div style={{ textAlign: "right", fontSize: "var(--fs-body)" }}>
           <div style={{ color: "var(--text-faint)", fontFamily: "var(--font-numeric)" }}>{m(c.netWorthUsd)} now</div>
           {deltaStyle === "drop" ? (
             <div style={{ fontWeight: 500, color: "var(--negative-text)", marginTop: 2, fontFamily: "var(--font-numeric)" }}>
@@ -132,8 +132,8 @@ export function ScenarioComparisonCard({
       {/* Single-name concentration */}
       {showConcentration && (
         <div style={statRowStyle}>
-          <span style={{ fontSize: 13, color: "var(--text)" }}>Single-name concentration</span>
-          <span style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
+          <span style={{ fontSize: "var(--fs-body)", color: "var(--text)" }}>Single-name concentration</span>
+          <span style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
             {fmtPct(c.topSingleNameConcentrationPct)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
             <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(s.topSingleNameConcentrationPct)}</span>
           </span>
@@ -143,25 +143,25 @@ export function ScenarioComparisonCard({
       {/* LTV callout — the sharper read for leveraged property */}
       {showLtvCallout && hasLeverage && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", marginBottom: 12, borderRadius: "var(--radius-md)", background: "var(--negative-soft)" }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--negative-text)" }}>Mortgage LTV</span>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--negative-text)", fontFamily: "var(--font-numeric)" }}>
+          <span style={{ fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--negative-text)" }}>Mortgage LTV</span>
+          <span style={{ fontSize: "var(--fs-subhead)", fontWeight: 600, color: "var(--negative-text)", fontFamily: "var(--font-numeric)" }}>
             {fmtPct(c.leverage!.ltvPct)} <span style={{ opacity: 0.6 }}>→</span> {fmtPct(s.leverage!.ltvPct)}
           </span>
         </div>
       )}
 
       {/* Allocation by category */}
-      <div style={{ ...eyebrowStyle, fontSize: 11, margin: `${allocationMarginTop}px 0 6px` }}>{allocationLabel}</div>
+      <div style={{ ...eyebrowStyle, fontSize: "var(--fs-micro)", margin: `${allocationMarginTop}px 0 6px` }}>{allocationLabel}</div>
 
       {/* Before/after stacked bars that visibly shift */}
       {allocationBar && (
         <div style={{ margin: "2px 0 10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "var(--space-1)" }}>
-            <span style={{ width: 34, fontSize: 12, color: "var(--text-faint)" }}>Now</span>
+            <span style={{ width: 34, fontSize: "var(--fs-meta)", color: "var(--text-faint)" }}>Now</span>
             <div style={{ flex: 1 }}><AllocationBar alloc={curAlloc} /></div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 34, fontSize: 12, color: "var(--text-faint)" }}>After</span>
+            <span style={{ width: 34, fontSize: "var(--fs-meta)", color: "var(--text-faint)" }}>After</span>
             <div style={{ flex: 1 }}><AllocationBar alloc={scnAlloc} /></div>
           </div>
         </div>
@@ -169,8 +169,8 @@ export function ScenarioComparisonCard({
 
       {allocCats.map((cat) => (
         <div key={cat} style={statRowStyle}>
-          <span style={{ fontSize: 13, color: "var(--text)" }}>{CATEGORY_LABEL[cat] ?? cat}</span>
-          <span style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
+          <span style={{ fontSize: "var(--fs-body)", color: "var(--text)" }}>{CATEGORY_LABEL[cat] ?? cat}</span>
+          <span style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
             {fmtPct(curAlloc.get(cat)?.pct ?? 0)} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
             <span style={{ color: "var(--text)", fontWeight: 500 }}>{fmtPct(scnAlloc.get(cat)?.pct ?? 0)}</span>
           </span>
@@ -180,11 +180,11 @@ export function ScenarioComparisonCard({
       {/* Contextual vitals that moved materially — before -> after */}
       {contextualVitals && contextualVitals.length > 0 && (
         <>
-          <div style={{ ...eyebrowStyle, fontSize: 11, margin: "14px 0 6px" }}>What this moves</div>
+          <div style={{ ...eyebrowStyle, fontSize: "var(--fs-micro)", margin: "14px 0 6px" }}>What this moves</div>
           {contextualVitals.map((v) => (
             <div key={v.key} style={statRowStyle}>
-              <span style={{ fontSize: 13, color: "var(--text)" }}>{v.label}</span>
-              <span style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
+              <span style={{ fontSize: "var(--fs-body)", color: "var(--text)" }}>{v.label}</span>
+              <span style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
                 {v.before} <span style={{ color: "var(--text-faint)" }}>→</span>{" "}
                 <span style={{ fontWeight: 600, color: BAND_COLOR[v.afterBand] ?? "var(--text)" }}>{v.after}</span>
               </span>
@@ -199,7 +199,7 @@ export function ScenarioComparisonCard({
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: "var(--fs-micro)",
   fontWeight: 600,
   fontFamily: "var(--font-numeric)", letterSpacing: "var(--tracking-label)",
   textTransform: "uppercase",

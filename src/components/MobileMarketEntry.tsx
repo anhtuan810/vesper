@@ -97,7 +97,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
         <span
           aria-hidden
           style={{
-            flexShrink: 0, fontSize: 10, lineHeight: 1, color: "var(--text-faint)",
+            flexShrink: 0, fontSize: "var(--fs-micro)", lineHeight: 1, color: "var(--text-faint)",
             transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s ease",
           }}
         >

@@ -193,11 +193,11 @@ export function MortgageBlock({ asset }: Props) {
           }}>
             <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>{row.label}</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-              <span style={{ fontFamily: "var(--font-numeric)", fontSize: 16, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1 }}>
+              <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-subhead)", fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1', lineHeight: 1.1 }}>
                 {row.value}
               </span>
               {row.meta && (
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontSize: "var(--fs-meta)", fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
                   {row.meta}
                 </span>
               )}

@@ -76,7 +76,7 @@ export function ScenarioCueLine({
         padding: 0,
         cursor: "pointer",
         fontStyle: "italic",
-        fontSize: 15,
+        fontSize: "var(--fs-subhead)",
         lineHeight: "var(--lh-body)",
         color: "var(--text)",
         letterSpacing: "0.005em",

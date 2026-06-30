@@ -57,10 +57,10 @@ export function GrowthChart({
           <path d={path} fill="none" stroke="var(--accent)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           <circle cx={xOf(last.t)} cy={yOf(last.v)} r={3} fill="var(--accent)" />
         </svg>
-        <span style={{ position: "absolute", bottom: 0, left: 0, fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-numeric)" }}>
+        <span style={{ position: "absolute", bottom: 0, left: 0, fontSize: "var(--fs-micro)", color: "var(--text-faint)", fontFamily: "var(--font-numeric)" }}>
           {new Date(minT).getFullYear()}
         </span>
-        <span style={{ position: "absolute", bottom: 0, right: 0, fontSize: 10, color: "var(--text-faint)" }}>today</span>
+        <span style={{ position: "absolute", bottom: 0, right: 0, fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>today</span>
       </div>
 
       {/* Y-axis labels */}
@@ -68,7 +68,7 @@ export function GrowthChart({
         {yLabels.map((v) => (
           <div
             key={v}
-            style={{ position: "absolute", top: `${(1 - v / yMax) * 100}%`, right: 0, transform: "translateY(-50%)", fontSize: 11, color: "var(--text-faint)", lineHeight: 1, pointerEvents: "none", fontFamily: "var(--font-numeric)" }}
+            style={{ position: "absolute", top: `${(1 - v / yMax) * 100}%`, right: 0, transform: "translateY(-50%)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, pointerEvents: "none", fontFamily: "var(--font-numeric)" }}
           >
             {compactMoney(v, symbol)}
           </div>

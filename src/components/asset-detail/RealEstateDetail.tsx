@@ -97,7 +97,7 @@ export function RealEstateDetail({ asset }: Props) {
         <div style={{ marginBottom: 14 }}>
           <div style={{
             fontFamily: "var(--font-display)",
-            fontSize: 24,
+            fontSize: "var(--fs-metric)",
             fontWeight: 500,
             color: "var(--hero)",
             letterSpacing: "-0.02em",
@@ -119,7 +119,7 @@ export function RealEstateDetail({ asset }: Props) {
           </div>
           <div style={{
             fontFamily: "var(--font-display)",
-            fontSize: 44,
+            fontSize: "var(--fs-hero)",
             fontWeight: 600,
             letterSpacing: "-0.03em",
             color: "var(--hero)",
@@ -132,7 +132,7 @@ export function RealEstateDetail({ asset }: Props) {
               : <span style={{ visibility: "hidden" }}>—</span>}
           </div>
           {/* Compact metadata line: value · size · owned since · years */}
-          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.4 }}>
+          <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: 1.4 }}>
             {currencyLoaded ? [
               <span key="val">of <span className="tnum" style={{ color: "var(--text)", fontWeight: 500 }}>{formatMoney(asset.value, asset.currency || "USD", displayCurrency)}</span> value</span>,
               asset.size_sqm ? <span key="size" className="tnum">{asset.size_sqm} m²</span> : null,
@@ -198,13 +198,13 @@ export function RealEstateDetail({ asset }: Props) {
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
-                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                  <div style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
                     {dateStr ? formatDate(dateStr) : "—"}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {delta && (
                       <div style={{
-                        fontSize: 15,
+                        fontSize: "var(--fs-subhead)",
                         fontWeight: 500,
                         fontFamily: "var(--font-numeric)",
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
@@ -217,7 +217,7 @@ export function RealEstateDetail({ asset }: Props) {
                       <div style={{
                         fontFamily: "var(--font-display)",
                         fontStyle: "italic",
-                        fontSize: 13,
+                        fontSize: "var(--fs-body)",
                         color: "var(--text-dim)",
                         lineHeight: 1.4,
                         fontVariationSettings: "'opsz' 14",

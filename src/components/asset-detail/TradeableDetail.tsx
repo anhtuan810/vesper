@@ -195,7 +195,7 @@ export function TradeableDetail({ asset }: Props) {
               {asset.name}
             </div>
             {asset.units != null && (
-              <div style={{ fontSize: 13, color: "var(--text-dim)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
+              <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
                 {asset.units.toLocaleString("nl-NL")} {noun}
               </div>
             )}
@@ -210,7 +210,7 @@ export function TradeableDetail({ asset }: Props) {
           <div
             className="font-display leading-none"
             style={{
-              fontSize: 54,
+              fontSize: "var(--fs-hero)",
               fontWeight: 600,
               letterSpacing: "var(--tracking-hero)",
               color: "var(--hero)",
@@ -234,7 +234,7 @@ export function TradeableDetail({ asset }: Props) {
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <DeltaPill isPositive={isUp}>{isUp ? "+" : "−"}{Math.abs(scrubInfo.pct).toFixed(2).replace(".", ",")}%</DeltaPill>
-                  <span style={{ color: "var(--text-faint)", fontSize: 13, fontFamily: "var(--font-numeric)" }}>{scrubInfo.label}</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-body)", fontFamily: "var(--font-numeric)" }}>{scrubInfo.label}</span>
                 </div>
               );
             }
@@ -256,7 +256,7 @@ export function TradeableDetail({ asset }: Props) {
                     : null;
                   const dateLabel = `since ${formatDate(earliestBuyDate.toISOString())}`;
                   return (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: "var(--fs-body)", color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
                       {pct !== null && <span style={{ fontWeight: 500 }}>{pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2).replace(".", ",")}%</span>}
                       <span>{dateLabel}</span>
                     </div>
@@ -305,7 +305,7 @@ export function TradeableDetail({ asset }: Props) {
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "var(--space-row) var(--space-card)", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
               <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Current value</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                <span style={{ fontFamily: "var(--font-numeric)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-title)", fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
                   {formatMoney(currentValue, assetCur, displayCurrency)}
                 </span>
               </div>
@@ -314,12 +314,12 @@ export function TradeableDetail({ asset }: Props) {
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "var(--space-row) var(--space-card)", borderBottom: "0.5px solid var(--border)", gap: 14, minHeight: 58 }}>
               <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Total return</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                <span style={{ fontFamily: "var(--font-numeric)", fontSize: 17, fontWeight: 500, color: totalReturnAbs != null && totalReturnAbs < 0 ? "var(--negative-text)" : "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-title)", fontWeight: 500, color: totalReturnAbs != null && totalReturnAbs < 0 ? "var(--negative-text)" : "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
                   {totalReturnAbs != null ? `${totalReturnAbs >= 0 ? "+" : "−"}${formatMoney(Math.abs(totalReturnAbs), assetCur, displayCurrency)}` : "—"}
                 </span>
                 {totalReturnAbs != null && avgBuyPrice != null && avgBuyPrice > 0 && livePrice != null && (
                   <span style={{
-                    fontSize: 12, fontWeight: 500,
+                    fontSize: "var(--fs-meta)", fontWeight: 500,
                     color: totalReturnAbs >= 0 ? "var(--positive-text)" : "var(--negative-text)",
                     letterSpacing: "0.01em",
                     fontFamily: "var(--font-numeric)",
@@ -334,11 +334,11 @@ export function TradeableDetail({ asset }: Props) {
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "var(--space-row) var(--space-card)", gap: 14, minHeight: 58 }}>
               <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 500, flexShrink: 0 }}>Avg buy</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                <span style={{ fontFamily: "var(--font-numeric)", fontSize: 17, fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
+                <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-title)", fontWeight: 500, color: "var(--hero)", letterSpacing: "-0.005em", fontFeatureSettings: '"tnum" 1' }}>
                   {avgBuyPrice != null ? formatMoney(avgBuyPrice, assetCur, displayCurrency) : "—"}
                 </span>
                 {avgBuyYear && (
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--font-numeric)" }}>
+                  <span style={{ fontSize: "var(--fs-meta)", fontWeight: 500, color: "var(--text-faint)", letterSpacing: "0.01em", fontFamily: "var(--font-numeric)" }}>
                     since {avgBuyYear}
                   </span>
                 )}
@@ -409,7 +409,7 @@ export function TradeableDetail({ asset }: Props) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {delta && (
                       <div style={{
-                        fontSize: 15,
+                        fontSize: "var(--fs-subhead)",
                         fontWeight: 500,
                         fontFamily: "var(--font-numeric)",
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
@@ -422,7 +422,7 @@ export function TradeableDetail({ asset }: Props) {
                       <div style={{
                         fontFamily: "var(--font-display)",
                         fontStyle: "italic",
-                        fontSize: 13,
+                        fontSize: "var(--fs-body)",
                         color: "var(--text-dim)",
                         lineHeight: 1.4,
                         fontVariationSettings: "'opsz' 14",

@@ -116,7 +116,7 @@ export function StaticDetail({ asset }: Props) {
           </div>
           <div style={{
             fontFamily: "var(--font-display)",
-            fontSize: 22,
+            fontSize: "var(--fs-metric)",
             fontWeight: 500,
             color: "var(--hero)",
             letterSpacing: "-0.01em",
@@ -134,7 +134,7 @@ export function StaticDetail({ asset }: Props) {
           </div>
           <div style={{
             fontFamily: "var(--font-display)",
-            fontSize: 48,
+            fontSize: "var(--fs-hero)",
             fontWeight: 600,
             letterSpacing: "-0.03em",
             color: "var(--hero)",
@@ -151,7 +151,7 @@ export function StaticDetail({ asset }: Props) {
               gap: 4,
               padding: "4px 10px",
               borderRadius: "var(--radius-pill)",
-              fontSize: 13,
+              fontSize: "var(--fs-body)",
               fontWeight: 500,
               fontFamily: "var(--font-numeric)",
               fontFeatureSettings: '"tnum" 1',
@@ -172,7 +172,7 @@ export function StaticDetail({ asset }: Props) {
               asset viewed in EUR makes clear the hero is a converted figure and
               shows the original native amount. */}
           {asset.currency && asset.currency !== displayCurrency && (
-            <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
+            <div style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
               Native currency: {asset.currency} · {formatMoney(asset.value, asset.currency, asset.currency as DisplayCurrency)}
             </div>
           )}
@@ -210,13 +210,13 @@ export function StaticDetail({ asset }: Props) {
 
               return (
                 <div key={m.id} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: "0.5px solid var(--border)" }}>
-                  <div style={{ fontSize: 13, color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
+                  <div style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1', width: 60, flexShrink: 0, paddingTop: 1 }}>
                     {dateStr ? formatDate(dateStr) : "—"}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {delta && (
                       <div style={{
-                        fontSize: 15,
+                        fontSize: "var(--fs-subhead)",
                         fontWeight: 500,
                         fontFamily: "var(--font-numeric)",
                         color: deltaNeutral ? "var(--text)" : deltaPositive ? "var(--positive-text)" : "var(--negative-text)",
@@ -229,7 +229,7 @@ export function StaticDetail({ asset }: Props) {
                       <div style={{
                         fontFamily: "var(--font-display)",
                         fontStyle: "italic",
-                        fontSize: 13,
+                        fontSize: "var(--fs-body)",
                         color: "var(--text-dim)",
                         lineHeight: 1.4,
                         fontVariationSettings: "'opsz' 14",
