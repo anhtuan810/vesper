@@ -100,39 +100,6 @@ function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: stri
   return { line, money, calc };
 }
 
-// A verdict's direction: a good call (beat/spared) reads green, a costly one
-// (trailed/missed) clay, a wash (even/matched) neutral.
-function verdictTone(kind: VerdictData["kind"]): "pos" | "neg" | "neutral" {
-  if (kind === "beat" || kind === "spared") return "pos";
-  if (kind === "trailed" || kind === "missed") return "neg";
-  return "neutral";
-}
-
-// The folded look-back — a single at-a-glance chip carrying the verdict figure,
-// so the outcome is legible without unfolding the entry.
-function LookbackChip({ verdict }: { verdict: VerdictData }) {
-  const tone = verdictTone(verdict.kind);
-  const base = {
-    display: "inline-flex", alignItems: "center", gap: 3, flex: "none",
-    fontSize: "var(--fs-micro)", fontWeight: 600, borderRadius: "var(--radius-pill)",
-    padding: "3px 8px", whiteSpace: "nowrap" as const,
-  };
-  if (tone === "neutral") {
-    return <span className="tnum" style={{ ...base, color: "var(--text-dim)", background: "var(--surface-elev)" }}>Level</span>;
-  }
-  const cur = verdict.currency as DisplayCurrency;
-  const money = formatMoney(verdict.figure, cur, cur);
-  const pos = tone === "pos";
-  return (
-    <span className="tnum" style={{ ...base, color: pos ? "var(--positive-text)" : "var(--negative-text)", background: pos ? "var(--positive-soft)" : "var(--negative-soft)" }}>
-      <svg width="9" height="9" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
-        {pos ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" /> : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}
-      </svg>
-      {money}
-    </span>
-  );
-}
-
 // The unfolded look-back — a perforation marking the passage of time, then the
 // verdict sentence (figure in gold) and the figuring behind it.
 function VerdictBody({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
@@ -267,15 +234,7 @@ export function MobileDecisionJournal({
         {note}
       </p>
 
-      {/* Folded — a look-back chip previews the verdict outcome, tucked to the
-          right; the dropdown reveals the reasoning behind it. */}
-      {hasVerdict && !open && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
-          <LookbackChip verdict={verdict} />
-        </div>
-      )}
-
-      {/* Dropped down — the full look-back verdict. */}
+      {/* Dropped down — the full look-back verdict (chevron reveals it). */}
       {hasVerdict && open && <VerdictBody key={m.id} verdict={verdict} unitLabel={unitLabel} />}
     </section>
   );
