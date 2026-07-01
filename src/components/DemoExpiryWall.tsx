@@ -74,10 +74,10 @@ export function DemoExpiryWall() {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9500,
+        zIndex: "calc(var(--z-paywall) + 5)",
         background: "var(--bg)",
         backgroundImage:
-          "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(143,168,194,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(151,112,61,0.06), transparent 55%)",
+          "radial-gradient(ellipse 90% 55% at 18% -5%, color-mix(in srgb, var(--cat-property) 7%, transparent), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 55%)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

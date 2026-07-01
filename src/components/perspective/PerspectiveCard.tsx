@@ -2,23 +2,21 @@
 
 import { type Perspective } from "@/lib/vitals/perspective";
 import { ordinalSuffix } from "@/lib/utils";
+import { formatMoney, formatMoneyCompact, isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
+
+// Perspective values are EUR-normalized — convert to the display currency
+// (correct symbol included) via the canonical money helpers, rather than
+// pinning a "$" on an unconverted EUR figure for non-EUR users.
+function toDc(displayCurrency: string): DisplayCurrency {
+  return isSupportedCurrency(displayCurrency) ? displayCurrency : "EUR";
+}
 
 function formatCurrency(eur: number, displayCurrency: string): string {
-  const sym = displayCurrency.toUpperCase() === "EUR" ? "€" : "$";
-  if (eur >= 1_000_000) return `${sym}${(eur / 1_000_000).toFixed(1).replace(".", ",")}M`;
-  if (eur >= 1_000) return `${sym}${Math.round(eur / 1_000)}k`;
-  return `${sym}${Math.round(eur)}`;
+  return formatMoneyCompact(eur, "EUR", toDc(displayCurrency));
 }
 
 function formatFull(eur: number, displayCurrency: string): string {
-  // nl-NL number grammar (period thousands) + a manual symbol, matching the
-  // app's formatMoney everywhere else — never en-US commas.
-  const sym = displayCurrency.toUpperCase() === "EUR" ? "€" : "$";
-  const n = new Intl.NumberFormat("nl-NL", {
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(Math.round(eur));
-  return `${sym}${n}`;
+  return formatMoney(eur, "EUR", toDc(displayCurrency));
 }
 
 function youMarkerX(netWorthEur: number): number {

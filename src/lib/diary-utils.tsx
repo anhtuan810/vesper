@@ -1,6 +1,6 @@
 import type { ReactNode, CSSProperties } from "react";
 import type { Mutation } from "@/lib/supabase";
-import { formatMoney, toUsdClient, type DisplayCurrency } from "@/lib/money";
+import { formatMoney, formatMoneyCompact, toDisplay, toUsdClient, type DisplayCurrency } from "@/lib/money";
 
 export const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 export const STARTING_POSITION_CTX = "Starting position — no purchase history captured";
@@ -27,10 +27,10 @@ export const SELECT_STYLE: CSSProperties = {
   background: "var(--surface)",
   backgroundColor: "var(--surface)",
   border: "1px solid var(--border)",
-  borderRadius: 8,
+  borderRadius: "var(--radius-md)",
   padding: "5px 24px 5px 10px",
-  fontSize: 13,
-  fontFamily: "var(--font-sans)",
+  fontSize: "var(--fs-body)",
+  fontFamily: "var(--font-ui)",
   color: "var(--text-dim)",
   cursor: "pointer",
   backgroundImage:
@@ -69,8 +69,11 @@ export function actionVerb(action: string): string {
 }
 
 export function abbrevMoney(usdValue: number, displayCurrency: DisplayCurrency): string {
-  const sym = displayCurrency === "USD" ? "$" : displayCurrency === "GBP" ? "£" : "€";
-  if (usdValue >= 1_000_000) return `${sym}${(usdValue / 1_000_000).toFixed(1)}m`;
+  // Convert BEFORE deciding to abbreviate — the old path compacted the raw USD
+  // number and pinned the display symbol on it. ≥1M in display currency reads
+  // "€1,2M" (the one app-wide compact scheme); below that, the full figure.
+  const display = toDisplay(usdValue, "USD", displayCurrency) ?? usdValue;
+  if (Math.abs(display) >= 1_000_000) return formatMoneyCompact(usdValue, "USD", displayCurrency);
   return formatMoney(usdValue, "USD", displayCurrency);
 }
 

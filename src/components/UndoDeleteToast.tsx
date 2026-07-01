@@ -79,8 +79,9 @@ export function UndoDeleteToast() {
 
   return (
     <div
-      className="fixed left-1/2 z-40 flex items-center gap-3"
+      className="fixed left-1/2 flex items-center gap-3"
       style={{
+        zIndex: "var(--z-toast)",
         transform: "translateX(-50%)",
         bottom: "calc(80px + env(safe-area-inset-bottom))",
         background: "var(--surface)",

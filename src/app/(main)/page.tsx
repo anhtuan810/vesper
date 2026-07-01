@@ -241,7 +241,7 @@ export default function Dashboard() {
         empty={isEmpty}
       />
 
-      <div className={`max-w-[960px] mx-auto pb-36 ${isEmpty ? "" : "px-0 md:px-8 pt-4"}`}>
+      <div className={`max-w-[960px] mx-auto pb-[var(--page-bottom-pad)] ${isEmpty ? "" : "px-0 md:px-8 pt-4"}`}>
         {priceHealth === "degraded" && (
           <div
             className="rounded-xl px-5 py-3 mb-4 flex items-center justify-between"

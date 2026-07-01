@@ -128,6 +128,16 @@
   --focus-ring-width:  2.5px;
   --focus-ring-offset: 2px;
   --focus-ring-color:  var(--accent);
+
+  /* One bottom clearance for every scrolling tab page: the fixed BottomNav
+     (--nav-height) + the floating demo pill + breathing room. 144px without a
+     safe-area inset — the Overview reference value (pb-36) — and grows with
+     the iOS home indicator so the last row always scrolls clear. */
+  --page-bottom-pad: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 88px);
+
+  /* One modal scrim — the dim layer behind dialogs (was a raw rgba literal
+     duplicated per dialog, so the dim level could silently diverge). */
+  --scrim: rgba(0, 0, 0, 0.45);
 }
 
 :root,

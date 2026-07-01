@@ -196,6 +196,10 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         .diary-row { cursor: pointer; }
         .diary-row:hover { background-color: var(--surface-elev); }
         .diary-row:active { opacity: 0.7; }
+        /* Hairline between rows; the month's last row ends on an open edge.
+           (A class, not an inline style — inline would defeat :last-child.) */
+        .diary-row-divider { border-bottom: 0.5px solid var(--border); }
+        .diary-row-divider:last-child { border-bottom: none; }
       `}</style>
 
       {/* Page title */}
@@ -259,8 +263,8 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             onClick={() => setSearchQuery("")}
             aria-label="Clear search"
             style={{
-              position: "absolute", right: 12, top: "50%",
-              transform: "translateY(-50%)",
+              position: "absolute", right: 0, top: 0, bottom: 0, width: 40,
+              display: "flex", alignItems: "center", justifyContent: "center",
               background: "none", border: "none", padding: 0,
               cursor: "pointer", color: "var(--text-faint)",
               fontSize: "var(--fs-subhead)", lineHeight: 1,
@@ -341,7 +345,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
       {anniversaryEntry && (
         <button
           onClick={() => jumpToEntry(anniversaryEntry.mutation)}
-          className="mx-0 md:-mx-8 mb-[18px]"
+          className="-mx-5 md:-mx-8 mb-[18px]"
           style={{
             display: "block",
             textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer",
@@ -350,7 +354,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         >
           <div
             style={{ position: "relative", background: "var(--accent-soft)" }}
-            className="px-4 md:px-8 py-[14px]"
+            className="px-5 md:px-8 py-[14px]"
           >
             <div
               className="eyebrow"
@@ -440,13 +444,16 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
           return a.kind === "move" ? 1 : -1; // moves sort after mutations on the same date
         });
 
+        const isFirstMonth = monthKey === monthKeys[0];
         return (
           <div key={monthKey}>
-            {/* Month header */}
+            {/* Month header — months after the first are parted by the same
+                hairline rule + whitespace the Overview uses between sections. */}
             <div
               style={{
                 display: "flex", alignItems: "baseline", justifyContent: "space-between",
                 margin: "var(--space-4) 0 var(--space-2)",
+                ...(isFirstMonth ? {} : { borderTop: "1px solid var(--border)", paddingTop: "var(--space-4)" }),
               }}
             >
               <div
@@ -485,7 +492,6 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                   const name = displayName(m);
                   const isRemovedAsset = !m.asset_id;
                   const rowStyle = {
-                    borderBottom: "0.5px solid var(--border)",
                     ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
                   };
                   const rowContent = (
@@ -507,7 +513,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                     <div
                       key={m.id}
                       id={`diary-entry-${m.id}`}
-                      className="last:border-0"
+                      className="diary-row-divider"
                       style={rowStyle}
                     >
                       {rowContent}
@@ -517,7 +523,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                       key={m.id}
                       id={`diary-entry-${m.id}`}
                       href={`/asset?id=${m.asset_id}`}
-                      className="block last:border-0"
+                      className="block diary-row-divider"
                       style={rowStyle}
                     >
                       {rowContent}
@@ -538,15 +544,28 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                     {/* Summary row */}
                     <div
                       id={`diary-entry-${anchor.id}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isGroupExpanded}
                       onClick={() => setExpandedGroups((prev) => {
                         const next = new Set(prev);
                         if (next.has(groupId)) next.delete(groupId);
                         else next.add(groupId);
                         return next;
                       })}
-                      className="diary-row last:border-0"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setExpandedGroups((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(groupId)) next.delete(groupId);
+                            else next.add(groupId);
+                            return next;
+                          });
+                        }
+                      }}
+                      className="diary-row diary-row-divider focus-ring"
                       style={{
-                        borderBottom: "0.5px solid var(--border)",
                         cursor: "pointer",
                         ...(highlightedId === anchor.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
                       }}
@@ -580,8 +599,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         <div
                           key={m.id}
                           id={`diary-entry-${m.id}`}
-                          className="last:border-0"
-                          style={{ borderBottom: "0.5px solid var(--border)" }}
+                          className="diary-row-divider"
                         >
                           <div style={{ display: "flex", gap: "var(--space-row)", padding: "var(--space-1) 0 var(--space-1) 36px", alignItems: "baseline" }}>
                             <span style={{ flex: 1 }}>{valueNode}</span>
@@ -611,9 +629,10 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
         <div className="pt-4 pb-8 flex justify-center">
           <button
             onClick={onLoadMore}
+            className="font-ui"
             style={{
-              fontSize: "var(--fs-caption)", color: "var(--text-faint)", fontFamily: "var(--font-ui)",
-              background: "none", border: "none", cursor: "pointer",
+              fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)",
+              background: "none", border: "none", cursor: "pointer", padding: "var(--space-2) var(--space-4)",
             }}
           >
             Load more

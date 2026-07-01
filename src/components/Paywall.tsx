@@ -252,10 +252,10 @@ export function Paywall() {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9000,
+        zIndex: "var(--z-paywall)",
         background: "var(--bg)",
         backgroundImage:
-          "radial-gradient(ellipse 90% 55% at 18% -5%, rgba(143,168,194,0.07), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, rgba(151,112,61,0.06), transparent 55%)",
+          "radial-gradient(ellipse 90% 55% at 18% -5%, color-mix(in srgb, var(--cat-property) 7%, transparent), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 55%)",
         overflowY: "auto",
         display: "flex",
         flexDirection: "column",
@@ -314,7 +314,7 @@ export function Paywall() {
               fontSize: "var(--fs-meta)",
               color: "var(--negative-text)",
               background: "var(--negative-soft)",
-              border: "1px solid var(--negative-soft)",
+              border: "1px solid color-mix(in srgb, var(--negative) 25%, transparent)",
               borderRadius: "var(--radius-md)",
               padding: "10px 14px",
               marginBottom: 14,

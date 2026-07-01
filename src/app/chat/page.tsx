@@ -234,11 +234,14 @@ export default function ChatPage() {
   return (
     <>
       <style>{`
-        @keyframes up { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
-        @keyframes blink { 0%,100%{opacity:0.2}50%{opacity:1} }
-        .chat-msg { animation: up 0.25s ease forwards; }
-        .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 1.2s ease infinite;margin:0 2px; }
-        .chat-dot:nth-child(2){animation-delay:.2s}.chat-dot:nth-child(3){animation-delay:.4s}
+        .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 2px; }
+        @media (prefers-reduced-motion: no-preference) {
+          @keyframes up { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+          @keyframes blink { 0%,100%{opacity:0.2}50%{opacity:1} }
+          .chat-msg { animation: up 0.25s ease forwards; }
+          .chat-dot { animation: blink 1.2s ease infinite; }
+          .chat-dot:nth-child(2){animation-delay:.2s}.chat-dot:nth-child(3){animation-delay:.4s}
+        }
         .chat-composer-gradient {
           background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 0%, transparent) 0%, var(--bg) 30%, var(--bg) 100%);
         }

@@ -165,7 +165,7 @@ export function SettingsContent() {
 
   return (
     <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
-      <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 0 110px" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 0 var(--page-bottom-pad)" }}>
 
         {/* Back + page title */}
         <div style={{ padding: "var(--space-3) 0 18px", display: "flex", alignItems: "center", gap: "var(--space-row)" }}>
@@ -488,12 +488,12 @@ export function SettingsContent() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.45)",
+            background: "var(--scrim)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: 20,
-            zIndex: 100,
+            zIndex: "var(--z-modal)",
           }}
         >
           <div
@@ -624,7 +624,7 @@ export function SettingsContent() {
             color: "var(--text-dim)",
             whiteSpace: "nowrap",
             boxShadow: "var(--shadow-soft)",
-            zIndex: 50,
+            zIndex: "var(--z-toast)",
             fontFamily: "var(--font-ui)",
           }}
         >

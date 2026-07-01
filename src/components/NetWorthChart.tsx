@@ -128,10 +128,11 @@ function fmtYLabel(value: number, currency: string): string {
   const sign = value < 0 ? "−" : "";
   const abs = Math.abs(value);
   // Match the hero number's locale (nl-NL) so the axis and headline share one
-  // grammar — e.g. €0,1 mln rather than a US-compacted €0.1M next to €115.077.
+  // grammar; suffixes follow the one app-wide compact scheme (K / M) so an
+  // axis never mixes "mln" against "K" on adjacent gridlines.
   const fmt = (n: number) =>
     new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(n);
-  if (abs >= 1_000_000) return `${sign}${sym}${fmt(abs / 1_000_000)} mln`;
+  if (abs >= 1_000_000) return `${sign}${sym}${fmt(abs / 1_000_000)}M`;
   if (abs >= 1_000) return `${sign}${sym}${fmt(abs / 1_000)}K`;
   return `${sign}${sym}${new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(abs)}`;
 }

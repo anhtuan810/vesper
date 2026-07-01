@@ -84,21 +84,20 @@ export const ANNUAL_MONTHS_FREE = Math.round(
 );
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
-// Currency mirrors the app's existing money formatting (en-US, € symbol — see
-// src/lib/money.ts), so prices read "€9.99" consistently with every other figure.
-const eurFmt = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "EUR",
+// Prices follow the app's one number grammar (nl-NL: comma decimals — see
+// src/lib/money.ts), so "€9,99" reads consistently with every other figure.
+const priceFmt = new Intl.NumberFormat("nl-NL", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
 export function formatPrice(amount: number): string {
-  return eurFmt.format(amount);
+  return `€${priceFmt.format(amount)}`;
 }
 
-// Renewal/expiry dates use nl-NL, e.g. "13 juni 2026".
-const nlDateFmt = new Intl.DateTimeFormat("nl-NL", {
+// Renewal/expiry dates in English, matching the app's date convention
+// (en-GB, e.g. "13 June 2026" — the UI language is English throughout).
+const nlDateFmt = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "long",
   year: "numeric",

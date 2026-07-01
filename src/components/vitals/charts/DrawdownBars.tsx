@@ -1,16 +1,15 @@
 import type { DrawdownValue } from '@/lib/vitals/drawdown';
+import { formatMoneyCompact, type DisplayCurrency } from '@/lib/money';
 
 interface Props {
   data: DrawdownValue;
+  displayCurrency: DisplayCurrency;
 }
 
-function fmt(eur: number): string {
-  const abs = Math.abs(eur);
-  const k = abs >= 1000 ? `€${Math.round(abs / 1000)}k` : `€${Math.round(abs)}`;
-  return `−${k}`;
-}
-
-export function DrawdownBars({ data }: Props) {
+export function DrawdownBars({ data, displayCurrency }: Props) {
+  // Shock values are EUR-normalized positive magnitudes shown as losses —
+  // convert to the display currency and negate for the U+2212 sign.
+  const fmt = (eur: number) => formatMoneyCompact(-Math.abs(eur), 'EUR', displayCurrency);
   const { equitiesShockEur, cryptoShockEur, housingShockEur, combinedShockEur } = data;
 
   // Normalize bar widths relative to combined shock (= 100%)

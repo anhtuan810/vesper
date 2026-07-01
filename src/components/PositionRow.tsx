@@ -35,8 +35,11 @@ function subLine(asset: LiveAsset): string {
       }
     }
     if (asset.units != null) {
+      // Same nouns as the Diary (unitNoun): shares for equities, oz for gold.
       const unitLabel =
-        asset.type === "stocks" || asset.type === "etf" ? "shares" : "units";
+        asset.type === "stocks" || asset.type === "etf" ? "shares"
+        : asset.type === "gold" ? "oz"
+        : "units";
       parts.push(`${asset.units.toLocaleString("nl-NL")} ${unitLabel}`);
     }
     // country intentionally omitted for all tradeables

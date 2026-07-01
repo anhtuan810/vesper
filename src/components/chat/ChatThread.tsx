@@ -771,7 +771,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 height: 32,
                 borderRadius: "50%",
                 background: canSend ? "var(--accent)" : "var(--surface-elev)",
-                color: canSend ? "var(--bg)" : "var(--text-faint)",
+                color: canSend ? "var(--on-accent)" : "var(--text-faint)",
                 border: "none",
                 cursor: canSend ? "pointer" : "default",
                 opacity: canSend ? 1 : 0.5,

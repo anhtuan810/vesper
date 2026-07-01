@@ -20,8 +20,8 @@ function fmtCountdown(ms: number): string {
 // is the only action, on web and native alike: no external URL or web checkout is
 // ever opened on native (App Store Guideline 3.1.1) — signOut is the whole action.
 // Always visible on the demo account — no dismiss — and rendered nowhere else.
-// Sits below the BottomNav (z-25 < z-30) and clears it on mobile; skipped on the
-// mobile chat route so it never covers the composer.
+// Sits below the BottomNav (--z-banner 20 < z-30) and clears it on mobile; skipped
+// on the mobile chat route so it never covers the composer.
 export function DemoBanner() {
   const { data } = useSubscription();
   const pathname = usePathname();
@@ -70,14 +70,18 @@ export function DemoBanner() {
           position: "fixed",
           left: "50%",
           transform: "translateX(-50%)",
-          zIndex: 25,
+          // Token scale: above page content, below the fixed BottomNav (z-30).
+          zIndex: "var(--z-banner)",
           pointerEvents: "auto",
           display: "flex",
           alignItems: "center",
           gap: "var(--space-3)",
           padding: "var(--space-2) var(--space-5)",
           borderRadius: "var(--radius-pill)",
-          background: "var(--accent-soft)",
+          // Opaque accent tint (accent-soft flattened onto the surface) — the
+          // pill floats over list rows, so a translucent wash would let the
+          // text underneath bleed through it.
+          background: "color-mix(in srgb, var(--accent) 12%, var(--surface))",
           border: "0.5px solid var(--accent)",
           boxShadow: "var(--shadow-soft)",
           fontFamily: "var(--font-ui)",
@@ -116,7 +120,10 @@ export function DemoBanner() {
             color: "var(--accent)",
             background: "none",
             border: "none",
-            padding: 0,
+            // Grow the tap target without growing the pill (negative margins
+            // cancel the padding in layout).
+            padding: "var(--space-3) var(--space-2)",
+            margin: "calc(var(--space-3) * -1) calc(var(--space-2) * -1)",
             cursor: "pointer",
           }}
         >

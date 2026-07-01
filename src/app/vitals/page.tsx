@@ -41,15 +41,16 @@ export default function VitalsPage() {
         totalSymbols={0}
         refreshing={false}
         refreshPrices={() => {}}
-        empty
+        hideRefresh
       />
       <div
         style={{
-          maxWidth: 520,
+          // Match the Overview content cap (PortfolioTab constrains its blocks
+          // to 660) so tabs share one column width on wide phones/tablets.
+          maxWidth: 660,
           margin: "0 auto",
-          // Clear the fixed bottom nav + the iOS home-indicator safe area, plus a
-          // comfortable gap — composes instead of a fixed 110px guess.
-          padding: "0 0 calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-8))",
+          // One shared clearance: bottom nav + demo pill + breathing room.
+          padding: "0 0 var(--page-bottom-pad)",
         }}
       >
         {/* The Portfolio summary card (Projection + Worth knowing + Markets) was

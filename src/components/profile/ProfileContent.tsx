@@ -209,10 +209,12 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
   return (
     <div style={fillWidth
       ? { maxWidth: "none", margin: 0, padding: 0 }
-      : { maxWidth: 520, margin: "0 auto", padding: "0 0 calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-8))" }}>
+      // 660 column + shared bottom clearance — same shell as Overview/Vitals.
+      : { maxWidth: 660, margin: "0 auto", padding: "0 0 var(--page-bottom-pad)" }}>
 
-      {/* Name as page title + fingerprint as supporting line */}
-      <div style={{ paddingTop: "var(--space-8)", marginBottom: 26 }}>
+      {/* Name as page title + fingerprint as supporting line. Top spacing
+          matches the Overview reference (pt-4 under the NavBar). */}
+      <div style={{ paddingTop: "var(--space-4)", marginBottom: "var(--space-6)" }}>
         <div style={{
           fontFamily: "var(--font-display)",
           fontSize: "var(--fs-title)",
@@ -325,7 +327,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           border: "1px solid var(--border-strong)",
           borderRadius: "var(--radius-lg)",
           cursor: "pointer",
-          color: "var(--accent)",
+          color: "var(--accent-text)",
         }}
       >
         <SettingsGearIcon size={18} />

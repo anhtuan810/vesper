@@ -65,8 +65,9 @@ export function NavBar({
     <button
       key={t}
       onClick={() => setTab(t)}
-      className="text-sm font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2"
+      className="font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2"
       style={{
+        fontSize: "var(--fs-subhead)",
         background: tab === t ? "var(--surface-elev)" : "transparent",
         color: tab === t ? "var(--text)" : "var(--text-faint)",
       }}
@@ -93,8 +94,8 @@ export function NavBar({
     <div className="flex items-center gap-2">
       {firstName && tab !== "profile" && (
         <span
-          className="text-sm font-medium"
-          style={{ color: "var(--text-faint)" }}
+          className="font-medium"
+          style={{ fontSize: "var(--fs-subhead)", color: "var(--text-faint)" }}
         >
           {firstName}
         </span>
@@ -116,6 +117,10 @@ export function NavBar({
           position: "relative",
           width: 28,
           height: 28,
+          // Pad the tap target out to 36px; negative margins keep layout intact.
+          padding: 4,
+          margin: -4,
+          boxSizing: "content-box",
           borderRadius: "var(--radius-md)",
           opacity: refreshing ? 0.4 : 1,
         }}
@@ -162,7 +167,7 @@ export function NavBar({
           onClick={() => router.push("/settings")}
           aria-label="Settings"
           className="flex items-center justify-center text-faint hover:text-dim transition-colors"
-          style={{ width: 28, height: 28, borderRadius: "var(--radius-md)" }}
+          style={{ width: 28, height: 28, padding: 4, margin: -4, boxSizing: "content-box", borderRadius: "var(--radius-md)" }}
         >
           <svg
             viewBox="0 0 24 24"

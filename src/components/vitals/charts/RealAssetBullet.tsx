@@ -1,12 +1,15 @@
 import type { RealAssetWeightValue } from '@/lib/vitals/realAssetWeight';
 
-// Fixed percentile band colors — constant across themes
+// Percentile bands — a quiet warm ramp derived from the brass accent over the
+// card surface, so it deepens step by step AND adapts to the theme (the old
+// fixed light beiges glowed on the dark surface).
+const bandFill = (pct: number) => `color-mix(in srgb, var(--accent) ${pct}%, var(--surface))`;
 const BANDS = [
-  { x: 0,   width: 60,  fill: '#E8E2D4', pctStart: 0,  pctEnd: 25 },
-  { x: 60,  width: 80,  fill: '#D9D2C0', pctStart: 25, pctEnd: 50 },
-  { x: 140, width: 80,  fill: '#CBC3AC', pctStart: 50, pctEnd: 75 },
-  { x: 220, width: 60,  fill: '#BDB498', pctStart: 75, pctEnd: 90 },
-  { x: 280, width: 40,  fill: '#A89F84', pctStart: 90, pctEnd: 100 },
+  { x: 0,   width: 60,  fill: bandFill(12), pctStart: 0,  pctEnd: 25 },
+  { x: 60,  width: 80,  fill: bandFill(19), pctStart: 25, pctEnd: 50 },
+  { x: 140, width: 80,  fill: bandFill(26), pctStart: 50, pctEnd: 75 },
+  { x: 220, width: 60,  fill: bandFill(34), pctStart: 75, pctEnd: 90 },
+  { x: 280, width: 40,  fill: bandFill(43), pctStart: 90, pctEnd: 100 },
 ];
 
 // Maps a percentile (0–100) to an x pixel position using the band widths (linear within each band)

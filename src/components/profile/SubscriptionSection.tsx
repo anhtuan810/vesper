@@ -241,7 +241,7 @@ export function SubscriptionSection() {
               borderRadius: "var(--radius-lg)",
               border: "none",
               background: "var(--accent)",
-              color: "var(--bg)",
+              color: "var(--on-accent)",
               fontSize: "var(--fs-body)",
               fontWeight: 600,
               cursor: busy ? "default" : "pointer",
@@ -254,7 +254,7 @@ export function SubscriptionSection() {
       )}
 
       {error && (
-        <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative)", marginTop: -14, marginBottom: "var(--space-5)", lineHeight: "var(--lh-body)" }}>
+        <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative-text)", marginTop: -14, marginBottom: "var(--space-5)", lineHeight: "var(--lh-body)" }}>
           {error}
         </div>
       )}

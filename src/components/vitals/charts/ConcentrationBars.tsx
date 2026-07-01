@@ -30,8 +30,13 @@ interface Props {
   positions: Position[];
 }
 
-const LABEL_W = 104;
+// Wide enough for ~16 characters ("Apartment — Amst…") — names were truncating
+// after ~9 while the bars had width to spare.
+const LABEL_W = 132;
 const VALUE_W = 46;
+// The 6px flex gap between the bar track and the % value column — the
+// threshold-line position must account for it or the line drifts right.
+const TRACK_GAP = 6;
 const BAR_H = 9;
 const ROW_GAP = 8;
 const HEADER_H = 18;
@@ -71,9 +76,9 @@ export function ConcentrationBars({ positions }: Props) {
   // Threshold fraction of the track width (0–1)
   const threshFrac = 35 / axisMax;
   // CSS calc expression: left edge of threshold line from the container left.
-  // The bar track excludes both the leading label column (LABEL_W) and the
-  // trailing % value column (VALUE_W).
-  const threshLeft = `calc(${LABEL_W}px + ${threshFrac.toFixed(6)} * (100% - ${LABEL_W}px - ${VALUE_W}px))`;
+  // The bar track excludes the leading label column (LABEL_W) and the trailing
+  // % value column plus its flex gap (VALUE_W + TRACK_GAP).
+  const threshLeft = `calc(${LABEL_W}px + ${threshFrac.toFixed(6)} * (100% - ${LABEL_W}px - ${VALUE_W + TRACK_GAP}px))`;
 
   const restCount = rest.length;
   const restSum = rest.reduce((s, p) => s + p.pct, 0);
@@ -155,7 +160,7 @@ export function ConcentrationBars({ positions }: Props) {
                   style={{
                     flexShrink: 0,
                     width: LABEL_W,
-                    paddingRight: 10,
+                    paddingRight: 8,
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
@@ -185,7 +190,7 @@ export function ConcentrationBars({ positions }: Props) {
                 {/* Bar + % label — the value column has a fixed width so the bar
                     track (flex:1, minWidth:0) never extends under it; a 100%
                     bar therefore stays inside the card. */}
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: TRACK_GAP }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{

@@ -13,24 +13,33 @@ import { isPushEnabled, enablePush, disablePush } from "@/lib/native/push";
 
 function Toggle({ on, busy, onClick }: { on: boolean; busy: boolean; onClick: () => void }) {
   return (
+    // Transparent padding + negative margin grow the tap target to the 44px iOS
+    // minimum while the visible pill stays 44x26.
     <button
       onClick={onClick}
       disabled={busy}
       aria-pressed={on}
       style={{
-        width: 44, height: 26, borderRadius: "var(--radius-pill)", border: "none", padding: 2,
-        background: on ? "var(--accent)" : "var(--border-strong)",
+        background: "none", border: "none", padding: "9px 0", margin: "-9px 0",
         cursor: busy ? "default" : "pointer", flexShrink: 0,
-        opacity: busy ? 0.6 : 1, transition: "background 0.15s",
+        opacity: busy ? 0.6 : 1,
       }}
     >
       <div
         style={{
-          width: 22, height: 22, borderRadius: "50%", background: "var(--surface)",
-          transform: on ? "translateX(18px)" : "translateX(0)",
-          transition: "transform 0.15s",
+          width: 44, height: 26, borderRadius: "var(--radius-pill)", padding: 2,
+          background: on ? "var(--accent)" : "var(--border-strong)",
+          transition: "background 0.15s", boxSizing: "border-box",
         }}
-      />
+      >
+        <div
+          style={{
+            width: 22, height: 22, borderRadius: "50%", background: "var(--surface)",
+            transform: on ? "translateX(18px)" : "translateX(0)",
+            transition: "transform 0.15s",
+          }}
+        />
+      </div>
     </button>
   );
 }

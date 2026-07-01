@@ -53,7 +53,7 @@ export default function ProfilePage() {
         totalSymbols={0}
         refreshing={false}
         refreshPrices={() => {}}
-        empty
+        hideRefresh
       />
       <ProfileContent />
     </div>

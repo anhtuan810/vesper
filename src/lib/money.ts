@@ -140,13 +140,44 @@ export function formatMoney(
     displayValue = converted != null ? converted : amount * getUsdRate(displayCurrency);
   }
   const absValue = Math.abs(displayValue);
-  const sign = displayValue < 0 ? "-" : "";
+  // Real minus sign (U+2212), matching every other negative figure in the app.
+  const sign = displayValue < 0 ? "−" : "";
   const { symbol, locale } = CURRENCY_META[displayCurrency];
   const amount_ = new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(absValue);
   return `${sign}${symbol}${amount_}`;
+}
+
+/**
+ * Compact money for chart labels, stat chips and tight rows: converts to the
+ * display currency (same path as formatMoney), then abbreviates. ONE scheme
+ * app-wide — uppercase K/M, nl-NL comma decimals, U+2212 minus: €1,2M · €115K · €640.
+ */
+export function formatMoneyCompact(
+  amount: number,
+  fromCurrency: string,
+  displayCurrency: DisplayCurrency
+): string {
+  let displayValue: number;
+  if (fromCurrency === displayCurrency) {
+    displayValue = amount;
+  } else {
+    const rates: Record<string, number> = {};
+    for (const c of SUPPORTED_CURRENCIES) {
+      if (c === "USD") continue;
+      rates[c] = getUsdRate(c);
+    }
+    const converted = convertCurrency(amount, fromCurrency, displayCurrency, rates);
+    displayValue = converted != null ? converted : amount * getUsdRate(displayCurrency);
+  }
+  const abs = Math.abs(displayValue);
+  const sign = displayValue < 0 ? "−" : "";
+  const { symbol } = CURRENCY_META[displayCurrency];
+  if (abs >= 1_000_000) return `${sign}${symbol}${(abs / 1_000_000).toFixed(1).replace(".", ",")}M`;
+  if (abs >= 1_000) return `${sign}${symbol}${Math.round(abs / 1_000)}K`;
+  return `${sign}${symbol}${Math.round(abs)}`;
 }
 
 const inFlightFetches = new Map<DisplayCurrency, Promise<number | null>>();
@@ -188,7 +219,7 @@ export function formatMoneyParts(
   const rate = getUsdRate(displayCurrency);
   const displayValue = usdAmount * rate;
   const absValue = Math.abs(displayValue);
-  const sign = displayValue < 0 ? "-" : "";
+  const sign = displayValue < 0 ? "−" : "";
   const { symbol, locale } = CURRENCY_META[displayCurrency];
   const amount_ = new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,

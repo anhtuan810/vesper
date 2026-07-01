@@ -88,12 +88,12 @@ export function AiConsentGate() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.45)",
+        background: "var(--scrim)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "var(--space-5)",
-        zIndex: 200,
+        zIndex: "var(--z-modal)",
       }}
     >
       <div

@@ -103,7 +103,7 @@ export function AppLock() {
   return (
     <div
       style={{
-        position: "fixed", inset: 0, zIndex: 9999,
+        position: "fixed", inset: 0, zIndex: "var(--z-app-lock)",
         background: "var(--bg)",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: "var(--space-5)",

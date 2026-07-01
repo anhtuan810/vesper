@@ -48,15 +48,18 @@ export function LeverageTrend({ data }: Props) {
     pathD = `M0,${flatY} L240,${flatY}`;
   }
 
-  // Simple linear projection: extrapolate slope from last two trend points
-  let projEndY = todayY + 8; // default: slight improvement
+  // Simple linear projection: extrapolate slope from last two trend points.
+  // projLtv is the ONE projected figure — it drives both the plotted end point
+  // and the timeline label, so the label can never disagree with the line.
+  // Without trend data the projection stays flat (no invented improvement).
+  let projLtv = ltvPct;
   if (hasTrend && trend.length >= 2) {
     const last = trend[trend.length - 1];
     const prev = trend[trend.length - 2];
     const slope = (last.ltv - prev.ltv);
-    // Project ~1 year forward (same as the trend period spans)
-    projEndY = ltvToY(Math.max(0, ltvPct + slope * 2));
+    projLtv = Math.max(0, ltvPct + slope * 2);
   }
+  const projEndY = ltvToY(projLtv);
 
   // Projection area polygon: tapers from today to end with uncertainty band
   const projBandBot = Math.min(76, projEndY + 6);
@@ -65,11 +68,15 @@ export function LeverageTrend({ data }: Props) {
 
   const nlAvgY = ltvToY(NL_AVG_LTV_PCT);
 
-  // Timeline labels
-  const pastLabel = hasTrend ? trend[0].date.slice(0, 7).replace('-', ' · ').replace('-', '') + ` · ${trend[0].ltv.toFixed(0)}%` : '—';
+  // Timeline labels — dates in the app's short-month grammar ("Jul '25"), and
+  // the projected figure is the same number the dashed line actually plots.
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fmtMonth = (iso: string) =>
+    `${MONTHS[Math.max(0, Math.min(11, parseInt(iso.slice(5, 7), 10) - 1))]} '${iso.slice(2, 4)}`;
+  const pastLabel = hasTrend ? `${fmtMonth(trend[0].date)} · ${trend[0].ltv.toFixed(0)}%` : '—';
   const todayLabel = `today · ${ltvPct.toFixed(0)}%`;
   const projYear = (new Date().getFullYear() + 3).toString();
-  const projLabel = `${projYear} · ${Math.max(0, ltvPct + (projEndY < todayY ? -10 : 5)).toFixed(0)}%`;
+  const projLabel = hasTrend ? `${projYear} · ~${projLtv.toFixed(0)}%` : `${projYear} · projected`;
 
   return (
     <div style={{ position: 'relative' }}>

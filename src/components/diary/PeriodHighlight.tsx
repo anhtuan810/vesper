@@ -80,13 +80,16 @@ export function PeriodHighlight({ mutations, period, customFrom, customTo }: Per
 
   return (
     <div
-      className="bg-surface rounded-2xl border border-border mb-5"
-      style={{ padding: "var(--space-4) var(--space-5)" }}
+      className="bg-surface border border-border mb-5"
+      style={{ borderRadius: "var(--radius-lg)", padding: "var(--space-4) var(--space-5)" }}
     >
+      {/* Loading shimmer respects reduced-motion like every other animation. */}
       <style>{`
-        @keyframes volnarPulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
+        @media (prefers-reduced-motion: no-preference) {
+          @keyframes volnarPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+          }
         }
       `}</style>
 

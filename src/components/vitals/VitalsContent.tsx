@@ -8,6 +8,7 @@ import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
 import type { DormantVital } from "@/components/vitals/LibraryExpander";
 import { ordinalSuffix } from "@/lib/utils";
+import { formatMoneyCompact, isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
 import { ConcentrationBars } from "@/components/vitals/charts/ConcentrationBars";
 import { RealAssetBullet } from "@/components/vitals/charts/RealAssetBullet";
 import { LiquidityStack } from "@/components/vitals/charts/LiquidityStack";
@@ -74,16 +75,14 @@ function fmtPct(v: number, forceSign = false): string {
   return sign + Math.abs(v).toFixed(1).replace(".", ",") + "%";
 }
 
+// Vitals values are EUR-normalized — convert to the display currency (correct
+// symbol included) before abbreviating, rather than pinning "$" on a EUR figure.
 function fmtCurrency(eur: number, dc: string): string {
-  const sym = dc.toUpperCase() === "EUR" ? "€" : "$";
-  const abs = Math.abs(eur);
-  if (abs >= 1_000_000) return `${sym}${(abs / 1_000_000).toFixed(1).replace(".", ",")}M`;
-  if (abs >= 1_000) return `${sym}${Math.round(abs / 1_000)}k`;
-  return `${sym}${Math.round(abs)}`;
+  return formatMoneyCompact(eur, "EUR", isSupportedCurrency(dc) ? dc : "EUR");
 }
 
 function fmtDate(): string {
-  return new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+  return new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 type HeroClass = "positive" | "negative" | "default";
@@ -662,7 +661,7 @@ function buildLeverageCard(vital: VitalResult): CardConfig {
 
 function buildDrawdownCard(
   vital: VitalResult,
-  displayCurrency: string
+  displayCurrency: DisplayCurrency
 ): CardConfig {
   const v = vital.value as DrawdownValue;
   return {
@@ -678,7 +677,7 @@ function buildDrawdownCard(
       benchLine: "equities −30%, crypto −50%, housing −15%",
       suggestion: drawdownSuggestion(v, vital.band),
     },
-    chart: <DrawdownBars data={v} />,
+    chart: <DrawdownBars data={v} displayCurrency={displayCurrency} />,
   };
 }
 
@@ -870,7 +869,7 @@ export function VitalsContent({
       aria-label="Toggle property in vitals"
       onClick={toggleShowProperty}
       style={{
-        height: 26,
+        height: 32,
         padding: "0 var(--space-3)",
         borderRadius: "var(--radius-pill)",
         border: `0.5px solid ${showProperty ? "var(--accent-soft)" : "var(--border)"}`,
@@ -891,7 +890,8 @@ export function VitalsContent({
   ) : null;
 
   const pageTitle = showHeader ? (
-    <div style={{ marginBottom: "var(--space-4)", paddingTop: "var(--space-6)" }}>
+    // Top spacing matches the Overview reference (pt-4 under the NavBar).
+    <div style={{ marginBottom: "var(--space-4)", paddingTop: "var(--space-4)" }}>
       <div
         style={{
           display: "flex",
@@ -992,18 +992,7 @@ export function VitalsContent({
         </div>
         <button
           onClick={() => router.push("/chat?seed=onboarding-class")}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "10px 18px",
-            background: "var(--accent)",
-            color: "var(--bg)",
-            borderRadius: "var(--radius-md)",
-            fontSize: "var(--fs-meta)",
-            fontWeight: 600,
-            border: "none",
-            cursor: "pointer",
-          }}
+          className="btn btn-primary focus-ring"
         >
           Get started
         </button>
@@ -1041,7 +1030,7 @@ export function VitalsContent({
         cfg = buildLeverageCard(vital);
         break;
       case "drawdown":
-        cfg = buildDrawdownCard(vital, displayCurrency);
+        cfg = buildDrawdownCard(vital, isSupportedCurrency(displayCurrency) ? displayCurrency : "EUR");
         break;
       case "cashRealYield":
         cfg = buildCashYieldCard(vital);
@@ -1128,7 +1117,7 @@ export function VitalsContent({
               <PulseBanner
                 dateLabel={`Pulse · ${fmtDate()}`}
                 sentence={pulseSentence}
-                metaLabel={`${activeVitals.length} vitals · 0 shifted`}
+                metaLabel={`${activeVitals.length} vitals`}
               />
             );
           }
@@ -1146,7 +1135,7 @@ export function VitalsContent({
                     Pulse · {fmtDate()}
                   </div>
                   <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.55 }}>
-                    {activeVitals.length} vitals · 0 shifted
+                    {activeVitals.length} vitals
                   </div>
                 </div>
                 <div
@@ -1155,7 +1144,15 @@ export function VitalsContent({
                 />
               </div>
             ) : hasAssets ? (
-              <div style={{ background: "var(--accent-soft)", height: 52, opacity: 0.5 }} />
+              // Pulse still loading (or unavailable): keep the gold band's real
+              // anatomy — eyebrow + a shimmering sentence-length bar — so the slot
+              // reads as "loading", never as an empty beige rectangle.
+              <div style={{ background: "var(--accent-soft)", padding: "11px 15px 12px" }}>
+                <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.75, marginBottom: 8 }}>
+                  Pulse · {fmtDate()}
+                </div>
+                <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)" }} />
+              </div>
             ) : null}
             <div style={{ padding: "3px 15px 5px" }}>{topSlot}</div>
           </div>

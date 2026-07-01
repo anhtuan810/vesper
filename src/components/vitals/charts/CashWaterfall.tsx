@@ -55,7 +55,7 @@ export function CashWaterfall({ data }: Props) {
       <line x1={0} y1={66} x2={320} y2={66} stroke="var(--border)" strokeWidth={0.4} strokeDasharray="1 3" />
 
       {/* Savings rect (positive, going up from baseline) */}
-      <rect x={savingsX} y={savingsTop} width={rectW} height={savingsH} fill="var(--accent)" opacity={0.88} />
+      <rect x={savingsX} y={savingsTop} width={rectW} height={savingsH} fill="var(--positive)" opacity={0.88} />
       <text
         x={savingsX + rectW / 2}
         y={savingsTop - 5}
@@ -146,7 +146,7 @@ export function CashWaterfall({ data }: Props) {
             width={resultBoxW}
             height={resultH}
             fill="none"
-            stroke="var(--negative-text)"
+            stroke={realYieldPct < 0 ? "var(--negative-text)" : "var(--positive-text)"}
             strokeWidth={1.5}
             strokeDasharray="3 2"
           />
@@ -154,9 +154,9 @@ export function CashWaterfall({ data }: Props) {
             x={resultX + resultBoxW / 2}
             y={resultMidY}
             textAnchor="middle"
-            fontSize={13}
-            fill="var(--negative-text)"
-            fontWeight={700}
+            fontSize={12}
+            fill={realYieldPct < 0 ? "var(--negative-text)" : "var(--positive-text)"}
+            fontWeight={600}
             className="tnum"
           >
             {fmtPct(realYieldPct)}
@@ -169,7 +169,6 @@ export function CashWaterfall({ data }: Props) {
         textAnchor="middle"
         fontSize={11}
         fill="var(--text-faint)"
-        fontWeight={500}
       >
         real yield
       </text>

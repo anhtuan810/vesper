@@ -1,15 +1,16 @@
 import type { LiquidityPostureValue } from '@/lib/vitals/liquidityPosture';
 
-// Fixed tier colors — constant across themes
-// A deliberately muted liquidity-tier palette (kept as literals — these tiers
-// aren't asset categories, and the --cat-* tokens read more saturated than this
-// quiet ramp intends). sameDay stays the brand accent.
+// A deliberately muted liquidity-tier palette — these tiers aren't asset
+// categories, and the --cat-* tokens read more saturated than this quiet ramp
+// intends. Each tier is its nearest token softened over the surface, so the
+// muted read survives theme switches (the old fixed light-theme literals went
+// washed-out/invisible on the dark surface). sameDay stays the brand accent.
 const TIER_COLORS = {
-  sameDay:     'var(--accent)',
-  market1w:    '#6E9478',
-  slow1mo:     '#C4A86E',
-  sixMonthPlus: '#A89F84',
-  locked:      '#5E5A52',
+  sameDay:      'var(--accent)',
+  market1w:     'color-mix(in srgb, var(--cat-markets) 72%, var(--surface))',
+  slow1mo:      'color-mix(in srgb, var(--accent) 62%, var(--surface))',
+  sixMonthPlus: 'color-mix(in srgb, var(--cat-reserves) 78%, var(--surface))',
+  locked:       'color-mix(in srgb, var(--text) 42%, var(--surface))',
 };
 
 const LEGEND_LABELS = [

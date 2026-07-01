@@ -78,7 +78,7 @@ export function Chip({
   // The chip's one owned spec on the design-system tokens. Callers can still
   // override individual properties via `style` (it wins via spread order).
   const baseStyle: CSSProperties = {
-    height: 32,
+    height: "var(--control-h-sm)",
     padding: "0 var(--space-3)",
     borderRadius: "var(--radius-pill)",
     border: "0.5px solid var(--border)",

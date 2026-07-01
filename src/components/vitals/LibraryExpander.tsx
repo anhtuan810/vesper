@@ -108,17 +108,28 @@ export function LibraryExpander({
     router.push(`/chat?seed=insight&key=vital-${vitalKey}`);
   }
 
+  const toggle = () => setExpanded((e) => !e);
+
   return (
+    // Interactive container (it can hold nested tappable rows when expanded, so
+    // it can't be a <button>) — role/tabIndex/keys make it keyboard-operable.
     <div
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
+      className="focus-ring"
       style={{
         background: "var(--surface-elev)",
         border: "0.5px solid var(--border)",
         borderRadius: "var(--radius-md)",
-        padding: "13px 14px",
-        marginBottom: 18,
+        padding: "var(--space-card)",
+        marginBottom: "var(--space-4)",
         cursor: "pointer",
       }}
-      onClick={() => setExpanded((e) => !e)}
+      onClick={toggle}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); }
+      }}
     >
       {/* Header row */}
       <div
@@ -174,9 +185,15 @@ export function LibraryExpander({
           {dormantVitals.map((vital, i) => (
             <div
               key={vital.key}
+              role="button"
+              tabIndex={0}
+              className="focus-ring"
               onClick={(e) => {
                 e.stopPropagation();
                 handleVitalTap(vital.key);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleVitalTap(vital.key); }
               }}
               style={{
                 display: "flex",
@@ -196,7 +213,7 @@ export function LibraryExpander({
                   width: 28,
                   height: 28,
                   borderRadius: "var(--radius-md)",
-                  background: "var(--surface-elev)",
+                  background: "var(--surface)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
