@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { displayName, unitNoun, STARTING_POSITION_CTX } from "@/lib/diary-utils";
@@ -7,10 +8,13 @@ import { apiFetch } from "@/lib/api";
 import type { Mutation } from "@/lib/supabase";
 import type { VerdictData } from "@/lib/scenario/decision-verdict";
 
-// The phone equivalent of the desktop Overview's selected-entry panel: step
-// through your decisions below the chart and see each one's reasoning plus the
-// "Looking back" Decision Verdict. Self-contained (the desktop is left untouched)
-// and styled in the mobile Twilight idiom (tokens + inline styles, theme-aware).
+// The phone equivalent of the desktop Overview's selected-entry panel: the
+// latest (or chart-selected) decision, shown as a *folding* journal entry. By
+// default it is a compact two-line teaser — book mark, title, date, a one-line
+// note preview and a look-back chip — so Holdings stays high on screen. Tapping
+// the header unfolds the full reflection and the "Looking back" Decision Verdict.
+// Self-contained (the desktop is left untouched) and styled in the mobile
+// Twilight idiom (tokens + inline styles, theme-aware).
 
 // ── pure helpers (mirrors the desktop OverviewContent so behaviour matches) ──
 export function mDate(m: Mutation): string {
@@ -60,12 +64,17 @@ function verdictEligible(m: Mutation): boolean {
   return false;
 }
 
-// ── look-back (the "now" movement; mirrors the desktop VerdictStamp copy) ──
-// A perforation marks the passage of time, then an italic-serif hinge line that
-// is itself the toggle. Collapsed by default so the Holdings section below stays
-// high on screen; tapping the hinge unfolds the verdict, figuring and caveat.
-function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
-  const [open, setOpen] = useState(false);
+// The note shown for a decision — the writer's own words, or a quiet fallback.
+function noteFor(m: Mutation): string {
+  if (hasOwnNote(m)) return m.personal_context as string;
+  if (m.personal_context === STARTING_POSITION_CTX) return "Started tracking from here.";
+  return "Recorded automatically — no note attached.";
+}
+
+// ── look-back copy (single source; mirrors the desktop VerdictStamp) ────────
+// Builds the verdict headline, the figuring line and its fine-print caveats.
+// Used by the unfolded VerdictBody; the folded chip needs only kind + figure.
+function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: string; money: string; calc: string; notes: string[] } {
   const cur = verdict.currency as DisplayCurrency;
   const fmt = (v: number) => formatMoney(v, cur, cur);
   const money = fmt(verdict.figure);
@@ -98,53 +107,63 @@ function VerdictStamp({ verdict, unitLabel }: { verdict: VerdictData; unitLabel:
       "What the freed-up cash did afterwards isn't counted — this weighs only the position you let go.",
     ];
   }
+  return { line, money, calc, notes };
+}
 
-  // Set the money figure in gold within the headline sentence.
+// A verdict's direction: a good call (beat/spared) reads green, a costly one
+// (trailed/missed) clay, a wash (even/matched) neutral.
+function verdictTone(kind: VerdictData["kind"]): "pos" | "neg" | "neutral" {
+  if (kind === "beat" || kind === "spared") return "pos";
+  if (kind === "trailed" || kind === "missed") return "neg";
+  return "neutral";
+}
+
+// The folded look-back — a single at-a-glance chip carrying the verdict figure,
+// so the outcome is legible without unfolding the entry.
+function LookbackChip({ verdict }: { verdict: VerdictData }) {
+  const tone = verdictTone(verdict.kind);
+  const base = {
+    display: "inline-flex", alignItems: "center", gap: 3, flex: "none",
+    fontSize: "var(--fs-micro)", fontWeight: 600, borderRadius: "var(--radius-pill)",
+    padding: "3px 8px", whiteSpace: "nowrap" as const,
+  };
+  if (tone === "neutral") {
+    return <span className="tnum" style={{ ...base, color: "var(--text-dim)", background: "var(--surface-elev)" }}>Level</span>;
+  }
+  const cur = verdict.currency as DisplayCurrency;
+  const money = formatMoney(verdict.figure, cur, cur);
+  const pos = tone === "pos";
+  return (
+    <span className="tnum" style={{ ...base, color: pos ? "var(--positive-text)" : "var(--negative-text)", background: pos ? "var(--positive-soft)" : "var(--negative-soft)" }}>
+      <svg width="9" height="9" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
+        {pos ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" /> : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}
+      </svg>
+      {money}
+    </span>
+  );
+}
+
+// The unfolded look-back — a perforation marking the passage of time, then the
+// verdict sentence (figure in gold), the figuring and one fine-print caveat.
+function VerdictBody({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
+  const { line, money, calc, notes } = buildVerdictCopy(verdict, unitLabel);
   const headline = line.split(money);
-
   return (
     <div>
-      {/* The passage of time — a finely-dotted perforation across the entry. */}
       <div className="perforation" style={{ margin: "var(--space-4) 0" }} role="separator" aria-label="time passes" />
-      {/* The hinge is the control: an italic-serif line with an em-rule lead-in
-          and a chevron that rotates when the look-back is open. */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="focus-ring"
-        style={{
-          display: "flex", alignItems: "center", gap: 9, width: "100%",
-          background: "none", border: "none", padding: 0, cursor: "pointer",
-          fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 400,
-          fontSize: "var(--fs-body)", color: "var(--text-dim)", textAlign: "left",
-          lineHeight: "var(--lh-snug)",
-        }}
-      >
-        <span aria-hidden style={{ display: "inline-block", width: 18, height: 1, background: "var(--text-faint)", opacity: 0.7, flex: "none" }} />
-        <span style={{ flex: 1 }}>Looking back, {verdict.lookbackLabel}</span>
-        <svg width="13" height="13" viewBox="0 0 12 12" aria-hidden style={{ flex: "none", transition: "transform 0.25s ease", transform: open ? "rotate(180deg)" : "none", opacity: 0.65 }}>
-          <path d="M2.5 4.5L6 8L9.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      {/* The look-back proper — the verdict, the figuring (flat, no nested
-          layers) and one fine-print caveat line, each rising a beat apart. */}
-      {open && (
-        <div style={{ marginTop: "var(--space-4)" }}>
-          <p className="lookback-rise" style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0, animationDelay: "0s" }}>
-            {headline.map((part, i) => (
-              <span key={i}>
-                {part}
-                {i < headline.length - 1 && (
-                  <span className="tnum" style={{ fontWeight: 600, color: "var(--accent-text)" }}>{money}</span>
-                )}
-              </span>
-            ))}
-          </p>
-          <p className="lookback-rise" style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0", animationDelay: "0.05s" }}>{calc}</p>
-          <p className="lookback-rise" style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0", animationDelay: "0.1s" }}>{notes.join(" ")}</p>
-        </div>
-      )}
+      <p style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>
+        <span style={{ fontStyle: "italic", color: "var(--text-dim)" }}>Looking back, {verdict.lookbackLabel} — </span>
+        {headline.map((part, i) => (
+          <span key={i}>
+            {part}
+            {i < headline.length - 1 && (
+              <span className="tnum" style={{ fontWeight: 600, color: "var(--accent-text)" }}>{money}</span>
+            )}
+          </span>
+        ))}
+      </p>
+      <p style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0" }}>{calc}</p>
+      <p style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>{notes.join(" ")}</p>
     </div>
   );
 }
@@ -164,8 +183,21 @@ export function MobileDecisionJournal({
   }, [decisions, selectedId]);
   const m = decisions[index];
 
+  // Folded by default so Holdings sits high on screen. Explicitly picking a
+  // decision from the chart is a drill-in, so that opens the entry; the default
+  // (nothing selected → newest) stays a compact teaser. Adjusting `open` when the
+  // selection changes is done during render (React's endorsed pattern), not in an
+  // effect, so it doesn't trigger a cascading re-render.
+  const [open, setOpen] = useState(false);
+  const [prevSelected, setPrevSelected] = useState(selectedId);
+  if (selectedId !== prevSelected) {
+    setPrevSelected(selectedId);
+    if (selectedId && decisions.some((d) => d.id === selectedId)) setOpen(true);
+  }
+
   // Verdict — fetched lazily for the selected eligible decision, cached per
-  // (mutation, currency); null marks "asked, nothing to show".
+  // (mutation, currency); null marks "asked, nothing to show". Fetched even
+  // while folded so the look-back chip can render.
   const [verdicts, setVerdicts] = useState<Record<string, VerdictData | null>>({});
   const asked = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -187,40 +219,62 @@ export function MobileDecisionJournal({
 
   if (decisions.length === 0 || !m) return null;
 
-  const own = hasOwnNote(m);
   const verdict = verdicts[`${m.id}|${displayCurrency}`];
+  const unitLabel = m.asset_type ? unitNoun(m.asset_type) : "units";
+  const note = noteFor(m);
 
   return (
-    // Margins are 0 — the entry now lives inside the journal card (PortfolioTab),
+    // Margins are 0 — the entry lives inside the journal card (PortfolioTab),
     // whose padding owns the spacing.
     <section style={{ margin: 0 }}>
-      {/* Entry detail — the "then" movement of the letter. Selection is driven by
-          the chart dots (tap a marker to show that decision), so there is no
-          in-panel stepper or divider. The date is a quiet mono dateline, like a
-          line written at the top of a page; the reflection runs as upright serif
-          so it reads as a written passage rather than a caption. */}
-      {/* Journal mark — the same book glyph as the Journal tab, stamped by the
-          date so the card reads as a journal entry without a text label. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: "var(--space-3)" }}>
+      {/* Folding header — book mark, title, date and a chevron. The whole row is
+          the toggle: folded (default) it caps a two-line teaser; open it reveals
+          the full reflection and the look-back. The book glyph (the Journal tab's
+          mark) labels the entry as a journal entry without a text header. */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? "Collapse journal entry" : "Expand journal entry"}
+        className="focus-ring"
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+      >
         <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", flex: "none" }}>
           <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
           <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
         </svg>
-        <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)" }}>
+        <span className="font-display" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--fs-subhead)", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)" }}>
+          {decisionTitle(m)}
+        </span>
+        <span style={{ flex: "none", fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)" }}>
           {shortDate(mDate(m))}
         </span>
-      </div>
-      <h3 className="font-display" style={{ fontSize: "var(--fs-subhead)", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 var(--space-2)" }}>
-        {decisionTitle(m)}
-      </h3>
-      <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>
-        {own ? m.personal_context
-          : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
-          : "Recorded automatically — no note attached."}
-      </p>
-      {/* Keyed by the decision so the look-back returns to collapsed when a
-          different chart dot is tapped. */}
-      {verdict && <VerdictStamp key={m.id} verdict={verdict} unitLabel={m.asset_type ? unitNoun(m.asset_type) : "units"} />}
+        <svg width="13" height="13" viewBox="0 0 12 12" aria-hidden style={{ flex: "none", transition: "transform 0.25s ease", transform: open ? "rotate(180deg)" : "none", color: "var(--text-faint)", opacity: 0.7 }}>
+          <path d="M2.5 4.5L6 8L9.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open ? (
+        // Unfolded — the full reflection, the look-back (if any) and a quiet
+        // deep link into the full journal.
+        <>
+          <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>
+            {note}
+          </p>
+          {verdict && <VerdictBody key={m.id} verdict={verdict} unitLabel={unitLabel} />}
+          <Link href="/diary" className="font-numeric" style={{ display: "inline-block", marginTop: "var(--space-4)", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", textDecoration: "none" }}>
+            Open in journal ›
+          </Link>
+        </>
+      ) : (
+        // Folded — a one-line note preview and the look-back chip.
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: "var(--space-2)" }}>
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-read)" }}>
+            {note}
+          </span>
+          {verdict && <LookbackChip verdict={verdict} />}
+        </div>
+      )}
     </section>
   );
 }

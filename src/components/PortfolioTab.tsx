@@ -380,19 +380,17 @@ export function PortfolioTab({
           marker). Bleeds to the same -mx-5 column as the hero, chart and
           Holdings so the entry text lines up with them instead of sitting inset. */}
       {!liquidOnly && (
-        // The selected decision reads as a journal entry, not a box: no surface,
-        // border or rule — it parts from the chart above by whitespace alone. Its
-        // text aligns with the hero and Holdings (no inset). The "journal" feeling
-        // comes from the mono dateline, the upright-serif reflection, and the
-        // dotted perforation into the collapsible "Looking back" (MobileDecisionJournal).
+        // The selected decision reads as a journal entry. Its "journal" feeling
+        // comes from the book mark, the mono dateline, the upright-serif
+        // reflection, and — once unfolded — the dotted perforation into the
+        // "Looking back" verdict (MobileDecisionJournal).
         <div style={{ maxWidth: 660, marginTop: "var(--space-5)", marginBottom: "var(--space-5)" }}>
-          {/* The latest decision lives in a bordered card. The book glyph on the
-              date (MobileDecisionJournal) marks it as a journal entry — no text
-              label needed — and "Open ›" tucks quietly into the card corner. */}
-          <div className="card" style={{ position: "relative" }}>
-            <Link href="/diary" aria-label="Open journal" className="font-numeric" style={{ position: "absolute", top: "var(--space-card)", right: "var(--space-card)", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", textDecoration: "none", whiteSpace: "nowrap", zIndex: 1 }}>
-              Open ›
-            </Link>
+          {/* The latest decision lives in a bordered card as a folding entry:
+              a compact teaser by default (so Holdings sits high), unfolding to
+              the full reflection + look-back. The book glyph marks it as a
+              journal entry; the chevron and an in-entry "Open in journal" own the
+              open/deep-link affordances (MobileDecisionJournal). */}
+          <div className="card">
             {navDecisions.length > 0 ? (
               <MobileDecisionJournal
                 decisions={navDecisions}
