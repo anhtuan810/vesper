@@ -74,7 +74,7 @@ export function DemoExpiryWall() {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: "calc(var(--z-paywall) + 5)",
+        zIndex: "var(--z-expiry-wall)",
         background: "var(--bg)",
         backgroundImage:
           "radial-gradient(ellipse 90% 55% at 18% -5%, color-mix(in srgb, var(--cat-property) 7%, transparent), transparent 55%), radial-gradient(ellipse 70% 45% at 105% 105%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 55%)",

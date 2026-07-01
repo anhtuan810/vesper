@@ -113,6 +113,7 @@
   --z-modal:    50;   /* sheets, dialogs */
   --z-toast:    60;   /* undo toast, transient notices */
   --z-paywall:  70;   /* access gate */
+  --z-expiry-wall: 75; /* demo-session-ended wall — above the paywall */
   --z-app-lock: 80;   /* biometric lock — above everything */
 
   /* Control geometry — buttons, pills, segmented controls, inputs. One height +
