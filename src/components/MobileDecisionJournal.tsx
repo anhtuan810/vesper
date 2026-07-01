@@ -71,9 +71,9 @@ function noteFor(m: Mutation): string {
 }
 
 // ── look-back copy (single source; mirrors the desktop VerdictStamp) ────────
-// Builds the verdict headline, the figuring line and its fine-print caveats.
-// Used by the unfolded VerdictBody; the folded chip needs only kind + figure.
-function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: string; money: string; calc: string; notes: string[] } {
+// Builds the verdict headline and the figuring line. Used by the unfolded
+// VerdictBody; the folded chip needs only kind + figure.
+function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: string; money: string; calc: string } {
   const cur = verdict.currency as DisplayCurrency;
   const fmt = (v: number) => formatMoney(v, cur, cur);
   const money = fmt(verdict.figure);
@@ -82,7 +82,6 @@ function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: stri
 
   let line: string;
   let calc: string;
-  let notes: string[];
   if (verdict.mode === "buy") {
     line =
       verdict.kind === "beat" ? `Buying here beat ${bench} by ${money} — your pick has outpaced the index since.`
@@ -90,10 +89,6 @@ function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: stri
       : `This roughly matched ${bench} — about what the index would have done with the same money.`;
     const tail = verdict.kind === "matched" ? " — roughly level." : ` — ${verdict.kind === "beat" ? "ahead" : "behind"} by ${money}.`;
     calc = `Those ${fmtUnits(d.units)} ${unitLabel} were worth about ${fmt(d.valueThen)} at the close on ${shortDate(d.date)}, and today they're ${fmt(d.valueNow)}. The same amount in ${bench} would be about ${fmt(d.benchmarkNow ?? 0)}${tail}`;
-    notes = [
-      `Compares your position today with the same capital put into ${bench} on the same day.`,
-      "Both valued at closing prices; dividends aren't reinvested on either side.",
-    ];
   } else {
     line =
       verdict.kind === "spared" ? `Selling here spared you ${money} — the stake you let go is worth less now.`
@@ -101,12 +96,8 @@ function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: stri
       : "This came out roughly even — the stake you sold is worth about what it was.";
     const rose = d.valueNow >= d.valueThen;
     calc = `The ${fmtUnits(d.units)} ${unitLabel} you sold were worth ${fmt(d.valueThen)} on ${shortDate(d.date)}, and would be worth ${fmt(d.valueNow)} today — a ${rose ? "rise" : "fall"} of ${money}.`;
-    notes = [
-      "Valued at each date's closing price, with historical exchange rates applied per date.",
-      "What the freed-up cash did afterwards isn't counted — this weighs only the position you let go.",
-    ];
   }
-  return { line, money, calc, notes };
+  return { line, money, calc };
 }
 
 // A verdict's direction: a good call (beat/spared) reads green, a costly one
@@ -143,9 +134,9 @@ function LookbackChip({ verdict }: { verdict: VerdictData }) {
 }
 
 // The unfolded look-back — a perforation marking the passage of time, then the
-// verdict sentence (figure in gold), the figuring and one fine-print caveat.
+// verdict sentence (figure in gold) and the figuring behind it.
 function VerdictBody({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
-  const { line, money, calc, notes } = buildVerdictCopy(verdict, unitLabel);
+  const { line, money, calc } = buildVerdictCopy(verdict, unitLabel);
   const headline = line.split(money);
   return (
     <div>
@@ -161,10 +152,9 @@ function VerdictBody({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: 
           </span>
         ))}
       </p>
-      {/* Figuring + caveat — one size (matching the reflection above); the colour
-          alone carries the hierarchy, so the whole look-back reads at one scale. */}
+      {/* Figuring — the actual numbers behind the verdict, one size below the
+          headline (matching the reflection above); colour carries the hierarchy. */}
       <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0" }}>{calc}</p>
-      <p style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>{notes.join(" ")}</p>
     </div>
   );
 }
