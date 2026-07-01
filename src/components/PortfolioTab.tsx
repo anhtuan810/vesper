@@ -417,9 +417,10 @@ export function PortfolioTab({
           below the list, so the title is gone but nothing is lost. */}
       <div>
         <div className="holds-list" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)" }}>
-          {groups.map((group) => (
+          {groups.map((group, i) => (
             <HoldingsGroup
               key={group.category}
+              first={i === 0}
               label={group.label}
               barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
               barPct={netTotal > 0 ? Math.max((group.total / netTotal) * 100, 2) : 2}

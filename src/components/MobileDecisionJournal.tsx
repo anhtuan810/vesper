@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { displayName, unitNoun, STARTING_POSITION_CTX } from "@/lib/diary-utils";
@@ -162,8 +161,10 @@ function VerdictBody({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: 
           </span>
         ))}
       </p>
-      <p style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0" }}>{calc}</p>
-      <p style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>{notes.join(" ")}</p>
+      {/* Figuring + caveat — one size (matching the reflection above); the colour
+          alone carries the hierarchy, so the whole look-back reads at one scale. */}
+      <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0" }}>{calc}</p>
+      <p style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>{notes.join(" ")}</p>
     </div>
   );
 }
@@ -223,58 +224,69 @@ export function MobileDecisionJournal({
   const unitLabel = m.asset_type ? unitNoun(m.asset_type) : "units";
   const note = noteFor(m);
 
-  return (
-    // Margins are 0 — the entry lives inside the journal card (PortfolioTab),
-    // whose padding owns the spacing.
-    <section style={{ margin: 0 }}>
-      {/* Folding header — book mark, title, date and a chevron. The whole row is
-          the toggle: folded (default) it caps a two-line teaser; open it reveals
-          the full reflection and the look-back. The book glyph (the Journal tab's
-          mark) labels the entry as a journal entry without a text header. */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-label={open ? "Collapse journal entry" : "Expand journal entry"}
-        className="focus-ring"
-        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
-      >
-        <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", flex: "none" }}>
-          <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
-          <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
-        </svg>
-        <span className="font-display" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--fs-subhead)", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)" }}>
-          {decisionTitle(m)}
-        </span>
-        <span style={{ flex: "none", fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)" }}>
-          {shortDate(mDate(m))}
-        </span>
+  const hasVerdict = !!verdict;
+
+  // Header content — book mark, title and date. A chevron appears only when there
+  // is a look-back to drop down.
+  const header = (
+    <>
+      <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", flex: "none" }}>
+        <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
+        <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
+      </svg>
+      <span className="font-display" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--fs-subhead)", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)" }}>
+        {decisionTitle(m)}
+      </span>
+      <span style={{ flex: "none", fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)" }}>
+        {shortDate(mDate(m))}
+      </span>
+      {hasVerdict && (
         <svg width="13" height="13" viewBox="0 0 12 12" aria-hidden style={{ flex: "none", transition: "transform 0.25s ease", transform: open ? "rotate(180deg)" : "none", color: "var(--text-faint)", opacity: 0.7 }}>
           <path d="M2.5 4.5L6 8L9.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </button>
+      )}
+    </>
+  );
 
-      {open ? (
-        // Unfolded — the full reflection, the look-back (if any) and a quiet
-        // deep link into the full journal.
-        <>
-          <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>
-            {note}
-          </p>
-          {verdict && <VerdictBody key={m.id} verdict={verdict} unitLabel={unitLabel} />}
-          <Link href="/diary" className="font-numeric" style={{ display: "inline-block", marginTop: "var(--space-4)", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", textDecoration: "none" }}>
-            Open in journal ›
-          </Link>
-        </>
+  return (
+    // Margins are 0 — the entry's surrounding spacing is owned by PortfolioTab.
+    <section style={{ margin: 0 }}>
+      {/* The top of the entry — book mark, title, date and the full reflection —
+          stays fully visible. When there's a look-back, the header row is a toggle
+          (chevron) that drops the verdict down below; otherwise it's a plain
+          header. The book glyph marks it as a journal entry without a text label. */}
+      {hasVerdict ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={open ? "Hide the look-back" : "Show the look-back"}
+          className="focus-ring"
+          style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+        >
+          {header}
+        </button>
       ) : (
-        // Folded — a one-line note preview and the look-back chip.
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: "var(--space-2)" }}>
-          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-read)" }}>
-            {note}
-          </span>
-          {verdict && <LookbackChip verdict={verdict} />}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+          {header}
         </div>
       )}
+
+      {/* The reflection — always shown in full (this is the "top part"). */}
+      <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>
+        {note}
+      </p>
+
+      {/* Folded — a look-back chip previews the verdict outcome, tucked to the
+          right; the dropdown reveals the reasoning behind it. */}
+      {hasVerdict && !open && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
+          <LookbackChip verdict={verdict} />
+        </div>
+      )}
+
+      {/* Dropped down — the full look-back verdict. */}
+      {hasVerdict && open && <VerdictBody key={m.id} verdict={verdict} unitLabel={unitLabel} />}
     </section>
   );
 }

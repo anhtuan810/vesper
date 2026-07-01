@@ -12,10 +12,14 @@ interface HoldingsGroupProps {
   expanded: boolean;
   onToggle: () => void;
   children: ReactNode;
+  // The first group in the list has no preceding group to sit apart from, so it
+  // drops the generous top padding — the section rule's own gap sits it close to
+  // the header instead of doubling into a wide void.
+  first?: boolean;
 }
 
 export function HoldingsGroup({
-  label, barColor, barPct, total, expanded, onToggle, children,
+  label, barColor, barPct, total, expanded, onToggle, children, first = false,
 }: HoldingsGroupProps) {
   const displayCurrency = useDisplayCurrency();
   return (
@@ -28,8 +32,9 @@ export function HoldingsGroup({
           alignItems: "center",
           gap: "var(--space-4)",
           // Generous top spacing sets each class apart from the previous class's
-          // rows; the tighter bottom keeps the header tied to its own rows.
-          padding: "var(--space-4) 0 var(--space-row)",
+          // rows; the tighter bottom keeps the header tied to its own rows. The
+          // first group needs no top gap — the section rule already provides it.
+          padding: `${first ? "0" : "var(--space-4)"} 0 var(--space-row)`,
           background: "none",
           border: "none",
           cursor: "pointer",
