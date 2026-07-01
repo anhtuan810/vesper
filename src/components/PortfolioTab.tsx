@@ -381,44 +381,40 @@ export function PortfolioTab({
           entry. Shown in BOTH the Net worth and Liquid lenses: the diary is
           portfolio-wide narrative, not tied to which line is on screen. The chart
           decision dots stay off in the Liquid view (their date axis doesn't map
-          onto the intraday liquid series), so there the card simply defaults to the
-          newest decision. Its "journal" feel comes from the book mark, the mono
-          dateline, the upright-serif reflection and — once unfolded — the
-          perforation into the "Looking back" verdict (MobileDecisionJournal). */}
-      <div style={{ maxWidth: 660, marginTop: "var(--space-5)", marginBottom: "var(--space-5)" }}>
-        {/* The latest decision lives in a bordered card as a folding entry:
-            a compact teaser by default (so Holdings sits high), unfolding to
-            the full reflection + look-back. The book glyph marks it as a
-            journal entry; the chevron and an in-entry "Open in journal" own the
-            open/deep-link affordances (MobileDecisionJournal). */}
-        <div className="card">
-          {navDecisions.length > 0 ? (
-            <MobileDecisionJournal
-              decisions={navDecisions}
-              selectedId={selectedDecisionId}
-              displayCurrency={displayCurrency}
-            />
-          ) : (
-            // No logged decisions yet — keep the zone visible and explain it fills
-            // in once there's data, rather than leaving a blank gap. Lead with the
-            // same book glyph so it still reads as the journal.
-            <>
-              <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", display: "block", marginBottom: "var(--space-2)" }}>
-                <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
-                <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
-              </svg>
-              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
-                Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
-              </p>
-            </>
-          )}
-        </div>
+          onto the intraday liquid series), so there the entry simply defaults to
+          the newest decision. Its "journal" feel comes from the book mark, the
+          mono dateline, the upright-serif reflection and — once unfolded — the
+          perforation into the "Looking back" verdict (MobileDecisionJournal).
+          Content-first: no card — a hairline rule and whitespace part it from the
+          chart above, and its text sits flush with the hero. */}
+      <div style={{ maxWidth: 660, marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)" }}>
+        {navDecisions.length > 0 ? (
+          <MobileDecisionJournal
+            decisions={navDecisions}
+            selectedId={selectedDecisionId}
+            displayCurrency={displayCurrency}
+          />
+        ) : (
+          // No logged decisions yet — keep the zone visible and explain it fills
+          // in once there's data, rather than leaving a blank gap. Lead with the
+          // same book glyph so it still reads as the journal.
+          <>
+            <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", display: "block", marginBottom: "var(--space-2)" }}>
+              <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
+              <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
+            </svg>
+            <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+              Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
+            </p>
+          </>
+        )}
       </div>
 
-      {/* Holdings — section header (count + expand-all) above a bordered card
-          that boxes the category groups, matching the redesign mockup. */}
+      {/* Holdings — content-first: a section header (count + expand-all) over the
+          category groups, which carry their own hairline dividers. No card; a
+          hairline rule and whitespace part it from the journal above. */}
       <div>
-        <div className="flex items-center justify-between" style={{ marginBottom: "var(--space-3)" }}>
+        <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)", marginBottom: "var(--space-3)" }}>
           <div
             onClick={toggleAll}
             role="button"
@@ -439,7 +435,7 @@ export function PortfolioTab({
             {allExpanded ? "Collapse all" : "Expand all"}
           </button>
         </div>
-        <div className="card holds-card" style={{ padding: "var(--space-1) var(--space-card)" }}>
+        <div className="holds-list">
           {groups.map((group) => (
             <HoldingsGroup
               key={group.category}
