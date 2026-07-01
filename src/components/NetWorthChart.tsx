@@ -148,6 +148,9 @@ function formatXLabel(date: string, range: Range): string {
 const CHART_PAD_TOP = 6;
 const CHART_PAD_RIGHT = 0;   // draw to the full width so the right edge (today) aligns with the content edge / "Now"; the end-point halo overflows into the margin (svg overflow:visible)
 const CHART_PAD_BOTTOM = 8;  // same — prevents clipping when current value is near niceMin
+// Finger travel (px) below which a touch counts as a tap, not a scrub — a tap
+// on a decision dot commits it; a drag reads the value along the line.
+const TAP_SLOP = 8;
 
 function buildPath(
   values: number[], W: number, H: number, yMin: number, yMax: number, drawW: number
@@ -275,6 +278,14 @@ export function NetWorthChart(props: Props) {
   const { currency: displayCurrency } = useDisplayCurrencyState();
   const [chartWidth, setChartWidth] = useState(280);
   const svgContainerRef = useRef<HTMLDivElement>(null);
+  // Tap-vs-scrub tracking for touch: a tap on/near a decision dot commits it,
+  // while a drag scrubs the value along the line.
+  const touchStartXRef = useRef(0);
+  const touchMovedRef = useRef(false);
+  // Whether the consumer wants a value readout on scrub. Only the mobile
+  // Overview (PortfolioTab) passes onSelectPoint; the desktop Overview and the
+  // marketing chart do not, so they keep the pure decision-dot interaction.
+  const scrubbable = !!props.onSelectPoint;
 
   useEffect(() => {
     const el = svgContainerRef.current;
@@ -474,11 +485,75 @@ export function NetWorthChart(props: Props) {
     return bestId;
   }
 
+  // Like nearestMarkerId, but only when the pointer is genuinely near a dot —
+  // so scrubbing the open stretches of the line reads the value without a
+  // distant dot hijacking the tap or flashing its preview. The threshold is a
+  // comfortable finger's width in view units.
+  function nearMarkerWithin(clientX: number, rect: DOMRect): string | null {
+    const id = nearestMarkerId(clientX, rect);
+    if (!id) return null;
+    const xView = ((clientX - rect.left) / rect.width) * W;
+    const dot = markerDots.find((d) => d.id === id)!;
+    return Math.abs(dot.x - xView) <= Math.max(16, W * 0.05) ? id : null;
+  }
+
   const chartHandlers = !interactive
     ? {}
+    : markerMode && scrubbable
+    ? {
+        // Merged interaction: scrubbing reads the portfolio value along the line
+        // (the hero number + cursor follow the pointer), AND the decision dots
+        // stay selectable — a tap on/near a dot commits that entry, a drag reads
+        // the value. Both layers live together so the value is never hidden
+        // behind the entry picker.
+        onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const idx = calcIndex(e.clientX, rect);
+          setSelectedIndex(idx);
+          haptic(idx);
+          setHoveredMarker(nearMarkerWithin(e.clientX, rect));
+        },
+        onMouseLeave() { setSelectedIndex(null); setHoveredMarker(null); haptic(null); },
+        onClick(e: React.MouseEvent<HTMLDivElement>) {
+          const id = nearMarkerWithin(e.clientX, e.currentTarget.getBoundingClientRect());
+          if (id) props.onMarkerClick?.(id);
+        },
+        onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.touches[0].clientX;
+          touchStartXRef.current = x;
+          touchMovedRef.current = false;
+          const idx = calcIndex(x, rect);
+          setSelectedIndex(idx);
+          haptic(idx);
+          setHoveredMarker(nearMarkerWithin(x, rect));
+        },
+        onTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.touches[0].clientX;
+          if (Math.abs(x - touchStartXRef.current) > TAP_SLOP) touchMovedRef.current = true;
+          const idx = calcIndex(x, rect);
+          setSelectedIndex(idx);
+          haptic(idx);
+          setHoveredMarker(nearMarkerWithin(x, rect));
+        },
+        onTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+          // A tap (no meaningful drag) on/near a dot commits that decision; a
+          // drag was just a value scrub and commits nothing.
+          if (!touchMovedRef.current) {
+            const x = e.changedTouches[0]?.clientX;
+            const id = x != null ? nearMarkerWithin(x, e.currentTarget.getBoundingClientRect()) : null;
+            if (id) props.onMarkerClick?.(id);
+          }
+          setSelectedIndex(null);
+          setHoveredMarker(null);
+          haptic(null);
+        },
+      }
     : markerMode
     ? {
-        // Two-layer selection: move previews the nearest entry, click commits it.
+        // Pure decision-dot selection (desktop Overview / marketing): move
+        // previews the nearest entry, click commits it. No value scrub.
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
           setHoveredMarker(nearestMarkerId(e.clientX, e.currentTarget.getBoundingClientRect()));
         },
@@ -712,7 +787,7 @@ export function NetWorthChart(props: Props) {
           {/* Per-class breakdown card — one row per non-zero category. The hero
               already surfaces the date and total on hover, so this is an
               annotation only: no header, no divider, no total. */}
-          {!lineOnly && selectedIndex !== null && selectedX !== null && tooltipSegments.length > 0 && (
+          {!lineOnly && selectedIndex !== null && selectedX !== null && tooltipSegments.length > 0 && !hoveredDot && (
             <div
               style={{
                 position: "absolute",
