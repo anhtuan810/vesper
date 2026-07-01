@@ -540,6 +540,44 @@ html.native-app [contenteditable="true"] {
   padding: var(--space-1) var(--space-3);
 }
 
+/* Net worth / Liquid slim segmented toggle (Overview hero). iOS-style raised
+   thumb: a recessed track with the active segment lifted on the lighter
+   surface. Slimmer than the old bordered pill — the reclaimed height stays with
+   the chart. Because --surface / --surface-elev swap lightness order between
+   themes, the track and thumb tones are assigned per-theme so the active
+   segment always reads as the raised (lighter) one. */
+.liquid-seg {
+  display: inline-flex;
+  border-radius: var(--radius-pill);
+  padding: 2px;
+  gap: 1px;
+}
+.liquid-seg-btn {
+  font-size: var(--fs-micro);
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  padding: 3px 10px;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--text-faint);
+  transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.liquid-seg-btn.is-active {
+  font-weight: 600;
+  color: var(--accent-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+}
+:root .liquid-seg,
+[data-theme="light"] .liquid-seg { background: var(--surface-elev); }
+:root .liquid-seg-btn.is-active,
+[data-theme="light"] .liquid-seg-btn.is-active { background: var(--surface); }
+[data-theme="dark"] .liquid-seg { background: var(--surface); }
+[data-theme="dark"] .liquid-seg-btn.is-active { background: var(--surface-elev); }
+
 /* One keyboard-focus ring (token-driven) — add .focus-ring to any focusable so
    focus is uniform and themeable rather than reimplemented per surface. */
 .focus-ring:focus-visible {

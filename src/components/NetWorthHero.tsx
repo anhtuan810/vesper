@@ -64,22 +64,29 @@ function fmtPct(n: number): string {
   }).format(n);
 }
 
-// Net worth / Liquid segmented control — a single rounded pill bar with the
-// active segment raised on a soft chip (the redesign's mockup idiom), replacing
-// the earlier two-word eyebrow toggle.
+// Net worth / Liquid segmented control — a slim iOS-style segmented toggle: a
+// recessed track with the active segment lifted on the lighter surface. Kept
+// thin on purpose so the reclaimed vertical space stays with the hero chart.
+// Track/thumb tones and slimming live in globals.css (.liquid-seg*).
 function LiquidToggle({ liquidOnly, onSetLiquid }: { liquidOnly: boolean; onSetLiquid: (v: boolean) => void }) {
-  const seg = (active: boolean) => ({
-    fontSize: "var(--fs-micro)", letterSpacing: "0.04em", fontWeight: 500,
-    padding: "6px 13px", borderRadius: "var(--radius-pill)", border: "none",
-    cursor: "pointer", whiteSpace: "nowrap" as const, transition: "all 0.15s",
-    background: active ? "var(--surface-elev)" : "transparent",
-    color: active ? "var(--accent-text)" : "var(--text-faint)",
-    boxShadow: active ? "var(--shadow-soft)" : "none",
-  });
   return (
-    <div style={{ display: "inline-flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3, gap: 2, marginBottom: "var(--space-3)" }}>
-      <button type="button" onClick={() => onSetLiquid(false)} aria-pressed={!liquidOnly} className="font-numeric" style={seg(!liquidOnly)}>Net worth</button>
-      <button type="button" onClick={() => onSetLiquid(true)} aria-pressed={liquidOnly} className="font-numeric" style={seg(liquidOnly)}>Liquid</button>
+    <div className="liquid-seg font-numeric" style={{ marginBottom: "var(--space-3)" }}>
+      <button
+        type="button"
+        onClick={() => onSetLiquid(false)}
+        aria-pressed={!liquidOnly}
+        className={`liquid-seg-btn${!liquidOnly ? " is-active" : ""}`}
+      >
+        Net worth
+      </button>
+      <button
+        type="button"
+        onClick={() => onSetLiquid(true)}
+        aria-pressed={liquidOnly}
+        className={`liquid-seg-btn${liquidOnly ? " is-active" : ""}`}
+      >
+        Liquid
+      </button>
     </div>
   );
 }
