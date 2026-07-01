@@ -867,13 +867,15 @@ export function NetWorthChart(props: Props) {
         {/* "Now" jumps the hero back to today's live value (clears any scrub). */}
         <button
           type="button"
-          onClick={() => setSelectedIndex(null)}
-          aria-label="Jump to today"
+          onClick={() => { if (displaySeries.length >= 2) setSelectedIndex(displaySeries.length - 1); }}
+          aria-label="Go to today"
           style={{
-            justifySelf: "end", background: "none", border: "none", padding: "2px 0", margin: 0,
+            // Padding enlarges the tap target; the negative margin keeps the row
+            // height unchanged so the layout doesn't shift.
+            justifySelf: "end", background: "none", border: "none", padding: "8px 0 8px 14px", margin: "-8px 0",
             cursor: showLabels ? "pointer" : "default",
             fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)",
-            color: selectedIndex !== null ? "var(--accent-text)" : "var(--text-faint)",
+            color: selectedIndex === displaySeries.length - 1 ? "var(--accent-text)" : "var(--text-dim)",
             lineHeight: 1, whiteSpace: "nowrap", transition: "color 0.15s",
           }}
         >
