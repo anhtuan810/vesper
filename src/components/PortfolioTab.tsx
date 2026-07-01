@@ -258,8 +258,10 @@ export function PortfolioTab({
 
   // Decision markers for the chart — the notable decisions (buys/sells/trims),
   // scoped to the visible range, the same set the journal steps through. Tapping
-  // a dot selects it; stepping the journal moves the dot. Not shown in the Liquid
-  // line view. Mirrors the desktop Overview's journal-dot chart.
+  // a dot selects it; stepping the journal moves the dot. Shown on the Net worth
+  // line and the Liquid line alike; only the intraday (Liquid · 1D) view drops
+  // them, since its axis is hours-of-today and calendar-date dots can't map onto
+  // it. Mirrors the desktop Overview's journal-dot chart.
   const journalDecisions = useMemo(() => notableDecisions(mutations), [mutations]);
   const navDecisions = useMemo(() => {
     // Bound by the chart's actual first plotted point (which includes clipToRange's
@@ -367,7 +369,7 @@ export function PortfolioTab({
               trackingSinceDate={trackingSinceDate}
               lineOnly={liquidOnly}
               liquidOnly={liquidOnly}
-              markers={liquidOnly ? undefined : markers}
+              markers={isIntraday ? undefined : markers}
               selectedMarkerId={activeMarkerId}
               onMarkerClick={setSelectedDecisionId}
             />
