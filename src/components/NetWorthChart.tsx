@@ -874,15 +874,17 @@ export function NetWorthChart(props: Props) {
       <div
         style={{
           display: "grid",
-          // 1fr | auto | 1fr keeps the pill bar at the EXACT centre regardless of
-          // the side labels' widths; "Jan '21" pins left, "Now" pins right.
-          gridTemplateColumns: "1fr auto 1fr",
+          // minmax(0,1fr) | auto | minmax(0,1fr) keeps the pill bar centred while
+          // letting the side columns shrink below their content — so on a narrow
+          // phone the row never overflows and pushes "Now" past the right edge.
+          // "Jan '21" pins left, "Now" pins right, both flush with the graph edges.
+          gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
           alignItems: "center",
           gap: 8,
           marginTop: 8,
         }}
       >
-        <span style={{ justifySelf: "start", fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap" }}>
+        <span style={{ minWidth: 0, fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {showLabels ? formatXLabel(displaySeries[0].date, range) : ""}
         </span>
 
@@ -923,7 +925,7 @@ export function NetWorthChart(props: Props) {
                     fontSize: "var(--fs-micro)",
                     fontWeight: active ? 600 : 500,
                     lineHeight: 1,
-                    padding: "5px 9px",
+                    padding: "5px 7px",
                     borderRadius: "var(--radius-pill)",
                     color: disabled ? "var(--text-faint)" : active ? "var(--accent-text)" : "var(--text-dim)",
                     background: active ? "var(--surface-elev)" : "transparent",
