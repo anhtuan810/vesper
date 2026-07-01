@@ -375,45 +375,43 @@ export function PortfolioTab({
         )}
       </div>
 
-      {/* Decision journal — the selected decision's reasoning + the "Looking
-          back" Decision Verdict. Selection comes from the chart dots (tap a
-          marker). Bleeds to the same -mx-5 column as the hero, chart and
-          Holdings so the entry text lines up with them instead of sitting inset. */}
-      {!liquidOnly && (
-        // The selected decision reads as a journal entry. Its "journal" feeling
-        // comes from the book mark, the mono dateline, the upright-serif
-        // reflection, and — once unfolded — the dotted perforation into the
-        // "Looking back" verdict (MobileDecisionJournal).
-        <div style={{ maxWidth: 660, marginTop: "var(--space-5)", marginBottom: "var(--space-5)" }}>
-          {/* The latest decision lives in a bordered card as a folding entry:
-              a compact teaser by default (so Holdings sits high), unfolding to
-              the full reflection + look-back. The book glyph marks it as a
-              journal entry; the chevron and an in-entry "Open in journal" own the
-              open/deep-link affordances (MobileDecisionJournal). */}
-          <div className="card">
-            {navDecisions.length > 0 ? (
-              <MobileDecisionJournal
-                decisions={navDecisions}
-                selectedId={selectedDecisionId}
-                displayCurrency={displayCurrency}
-              />
-            ) : (
-              // No logged decisions yet — keep the zone visible and explain it fills
-              // in once there's data, rather than leaving a blank gap. Lead with the
-              // same book glyph so it still reads as the journal.
-              <>
-                <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", display: "block", marginBottom: "var(--space-2)" }}>
-                  <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
-                  <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
-                </svg>
-                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
-                  Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
-                </p>
-              </>
-            )}
-          </div>
+      {/* Decision journal — the latest (or chart-selected) decision as a folding
+          entry. Shown in BOTH the Net worth and Liquid lenses: the diary is
+          portfolio-wide narrative, not tied to which line is on screen. The chart
+          decision dots stay off in the Liquid view (their date axis doesn't map
+          onto the intraday liquid series), so there the card simply defaults to the
+          newest decision. Its "journal" feel comes from the book mark, the mono
+          dateline, the upright-serif reflection and — once unfolded — the
+          perforation into the "Looking back" verdict (MobileDecisionJournal). */}
+      <div style={{ maxWidth: 660, marginTop: "var(--space-5)", marginBottom: "var(--space-5)" }}>
+        {/* The latest decision lives in a bordered card as a folding entry:
+            a compact teaser by default (so Holdings sits high), unfolding to
+            the full reflection + look-back. The book glyph marks it as a
+            journal entry; the chevron and an in-entry "Open in journal" own the
+            open/deep-link affordances (MobileDecisionJournal). */}
+        <div className="card">
+          {navDecisions.length > 0 ? (
+            <MobileDecisionJournal
+              decisions={navDecisions}
+              selectedId={selectedDecisionId}
+              displayCurrency={displayCurrency}
+            />
+          ) : (
+            // No logged decisions yet — keep the zone visible and explain it fills
+            // in once there's data, rather than leaving a blank gap. Lead with the
+            // same book glyph so it still reads as the journal.
+            <>
+              <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", display: "block", marginBottom: "var(--space-2)" }}>
+                <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
+                <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
+              </svg>
+              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+                Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
+              </p>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Holdings — section header (count + expand-all) above a bordered card
           that boxes the category groups, matching the redesign mockup. */}
