@@ -385,18 +385,14 @@ export function PortfolioTab({
         // text aligns with the hero and Holdings (no inset). The "journal" feeling
         // comes from the mono dateline, the upright-serif reflection, and the
         // dotted perforation into the collapsible "Looking back" (MobileDecisionJournal).
-        <div style={{ maxWidth: 660, marginBottom: "var(--space-5)" }}>
-          {/* Section header — "Journal · latest" with an Open link to the full
-              Journal tab, mirroring the redesign mockup. */}
-          <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", marginBottom: "var(--space-3)" }}>
-            <span className="eyebrow">Journal · latest</span>
-            <Link href="/diary" className="font-numeric" style={{ fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", textDecoration: "none", whiteSpace: "nowrap" }}>
+        <div style={{ maxWidth: 660, marginTop: "var(--space-5)", marginBottom: "var(--space-5)" }}>
+          {/* The latest decision lives in a bordered card. The book glyph on the
+              date (MobileDecisionJournal) marks it as a journal entry — no text
+              label needed — and "Open ›" tucks quietly into the card corner. */}
+          <div className="card" style={{ position: "relative" }}>
+            <Link href="/diary" aria-label="Open journal" className="font-numeric" style={{ position: "absolute", top: "var(--space-card)", right: "var(--space-card)", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", textDecoration: "none", whiteSpace: "nowrap", zIndex: 1 }}>
               Open ›
             </Link>
-          </div>
-          {/* The latest decision lives in a bordered card (the entry's own padding
-              comes from the card). */}
-          <div className="card">
             {navDecisions.length > 0 ? (
               <MobileDecisionJournal
                 decisions={navDecisions}
@@ -405,10 +401,17 @@ export function PortfolioTab({
               />
             ) : (
               // No logged decisions yet — keep the zone visible and explain it fills
-              // in once there's data, rather than leaving a blank gap.
-              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
-                Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
-              </p>
+              // in once there's data, rather than leaving a blank gap. Lead with the
+              // same book glyph so it still reads as the journal.
+              <>
+                <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", display: "block", marginBottom: "var(--space-2)" }}>
+                  <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
+                  <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
+                </svg>
+                <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+                  Your decisions will appear here once you log them — each one pinned to a point on the line, with a look back after it&rsquo;s had time to play out.
+                </p>
+              </>
             )}
           </div>
         </div>

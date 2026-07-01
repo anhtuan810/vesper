@@ -199,8 +199,16 @@ export function MobileDecisionJournal({
           in-panel stepper or divider. The date is a quiet mono dateline, like a
           line written at the top of a page; the reflection runs as upright serif
           so it reads as a written passage rather than a caption. */}
-      <div style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "var(--space-3)" }}>
-        {shortDate(mDate(m))}
+      {/* Journal mark — the same book glyph as the Journal tab, stamped by the
+          date so the card reads as a journal entry without a text label. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: "var(--space-3)" }}>
+        <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", flex: "none" }}>
+          <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
+          <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
+        </svg>
+        <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)" }}>
+          {shortDate(mDate(m))}
+        </span>
       </div>
       <h3 className="font-display" style={{ fontSize: "var(--fs-subhead)", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)", margin: "0 0 var(--space-2)" }}>
         {decisionTitle(m)}
