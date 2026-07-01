@@ -39,8 +39,14 @@ export function HoldingsGroup({
         <span className="eyebrow" style={{
           color: "var(--text-dim)",
           flexShrink: 0,
-          minWidth: 104,
+          // Fixed width (fits the longest label — "PUBLIC MARKETS" ≈ 117px) so every
+          // group's allocation bar starts at the same x: a shorter label no longer
+          // lets its bar drift left, and a longer one no longer pushes it right.
+          width: 120,
           textAlign: "left",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}>
           {label}
         </span>
@@ -72,6 +78,11 @@ export function HoldingsGroup({
           fontWeight: 500,
           color: "var(--text)",
           flexShrink: 0,
+          // Reserve a right-aligned total column so the bars' right edges line up
+          // across groups for typical values, rather than a narrower total letting
+          // its bar stretch further right.
+          minWidth: 68,
+          textAlign: "right",
         }}>
           {formatMoney(total, displayCurrency, displayCurrency)}
         </span>
