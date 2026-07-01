@@ -410,32 +410,13 @@ export function PortfolioTab({
         )}
       </div>
 
-      {/* Holdings — content-first: a section header (count + expand-all) over the
-          category groups, which carry their own hairline dividers. No card; a
-          hairline rule and whitespace part it from the journal above. */}
+      {/* Holdings — content-first, no section title: the category groups lead
+          with the first (Property), set off from the journal only by the hairline
+          rule above the list. The redundant "Holdings" heading is dropped; the
+          position count + a global expand/collapse-all move to a quiet meta line
+          below the list, so the title is gone but nothing is lost. */}
       <div>
-        <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)", marginBottom: "var(--space-3)" }}>
-          <div
-            onClick={toggleAll}
-            role="button"
-            tabIndex={0}
-            aria-expanded={allExpanded}
-            aria-label={allExpanded ? "Collapse all holdings" : "Expand all holdings"}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleAll(); } }}
-            className="eyebrow"
-            style={{ cursor: "pointer", WebkitTapHighlightColor: "transparent", color: "var(--text-faint)" }}
-          >
-            Holdings · {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
-          </div>
-          <button
-            onClick={toggleAll}
-            className="font-ui"
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", whiteSpace: "nowrap" }}
-          >
-            {allExpanded ? "Collapse all" : "Expand all"}
-          </button>
-        </div>
-        <div className="holds-list">
+        <div className="holds-list" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)" }}>
           {groups.map((group) => (
             <HoldingsGroup
               key={group.category}
@@ -456,6 +437,23 @@ export function PortfolioTab({
               ))}
             </HoldingsGroup>
           ))}
+        </div>
+
+        {/* Quiet meta line — the position count and a global expand/collapse-all,
+            below the list rather than a heading above it, so the groups lead. Not
+            styled as a title: a faint count on the left, the toggle on the right. */}
+        <div className="flex items-center justify-between" style={{ marginTop: "var(--space-4)" }}>
+          <span className="eyebrow" style={{ color: "var(--text-faint)" }}>
+            {netWorthAssets.length} {netWorthAssets.length === 1 ? "position" : "positions"}
+          </span>
+          <button
+            onClick={toggleAll}
+            className="font-ui"
+            aria-label={allExpanded ? "Collapse all holdings" : "Expand all holdings"}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", whiteSpace: "nowrap" }}
+          >
+            {allExpanded ? "Collapse all" : "Expand all"}
+          </button>
         </div>
 
         {/* Future income — income pensions (db/state). Off-balance: shown below
