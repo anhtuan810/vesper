@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Volnar — Vitals &amp; Profile, content-first (no boxes)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ============ VITALS + PROFILE — CONTENT-FIRST (Nocturne, no boxes) ============
+   Uses the SHIPPED app tokens (globals.css): Inter everywhere, tnum figures,
+   the same type scale, the same colours. The only change on show here is the
+   removal of card chrome: sections part with hairline rules + whitespace,
+   exactly like the mobile Overview. Frames are "unrolled" — full page height —
+   so the whole composition can be judged at once.
+   ============================================================================ */
+:root{
+  --stage:#E7E9ED;
+  --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--stage);color:#171A20;font-family:var(--sans);-webkit-font-smoothing:antialiased}
+
+/* ---------- theme tokens (mirrors src/app/globals.css) ---------- */
+.light{
+  --bg:#F7F8FA; --surface:#FFFFFF; --surface-elev:#EEF0F4;
+  --border:rgba(18,22,30,.08); --border-strong:rgba(18,22,30,.14);
+  --text:#171A20; --dim:#565D69; --faint:#868D99; --hero:#0A0C10;
+  --accent:#9C7A37; --accent-soft:rgba(156,122,55,.12); --accent-text:#7E6026; --accent-deep:#7E6026;
+  --pos:#2E8B5E; --pos-soft:rgba(46,139,94,.12); --pos-text:#277A52;
+  --neg:#B4502E; --neg-soft:rgba(180,80,46,.12); --neg-text:#9A4326;
+  --prop:#4E7398; --mkt:#3E8E6B; --cry:#C2832F; --res:#948A66;
+  --nav:rgba(247,248,250,.85);
+}
+.dark{
+  --bg:#0E1116; --surface:#151922; --surface-elev:#1B202B;
+  --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.13);
+  --text:#E7EAF0; --dim:#9AA3B2; --faint:#697184; --hero:#FAFBFD;
+  --accent:#CBA75E; --accent-soft:rgba(203,167,94,.14); --accent-text:#DCBE82; --accent-deep:#E0C281;
+  --pos:#5FB58A; --pos-soft:rgba(95,181,138,.15); --pos-text:#7FC7A2;
+  --neg:#D08763; --neg-soft:rgba(208,135,99,.15); --neg-text:#E0A488;
+  --prop:#6E8FB0; --mkt:#6FAE8B; --cry:#D6A14E; --res:#A9A382;
+  --nav:rgba(14,17,22,.82);
+}
+
+/* ---------- gallery stage ---------- */
+.stage{min-height:100vh;padding:48px clamp(16px,4vw,56px) 90px;
+  background:radial-gradient(1200px 600px at 80% -10%,rgba(156,122,55,.06),transparent 60%),var(--stage)}
+.intro{max-width:1180px;margin:0 auto 20px}
+.kicker{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#9C7A37}
+.intro h1{font-size:clamp(28px,4.4vw,42px);font-weight:600;letter-spacing:-.03em;margin:12px 0 10px;color:#0A0C10}
+.intro h1 b{color:#9C7A37;font-weight:600}
+.intro>p{max-width:720px;color:#565D69;font-size:15px;line-height:1.6}
+.notes{max-width:1180px;margin:22px auto 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px 26px}
+.note{font-size:13px;line-height:1.55;color:#565D69;border-top:1px solid rgba(18,22,30,.14);padding-top:10px}
+.note b{color:#171A20;font-weight:600;display:block;margin-bottom:2px}
+.note i{color:#7E6026;font-style:normal;font-weight:600}
+
+/* ---------- phone frames (unrolled: full page height) ---------- */
+.gallery{max-width:1560px;margin:0 auto;display:flex;flex-wrap:wrap;gap:46px 40px;justify-content:center;align-items:flex-start}
+.unit{display:flex;flex-direction:column;align-items:center;gap:14px}
+.cap{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#868D99}
+.cap b{color:#9C7A37;font-weight:600}
+.device{width:340px;border-radius:50px;padding:11px;background:linear-gradient(160deg,#E6E7EB,#C3C5CC);
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 30px 70px -32px rgba(18,22,30,.32),0 0 0 1px rgba(18,22,30,.10)}
+.dark .device,.device.dk{background:linear-gradient(160deg,#3A3D45,#17181C)}
+.screen{position:relative;width:100%;border-radius:40px;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+.notch{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:104px;height:28px;background:#000;border-radius:16px;z-index:40}
+.status{height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 7px;font-size:12px;font-weight:500;color:var(--text)}
+.tnum{font-feature-settings:"tnum" 1}
+
+/* app bar (matches shipped mobile NavBar: logo left, name right, in-flow) */
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 0;height:36px}
+.wm{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;letter-spacing:-.04em;color:var(--hero)}
+.wm .mark{width:20px;height:20px;border-radius:5px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:12px}
+.appbar .who{font-size:14px;font-weight:500;color:var(--faint)}
+
+/* page column (root layout px-5 ≈ 18px at this scale) */
+.pad{padding:16px 18px 20px}
+
+/* ---------- shared, box-free vocabulary ---------- */
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);line-height:1}
+.title{font-size:17px;font-weight:500;letter-spacing:-.018em;color:var(--hero);line-height:1.1}
+.rule{border-top:1px solid var(--border)}
+.metarow{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);margin-top:20px;padding-top:12px;margin-bottom:12px}
+.qact{font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--accent-text)}
+.serif-it{font-style:italic;color:var(--dim);font-size:13px;line-height:1.45}
+.lead{font-style:normal;font-weight:600;color:var(--accent-text)}
+.caption{font-size:11.5px;color:var(--faint);line-height:1.45}
+.pill{display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-deep);font-size:12px;font-weight:500;white-space:nowrap}
+.chev{color:var(--faint);opacity:.7}
+
+/* full-bleed accent band (the Pulse) — a band, not a box: no border, no radius */
+.band{margin:14px -18px 0;background:var(--accent-soft);padding:12px 18px 13px}
+.band .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.band .hd .eyebrow{color:var(--accent-deep);opacity:.78}
+.band p{font-style:italic;font-size:13px;line-height:1.45;color:var(--text)}
+.band p em{font-style:italic;font-weight:600}
+
+/* signal rows (projection / insight / markets) — rows, not a card */
+.sigrow{display:flex;align-items:center;gap:11px;padding:11px 0}
+.sigrow+.sigrow{border-top:1px solid var(--border)}
+.sigrow .ic{width:16px;height:16px;flex:none;color:var(--accent-text)}
+.sigrow p{flex:1;min-width:0;font-style:italic;font-size:13px;line-height:1.4;color:var(--text)}
+.sigrow p b{font-style:italic;font-weight:600}
+.sigrow p .go{color:var(--accent-text);font-weight:500}
+.sigrow .chev{flex:none}
+
+/* vital section */
+.vital{padding:18px 0 20px;border-top:1px solid var(--border)}
+.vital .hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;gap:10px}
+.vital .hd .eyebrow{white-space:nowrap}
+.vital .hd .rs{white-space:nowrap}
+.vital .hd .rs{display:flex;align-items:baseline;gap:6px}
+.vital .hd .rs .v{font-size:12px;font-weight:500;color:var(--text)}
+.metric{display:flex;align-items:baseline;gap:8px;margin-bottom:13px}
+.metric .n{font-size:24px;font-weight:600;letter-spacing:-.02em;color:var(--hero);line-height:1.1}
+.metric .n.neg{color:var(--neg-text)}
+.metric .s{font-size:11.5px;color:var(--dim)}
+.bench{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim);margin-top:9px}
+.bench i{display:block;width:10px;height:1px;background:var(--faint)}
+.sugg{margin-top:10px;font-size:13px;line-height:1.45;font-style:italic;color:var(--dim)}
+.sugg b{font-style:normal;font-weight:600;color:var(--accent-text)}
+.sugg strong{font-style:italic;font-weight:600;color:var(--text)}
+
+/* concentration — stacked rows: name + value on one line, full-width bar
+   beneath. Names can never truncate; every bar shares the same origin, so the
+   one faint threshold line stays meaningful across the whole staircase. */
+.cbar{margin-bottom:10px;position:relative;z-index:1}
+.cbar .lab{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.cbar .lab .logo{width:16px;height:16px;border-radius:5px;flex:none;background:var(--surface-elev);
+  display:flex;align-items:center;justify-content:center;font-size:7.5px;font-weight:600;color:var(--dim);box-shadow:inset 0 0 0 .5px var(--border)}
+.cbar .lab span{flex:1;min-width:0;font-size:12px;color:var(--text);line-height:1.3}
+.cbar .lab .v{flex:none;font-size:12px;color:var(--dim);line-height:1}
+.cbar .bar{height:6px;border-radius:2px}
+.cwrap{position:relative;padding-top:18px}
+.cwrap .thresh{position:absolute;top:18px;bottom:4px;border-left:1px dashed var(--border-strong);z-index:0}
+.cwrap .threshlab{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:500;color:var(--faint);white-space:nowrap}
+.cmore{font-size:11.5px;color:var(--faint)}
+
+/* liquidity stack */
+.lstack{display:flex;gap:2px;height:16px;margin:4px 0 8px;position:relative}
+.lstack i{border-radius:2px;display:block}
+.lbuffer{position:absolute;top:-4px;bottom:-4px;border-left:1px dashed var(--dim);opacity:.7}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.legend span{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--faint)}
+.legend i{width:6px;height:6px;border-radius:50%;display:block}
+
+/* small svg charts */
+svg text{font-family:var(--sans)}
+
+/* ---------- profile ---------- */
+.fingerprint{font-style:italic;font-size:13px;line-height:1.45;color:var(--dim);margin-top:9px}
+.persp-syn{font-style:italic;font-size:13px;line-height:1.45;color:var(--text);margin:10px 0 10px}
+.persp-syn em{font-style:italic;font-weight:600}
+.cohort{padding:12px 0;border-top:1px solid var(--border)}
+.cohort .top{display:flex;align-items:center;gap:12px}
+.cohort .l{flex:0 0 88px}
+.cohort .l .n{font-size:13px;font-weight:500;color:var(--text);line-height:1.25}
+.cohort .l .s{font-size:11.5px;color:var(--dim);margin-top:1px}
+.cohort .m{flex:1;min-width:0}
+.cohort .m .trk{height:3px;border-radius:999px;background:var(--accent-soft);position:relative}
+.cohort .m .fill{position:absolute;left:0;top:0;height:100%;border-radius:999px;background:var(--accent)}
+.cohort .m .dot{position:absolute;top:-3px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);transform:translateX(-50%)}
+.cohort .ctx{font-size:11.5px;color:var(--faint);margin-top:7px;line-height:1.4}
+.cohort .r{flex:0 0 56px;text-align:right}
+.cohort .r .p{font-size:17px;font-weight:600;color:var(--hero);line-height:1.1}
+.cohort .r .p span{font-size:11.5px;font-weight:500;color:var(--dim)}
+.cohort .r .eyebrow{margin-top:3px}
+.traj{display:flex;align-items:center;gap:7px;margin:4px 0 0;padding:10px 0 0;font-size:11.5px;color:var(--dim)}
+.traj svg{width:12px;height:12px;color:var(--pos-text);flex:none}
+.traj b{font-weight:600;color:var(--text)}
+.aphorism{font-style:italic;font-size:13px;line-height:1.45;color:var(--dim);border-top:1px solid var(--border);margin-top:14px;padding-top:13px}
+.ctxrow{padding:12px 0;border-top:1px solid var(--border)}
+.ctxrow:first-of-type{border-top:none;padding-top:2px}
+.ctxrow .k{font-size:14px;font-weight:500;letter-spacing:-.01em;color:var(--text);margin-bottom:3px}
+.ctxrow .v{font-size:13px;color:var(--dim);line-height:1.45}
+.planrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 0}
+.planrow .l .n{font-size:13px;font-weight:500;color:var(--text)}
+.planrow .l .s{font-size:11.5px;color:var(--dim);margin-top:2px}
+.setrow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);margin-top:22px;padding:14px 0 2px;color:var(--dim)}
+.setrow svg{width:16px;height:16px;color:var(--faint)}
+.setrow span{flex:1;font-size:13px;font-weight:500;color:var(--text)}
+
+/* tab bar */
+.tabbar{margin-top:26px;height:64px;display:flex;align-items:flex-start;padding:8px 10px 0;
+  background:var(--nav);backdrop-filter:blur(18px) saturate(180%);border-top:1px solid var(--border)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint)}
+.tab.on{color:var(--accent)}
+.tab span{font-size:10px;font-weight:500;letter-spacing:.02em}
+.tab svg{width:21px;height:21px}
+.tab.mid .ring{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--accent);background:var(--accent-soft);display:flex;align-items:center;justify-content:center;margin-top:-2px}
+.tab.mid .ring svg{width:16px;height:16px}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="intro">
+    <div class="kicker">Volnar · mockup · July 2026</div>
+    <h1>Vitals &amp; Profile, <b>content-first</b> — the boxes are gone</h1>
+    <p>Both pages rebuilt in the Overview's language: content sits directly on the page, sections part with a
+    hairline rule and whitespace, numbers lead, and the only chrome left is the one gold band and the controls.
+    Same tokens, same type scale, same data as today — nothing new to learn, just less furniture.</p>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>Cards → sections</b>Every vital was a bordered box stacked in a column. Now each is a section —
+      eyebrow, its <i>one big figure</i>, the chart, the benchmark — parted by hairlines, exactly like Journal/Holdings on Overview.</div>
+    <div class="note"><b>Suggestion strips → editorial asides</b>The tinted "Worth knowing" strips inside each card become a quiet
+      italic line with a gold lead-in — the same voice as the journal reflections.</div>
+    <div class="note"><b>The Pulse → a full-bleed band</b>The one tinted surface that stays. It runs edge-to-edge (like Diary's
+      "On this day") instead of being a rounded card, and the signal rows below it sit straight on the page.</div>
+    <div class="note"><b>Perspective card → the page itself</b>The gradient box and its inner white panel are gone: the synthesis line,
+      your figure, the distribution curve and the three cohort rows all sit on the paper, hairline-separated.</div>
+    <div class="note"><b>Settings button → a quiet row</b>The big bordered button at the foot of Profile becomes a plain row with a
+      gear and a chevron — the page ends on an open edge.</div>
+    <div class="note"><b>Unrolled frames</b>Each phone shows the <i>entire</i> page unrolled (as if scrolled end to end), so the
+      full composition can be judged. Light and dark.</div>
+  </div>
+
+  <div class="gallery">
+
+    <!-- ============================== VITALS · LIGHT ============================== -->
+    <div class="unit light">
+      <div class="cap"><b>Vitals</b> · light · unrolled</div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span class="tnum">9:41</span><span class="tnum">100%</span></div>
+
+        <div class="appbar">
+          <div class="wm"><span class="mark">V</span>Volnar</div>
+          <div class="who">Alex</div>
+        </div>
+
+        <div class="pad">
+          <!-- title row -->
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="title">Vitals</div>
+            <span class="pill">Including property</span>
+          </div>
+
+          <!-- pulse band: full bleed -->
+          <div class="band">
+            <div class="hd"><span class="eyebrow">Pulse · 1 Jul</span><span class="eyebrow" style="opacity:.55">6 vitals</span></div>
+            <p>A quiet week. The book drifted <em>+0,4%</em> while markets chopped sideways — <em>concentration</em> is the one figure still worth your attention.</p>
+          </div>
+
+          <!-- signal rows -->
+          <div style="margin-top:4px">
+            <div class="sigrow">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-9"/><path d="M14 6h7v7"/></svg>
+              <p>Assuming ~5%/yr, you could reach about <b>€652K</b> by <b>2036</b>. <span class="go">See what moves it →</span></p>
+            </div>
+            <div class="sigrow">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 1 3.7 10.7c-.6.5-1 1.2-1.2 2V17h-5v-1.3c-.2-.8-.6-1.5-1.2-2A6 6 0 0 1 12 3z"/></svg>
+              <p>Real estate dominance</p>
+              <svg class="chev" width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="sigrow">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <p>NVIDIA steady after earnings</p>
+              <svg class="chev" width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- meta row -->
+          <div class="metarow">
+            <span class="eyebrow">Active vitals · 6</span>
+            <span class="qact">Library · 5</span>
+          </div>
+
+          <!-- ============ CONCENTRATION ============ -->
+          <div class="vital" style="border-top:none;padding-top:6px">
+            <div class="hd">
+              <span class="eyebrow">Concentration</span>
+              <span class="rs"><span class="eyebrow">Top 3</span><span class="v tnum">77,7%</span></span>
+            </div>
+            <div class="metric"><span class="n tnum">52,0%</span><span class="s">your home · investable 29%</span></div>
+            <div class="cwrap">
+              <div class="thresh" style="left:50%"></div>
+              <div class="threshlab" style="left:50%">balanced ≤ 35%</div>
+              <div class="cbar"><div class="lab"><span class="logo">⌂</span><span>Apartment — Amsterdam</span><span class="v tnum">52,0%</span></div><div class="bar" style="width:74%;background:var(--prop)"></div></div>
+              <div class="cbar"><div class="lab"><span class="logo">⌂</span><span>Rental — Rotterdam</span><span class="v tnum">16,4%</span></div><div class="bar" style="width:23%;background:var(--prop)"></div></div>
+              <div class="cbar"><div class="lab"><span class="logo">B</span><span>Brand New Day DC pension</span><span class="v tnum">9,3%</span></div><div class="bar" style="width:13%;background:var(--res)"></div></div>
+              <div class="cbar"><div class="lab"><span class="logo">W</span><span>iShares Core MSCI World</span><span class="v tnum">8,2%</span></div><div class="bar" style="width:12%;background:var(--mkt)"></div></div>
+              <div class="cbar"><div class="lab"><span class="logo">€</span><span>Emergency fund</span><span class="v tnum">7,1%</span></div><div class="bar" style="width:10%;background:var(--res)"></div></div>
+              <div class="cmore tnum">+7 more · 7,0%</div>
+            </div>
+            <div class="bench"><i></i>balanced threshold ≤ 35% top position</div>
+            <div class="sugg"><b>Context —</b> your home anchors the portfolio as a structural position. Investable concentration is <strong>29%</strong> — balanced.</div>
+          </div>
+
+          <!-- ============ LIQUIDITY ============ -->
+          <div class="vital">
+            <div class="hd">
+              <span class="eyebrow">Liquidity posture</span>
+              <span class="rs"><span class="eyebrow">Buffer target</span><span class="v tnum">15%</span></span>
+            </div>
+            <div class="metric"><span class="n tnum">24%</span><span class="s">within 1 week</span></div>
+            <div class="lstack">
+              <div class="lbuffer" style="left:15%"></div>
+              <i style="flex:0 0 7%;background:var(--accent)"></i>
+              <i style="flex:0 0 17%;background:color-mix(in srgb,var(--mkt) 72%,var(--surface))"></i>
+              <i style="flex:0 0 9%;background:color-mix(in srgb,var(--accent) 62%,var(--surface))"></i>
+              <i style="flex:0 0 52%;background:color-mix(in srgb,var(--res) 78%,var(--surface))"></i>
+              <i style="flex:1;background:color-mix(in srgb,var(--text) 42%,var(--surface))"></i>
+            </div>
+            <div class="legend tnum">
+              <span><i style="background:var(--accent)"></i>7% cash</span>
+              <span><i style="background:color-mix(in srgb,var(--mkt) 72%,var(--surface))"></i>17% market</span>
+              <span><i style="background:color-mix(in srgb,var(--accent) 62%,var(--surface))"></i>9% slow</span>
+              <span><i style="background:color-mix(in srgb,var(--res) 78%,var(--surface))"></i>52% property</span>
+              <span><i style="background:color-mix(in srgb,var(--text) 42%,var(--surface))"></i>15% locked</span>
+            </div>
+            <div class="bench"><i></i>target: ≥ 15% deployable within 1 week</div>
+            <div class="sugg"><b>Worth knowing —</b> <strong>24%</strong> of your net worth is accessible within a week — above the buffer. Most of what's locked is your pensions, by design.</div>
+          </div>
+
+          <!-- ============ LEVERAGE ============ -->
+          <div class="vital">
+            <div class="hd">
+              <span class="eyebrow">Leverage</span>
+              <span class="rs"><span class="eyebrow">Rate</span><span class="v tnum">3,10%</span></span>
+            </div>
+            <div class="metric"><span class="n tnum">44%</span><span class="s">loan-to-value</span></div>
+            <svg viewBox="0 0 300 64" style="width:100%;display:block">
+              <rect x="0" y="0" width="300" height="10" fill="var(--neg-soft)"/>
+              <rect x="0" y="10" width="300" height="12" fill="var(--cry)" opacity=".13"/>
+              <rect x="0" y="22" width="300" height="42" fill="var(--pos-soft)"/>
+              <text x="296" y="8" text-anchor="end" font-size="9" fill="var(--faint)">75%</text>
+              <text x="296" y="20" text-anchor="end" font-size="9" fill="var(--faint)">50%</text>
+              <line x1="0" y1="21" x2="300" y2="21" stroke="var(--dim)" stroke-width=".5" stroke-dasharray="3 3" opacity=".5"/>
+              <text x="4" y="32" font-size="9" fill="var(--dim)" class="tnum">NL avg 52%</text>
+              <path d="M0,12 L60,16 L120,21 L180,26 L225,29" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M225,29 L262,32 L300,35" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="3 3" opacity=".65"/>
+              <path d="M225,29 L300,33 L300,40 L225,32 Z" fill="var(--accent)" opacity=".1"/>
+              <circle cx="225" cy="29" r="3.6" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>
+            </svg>
+            <div style="display:flex;justify-content:space-between;margin-top:4px" class="tnum">
+              <span class="caption">Jul '21 · 62%</span>
+              <span class="caption" style="color:var(--accent-deep);font-weight:600">today · 44%</span>
+              <span class="caption" style="font-style:italic">2029 · ~38%</span>
+            </div>
+            <div class="bench"><i></i>NL average LTV: 52%</div>
+            <div class="sugg"><b>Context —</b> LTV of <strong>44%</strong> is in the healthy range and falling on schedule.</div>
+          </div>
+
+          <!-- ============ DRAWDOWN ============ -->
+          <div class="vital">
+            <div class="hd">
+              <span class="eyebrow">Drawdown</span>
+              <span class="rs"><span class="eyebrow">Post-shock</span><span class="v tnum">€341K</span></span>
+            </div>
+            <div class="metric"><span class="n tnum neg">−14,8%</span><span class="s">combined shock</span></div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <div style="display:flex;align-items:center;gap:8px"><span class="caption" style="flex:0 0 96px;color:var(--dim);white-space:nowrap">Equities −30%</span><span style="flex:1;height:12px;border-radius:3px;background:var(--surface-elev);position:relative;overflow:hidden"><span style="position:absolute;inset:0 54% 0 0;background:var(--neg);opacity:.55"></span></span><span class="caption tnum" style="flex:0 0 48px;text-align:right;color:var(--neg-text);white-space:nowrap">−€27K</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><span class="caption" style="flex:0 0 96px;color:var(--dim);white-space:nowrap">Crypto −50%</span><span style="flex:1;height:12px;border-radius:3px;background:var(--surface-elev);position:relative;overflow:hidden"><span style="position:absolute;inset:0 88% 0 0;background:var(--neg);opacity:.55"></span></span><span class="caption tnum" style="flex:0 0 48px;text-align:right;color:var(--neg-text);white-space:nowrap">−€7K</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><span class="caption" style="flex:0 0 96px;color:var(--dim);white-space:nowrap">Housing −15%</span><span style="flex:1;height:12px;border-radius:3px;background:var(--surface-elev);position:relative;overflow:hidden"><span style="position:absolute;inset:0 58% 0 0;background:var(--neg);opacity:.55"></span></span><span class="caption tnum" style="flex:0 0 48px;text-align:right;color:var(--neg-text);white-space:nowrap">−€23K</span></div>
+              <div style="display:flex;align-items:center;gap:8px;border-top:1px dashed var(--border);padding-top:8px;margin-top:2px"><span class="caption" style="flex:0 0 96px;color:var(--text);font-weight:600;white-space:nowrap">Combined shock</span><span style="flex:1;height:12px;border-radius:3px;background:var(--surface-elev);position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:var(--neg);opacity:.88"></span></span><span class="tnum" style="flex:0 0 48px;text-align:right;font-size:12px;font-weight:600;color:var(--neg-text);white-space:nowrap">−€59K</span></div>
+            </div>
+            <div class="bench"><i></i>equities −30%, crypto −50%, housing −15%</div>
+            <div class="sugg"><b>Worth considering —</b> a simultaneous shock would reduce your net worth by <strong>14,8%</strong>. Worth maintaining liquid reserves for this scenario.</div>
+          </div>
+
+          <!-- library row -->
+          <div class="metarow" style="margin-top:8px">
+            <div>
+              <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:13px;font-weight:500;color:var(--text)">Library</span><span class="caption tnum">11 vitals · 5 dormant</span></div>
+              <div class="caption" style="margin-top:2px">What surfaces when conditions change</div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+
+        <!-- tab bar -->
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="128" r="104"/><polyline points="128 128 128 40"/><polyline points="128 128 195.89 184.6"/></svg><span>Overview</span></div>
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor" style="width:19px;height:19px"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12 L22 13 L16.5 13 L13.4 20.5 L9 9.5 L7 13 L2 13 Z"/></svg><span>Vitals</span></div>
+          <div class="tab mid"><div class="ring"><svg viewBox="0 0 256 256" fill="none" stroke="var(--faint)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/></svg></div><span>Chat</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32"/><path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z"/></svg><span>Journal</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="96" r="64"/><path d="M30.99,224a112.04,112.04,0,0,1,194.02,0"/></svg><span>Profile</span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============================== PROFILE · LIGHT ============================== -->
+    <div class="unit light">
+      <div class="cap"><b>Profile</b> · light · unrolled</div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span class="tnum">9:41</span><span class="tnum">100%</span></div>
+
+        <div class="appbar">
+          <div class="wm"><span class="mark">V</span>Volnar</div>
+          <div class="who"></div>
+        </div>
+
+        <div class="pad">
+          <!-- name -->
+          <div class="title">Alex Demo</div>
+          <p class="fingerprint">Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.</p>
+
+          <!-- PERSPECTIVE -->
+          <div class="metarow">
+            <span class="eyebrow">Perspective</span>
+          </div>
+          <p class="persp-syn">You sit above <em>84%</em> of EU households and <em>91%</em> globally — a position most reach only after decades of compounding.</p>
+          <div class="metric" style="margin-bottom:6px"><span class="n tnum">€399.992</span><span class="s">your wealth today</span></div>
+
+          <!-- distribution curve, straight on the page -->
+          <div style="margin:10px 0 2px">
+            <div class="eyebrow" style="color:var(--accent-deep);opacity:.7;margin-bottom:8px">Wealth distribution · log scale</div>
+            <svg viewBox="0 0 300 104" style="width:100%;display:block;overflow:visible">
+              <defs>
+                <linearGradient id="dens" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stop-color="var(--accent)" stop-opacity=".05"/>
+                  <stop offset="50%" stop-color="var(--accent)" stop-opacity=".10"/>
+                  <stop offset="80%" stop-color="var(--accent)" stop-opacity=".16"/>
+                  <stop offset="100%" stop-color="var(--accent)" stop-opacity=".04"/>
+                </linearGradient>
+              </defs>
+              <path d="M13,62 C44,60 71,54 101,47 C128,40 154,38 181,34 C199,32 216,38 234,47 C251,56 269,62 287,66 L287,66 L13,66 Z" fill="url(#dens)" opacity=".85"/>
+              <path d="M13,62 C44,60 71,54 101,47 C128,40 154,38 181,34 C199,32 216,38 234,47 C251,56 269,62 287,66" fill="none" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+              <line x1="13" y1="66" x2="287" y2="66" stroke="var(--dim)" stroke-width=".6"/>
+              <line x1="78" y1="54" x2="78" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+              <text x="78" y="50" text-anchor="middle" font-size="9" fill="var(--dim)">World median</text>
+              <line x1="137" y1="42" x2="137" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+              <text x="130" y="38" text-anchor="middle" font-size="9" fill="var(--dim)">EU med</text>
+              <line x1="159" y1="24" x2="159" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+              <text x="163" y="20" text-anchor="middle" font-size="9" fill="var(--dim)">NL med</text>
+              <line x1="205" y1="10" x2="205" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+              <text x="205" y="6" text-anchor="middle" font-size="9" fill="var(--dim)">World top 1%</text>
+              <line x1="196" y1="66" x2="196" y2="94" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 2" opacity=".6"/>
+              <circle cx="196" cy="66" r="6.5" fill="none" stroke="var(--accent)" stroke-opacity=".28" stroke-width="2"/>
+              <circle cx="196" cy="66" r="3.8" fill="var(--accent)"/>
+              <text x="196" y="102" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--accent-deep)">you · €400k</text>
+              <text x="13" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€1k</text>
+              <text x="78" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€10k</text>
+              <text x="146" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€100k</text>
+              <text x="213" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€1M</text>
+              <text x="283" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€10M</text>
+            </svg>
+          </div>
+
+          <!-- cohort rows -->
+          <div style="margin-top:14px">
+            <div class="cohort">
+              <div class="top">
+                <div class="l"><div class="n">Netherlands</div><div class="s">your country</div></div>
+                <div class="m"><div class="trk"><div class="fill" style="width:82%"></div><div class="dot" style="left:82%"></div></div></div>
+                <div class="r"><div class="p tnum">82<span>nd</span></div><div class="eyebrow">percentile</div></div>
+              </div>
+              <div class="ctx">comparable to homeowners with paid-down mortgage and modest pension</div>
+            </div>
+            <div class="cohort">
+              <div class="top">
+                <div class="l"><div class="n">European Union</div><div class="s">27 countries</div></div>
+                <div class="m"><div class="trk"><div class="fill" style="width:84%"></div><div class="dot" style="left:84%"></div></div></div>
+                <div class="r"><div class="p tnum">84<span>th</span></div><div class="eyebrow">percentile</div></div>
+              </div>
+              <div class="ctx">above 9 in 10 households across the bloc</div>
+            </div>
+            <div class="cohort">
+              <div class="top">
+                <div class="l"><div class="n">Worldwide</div><div class="s">5.4 bn adults</div></div>
+                <div class="m"><div class="trk"><div class="fill" style="width:91%"></div><div class="dot" style="left:91%"></div></div></div>
+                <div class="r"><div class="p tnum">91<span>st</span></div><div class="eyebrow">percentile</div></div>
+              </div>
+              <div class="ctx">below the world top 1% threshold (~€972K)</div>
+            </div>
+          </div>
+
+          <!-- trajectory -->
+          <div class="traj">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-9"/><path d="M14 6h7v7"/></svg>
+            <span>Up <b>2 percentile points</b> in NL this year</span>
+          </div>
+
+          <p class="aphorism">Most of the world manages without an investment portfolio at all. Worth holding lightly.</p>
+
+          <!-- CONTEXT -->
+          <div class="metarow">
+            <span class="eyebrow">Context</span>
+            <span class="caption">noted quietly as you chat</span>
+          </div>
+          <div>
+            <div class="ctxrow">
+              <div class="k">Life and direction</div>
+              <div class="v">Settled in Amsterdam with a long horizon; optimising for optionality over income for the next decade.</div>
+            </div>
+            <div class="ctxrow">
+              <div class="k">Approach</div>
+              <div class="v">Index core, deliberate satellites. Adds on weakness, trims strength; dislikes selling in drawdowns.</div>
+            </div>
+            <div class="ctxrow">
+              <div class="k">Currently exploring</div>
+              <div class="v">Whether the Rotterdam rental still earns its place versus simplifying into the index core.</div>
+            </div>
+          </div>
+
+          <!-- PLAN -->
+          <div class="metarow">
+            <span class="eyebrow">Plan</span>
+            <span class="qact">Manage</span>
+          </div>
+          <div class="planrow">
+            <div class="l">
+              <div class="n">Volnar Premium</div>
+              <div class="s">Active · renews 13 June 2027 · App Store</div>
+            </div>
+          </div>
+
+          <!-- settings row -->
+          <div class="setrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Settings</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" class="chev"><path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+
+        <!-- tab bar -->
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="128" r="104"/><polyline points="128 128 128 40"/><polyline points="128 128 195.89 184.6"/></svg><span>Overview</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:19px;height:19px"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12"/></svg><span>Vitals</span></div>
+          <div class="tab mid"><div class="ring"><svg viewBox="0 0 256 256" fill="none" stroke="var(--faint)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/></svg></div><span>Chat</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32"/><path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z"/></svg><span>Journal</span></div>
+          <div class="tab on"><svg viewBox="0 0 256 256" fill="currentColor" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="96" r="64" fill="none"/><path d="M30.99,224a112.04,112.04,0,0,1,194.02,0" fill="none"/></svg><span>Profile</span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============================== VITALS · DARK ============================== -->
+    <div class="unit dark">
+      <div class="cap"><b>Vitals</b> · dark</div>
+      <div class="device dk"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span class="tnum">9:41</span><span class="tnum">100%</span></div>
+        <div class="appbar">
+          <div class="wm"><span class="mark">V</span>Volnar</div>
+          <div class="who">Alex</div>
+        </div>
+        <div class="pad">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="title">Vitals</div>
+            <span class="pill">Including property</span>
+          </div>
+          <div class="band">
+            <div class="hd"><span class="eyebrow">Pulse · 1 Jul</span><span class="eyebrow" style="opacity:.55">6 vitals</span></div>
+            <p>A quiet week. The book drifted <em>+0,4%</em> while markets chopped sideways — <em>concentration</em> is the one figure still worth your attention.</p>
+          </div>
+          <div style="margin-top:4px">
+            <div class="sigrow">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-9"/><path d="M14 6h7v7"/></svg>
+              <p>Assuming ~5%/yr, you could reach about <b>€652K</b> by <b>2036</b>. <span class="go">See what moves it →</span></p>
+            </div>
+            <div class="sigrow">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <p>NVIDIA steady after earnings</p>
+              <svg class="chev" width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div class="metarow">
+            <span class="eyebrow">Active vitals · 6</span>
+            <span class="qact">Library · 5</span>
+          </div>
+          <div class="vital" style="border-top:none;padding-top:6px">
+            <div class="hd">
+              <span class="eyebrow">Concentration</span>
+              <span class="rs"><span class="eyebrow">Top 3</span><span class="v tnum">77,7%</span></span>
+            </div>
+            <div class="metric"><span class="n tnum">52,0%</span><span class="s">your home · investable 29%</span></div>
+            <div class="cwrap">
+              <div class="thresh" style="left:50%"></div>
+              <div class="threshlab" style="left:50%">balanced ≤ 35%</div>
+              <div class="cbar"><div class="lab"><span class="logo">⌂</span><span>Apartment — Amsterdam</span><span class="v tnum">52,0%</span></div><div class="bar" style="width:74%;background:var(--prop)"></div></div>
+              <div class="cbar"><div class="lab"><span class="logo">⌂</span><span>Rental — Rotterdam</span><span class="v tnum">16,4%</span></div><div class="bar" style="width:23%;background:var(--prop)"></div></div>
+              <div class="cbar"><div class="lab"><span class="logo">B</span><span>Brand New Day DC pension</span><span class="v tnum">9,3%</span></div><div class="bar" style="width:13%;background:var(--res)"></div></div>
+              <div class="cbar"><div class="lab"><span class="logo">W</span><span>iShares Core MSCI World</span><span class="v tnum">8,2%</span></div><div class="bar" style="width:12%;background:var(--mkt)"></div></div>
+              <div class="cmore tnum">+8 more · 14,1%</div>
+            </div>
+            <div class="bench"><i></i>balanced threshold ≤ 35% top position</div>
+            <div class="sugg"><b>Context —</b> your home anchors the portfolio as a structural position. Investable concentration is <strong>29%</strong> — balanced.</div>
+          </div>
+          <div class="vital">
+            <div class="hd">
+              <span class="eyebrow">Liquidity posture</span>
+              <span class="rs"><span class="eyebrow">Buffer target</span><span class="v tnum">15%</span></span>
+            </div>
+            <div class="metric"><span class="n tnum">24%</span><span class="s">within 1 week</span></div>
+            <div class="lstack">
+              <div class="lbuffer" style="left:15%"></div>
+              <i style="flex:0 0 7%;background:var(--accent)"></i>
+              <i style="flex:0 0 17%;background:color-mix(in srgb,var(--mkt) 72%,var(--surface))"></i>
+              <i style="flex:0 0 9%;background:color-mix(in srgb,var(--accent) 62%,var(--surface))"></i>
+              <i style="flex:0 0 52%;background:color-mix(in srgb,var(--res) 78%,var(--surface))"></i>
+              <i style="flex:1;background:color-mix(in srgb,var(--text) 42%,var(--surface))"></i>
+            </div>
+            <div class="legend tnum">
+              <span><i style="background:var(--accent)"></i>7% cash</span>
+              <span><i style="background:color-mix(in srgb,var(--mkt) 72%,var(--surface))"></i>17% market</span>
+              <span><i style="background:color-mix(in srgb,var(--res) 78%,var(--surface))"></i>52% property</span>
+              <span><i style="background:color-mix(in srgb,var(--text) 42%,var(--surface))"></i>15% locked</span>
+            </div>
+            <div class="bench"><i></i>target: ≥ 15% deployable within 1 week</div>
+            <div class="sugg"><b>Worth knowing —</b> <strong>24%</strong> of your net worth is accessible within a week — above the buffer.</div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="128" r="104"/><polyline points="128 128 128 40"/><polyline points="128 128 195.89 184.6"/></svg><span>Overview</span></div>
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="currentColor" style="width:19px;height:19px"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12 L22 13 L16.5 13 L13.4 20.5 L9 9.5 L7 13 L2 13 Z"/></svg><span>Vitals</span></div>
+          <div class="tab mid"><div class="ring"><svg viewBox="0 0 256 256" fill="none" stroke="var(--faint)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/></svg></div><span>Chat</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32"/><path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z"/></svg><span>Journal</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="96" r="64"/><path d="M30.99,224a112.04,112.04,0,0,1,194.02,0"/></svg><span>Profile</span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============================== PROFILE · DARK ============================== -->
+    <div class="unit dark">
+      <div class="cap"><b>Profile</b> · dark</div>
+      <div class="device dk"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span class="tnum">9:41</span><span class="tnum">100%</span></div>
+        <div class="appbar">
+          <div class="wm"><span class="mark">V</span>Volnar</div>
+          <div class="who"></div>
+        </div>
+        <div class="pad">
+          <div class="title">Alex Demo</div>
+          <p class="fingerprint">Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.</p>
+          <div class="metarow"><span class="eyebrow">Perspective</span></div>
+          <p class="persp-syn">You sit above <em>84%</em> of EU households and <em>91%</em> globally — a position most reach only after decades of compounding.</p>
+          <div class="metric" style="margin-bottom:6px"><span class="n tnum">€399.992</span><span class="s">your wealth today</span></div>
+          <div style="margin:10px 0 2px">
+            <div class="eyebrow" style="color:var(--accent-deep);opacity:.7;margin-bottom:8px">Wealth distribution · log scale</div>
+            <svg viewBox="0 0 300 104" style="width:100%;display:block;overflow:visible">
+              <path d="M13,62 C44,60 71,54 101,47 C128,40 154,38 181,34 C199,32 216,38 234,47 C251,56 269,62 287,66 L287,66 L13,66 Z" fill="var(--accent)" opacity=".08"/>
+              <path d="M13,62 C44,60 71,54 101,47 C128,40 154,38 181,34 C199,32 216,38 234,47 C251,56 269,62 287,66" fill="none" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+              <line x1="13" y1="66" x2="287" y2="66" stroke="var(--dim)" stroke-width=".6"/>
+              <line x1="78" y1="54" x2="78" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+              <text x="78" y="50" text-anchor="middle" font-size="9" fill="var(--dim)">World median</text>
+              <line x1="159" y1="24" x2="159" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+              <text x="163" y="20" text-anchor="middle" font-size="9" fill="var(--dim)">NL med</text>
+              <line x1="205" y1="10" x2="205" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+              <text x="205" y="6" text-anchor="middle" font-size="9" fill="var(--dim)">World top 1%</text>
+              <line x1="196" y1="66" x2="196" y2="94" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 2" opacity=".6"/>
+              <circle cx="196" cy="66" r="6.5" fill="none" stroke="var(--accent)" stroke-opacity=".28" stroke-width="2"/>
+              <circle cx="196" cy="66" r="3.8" fill="var(--accent)"/>
+              <text x="196" y="102" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--accent-deep)">you · €400k</text>
+              <text x="13" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€1k</text>
+              <text x="146" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€100k</text>
+              <text x="283" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€10M</text>
+            </svg>
+          </div>
+          <div style="margin-top:14px">
+            <div class="cohort">
+              <div class="top">
+                <div class="l"><div class="n">Netherlands</div><div class="s">your country</div></div>
+                <div class="m"><div class="trk"><div class="fill" style="width:82%"></div><div class="dot" style="left:82%"></div></div></div>
+                <div class="r"><div class="p tnum">82<span>nd</span></div><div class="eyebrow">percentile</div></div>
+              </div>
+              <div class="ctx">comparable to homeowners with paid-down mortgage and modest pension</div>
+            </div>
+            <div class="cohort">
+              <div class="top">
+                <div class="l"><div class="n">Worldwide</div><div class="s">5.4 bn adults</div></div>
+                <div class="m"><div class="trk"><div class="fill" style="width:91%"></div><div class="dot" style="left:91%"></div></div></div>
+                <div class="r"><div class="p tnum">91<span>st</span></div><div class="eyebrow">percentile</div></div>
+              </div>
+              <div class="ctx">below the world top 1% threshold (~€972K)</div>
+            </div>
+          </div>
+          <div class="traj">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-9"/><path d="M14 6h7v7"/></svg>
+            <span>Up <b>2 percentile points</b> in NL this year</span>
+          </div>
+          <p class="aphorism">Most of the world manages without an investment portfolio at all. Worth holding lightly.</p>
+          <div class="metarow"><span class="eyebrow">Context</span><span class="caption">noted quietly as you chat</span></div>
+          <div>
+            <div class="ctxrow">
+              <div class="k">Approach</div>
+              <div class="v">Index core, deliberate satellites. Adds on weakness, trims strength; dislikes selling in drawdowns.</div>
+            </div>
+          </div>
+          <div class="setrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Settings</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" class="chev"><path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="128" r="104"/><polyline points="128 128 128 40"/><polyline points="128 128 195.89 184.6"/></svg><span>Overview</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:19px;height:19px"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12"/></svg><span>Vitals</span></div>
+          <div class="tab mid"><div class="ring"><svg viewBox="0 0 256 256" fill="none" stroke="var(--faint)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/></svg></div><span>Chat</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32"/><path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z"/></svg><span>Journal</span></div>
+          <div class="tab on"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="96" r="64"/><path d="M30.99,224a112.04,112.04,0,0,1,194.02,0"/></svg><span>Profile</span></div>
+        </div>
+      </div></div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
