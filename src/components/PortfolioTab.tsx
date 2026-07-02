@@ -93,14 +93,11 @@ export function PortfolioTab({
   const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
   // The decision selected on the chart / in the journal (shared between the two,
-  // mirroring the desktop). null → default to the newest in-range decision.
+  // mirroring the desktop). null → NOTHING selected: the page rests at Now —
+  // live hero, no highlighted dot, the journal zone showing its invitation.
+  // "Now" is the default face on a fresh load; an entry only stands selected
+  // after the user explicitly taps its dot (or "Portfolio on this day").
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
-  // Explicitly-nothing-selected — a THIRD face, distinct from the load default.
-  // Returning to today ("Now" / "Back to today") sets it: the chart highlights
-  // no dot and the entry zone shows a generic invitation instead of an entry,
-  // because today has no entry to stand on. A fresh page load keeps the
-  // newest-entry teaser (deselected=false, selection null → default).
-  const [deselected, setDeselected] = useState(false);
   // The point under a HELD scrub — the chart emits it while the finger is down
   // and null on release, so the hero readout is transient by construction.
   const [scrubPoint, setScrubPoint] = useState<SnapshotPoint | null>(null);
@@ -156,11 +153,10 @@ export function PortfolioTab({
   }, []);
 
   useEffect(() => {
+    // A range switch is a fresh look at the window — return to the default
+    // face (Now: nothing selected, live page).
     setSelectedDecisionId(null);
     setRewind(null);
-    // A range switch is a fresh look at the window, not a "back to today" —
-    // return to the default face (newest entry teaser).
-    setDeselected(false);
   }, [range]);
 
   // One reconstruction fetch per date, shared by the tap path and the
@@ -388,16 +384,14 @@ export function PortfolioTab({
     () => navDecisions.map((d) => ({ id: d.id, date: mDate(d).slice(0, 10), kind: "you" as const, title: decisionTitle(d), sub: shortDate(mDate(d)) })),
     [navDecisions],
   );
-  // Fall back to the newest in-range decision whenever the selected id isn't in
-  // the current set (range narrowed, or `mutations` revalidated out from under
-  // it) — keeps the chart highlight and the journal panel agreeing on one entry.
-  // Explicit deselection ("Now" / "Back to today") overrides the fallback: no
-  // dot is highlighted, no entry is shown.
-  const activeMarkerId = deselected
-    ? null
-    : selectedDecisionId && navDecisions.some((d) => d.id === selectedDecisionId)
+  // Nothing is selected until the user taps a dot (or "Portfolio on this
+  // day") — Now is the resting face. A selected id that drops out of the
+  // current set (range narrowed, or `mutations` revalidated out from under
+  // it) deselects rather than silently jumping to a different entry.
+  const activeMarkerId =
+    selectedDecisionId && navDecisions.some((d) => d.id === selectedDecisionId)
       ? selectedDecisionId
-      : navDecisions[0]?.id ?? null;
+      : null;
 
   // Tapping a decision dot selects the journal entry AND parks the rewind at
   // its day — the user said what moment they mean, so the hero and the
@@ -405,7 +399,6 @@ export function PortfolioTab({
   // reconstruct (the live page IS that day), and the Liquid lens shows a
   // subset the full-book rewind doesn't speak for — both just select.
   const onMarkerClick = (id: string) => {
-    setDeselected(false);
     setSelectedDecisionId(id);
     const d = navDecisions.find((x) => x.id === id);
     if (!d || liquidOnly) return;
@@ -420,13 +413,12 @@ export function PortfolioTab({
 
   // Every way back to today behaves identically: the rewind unparks AND the
   // journal selection resets, so the page returns to its resting face — live
-  // hero, live holdings, the newest entry as a folded teaser. Without the
-  // reset, the old entry's details would keep standing next to a "now" hero,
-  // reading as if the page were still rewound.
+  // hero, live holdings, nothing selected. Without the reset, the old entry's
+  // details would keep standing next to a "now" hero, reading as if the page
+  // were still rewound.
   const exitToNow = () => {
     setRewind(null);
     setSelectedDecisionId(null);
-    setDeselected(true);
   };
 
   // The rewound book, ready to render: per-row display values, category groups
@@ -579,10 +571,12 @@ export function PortfolioTab({
           Content-first: no card — a hairline rule and whitespace part it from the
           chart above, and its text sits flush with the hero. */}
       <div style={{ maxWidth: 660, marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)" }}>
-        {navDecisions.length > 0 && deselected ? (
-          // Back at today with nothing selected — today has no entry, so no
-          // entry's details belong here. A quiet invitation keeps the zone a
-          // journal and teaches the way back in.
+        {navDecisions.length > 0 && activeMarkerId === null && !isIntraday ? (
+          // At today with nothing selected — the DEFAULT face, including on a
+          // fresh load. Today has no entry, so no entry's details belong here.
+          // A quiet invitation keeps the zone a journal and teaches the way in.
+          // (Liquid · 1D has no dots to tap, so it keeps the newest-entry
+          // teaser below instead of an invitation that can't be followed.)
           <>
             <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", display: "block", marginBottom: "var(--space-2)" }}>
               <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
@@ -595,7 +589,7 @@ export function PortfolioTab({
         ) : navDecisions.length > 0 ? (
           <MobileDecisionJournal
             decisions={navDecisions}
-            selectedId={selectedDecisionId}
+            selectedId={activeMarkerId}
             displayCurrency={displayCurrency}
             onViewDay={liquidOnly ? undefined : onMarkerClick}
             rewindId={rewind?.id ?? null}

@@ -520,10 +520,13 @@ what they owned and reflect on why they decided. Model:
   nothing. Liquid lens never rewinds (the reconstruction is the full book).
 - **Ways out** (all identical via `exitToNow`): "Back to today" (hero chip or
   holdings header), "Now", range switch, entering Liquid, leaving the tab. All
-  land on the **deselected face**: no highlighted dot, live everything, and the
-  entry zone shows a generic invitation ("Tap a dot on the line…") instead of
-  an entry — today has no entry, so none is shown. A fresh page load keeps the
-  newest-entry teaser (deselected is a third state, distinct from the default).
+  land on the **Now face**: no highlighted dot, live everything, and the entry
+  zone shows a generic invitation ("Tap a dot on the line…") instead of an
+  entry — today has no entry, so none is shown. Since 2026-07 this is ALSO the
+  fresh-load default: nothing is selected until the user taps a dot (the old
+  newest-entry-selected default and its separate `deselected` flag are gone).
+  Exception: Liquid · 1D has no dots to tap, so it keeps the newest-entry
+  teaser instead of an invitation that can't be followed.
 - **Server reconstruction** (`reconstructHoldingsAt` in `src/lib/snapshot.ts`,
   served by `GET /api/holdings-at?date=`): units from the mutation timeline ×
   that day's close; real estate via the SAME CBS-progress + mortgage-schedule
