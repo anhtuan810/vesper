@@ -246,15 +246,11 @@ export function MobileDecisionJournal({
       </p>
 
       {/* Rewind — tap to stand the whole page (hero + holdings) at this
-          entry's day. Flips to a quiet confirmation while standing there.
-          Today-dated entries have nothing to rewind (the live page IS that
-          day), so they offer nothing. */}
-      {onViewDay && mDate(m).slice(0, 10) < new Date().toISOString().slice(0, 10) && (
-        rewindId === m.id ? (
-          <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)", margin: "var(--space-2) 0 0" }}>
-            Showing your portfolio as it stood on this day.
-          </p>
-        ) : (
+          entry's day. While already standing there the action disappears (the
+          dated hero and holdings speak for themselves). Today-dated entries
+          have nothing to rewind (the live page IS that day), so they offer
+          nothing. */}
+      {onViewDay && rewindId !== m.id && mDate(m).slice(0, 10) < new Date().toISOString().slice(0, 10) && (
           <button
             type="button"
             onClick={() => onViewDay(m.id)}
@@ -267,7 +263,6 @@ export function MobileDecisionJournal({
               <polyline points="144 56 216 128 144 200" />
             </svg>
           </button>
-        )
       )}
 
       {/* Dropped down — the full look-back verdict (chevron reveals it). */}

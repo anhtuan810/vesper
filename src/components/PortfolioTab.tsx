@@ -565,7 +565,7 @@ export function PortfolioTab({
           leading with Property. */}
       {rewind ? (
         <div>
-          <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)", marginBottom: "var(--space-2)" }}>
+          <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)", marginBottom: "var(--space-3)" }}>
             <span className="eyebrow" style={{ color: "var(--text-faint)" }}>
               Holdings · {shortDate(rewind.date)}
             </span>
@@ -576,9 +576,6 @@ export function PortfolioTab({
             >
               ← Back to today
             </button>
-          </div>
-          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginBottom: "var(--space-3)", lineHeight: "var(--lh-body)" }}>
-            What you owned on this day, valued at that day&apos;s prices — reconstructed from your records.
           </div>
           {rewindBook == null ? (
             <div style={{ display: "grid", gap: "var(--space-2)" }}>

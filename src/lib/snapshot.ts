@@ -445,19 +445,24 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
   const todayStr = new Date().toISOString().slice(0, 10);
   if (date >= todayStr) return [];
 
-  const { data: assets, error: aErr } = await supabase
-    .from("assets")
-    .select("id, name, type, value, currency, symbol, pension_kind, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
-    .eq("user_id", userId);
-  if (aErr) throw aErr;
+  // This runs while the user WAITS (a tapped entry shows a skeleton until it
+  // returns), unlike the background backfill — so both reads go out together.
+  const [assetsRes, mutationsRes] = await Promise.all([
+    supabase
+      .from("assets")
+      .select("id, name, type, value, currency, symbol, pension_kind, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
+      .eq("user_id", userId),
+    supabase
+      .from("mutations")
+      .select("asset_id, action, after_units, occurred_at, recorded_at")
+      .eq("user_id", userId)
+      .not("asset_id", "is", null),
+  ]);
+  if (assetsRes.error) throw assetsRes.error;
+  if (mutationsRes.error) throw mutationsRes.error;
+  const assets = assetsRes.data;
+  const mutations = mutationsRes.data;
   if (!assets || assets.length === 0) return [];
-
-  const { data: mutations, error: mErr } = await supabase
-    .from("mutations")
-    .select("asset_id, action, after_units, occurred_at, recorded_at")
-    .eq("user_id", userId)
-    .not("asset_id", "is", null);
-  if (mErr) throw mErr;
 
   // Removal / acquisition dates — same rules as backfillSnapshots.
   const removalByAsset = new Map<string, string>();
@@ -497,22 +502,25 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
     timeline.sort((a, b) => a.date.localeCompare(b.date) || a.seq.localeCompare(b.seq));
   }
 
-  const realEstateT = await buildRealEstateProgressSamplers(assets, todayStr);
-  const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr);
-
-  // One historical price lookup per tradeable symbol.
+  // The two slow, independent halves — property curves (PDOK geocode + CBS
+  // index) and one historical close per tradeable symbol (Yahoo) — run
+  // CONCURRENTLY: the wait is the slower of the two, not their sum.
   const symbols = [
     ...new Set(
       assets.filter((a) => TRADEABLE.has(a.type as string) && a.symbol).map((a) => a.symbol as string),
     ),
   ];
   const priceBySymbol = new Map<string, { price: number; currency: string } | null>();
-  await Promise.all(
-    symbols.map(async (symbol) => {
-      const p = await fetchHistoricalPrice(symbol, date);
-      priceBySymbol.set(symbol, p ? { price: p.price, currency: p.currency } : null);
-    }),
-  );
+  const [realEstateT] = await Promise.all([
+    buildRealEstateProgressSamplers(assets, todayStr),
+    Promise.all(
+      symbols.map(async (symbol) => {
+        const p = await fetchHistoricalPrice(symbol, date);
+        priceBySymbol.set(symbol, p ? { price: p.price, currency: p.currency } : null);
+      }),
+    ),
+  ]);
+  const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr);
 
   const out: HoldingAt[] = [];
   for (const a of assets) {

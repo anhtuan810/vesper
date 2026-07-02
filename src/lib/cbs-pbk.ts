@@ -196,13 +196,28 @@ async function writeCache(r: RegionIndex): Promise<void> {
 // ── Public entry — deterministic, server-side only ───────────────────────────
 // Returns the cached-or-fetched yearly index series for the property's region, or
 // null on any failure (the caller maps null → { available: false }).
+
+// Warm-instance memo on top of the DB cache: even a DB-cache hit costs a CBS
+// key-resolution round-trip plus a table read, and the named rewind re-asks
+// for the SAME regions on every reconstruction while the user waits. A yearly
+// index series is stable far beyond a server instance's lifetime, so successes
+// are held in module scope; failures are not memoized.
+const regionIndexMemo = new Map<string, RegionIndex>();
+
 export async function getRegionIndex(
   gemeente: string | null,
   province: string | null,
 ): Promise<RegionIndex | null> {
   const name = targetRegionName(gemeente, province);
   if (!name) return null;
+  const memoized = regionIndexMemo.get(name);
+  if (memoized) return memoized;
+  const result = await getRegionIndexUncached(name);
+  if (result) regionIndexMemo.set(name, result);
+  return result;
+}
 
+async function getRegionIndexUncached(name: string): Promise<RegionIndex | null> {
   // Legacy OData (opendata.cbs.nl) is the working source for 85792NED. The v4
   // base (datasets.cbs.nl) currently 404s for this table, so it stays only as an
   // inert fallback below.

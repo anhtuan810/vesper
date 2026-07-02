@@ -10,9 +10,17 @@ export interface PropertyRegion {
   province: string | null;
 }
 
+// Warm-instance memo: an address's gemeente/province never changes, and the
+// named rewind resolves the SAME addresses on every reconstruction while the
+// user waits — so successful lookups are kept for the life of the server
+// instance. Failures are not memoized (a PDOK hiccup shouldn't stick).
+const regionMemo = new Map<string, PropertyRegion>();
+
 export async function resolveRegion(address: string | null | undefined): Promise<PropertyRegion | null> {
   const q = (address || "").trim();
   if (!q) return null;
+  const memoized = regionMemo.get(q);
+  if (memoized) return memoized;
   try {
     const url = `${PDOK_FREE_URL}?q=${encodeURIComponent(q)}&fq=type:adres&rows=1`;
     const res = await fetch(url, {
@@ -26,7 +34,9 @@ export async function resolveRegion(address: string | null | undefined): Promise
     const gemeente = typeof doc.gemeentenaam === "string" && doc.gemeentenaam ? doc.gemeentenaam : null;
     const province = typeof doc.provincienaam === "string" && doc.provincienaam ? doc.provincienaam : null;
     if (!gemeente && !province) return null;
-    return { gemeente, province };
+    const region = { gemeente, province };
+    regionMemo.set(q, region);
+    return region;
   } catch {
     return null;
   }
