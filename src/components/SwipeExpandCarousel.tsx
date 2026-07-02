@@ -13,6 +13,31 @@ export interface SwipeExpandItem {
   detail?: string | null;
 }
 
+// ── The one signal-row family (the rows under the Vitals Pulse band) ─────────
+// Every row — projection, Worth knowing, Markets — and the Pulse sentence
+// itself share this text spec, so the whole block reads as one design from one
+// source: italic display voice at --fs-body, exactly like the band's sentence.
+export const SIGNAL_TEXT_STYLE: React.CSSProperties = {
+  fontFamily: "var(--font-display)",
+  fontStyle: "italic",
+  fontSize: "var(--fs-body)",
+  lineHeight: "var(--lh-body)",
+  color: "var(--text)",
+};
+
+// The one signal-row shell: a leading icon (14px, faint, top-aligned), the
+// content, and an optional right slot (swipe dots). Rows must render through
+// this rather than hand-rolling their own flex rows.
+export function SignalRow({ icon, right, children }: { icon: ReactNode; right?: ReactNode; children: ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+      {icon}
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      {right}
+    </div>
+  );
+}
+
 interface SwipeExpandCarouselProps {
   /** Leading icon, fixed at the left of the row (e.g. BulbIcon, ActivityIcon). */
   icon: ReactNode;
@@ -72,9 +97,17 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
   if (items.length === 0) return null;
 
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-      {icon}
-      <div ref={wrapperRef} style={{ flex: 1, minWidth: 0, overflow: "hidden", transition: "height 0.2s ease" }}>
+    <SignalRow
+      icon={icon}
+      right={
+        items.length > 1 ? (
+          <div style={{ marginTop: 3, flexShrink: 0 }}>
+            <CarouselDots count={items.length} activeIndex={safeActiveIndex} onSelect={goTo} />
+          </div>
+        ) : undefined
+      }
+    >
+      <div ref={wrapperRef} style={{ overflow: "hidden", transition: "height 0.2s ease" }}>
         <div
           ref={trackRef}
           onScroll={handleScroll}
@@ -99,10 +132,7 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
                         text, so a short headline (e.g. "Hosingenhof 19") reads
                         as a tight unit instead of stranding the chevron at the
                         far edge. The swipe dots (row-level, right) stay put. */}
-                    <span
-                      className="font-display"
-                      style={{ fontSize: "var(--fs-meta)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
-                    >
+                    <span style={SIGNAL_TEXT_STYLE}>
                       {item.title}
                       {item.detail && (
                         <svg
@@ -145,11 +175,6 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
           })}
         </div>
       </div>
-      {items.length > 1 && (
-        <div style={{ marginTop: 3, flexShrink: 0 }}>
-          <CarouselDots count={items.length} activeIndex={safeActiveIndex} onSelect={goTo} />
-        </div>
-      )}
-    </div>
+    </SignalRow>
   );
 }

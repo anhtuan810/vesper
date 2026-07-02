@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { SignalRow, SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
 import { trackChipInteraction, trackChipImpression, markImpression } from "@/lib/chip-telemetry";
@@ -23,7 +24,7 @@ const SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
 
 function TrendingUpIcon({ size = 12, color }: { size?: number; color: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size, flexShrink: 0 }}>
+    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size, flexShrink: 0, marginTop: 2 }}>
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
       <polyline points="16 7 22 7 22 13" />
     </svg>
@@ -165,21 +166,11 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
       >
         {/* Sentence + CTA share one line — the clause trails the statement inline
             (in accent-text) rather than sitting on its own row, so the projection
-            costs a single compact row instead of two. */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-2)" }}>
-          <TrendingUpIcon size={13} color="var(--text-faint)" />
-          <div
-            className="font-display"
-            style={{
-              flex: 1,
-              minWidth: 0,
-              fontStyle: "italic",
-              fontSize: "var(--fs-meta)",
-              lineHeight: "var(--lh-body)",
-              color: "var(--text)",
-              letterSpacing: "0.005em",
-            }}
-          >
+            costs a single compact row instead of two. Rendered through the shared
+            SignalRow shell + text spec so it matches Worth knowing / Markets and
+            the Pulse sentence exactly. */}
+        <SignalRow icon={<TrendingUpIcon size={14} color="var(--text-faint)" />}>
+          <div style={SIGNAL_TEXT_STYLE}>
             Assuming ~{ratePct}/yr, you could reach about{" "}
             <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
             by <span style={{ fontWeight: 600 }}>{year}</span>.{" "}
@@ -194,7 +185,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
               </span>
             </span>
           </div>
-        </div>
+        </SignalRow>
       </button>
     );
   }

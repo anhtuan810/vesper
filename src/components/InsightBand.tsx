@@ -39,7 +39,7 @@ export function InsightBand({ onVisibleChange }: { onVisibleChange?: (visible: b
   return (
     <div style={{ padding: "var(--space-1) 0" }}>
       <SwipeExpandCarousel
-        icon={<BulbIcon color="var(--text-faint)" />}
+        icon={<BulbIcon size={14} color="var(--text-faint)" />}
         items={insights}
         onDetailClick={handleDetailClick}
       />

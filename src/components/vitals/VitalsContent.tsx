@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PulseBanner, toSafeHtml } from "@/components/vitals/PulseBanner";
 import { FoldRow } from "@/components/FoldRow";
+import { SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
 import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
@@ -1299,7 +1300,7 @@ export function VitalsContent({
                 </div>
                 {pulseSentence ? (
                   <div
-                    style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
+                    style={SIGNAL_TEXT_STYLE}
                     dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
                   />
                 ) : (

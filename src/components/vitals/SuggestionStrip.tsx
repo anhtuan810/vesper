@@ -35,16 +35,16 @@ function InfoCircleIcon({ color }: { color: string }) {
   );
 }
 
-export function BulbIcon({ color }: { color: string }) {
+export function BulbIcon({ color, size = 13 }: { color: string; size?: number }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke={color}
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ width: 13, height: 13, flexShrink: 0, marginTop: 2 }}
+      style={{ width: size, height: size, flexShrink: 0, marginTop: 2 }}
     >
       <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
     </svg>

@@ -1,3 +1,5 @@
+import { SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
+
 export interface PulseBannerProps {
   dateLabel: string;
   sentence: string;
@@ -57,13 +59,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
         )}
       </div>
       <div
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "var(--fs-body)",
-          fontStyle: "italic",
-          lineHeight: "var(--lh-body)",
-          color: "var(--text)",
-        }}
+        style={SIGNAL_TEXT_STYLE}
         dangerouslySetInnerHTML={{ __html: toSafeHtml(sentence) }}
       />
     </div>
