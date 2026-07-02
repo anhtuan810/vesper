@@ -470,11 +470,23 @@ export function PortfolioTab({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mutation_id: adyen.id, display_currency: displayCurrency }),
     }).catch(() => {});
+    // The confession performs the FULL dot-tap gesture (mirrors onMarkerClick):
+    // select the entry AND stand the whole page at its day — hero, chart guide
+    // and holdings agree on one moment, with "Back to today" teaching the way
+    // out. A selected entry over a live "now" page read as a glitch. Warm the
+    // day's reconstruction immediately so the rewound book lands without a
+    // skeleton.
+    const day = mDate(adyen).slice(0, 10);
+    const rewinds = !liquidOnly && day < new Date().toISOString().slice(0, 10);
+    if (rewinds) fetchHoldingsAt(day);
     // After the line draw (~1.15s) + dot rise (~0.5s) + a breath; or a shorter
     // beat when the reveal didn't play this session.
-    const t = setTimeout(() => setSelectedDecisionId(adyen.id), reveal ? 2400 : 800);
+    const t = setTimeout(() => {
+      setSelectedDecisionId(adyen.id);
+      if (rewinds) setRewind({ id: adyen.id, date: day });
+    }, reveal ? 2400 : 800);
     return () => clearTimeout(t);
-  }, [revealChecked, isDemo, navDecisions, reveal, displayCurrency]);
+  }, [revealChecked, isDemo, navDecisions, reveal, displayCurrency, liquidOnly, fetchHoldingsAt]);
 
   // The rewound book, ready to render: per-row display values, category groups
   // with totals, and the grand total the hero shows — summed from the SAME

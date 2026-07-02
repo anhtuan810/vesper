@@ -638,12 +638,14 @@ The demo visitor's opening minute, sequenced from three small pieces
   animate from one definition. Play-once per session
   (`volnar:mobile-overview-revealed`); static under reduced motion.
 - **Demo Confession (demo accounts only).** After the reveal settles (~2.4s),
-  the seeded Adyen panic-sell entry selects itself and unfolds — selection
-  only, never an auto-rewind, found by symbol+action (`remove` + `ADYEN*`,
-  never mutation id: reseeds regenerate ids). Its verdict is warmed
-  immediately (fire-and-forget POST to `/api/decisions/verdict`, which caches
-  in `decision_verdicts`) so the look-back is usually ready at unfold. Exactly
-  once per session (`volnar:demo-confession`). `MobileDecisionJournal` now
+  the seeded Adyen panic-sell entry performs the FULL dot-tap gesture: it
+  selects itself, unfolds, AND stands the whole page at its day (hero, chart
+  guide and holdings agree on one moment — a selected entry over a live "now"
+  page read as a glitch), with "Back to today" teaching the way out. Found by
+  symbol+action (`remove` + `ADYEN*`, never mutation id: reseeds regenerate
+  ids). Its verdict and the day's holdings reconstruction are both warmed
+  immediately (fire-and-forget) so the unfold lands with the arithmetic and
+  the rewound book ready. Exactly once per session (`volnar:demo-confession`). `MobileDecisionJournal` now
   opens when it MOUNTS with a selection (initializer, not just the
   change-adjust) — required because the journal only mounts on selection since
   the Now-default change.

@@ -18,9 +18,9 @@ Each item is a self-contained spec — pick any up in a fresh chat, in order.
 > pass (see technical-decisions → "The First 60 Seconds"): the mobile First
 > Breath (line draw + dot rise + journal-zone fade,
 > `volnar:mobile-overview-revealed`) and the Demo Confession (the Adyen entry
-> self-selects and unfolds once per demo session, verdict pre-warmed; no
-> auto-rewind), plus a demo-only follow-up question that pre-fills the chat
-> composer. Note: the Overview now RESTS at Now (no entry selected on load),
+> self-selects, unfolds AND stands the page at its day — the full dot-tap
+> gesture — once per demo session, verdict + reconstruction pre-warmed), plus
+> a demo-only follow-up question that pre-fills the chat composer. Note: the Overview now RESTS at Now (no entry selected on load),
 > so item 1's "folded journal entry fades in" became "the journal zone fades
 > in" — on the demo the Confession then performs the selection. Item 3's
 > seal-tear animation remains unbuilt; the Confession opens the entry without
