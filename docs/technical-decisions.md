@@ -597,6 +597,27 @@ Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pul
   copy, meta row tightened. Deferred to v2: ember treatment on band-change
   days, vitals-aware explorer chips.
 
+## Account Panel — left drawer (2026-07)
+
+IBKR-style account drawer, replacing the scattered settings entry points.
+
+- **Entry**: the avatar (initial circle) at the far LEFT of the mobile/desktop
+  `NavBar` opens `AccountPanel` — a left slide-in drawer (scrim + panel,
+  `--z-modal`, Escape/scrim-tap closes, body scroll locked). The top bar's
+  right side lost the user name and the Portfolio gear; only the price-refresh
+  control remains.
+- **Contents**: account header (avatar · name · email · net worth in the
+  display currency) + ALL settings via `SettingsContent embedded` (same
+  component as `/settings`, minus the page chrome). Settings body lazy-mounts
+  on first open so page loads don't pay its fetches.
+- **Profile tab** no longer links to Settings — it is purely "your picture"
+  (Perspective / Context / Plan). The `/settings` route still works for deep
+  links.
+- **Gotcha encoded in the code**: the drawer's at-rest-open transform is
+  `none` (not `translateX(0)`) so the fixed-position overlays inside
+  SettingsContent (delete dialog, currency toast) position against the
+  viewport, not the transformed drawer.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).

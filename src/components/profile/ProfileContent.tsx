@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import { useUser, useProfile, useNetWorth } from "@/lib/hooks";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { isSupportedCurrency } from "@/lib/money";
@@ -48,19 +47,6 @@ const PROFILE_FIELDS = [
   { key: "currently_exploring", label: "Currently exploring" },
   { key: "worth_raising", label: "Worth raising" },
 ] as const;
-
-function SettingsGearIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
-      style={{ display: "block", flexShrink: 0 }}
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
 
 // A muted placeholder bar used in the zero-data preview.
 function GhostBar({ width, height = 10 }: { width: number | string; height?: number }) {
@@ -154,7 +140,6 @@ function ProfilePreview() {
 }
 
 export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = {}) {
-  const router = useRouter();
   const { user } = useUser();
   const userId = user?.id;
   const profile = useProfile(user?.id);
@@ -401,41 +386,8 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
         </FoldRow>
       )}
 
-      {/* Settings — a quiet navigation row (it navigates, it doesn't fold —
-          the right-pointing chevron signals the difference). Everything
-          operational (preferences, account, Data & AI, deletion) lives behind it. */}
-      <button
-        onClick={() => router.push("/settings")}
-        className="focus-ring"
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-3)",
-          padding: "14px 0 2px",
-          marginTop: "var(--space-4)",
-          background: "none",
-          border: "none",
-          borderTop: "1px solid var(--border)",
-          cursor: "pointer",
-          textAlign: "left",
-          color: "var(--text-faint)",
-        }}
-      >
-        <SettingsGearIcon size={16} />
-        <span style={{
-          flex: 1,
-          fontFamily: "var(--font-ui)",
-          fontSize: "var(--fs-body)",
-          fontWeight: 500,
-          color: "var(--text)",
-        }}>
-          Settings
-        </span>
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden style={{ opacity: 0.7 }}>
-          <path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      {/* Settings moved to the account panel (avatar, top-left of the nav bar)
+          — the Profile tab is purely your picture now. */}
 
     </div>
   );

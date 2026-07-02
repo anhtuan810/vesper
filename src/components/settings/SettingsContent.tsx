@@ -68,7 +68,7 @@ function BackArrow() {
   );
 }
 
-export function SettingsContent() {
+export function SettingsContent({ embedded = false }: { embedded?: boolean } = {}) {
   const router = useRouter();
   const { user, aiConsentAt } = useUser();
   const { data: subscription } = useSubscription();
@@ -164,10 +164,17 @@ export function SettingsContent() {
   const themeLabel = THEME_OPTIONS.find(o => o.value === currentTheme)?.label ?? "Light";
 
   return (
-    <div className="min-h-screen bg-bg" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
-      <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 0 var(--page-bottom-pad)" }}>
+    // Embedded (the account panel): just the sections — the host supplies the
+    // surface, horizontal padding and scroll. Standalone (/settings): the full
+    // page with back button + title.
+    <div
+      className={embedded ? undefined : "min-h-screen bg-bg"}
+      style={embedded ? undefined : { paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
+    >
+      <div style={embedded ? { padding: 0 } : { maxWidth: 520, margin: "0 auto", padding: "0 0 var(--page-bottom-pad)" }}>
 
-        {/* Back + page title */}
+        {/* Back + page title (standalone only) */}
+        {!embedded && (
         <div style={{ padding: "var(--space-3) 0 18px", display: "flex", alignItems: "center", gap: "var(--space-row)" }}>
           <button
             onClick={() => router.back()}
@@ -187,6 +194,7 @@ export function SettingsContent() {
             Settings
           </div>
         </div>
+        )}
 
         {/* Preferences section */}
         <div className="eyebrow" style={SECTION_LABEL_STYLE}>Preferences</div>

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useUser, useProfile } from "@/lib/hooks";
 import { Logo } from "@/components/Logo";
+import { AccountPanel } from "@/components/AccountPanel";
 import { PRICE_CACHE_TTL_MS } from "@/lib/constants";
 
 type Tab = "portfolio" | "diary" | "profile" | "vitals";
@@ -41,7 +41,6 @@ function formatRelativeTime(date: Date): string {
 export function NavBar({
   tab, setTab, mutationCount, liveCount, totalSymbols, refreshing, refreshPrices, lastUpdated, empty, hideRefresh, desktopInset,
 }: NavBarProps) {
-  const router = useRouter();
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 30_000);
@@ -49,6 +48,7 @@ export function NavBar({
   }, []);
   const { user } = useUser();
   const profile = useProfile(user?.id);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const fullName: string | null =
     profile?.name ||
@@ -57,7 +57,50 @@ export function NavBar({
     user?.email?.split("@")[0] ||
     null;
 
-  const firstName = fullName ? fullName.split(" ")[0] : null;
+  // The account avatar — a small initial circle at the far left; tapping it
+  // opens the account panel (left drawer with the account header + settings).
+  const avatarButton = (
+    <button
+      onClick={() => setPanelOpen(true)}
+      aria-label="Account and settings"
+      className="focus-ring"
+      style={{
+        width: 24,
+        height: 24,
+        // Pad the tap target out to 36px; negative margins keep layout intact.
+        padding: 6,
+        margin: -6,
+        boxSizing: "content-box",
+        borderRadius: "var(--radius-pill)",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          background: "var(--accent-soft)",
+          color: "var(--accent-text)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 12,
+          fontWeight: 600,
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        {(fullName?.trim().charAt(0) || "V").toUpperCase()}
+      </span>
+    </button>
+  );
 
   // Tab buttons (shown md+); shared by the mobile/tablet bar and the full-width
   // desktop-shell bar.
@@ -92,14 +135,6 @@ export function NavBar({
 
   const rightControls = (
     <div className="flex items-center gap-2">
-      {firstName && tab !== "profile" && (
-        <span
-          className="font-medium"
-          style={{ fontSize: "var(--fs-subhead)", color: "var(--text-faint)" }}
-        >
-          {firstName}
-        </span>
-      )}
       {!empty && lastUpdated && (
         <span
           className="font-numeric text-faint hidden sm:inline"
@@ -160,41 +195,20 @@ export function NavBar({
           );
         })()}
       </button>}
-      {/* Settings gear — Portfolio's top bar only; sized and styled to match
-          the refresh control beside it (28px hit area, 14px stroked icon). */}
-      {tab === "portfolio" && (
-        <button
-          onClick={() => router.push("/settings")}
-          aria-label="Settings"
-          className="flex items-center justify-center text-faint hover:text-dim transition-colors"
-          style={{ width: 28, height: 28, padding: 4, margin: -4, boxSizing: "content-box", borderRadius: "var(--radius-md)" }}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-3.5 h-3.5"
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
-      )}
     </div>
   );
 
-  // Desktop shell: a full-width bar — brand flush-left, tabs centred, name
-  // flush-right — rather than the centre-column-constrained mobile/tablet bar.
+  // Desktop shell: a full-width bar — avatar + brand flush-left, tabs centred,
+  // controls flush-right — rather than the centre-column-constrained bar.
   if (desktopInset) {
     return (
       <nav
         className="relative z-20 sticky top-0 border-b border-border bg-nav-surface [backdrop-filter:saturate(180%)_blur(20px)] [-webkit-backdrop-filter:saturate(180%)_blur(20px)]"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        <div className="relative flex items-center w-full px-5 h-14">
+        <AccountPanel open={panelOpen} onClose={() => setPanelOpen(false)} displayName={fullName} />
+        <div className="relative flex items-center w-full px-5 h-14 gap-3">
+          {avatarButton}
           <Logo size={28} />
           {/* Tabs aligned to the centre column content (i.e. with "Total net worth"):
               this overlay mirrors the shell's centre track (desktopInset.left/right)
@@ -235,14 +249,18 @@ export function NavBar({
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
+      <AccountPanel open={panelOpen} onClose={() => setPanelOpen(false)} displayName={fullName} />
       <div className="max-w-[720px] mx-auto flex items-center justify-between px-0 md:px-5 h-9 md:h-14">
-        {/* Left: brand · desktop tabs */}
-        <div className="flex items-center gap-4">
+        {/* Left: account avatar · brand · desktop tabs */}
+        <div className="flex items-center gap-3">
+          {avatarButton}
           <Logo size={20} />
-          <div className="hidden md:flex items-center gap-0.5">{tabButtons}</div>
+          <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center gap-0.5">{tabButtons}</div>
+          </div>
         </div>
 
-        {/* Right: name · refresh */}
+        {/* Right: refresh only (name + gear moved into the account panel) */}
         {rightControls}
       </div>
     </nav>
