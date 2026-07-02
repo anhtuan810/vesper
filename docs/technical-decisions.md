@@ -365,6 +365,7 @@ All user-scoped API routes use `private` — never CDN-shared. Error responses (
 | `/api/prices` | GET | 60s | 300s |
 | `/api/fx` | GET | 3600s | 86400s |
 | `/api/snapshots` | GET | 300s | 1800s |
+| `/api/holdings-at` | GET | 3600s | — |
 | `/api/insight` | GET | 3600s | 86400s |
 | `/api/dashboard-init` | GET | 30s | 300s |
 | `/api/users/me` | GET | 300s | 1800s |
@@ -448,6 +449,109 @@ Three layers, mirroring how the chat works. Replaces the former "No tests" debt.
 - **Per-commit CI** (`.github/workflows/ci.yml`) — on every push to `main` and every PR: `npm run typecheck` (full `tsc --noEmit`) then `npm test`. `npm test` runs `scripts/run-tests.mjs`, which executes every `scripts/verify-*.ts` (pure, hermetic — no network / DB / LLM / secrets) and fails on any; new `verify-<name>.ts` files are picked up automatically. Covers acquisition-date parsing, chip sanitisation, tag extraction, the add/edit/remove + pension validators, net-worth-context presentation, plus the existing scenario / projection / cost-basis engines.
 - **Model eval** (`scripts/eval-chat.ts`, `.github/workflows/chat-eval.yml`) — **manual-trigger only** (Actions → Run workflow); no schedule, so it never spends tokens on its own. Sends ~37 scenarios to the real `claude-sonnet-4-6` with the production prompt and asserts the emitted control tags match intent — the model's **decision only** (no DB / prices / auth). Assertions test robust safety invariants ("never silently mutate", "commit when complete"), not brittle wording, since the model legitimately varies ordering/phrasing. Needs the `ANTHROPIC_API_KEY` repo secret; skips cleanly without it; kept off per-commit CI (token cost + non-determinism). Scenarios span batch list-adds, single-add corner cases, edits/corrections, removes, real estate, pension, cash/bonds, what-if scenarios, guardrails (advice boundary, no-live-prices, prompt injection, off-topic) and read-not-add traps.
 - **Demo read eval** (`scripts/eval-chat-demo.ts`, `.github/workflows/demo-eval.yml`) — **manual-trigger only**, **read-only**. Signs into the shared demo account (which reseeds the deterministic "Alex" portfolio), asks 8 questions through the real `/api/chat`, and asserts the answers contain the known seeded values (40 NVIDIA, 0.07 BTC, €26k cash, €34k pension, Amsterdam+Rotterdam, EUR, net worth ~€368k). Exercises the full path auth→DB→model→answer. Targets the **deployed** app (`APP_BASE_URL`, default `https://app.volnar.nl`; the server holds the demo creds + Anthropic key), so it **lags a fix until Vercel redeploys**. Uses ~8 of the demo account's 50 daily chat calls and **skips (never fails) on a 429**; only asks questions, never writes, so it cannot corrupt the shared account.
+
+## Mobile Foldable Vitals & Profile (2026-07)
+
+The mobile Vitals and Profile pages moved from card grids to a **foldable-row
+grammar** (`src/components/FoldRow.tsx`): each section is a two-line row — title
+plus a plain-language question on the left ("how much rides on your biggest
+holding"), the figure plus a one-word status on the right, chevron to unfold the
+full chart/detail. Rules that make it work:
+
+- **Exceptions self-open**: an amber/red vital starts unfolded (`foldStatus` in
+  `VitalsContent.tsx`); green ones start folded. "Unfold all / Fold all" sits in
+  the meta row. Fold state persists per session (`volnar:vitals-open`,
+  `volnar:profile-open` in sessionStorage).
+- **Desktop unchanged** — the fold grammar is mobile-only; the grid cards remain
+  for the Twilight shell (`buildConfig(key)` is shared by both renderers).
+- **One Pulse family**: the Pulse band sentence and every row under it
+  (projection, Worth knowing, Markets) render through `SIGNAL_TEXT_STYLE` +
+  `SignalRow` exported from `SwipeExpandCarousel.tsx` — one text spec, one row
+  shell, one source. New signal-like rows must use these, not hand-rolled flex.
+- Profile follows the same grammar (Perspective open by default, Context, Plan
+  via `SubscriptionSection`'s `embedded` prop).
+
+## Net-Worth Chart: Time-True Axis & Touch Model (2026-07)
+
+- **Time-true x-axis**: points are placed by date via `timeFractions()` /
+  `nearestIndexForFraction()` (`src/lib/networth-axis.ts`), not index spacing —
+  a sparse-then-daily history no longer distorts. ONE shared `xs` array drives
+  the line, bands, edges, markers, scrub and guide; `calcIndex` inverts the same
+  mapping so the cursor lands under the finger.
+- **Scrub is a held gesture, never a parked state.** While held, the hero shows
+  the point's value + dateline and the chart shows a breakdown-only card
+  (asset-class values; no date/total header — the hero carries those). Release,
+  `touchcancel`, `mouseleave`, or backgrounding the app (visibilitychange) all
+  return to the resting display. An anonymous point on the line can be READ but
+  never SELECTED.
+- **Ghost-mouse guard**: mobile browsers replay taps as synthetic
+  mousemove/click with no mouseleave. After the first real touch, the chart's
+  mouse handlers are dead for good (`touchedRef`) — desktop hover unaffected.
+- **Two tight radii** around decision dots: hover preview `max(10, 3%W)`
+  (essentially on-dot — hovering the open line must show the breakdown card,
+  not an entry box), touch-tap commit `max(12, 3.5%W)`. Mouse click commits
+  only what the preview already shows. Do NOT widen these: on a dense timeline
+  every hover/tap starts hitting a dot, which reads as accidental rewinds and a
+  "slow hero" (learned the hard way).
+- **"Now" (footer label)** returns the WHOLE page to today via `onNow`: clears
+  held/parked scrub, exits the rewind, deselects the entry. It must never park
+  a selection at the tip (its pre-rewind behavior).
+- **Demo history protection**: `backfillSnapshots` returns early for demo
+  accounts (entitlements `product_id = 'demo'`) — the demo curve is
+  hand-authored (`SNAPSHOT_ANCHORS`) and a mutation-timeline rebuild would
+  replace it with a collapsed one. Its price valuation also falls FORWARD to the
+  first candle (`priceAtOrBefore(...) ?? history[0]`) so pre-listing dates can't
+  zero a row. Full incident analysis: `docs/audits/demo-networth-cliff.md`.
+
+## Named Rewind — Decision Time Travel (2026-07)
+
+The Overview's differentiator feature: picking a journal entry stands the WHOLE
+page at that entry's day — hero number AND holdings list — so the user can see
+what they owned and reflect on why they decided. Model:
+
+- **Hero precedence: scrub (held) > rewind (parked) > live.** Rewound at rest:
+  date eyebrow above a slightly-dimmed number, "← Back to today" chip. Named
+  time may persist (the entry says what it is); anonymous time may not. NO ≈
+  prefix on the number — a position that couldn't be valued speaks through its
+  own row ("no price record"), never through the total.
+- **Ways in**: tap a decision dot on the chart, or the "Portfolio on this day →"
+  action inside the journal entry (the big-target, primary path; the action
+  hides while already standing on that entry). Today-dated entries offer
+  nothing. Liquid lens never rewinds (the reconstruction is the full book).
+- **Ways out** (all identical via `exitToNow`): "Back to today" (hero chip or
+  holdings header), "Now", range switch, entering Liquid, leaving the tab. All
+  land on the **deselected face**: no highlighted dot, live everything, and the
+  entry zone shows a generic invitation ("Tap a dot on the line…") instead of
+  an entry — today has no entry, so none is shown. A fresh page load keeps the
+  newest-entry teaser (deselected is a third state, distinct from the default).
+- **Server reconstruction** (`reconstructHoldingsAt` in `src/lib/snapshot.ts`,
+  served by `GET /api/holdings-at?date=`): units from the mutation timeline ×
+  that day's close; real estate via the SAME CBS-progress + mortgage-schedule
+  samplers the backfill uses (extracted shared functions — the two paths cannot
+  diverge); flat types at recorded value (row caption "recorded value";
+  property rows "equity after mortgage"). Income pensions excluded. Prices use
+  the backfill's exact convention: full series + `priceAtOrBefore ?? history[0]`.
+  **The hero-at-rewind total is summed from the same rows the list renders** —
+  the number and the list can never disagree. Read-only; returns `[]` for
+  `date >= today`.
+- **Latency architecture** (the demo lives on this gesture):
+  - Warm-instance memos (module scope, success-only): full price series per
+    symbol (12h TTL, refetched if earlier coverage needed), PDOK
+    `resolveRegion` per address, CBS `getRegionIndex` per region. After the
+    first rewind on a warm instance, any other date needs zero external calls.
+  - Inside one reconstruction: the two Supabase reads go out together; the
+    property half and the price half run concurrently.
+  - **Client prefetch**: `PortfolioTab` reconstructs the 8 newest entry days in
+    the background (350ms stagger) as soon as decisions are known — taps then
+    render from the session cache in ~tens of ms. Fetches are idempotent
+    (cache mirror + in-flight set), safe under StrictMode remounts and
+    revalidations.
+  - **Records-stamp invalidation**: caches key on `mutations.length + newest
+    recorded_at` — the same events that trigger `backfillSnapshots(rebuildFrom)`.
+    When it advances: session cache dropped, fetch URL changes (busts the 1h
+    browser HTTP cache), in-flight responses from the old records are
+    discarded, prefetch re-warms. **A rewound book must never outlive the
+    records it was built from.**
 
 ## Known Technical Debt
 

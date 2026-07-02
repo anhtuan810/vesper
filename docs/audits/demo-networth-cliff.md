@@ -230,3 +230,26 @@ Separately, if the live Q1 SELECT shows `series[0]` is actually a near-zero
 delete with a post-delete count assertion so a silent no-op can't leave leftover
 history under the fresh seed — but the code analysis indicates the cliff is the
 seed-vs-tip mismatch above, which exists regardless.
+
+---
+
+## Resolution (2026-07-02) — shipped
+
+Fixed on `main` during the UI-overhaul session, combining recommendation 1 with
+two write-side protections the investigation surfaced:
+
+1. **Anchors reconciled** (`5272dc5`): the trailing `SNAPSHOT_ANCHORS` liquid
+   sums were raised so the newest anchor's `etf + stocks + crypto` ≈ the live
+   mark-to-market of the seeded units (2026-06: etf 36000 / stocks 42000 /
+   crypto 12700 → liquid ≈ €90.7k, total ≈ €400.7k). The seed header now
+   carries the INVARIANT: *the newest anchor must approximate the live mark of
+   the seeded units* — re-reconcile when units or the narrative change.
+2. **Demo rebuild guard** (`784160e`): `backfillSnapshots` returns early for
+   demo accounts (entitlements `product_id = 'demo'`), so a visitor's chat edit
+   can never replace the authored curve with a mutation-timeline reconstruction.
+3. **Price fall-forward** (`784160e`): reconstruction valuation falls forward
+   to the first candle (`priceAtOrBefore(...) ?? history[0]`), so dates before
+   a symbol's first close can no longer zero a row.
+4. **Time-true x-axis** (`5272dc5`): index-spaced plotting had been visually
+   amplifying the cliff (sparse early rows stretched, dense recent rows
+   compressed); points now sit at their true time positions.

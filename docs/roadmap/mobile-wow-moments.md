@@ -9,6 +9,16 @@ motion, play-once, reduced-motion fallback, no fabricated numbers).
 
 Each item is a self-contained spec — pick any up in a fresh chat, in order.
 
+> **Status (2026-07-02).** Shipped since this plan, out of band: the **Named
+> Rewind** (grew out of item 2's territory and went further — picking a journal
+> entry stands the hero AND the holdings list at that day, reconstructed
+> server-side; see `docs/technical-decisions.md` → "Named Rewind"), the
+> foldable Vitals/Profile redesign, the unified Pulse block, and the time-true
+> chart axis. Items 1–6 below remain unbuilt as specced; note for item 2 that
+> `nearMarkerWithin` now takes an explicit radius argument and the dot radii
+> are deliberately tight (see "Net-Worth Chart: Time-True Axis & Touch Model"
+> in technical-decisions before widening anything).
+
 ---
 
 ## 1. The First Breath ⭐ (mobile first-open reveal + verdict chip) — ship first
