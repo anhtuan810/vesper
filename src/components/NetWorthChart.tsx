@@ -118,6 +118,10 @@ interface Props {
   markers?: { id: string; date: string; kind?: "you" | "market"; title?: string; sub?: string; value?: string }[];
   selectedMarkerId?: string | null;
   onMarkerClick?: (id: string) => void;
+  // Fired by the "Now" label — the consumer's cue to stand the page back at
+  // today (exit a parked rewind, reset the journal selection). The chart
+  // clears its own scrub state either way.
+  onNow?: () => void;
   // First-visit cinematic reveal: when true, the net-worth line strokes itself in
   // left→right and the journal dots light up oldest→newest (gated upstream to the
   // first session landing + prefers-reduced-motion). Visual only — no behaviour.
@@ -1029,11 +1033,19 @@ export function NetWorthChart(props: Props) {
           </div>
         </div>
 
-        {/* "Now" jumps the hero back to today's live value (clears any scrub). */}
+        {/* "Now" returns the whole page to today: clears any held/parked scrub
+            (cursor, tooltip, hero readout) and hands off to the consumer via
+            onNow to exit a parked rewind and reset the journal. It must never
+            PARK a selection at the tip — a parked point is exactly the state
+            the resting page is defined not to have. */}
         <button
           type="button"
-          onClick={() => { if (displaySeries.length >= 2) setSelectedIndex(displaySeries.length - 1); }}
-          aria-label="Go to today"
+          onClick={() => {
+            setSelectedIndex(null);
+            setHoveredMarker(null);
+            props.onNow?.();
+          }}
+          aria-label="Back to today"
           style={{
             // Padding enlarges the tap target; the negative margin keeps the row
             // height unchanged so the layout doesn't shift.

@@ -343,6 +343,16 @@ export function PortfolioTab({
     }
   };
 
+  // Every way back to today behaves identically: the rewind unparks AND the
+  // journal selection resets, so the page returns to its resting face — live
+  // hero, live holdings, the newest entry as a folded teaser. Without the
+  // reset, the old entry's details would keep standing next to a "now" hero,
+  // reading as if the page were still rewound.
+  const exitToNow = () => {
+    setRewind(null);
+    setSelectedDecisionId(null);
+  };
+
   // The rewound book, ready to render: per-row display values, category groups
   // with totals, and the grand total the hero shows — summed from the SAME
   // rows the list renders, so the two can never disagree. A row whose value
@@ -456,7 +466,7 @@ export function PortfolioTab({
             onSetLiquid={setLiquid}
             scrubPoint={scrubPoint}
             rewind={rewind ? { date: rewind.date, total: rewindBook?.total ?? null } : null}
-            onExitRewind={() => setRewind(null)}
+            onExitRewind={exitToNow}
           />
         </div>
 
@@ -476,6 +486,7 @@ export function PortfolioTab({
               markers={isIntraday ? undefined : markers}
               selectedMarkerId={activeMarkerId}
               onMarkerClick={onMarkerClick}
+              onNow={exitToNow}
             />
           </div>
         )}
@@ -532,7 +543,7 @@ export function PortfolioTab({
               Holdings · {shortDate(rewind.date)}
             </span>
             <button
-              onClick={() => setRewind(null)}
+              onClick={exitToNow}
               className="font-ui"
               style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", whiteSpace: "nowrap" }}
             >
