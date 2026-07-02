@@ -119,10 +119,10 @@ export function LibraryExpander({
       aria-expanded={expanded}
       className="focus-ring"
       style={{
-        background: "var(--surface-elev)",
-        border: "0.5px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-        padding: "var(--space-card)",
+        // Content-first: a hairline-parted row on the page, not a boxed card —
+        // the same resting shape as the foldable vital rows above it.
+        borderTop: "1px solid var(--border)",
+        padding: "13px 0 var(--space-1)",
         marginBottom: "var(--space-4)",
         cursor: "pointer",
       }}
@@ -213,7 +213,7 @@ export function LibraryExpander({
                   width: 28,
                   height: 28,
                   borderRadius: "var(--radius-md)",
-                  background: "var(--surface)",
+                  background: "var(--surface-elev)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

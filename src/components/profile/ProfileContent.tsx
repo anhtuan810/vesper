@@ -9,7 +9,12 @@ import type { DisplayCurrency } from "@/lib/money";
 import { computePerspective } from "@/lib/vitals/perspective";
 import { findBaselineSnapshot, MIN_BASELINE_AGE_DAYS } from "@/lib/vitals/realGrowth";
 import { PerspectiveCard } from "@/components/perspective/PerspectiveCard";
-import { SubscriptionSection } from "@/components/profile/SubscriptionSection";
+import { SubscriptionSection, renewalDate, dateLabel } from "@/components/profile/SubscriptionSection";
+import { FoldRow } from "@/components/FoldRow";
+import { useSubscription } from "@/components/SubscriptionProvider";
+import { PLAN_LABEL, TRIAL_DAYS } from "@/lib/subscription";
+import { formatRenewalDate } from "@/lib/subscription";
+import { formatMoney } from "@/lib/money";
 import { profileBaselineCacheKey, PROFILE_BASELINE_TTL_MS } from "@/lib/constants";
 import type { Snapshot } from "@/lib/vitals/types";
 import { apiFetch } from "@/lib/api";
@@ -33,6 +38,9 @@ function writeBaselineCache(userId: string, cache: BaselineCache): void {
 }
 
 const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+// Shown if a subscription exists but carries no usable date (defensive).
+const STATUS_LABEL_FALLBACK = "active";
 
 const PROFILE_FIELDS = [
   { key: "life_and_direction", label: "Life and direction" },
@@ -206,6 +214,51 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
 
   const visibleFields = PROFILE_FIELDS.filter(({ key }) => !!(profile?.profile?.[key]));
 
+  // ── Fold state — same grammar as Vitals: per-device overrides on top of
+  // defaults (Perspective open, the rest folded; the trial CTA self-opens).
+  const FOLDS_KEY = "volnar:profile-open";
+  const [foldOverrides, setFoldOverrides] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(FOLDS_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (raw) setFoldOverrides(JSON.parse(raw));
+    } catch {}
+  }, []);
+  function setFold(key: string, open: boolean) {
+    setFoldOverrides((prev) => {
+      const next = { ...prev, [key]: open };
+      try { sessionStorage.setItem(FOLDS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  // Plan fold header — derived from the same subscription view the section
+  // body renders, so the two never disagree. Hidden on the demo account and
+  // while loading (SubscriptionSection renders null there too).
+  const { data: subData, loading: subLoading, entitled } = useSubscription();
+  const showPlan = !subLoading && !subData?.isDemo;
+  const hasSub =
+    subData != null &&
+    (subData.status === "trialing" || subData.status === "active" || subData.status === "past_due");
+  const planValue = hasSub
+    ? (subData!.plan ? PLAN_LABEL[subData!.plan] : "Volnar")
+    : entitled ? "Activating…" : "Free trial";
+  const planDate = hasSub ? formatRenewalDate(renewalDate(subData!)) : null;
+  const planSub = hasSub
+    ? (planDate ? `${dateLabel(subData!).charAt(0).toLowerCase()}${dateLabel(subData!).slice(1)} ${planDate}` : STATUS_LABEL_FALLBACK)
+    : entitled ? "one moment" : `${TRIAL_DAYS} days free`;
+
+  // World percentile → the one folded takeaway ("top 9% worldwide").
+  const worldRow = perspective?.rows.find((r) => r.region === "WORLD");
+  const perspectiveSub = worldRow
+    ? `top ${Math.max(1, Math.round(100 - worldRow.percentile))}% worldwide`
+    : "your wealth today";
+
+  const openPerspective = foldOverrides["perspective"] ?? true;
+  const openContext = foldOverrides["context"] ?? false;
+  const openPlan = foldOverrides["plan"] ?? !hasSub;
+
   return (
     <div style={fillWidth
       ? { maxWidth: "none", margin: 0, padding: 0 }
@@ -247,29 +300,48 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
           for a user who actually has data. */}
       {!nwLoading && !perspective && visibleFields.length === 0 && <ProfilePreview />}
 
-      {/* Perspective section */}
-      {perspective && (
-        <>
-          <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>
-            Perspective
-          </div>
-          <PerspectiveCard data={perspective} displayCurrency={displayCurrency} />
-        </>
+      {/* One "Your picture" section of foldable rows — the same grammar as
+          Vitals: plain-language line, figure, chevron. Perspective (the page's
+          one wow) arrives open; Context and Plan rest folded. */}
+      {(perspective || visibleFields.length > 0 || showPlan) && (
+        <div
+          className="eyebrow"
+          style={{ borderTop: "1px solid var(--border)", marginTop: "var(--space-5)", paddingTop: "var(--space-3)", marginBottom: "var(--space-1)" }}
+        >
+          Your picture
+        </div>
       )}
 
-      {/* Context section — hidden entirely if extractor hasn't populated any fields yet */}
+      {perspective && (
+        <FoldRow
+          first
+          title="Perspective"
+          question="where you stand among households"
+          value={formatMoney(netWorthEur, "EUR", displayCurrency)}
+          sub={perspectiveSub}
+          subTone="neutral"
+          open={openPerspective}
+          onToggle={() => setFold("perspective", !openPerspective)}
+        >
+          <PerspectiveCard data={perspective} displayCurrency={displayCurrency} frameless />
+        </FoldRow>
+      )}
+
+      {/* Context — hidden entirely if the extractor hasn't populated any
+          fields yet. Folded by default: personal notes aren't on screen every
+          time the tab opens. */}
       {visibleFields.length > 0 && (
-        <>
-          <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>
-            Context
-          </div>
-          <div style={{
-            background: "var(--surface)",
-            border: "0.5px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
-            marginBottom: 24,
-            overflow: "hidden",
-          }}>
+        <FoldRow
+          first={!perspective}
+          title="Context"
+          question="what Volnar has noted about you"
+          value={String(visibleFields.length)}
+          sub={visibleFields.length === 1 ? "note" : "notes"}
+          subTone="neutral"
+          open={openContext}
+          onToggle={() => setFold("context", !openContext)}
+        >
+          <div>
             {visibleFields.map(({ key, label }, idx) => {
               const value = profile?.profile?.[key];
               const isLast = idx === visibleFields.length - 1;
@@ -280,7 +352,7 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
                     display: "flex",
                     alignItems: "flex-start",
                     gap: "var(--space-3)",
-                    padding: "14px var(--space-card)",
+                    padding: "14px 0",
                     borderBottom: isLast ? "none" : "0.5px solid var(--border)",
                   }}
                 >
@@ -306,40 +378,63 @@ export function ProfileContent({ fillWidth = false }: { fillWidth?: boolean } = 
               );
             })}
           </div>
-        </>
+          <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)", margin: "var(--space-1) 0 0" }}>
+            Noted quietly as you chat — it stays with your account, never shared.
+          </p>
+        </FoldRow>
       )}
 
-      {/* Your subscription — plan, status, renewal date, source + Manage. */}
-      <SubscriptionSection />
+      {/* Plan — the subscription as a foldable row; the trial CTA self-opens
+          so a non-subscriber still sees the offer. Hidden on the demo account. */}
+      {showPlan && (
+        <FoldRow
+          first={!perspective && visibleFields.length === 0}
+          title="Plan"
+          question="your subscription"
+          value={planValue}
+          sub={planSub}
+          subTone="neutral"
+          open={openPlan}
+          onToggle={() => setFold("plan", !openPlan)}
+        >
+          <SubscriptionSection embedded />
+        </FoldRow>
+      )}
 
-      {/* Settings — the only operational control on this page; everything else
-          (preferences, account, Data & AI, deletion) lives behind it. */}
+      {/* Settings — a quiet navigation row (it navigates, it doesn't fold —
+          the right-pointing chevron signals the difference). Everything
+          operational (preferences, account, Data & AI, deletion) lives behind it. */}
       <button
         onClick={() => router.push("/settings")}
+        className="focus-ring"
         style={{
           width: "100%",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          gap: "var(--space-row)",
-          padding: "14px var(--space-card)",
-          background: "var(--surface)",
-          border: "1px solid var(--border-strong)",
-          borderRadius: "var(--radius-lg)",
+          gap: "var(--space-3)",
+          padding: "14px 0 2px",
+          marginTop: "var(--space-4)",
+          background: "none",
+          border: "none",
+          borderTop: "1px solid var(--border)",
           cursor: "pointer",
-          color: "var(--accent-text)",
+          textAlign: "left",
+          color: "var(--text-faint)",
         }}
       >
-        <SettingsGearIcon size={18} />
+        <SettingsGearIcon size={16} />
         <span style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "var(--fs-subhead)",
+          flex: 1,
+          fontFamily: "var(--font-ui)",
+          fontSize: "var(--fs-body)",
           fontWeight: 500,
-          letterSpacing: "var(--tracking-subhead)",
-          fontVariationSettings: "'opsz' 18",
+          color: "var(--text)",
         }}>
           Settings
         </span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden style={{ opacity: 0.7 }}>
+          <path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
 
     </div>

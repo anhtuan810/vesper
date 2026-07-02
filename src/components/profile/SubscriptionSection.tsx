@@ -52,8 +52,13 @@ function statusColor(view: SubscriptionView): string {
 // "Your subscription" — plan, status, renewal/expiry date (nl-NL), and where it
 // was purchased, with a Manage action that routes to the correct destination per
 // source. Shows a trial CTA when there is no active subscription.
-export function SubscriptionSection() {
+export function SubscriptionSection({ embedded = false }: { embedded?: boolean } = {}) {
   const { data, loading, entitled, refreshUntilEntitled, markEntitledOptimistic } = useSubscription();
+  // Embedded (mobile Profile fold body): the fold row supplies the section
+  // label and the page supplies the surface, so drop the eyebrow and the card
+  // chrome — rows sit flush on the page, hairline-separated.
+  const boxStyle: React.CSSProperties = embedded ? { marginBottom: 0 } : CARD_STYLE;
+  const padX = embedded ? "0px" : "var(--space-card)";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,17 +153,19 @@ export function SubscriptionSection() {
 
   return (
     <>
-      <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>Your subscription</div>
+      {!embedded && <div className="eyebrow" style={{ marginBottom: "var(--space-row)" }}>Your subscription</div>}
 
       {hasSubscription && data ? (
-        <div style={CARD_STYLE}>
+        <div style={boxStyle}>
           <Row
+            padX={padX}
             label="Plan"
             value={data.plan ? PLAN_LABEL[data.plan] : "Volnar"}
             badge={STATUS_LABEL[data.status!]}
             badgeColor={statusColor(data)}
           />
           <Row
+            padX={padX}
             label={dateLabel(data)}
             value={formatRenewalDate(renewalDate(data)) ?? "—"}
             badge={data.cancelAtPeriodEnd ? "Cancels" : undefined}
@@ -166,23 +173,24 @@ export function SubscriptionSection() {
           />
           {daysLeft != null && (
             <Row
+              padX={padX}
               label="Trial remaining"
               value={formatTrialDaysLeft(daysLeft)}
               badge={daysLeft <= 3 ? "Ending soon" : undefined}
               badgeColor="var(--amber-deep, var(--negative-text))"
             />
           )}
-          {data.source && <Row label="Purchased via" value={SOURCE_LABEL[data.source]} />}
+          {data.source && <Row padX={padX} label="Purchased via" value={SOURCE_LABEL[data.source]} />}
           <button
             onClick={manage}
             disabled={busy}
             style={{
               width: "100%",
-              padding: "14px var(--space-card)",
+              padding: `14px ${padX}`,
               textAlign: "left",
               fontSize: "var(--fs-body)",
               fontWeight: 500,
-              color: "var(--accent)",
+              color: "var(--accent-text)",
               background: "transparent",
               border: "none",
               borderTop: "0.5px solid var(--border)",
@@ -194,7 +202,7 @@ export function SubscriptionSection() {
           </button>
         </div>
       ) : activating ? (
-        <div style={{ ...CARD_STYLE, padding: "18px var(--space-card)" }}>
+        <div style={{ ...boxStyle, padding: `${embedded ? "4px" : "18px"} ${padX}` }}>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -214,7 +222,7 @@ export function SubscriptionSection() {
           </div>
         </div>
       ) : (
-        <div style={{ ...CARD_STYLE, padding: "18px var(--space-card)" }}>
+        <div style={{ ...boxStyle, padding: `${embedded ? "4px" : "18px"} ${padX}` }}>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -262,7 +270,7 @@ export function SubscriptionSection() {
   );
 }
 
-function renewalDate(view: SubscriptionView): string | null {
+export function renewalDate(view: SubscriptionView): string | null {
   // When cancelling, the real access-end date is cancel_at (which may precede the
   // period/trial end); fall back to the period/trial end when it isn't set.
   if (view.cancelAtPeriodEnd && view.cancelAt) return view.cancelAt;
@@ -270,7 +278,7 @@ function renewalDate(view: SubscriptionView): string | null {
   return view.currentPeriodEnd;
 }
 
-function dateLabel(view: SubscriptionView): string {
+export function dateLabel(view: SubscriptionView): string {
   if (view.status === "past_due") return "Payment due";
   // A subscription set to cancel surfaces its end date — including during a trial,
   // which would otherwise read as a plain "Trial ends" and hide the cancellation.
@@ -284,11 +292,13 @@ function Row({
   value,
   badge,
   badgeColor,
+  padX = "var(--space-card)",
 }: {
   label: string;
   value: string;
   badge?: string;
   badgeColor?: string;
+  padX?: string;
 }) {
   return (
     <div
@@ -296,7 +306,7 @@ function Row({
         display: "flex",
         alignItems: "center",
         gap: "var(--space-3)",
-        padding: "14px var(--space-card)",
+        padding: `14px ${padX}`,
         borderBottom: "0.5px solid var(--border)",
       }}
     >

@@ -34,9 +34,14 @@ function formatPercentile(pct: number): string {
 export function PerspectiveCard({
   data,
   displayCurrency,
+  frameless = false,
 }: {
   data: Perspective;
   displayCurrency: string;
+  /** Mobile fold body: drop the gradient card chrome, the inner chart panel and
+   *  the net-worth figure (the fold header already carries it) — the content
+   *  sits directly on the page. Desktop keeps the default card. */
+  frameless?: boolean;
 }) {
   const euRow = data.rows.find((r) => r.region === "EU");
   const worldRow = data.rows.find((r) => r.region === "WORLD");
@@ -49,7 +54,7 @@ export function PerspectiveCard({
 
   return (
     <div
-      style={{
+      style={frameless ? { margin: 0 } : {
         background:
           "linear-gradient(180deg, var(--perspective-card-grad-start) 0%, var(--perspective-card-grad-end) 100%)",
         border: "0.5px solid var(--border-strong)",
@@ -74,8 +79,9 @@ export function PerspectiveCard({
         globally — a position most reach only after decades of compounding.
       </div>
 
-      {/* Net worth — the card's signature figure; the label is a quiet caption */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+      {/* Net worth — the card's signature figure; the label is a quiet caption.
+          Skipped in frameless mode: the fold header already carries the figure. */}
+      {!frameless && <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
         <span
           className="tnum"
           style={{
@@ -92,18 +98,19 @@ export function PerspectiveCard({
         <span style={{ fontSize: "var(--fs-caption)", color: "var(--text-dim)" }}>
           your wealth today
         </span>
-      </div>
+      </div>}
 
-      {/* Wealth distribution chart */}
+      {/* Wealth distribution chart — frameless drops the translucent panel and
+          its eyebrow; the curve sits directly on the page. */}
       <div
-        style={{
+        style={frameless ? { padding: "6px 0 0", marginBottom: 14 } : {
           background: "var(--perspective-panel)",
           borderRadius: "var(--radius-md)",
           padding: "16px 10px 12px",
           marginBottom: 16,
         }}
       >
-        <div
+        {!frameless && <div
           className="eyebrow"
           style={{
             color: "var(--accent-deep)",
@@ -113,7 +120,7 @@ export function PerspectiveCard({
           }}
         >
           Wealth distribution · log scale
-        </div>
+        </div>}
         <svg
           viewBox="0 0 340 110"
           style={{ width: "100%", height: 110, display: "block" }}

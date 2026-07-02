@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PulseBanner, toSafeHtml } from "@/components/vitals/PulseBanner";
+import { FoldRow } from "@/components/FoldRow";
 import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
@@ -56,6 +57,59 @@ const VITAL_LABELS: Record<string, string> = {
   cashRealYield: "Cash & real yield",
   realGrowth: "Real growth",
 };
+
+// Foldable-row copy (mobile): a short name and a plain-language line saying
+// what the vital measures — so a first-time user never has to decode
+// "Drawdown vulnerability" cold. The folded row is the whole story for a
+// healthy vital; the chart and explanation live one tap deep.
+const FOLD_META: Record<string, { title: string; question: string }> = {
+  concentration:    { title: "Concentration",     question: "how much rides on your biggest holding" },
+  realAssetWeight:  { title: "Real-asset weight", question: "how much of your wealth sits in property" },
+  liquidityPosture: { title: "Liquidity",         question: "how fast you could reach your money" },
+  leverage:         { title: "Leverage",          question: "how much of the house the bank still owns" },
+  drawdown:         { title: "Drawdown",          question: "what a bad year could take" },
+  cashRealYield:    { title: "Cash & real yield", question: "is your cash keeping its buying power" },
+  realGrowth:       { title: "Real growth",       question: "did you grow after inflation" },
+};
+
+// The folded status word — the band's verdict in one plain word. Green vitals
+// get a per-vital word; amber/red share the two attention words. Deterministic:
+// everything derives from the band (and, for concentration under the property
+// lens, the same investable-band logic the card copy uses).
+type FoldStatus = { label: string; tone: "ok" | "warn" };
+
+const GREEN_WORD: Record<string, string> = {
+  concentration: "balanced",
+  realAssetWeight: "in range",
+  liquidityPosture: "above buffer",
+  leverage: "healthy",
+  drawdown: "manageable",
+};
+
+function foldStatus(key: string, vital: VitalResult, showProperty: boolean): FoldStatus {
+  let band = vital.band;
+  if (key === "concentration") {
+    const v = vital.value as ConcentrationValue;
+    if (showProperty && v.topPositionIsRealEstate && v.investableTopPositionPct != null) {
+      const p = v.investableTopPositionPct;
+      band = p > 50 ? "red" : p > 35 ? "amber" : "green";
+    }
+  }
+  if (band === "red") return { label: "needs attention", tone: "warn" };
+  if (band === "amber") return { label: "worth a look", tone: "warn" };
+  if (key === "liquidityPosture" && (vital.value as LiquidityPostureValue).insufficient) {
+    return { label: "—", tone: "ok" };
+  }
+  if (key === "cashRealYield") {
+    const v = vital.value as CashRealYieldValue;
+    return { label: v.realYieldPct < 0 ? "small drag" : "keeping up", tone: "ok" };
+  }
+  if (key === "realGrowth") {
+    const v = vital.value as RealGrowthValue;
+    return { label: v.real12moPct >= 0 ? "ahead" : "behind", tone: "ok" };
+  }
+  return { label: GREEN_WORD[key] ?? "in range", tone: "ok" };
+}
 
 const VITAL_SURFACES_WHEN: Record<string, string> = {
   concentration: "Surfaces when you hold 2 or more assets.",
@@ -800,6 +854,42 @@ export function VitalsContent({
   // ── Property lens state ───────────────────────────────────────────────────
   const [showProperty, setShowProperty] = useState<boolean>(true);
 
+  // ── Fold state (mobile stack) ─────────────────────────────────────────────
+  // Per-device open/closed overrides. A vital with no override defaults from
+  // its band: amber/red arrive unfolded, green rests folded — so an all-folded
+  // page literally means all is well. Loaded after mount (SSR-safe).
+  const FOLDS_KEY = "volnar:vitals-open";
+  const [foldOverrides, setFoldOverrides] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(FOLDS_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (raw) setFoldOverrides(JSON.parse(raw));
+    } catch {}
+  }, []);
+  function persistFolds(next: Record<string, boolean>) {
+    try { sessionStorage.setItem(FOLDS_KEY, JSON.stringify(next)); } catch {}
+  }
+  function setFold(key: string, open: boolean) {
+    setFoldOverrides((prev) => {
+      const next = { ...prev, [key]: open };
+      persistFolds(next);
+      return next;
+    });
+  }
+  function setAllFolds(keys: string[], open: boolean) {
+    setFoldOverrides((prev) => {
+      const next = { ...prev, ...Object.fromEntries(keys.map((k) => [k, open])) };
+      persistFolds(next);
+      return next;
+    });
+  }
+  // Seeds the chat with this vital as context — same mechanism the Library uses.
+  function askAboutVital(key: string) {
+    try { sessionStorage.setItem("vitals.seed.vital", key); } catch {}
+    router.push(`/chat?seed=insight&key=vital-${key}`);
+  }
+
   const hasMixed = useMemo(() => {
     if (!data?.assets?.length) return false;
     return (
@@ -1006,7 +1096,7 @@ export function VitalsContent({
   );
   const displayCurrency = data.displayCurrency;
 
-  function renderVitalCard(key: string): React.ReactNode {
+  function buildConfig(key: string): { vital: VitalResult; cfg: CardConfig } | null {
     const vital = vitalMap[key];
     if (!vital || !vital.applies || !scopeVisible(vital.scope, showProperty)) return null;
 
@@ -1041,11 +1131,76 @@ export function VitalsContent({
       default:
         return null;
     }
+    return { vital, cfg };
+  }
 
+  // Desktop grid: the existing card, unchanged.
+  function renderVitalCard(key: string): React.ReactNode {
+    const built = buildConfig(key);
+    if (!built) return null;
     return (
-      <VitalCard key={key} {...cfg.props} fillHeight={layout === "grid"}>
-        {cfg.chart}
+      <VitalCard key={key} {...built.cfg.props} fillHeight={layout === "grid"}>
+        {built.cfg.chart}
       </VitalCard>
+    );
+  }
+
+  // Mobile stack: the foldable row. Folded = name + plain-language line +
+  // figure + status word; unfolded = chart, the right-hand stat, the full
+  // explanation and an "Ask about this" chat hook. The bench line is dropped
+  // here — each chart already carries its own benchmark.
+  function effectiveOpen(key: string): boolean {
+    const vital = vitalMap[key];
+    const dflt = vital ? foldStatus(key, vital, showProperty).tone !== "ok" : false;
+    return foldOverrides[key] ?? dflt;
+  }
+
+  function renderVitalFold(key: string, first: boolean): React.ReactNode {
+    const built = buildConfig(key);
+    if (!built) return null;
+    const { vital, cfg } = built;
+    const meta = FOLD_META[key] ?? { title: VITAL_LABELS[key] ?? key, question: "" };
+    const status = foldStatus(key, vital, showProperty);
+    const open = effectiveOpen(key);
+    return (
+      <FoldRow
+        key={key}
+        first={first}
+        title={meta.title}
+        question={meta.question}
+        value={cfg.props.heroNumber}
+        valueTone={cfg.props.heroNumberClass === "negative" ? "negative" : "default"}
+        sub={status.label}
+        subTone={status.tone}
+        open={open}
+        onToggle={() => setFold(key, !open)}
+      >
+        {cfg.chart}
+        {cfg.props.rightStat && (
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: 6, marginTop: "var(--space-2)" }}>
+            <span className="eyebrow">{cfg.props.rightStat.label}</span>
+            <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, color: "var(--text)" }}>
+              {cfg.props.rightStat.value}
+            </span>
+          </div>
+        )}
+        {cfg.props.suggestion && (
+          <p style={{ margin: "var(--space-3) 0 0", fontSize: "var(--fs-body)", lineHeight: "var(--lh-read)", color: "var(--text-dim)" }}>
+            <b style={{ fontWeight: 600, color: cfg.props.suggestion.variant === "context" ? "var(--accent-text)" : "var(--negative-text)" }}>
+              {cfg.props.suggestion.label} —{" "}
+            </b>
+            {cfg.props.suggestion.body}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => askAboutVital(key)}
+          className="font-ui focus-ring"
+          style={{ marginTop: "var(--space-3)", padding: 0, background: "none", border: "none", cursor: "pointer", fontSize: "var(--fs-micro)", fontWeight: 600, letterSpacing: "0.04em", color: "var(--accent-text)" }}
+        >
+          Ask about this →
+        </button>
+      </FoldRow>
     );
   }
 
@@ -1062,11 +1217,14 @@ export function VitalsContent({
         : "applies") as "applies" | "property-off",
     }));
 
-  // Cards in their fixed order. "stack" (mobile) renders the vertical column
-  // exactly as before; "grid" (desktop) wraps them in a responsive auto-fit
-  // grid so several square-ish cards sit per row and collapse to one column
-  // when the chat panel is dragged wide.
-  const cardNodes = VITAL_ORDER.map((key) => renderVitalCard(key));
+  // Cards in their fixed order. "grid" (desktop) keeps the existing card grid;
+  // "stack" (mobile) renders the foldable rows — green vitals rest folded,
+  // amber/red arrive open.
+  const activeKeys = VITAL_ORDER.filter((k) => {
+    const v = vitalMap[k];
+    return !!v && v.applies && scopeVisible(v.scope, showProperty);
+  });
+  const anyFolded = activeKeys.some((k) => !effectiveOpen(k));
   const cards =
     layout === "grid" ? (
       <div
@@ -1076,10 +1234,10 @@ export function VitalsContent({
           gap: 11,
         }}
       >
-        {cardNodes}
+        {VITAL_ORDER.map((key) => renderVitalCard(key))}
       </div>
     ) : (
-      cardNodes
+      <div>{activeKeys.map((key, i) => renderVitalFold(key, i === 0))}</div>
     );
 
   const library =
@@ -1124,12 +1282,13 @@ export function VitalsContent({
           return hasAssets ? <PulseBannerSkeleton /> : null;
         }
 
-        // Mobile: one card holding the narrative pulse (gold lead) + the relocated
-        // signals (projection / worth knowing / markets) on the surface below.
+        // Mobile: the Pulse as a full-bleed accent band (edge-to-edge, like
+        // Diary's "On this day"), with the relocated signals (projection /
+        // worth knowing / markets) as plain rows beneath — no card chrome.
         return (
-          <div style={{ background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: "var(--space-4)" }}>
-            {pulseSentence ? (
-              <div style={{ background: "var(--accent-soft)", padding: "11px 15px 12px" }}>
+          <>
+            {(pulseSentence || hasAssets) && (
+              <div style={{ margin: "0 calc(var(--space-5) * -1)", background: "var(--accent-soft)", padding: "11px var(--space-5) 12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
                   <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.75 }}>
                     Pulse · {fmtDate()}
@@ -1138,24 +1297,21 @@ export function VitalsContent({
                     {activeVitals.length} vitals
                   </div>
                 </div>
-                <div
-                  style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
-                  dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
-                />
+                {pulseSentence ? (
+                  <div
+                    style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", fontStyle: "italic", lineHeight: "var(--lh-body)", color: "var(--text)" }}
+                    dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
+                  />
+                ) : (
+                  // Pulse still loading (or unavailable): keep the band's real
+                  // anatomy — eyebrow + a shimmering sentence-length bar — so the
+                  // slot reads as "loading", never as an empty tinted block.
+                  <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)" }} />
+                )}
               </div>
-            ) : hasAssets ? (
-              // Pulse still loading (or unavailable): keep the gold band's real
-              // anatomy — eyebrow + a shimmering sentence-length bar — so the slot
-              // reads as "loading", never as an empty beige rectangle.
-              <div style={{ background: "var(--accent-soft)", padding: "11px 15px 12px" }}>
-                <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.75, marginBottom: 8 }}>
-                  Pulse · {fmtDate()}
-                </div>
-                <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)" }} />
-              </div>
-            ) : null}
-            <div style={{ padding: "3px 15px 5px" }}>{topSlot}</div>
-          </div>
+            )}
+            <div style={{ padding: "var(--space-2) 0 var(--space-1)" }}>{topSlot}</div>
+          </>
         );
       })()}
 
@@ -1170,6 +1326,33 @@ export function VitalsContent({
             Active vitals &middot; {activeVitals.length}
           </span>
           {inlineToggleNode}
+        </div>
+      ) : layout === "stack" ? (
+        // Mobile meta row — mirrors Overview's "12 positions · Collapse all":
+        // the count on the left, a quiet global fold action on the right.
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderTop: "1px solid var(--border)",
+            marginTop: "var(--space-4)",
+            paddingTop: "var(--space-3)",
+            marginBottom: "var(--space-1)",
+          }}
+        >
+          <span className="eyebrow">
+            Active vitals &middot; {activeVitals.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => setAllFolds(activeKeys, anyFolded)}
+            className="font-ui"
+            aria-label={anyFolded ? "Unfold all vitals" : "Fold all vitals"}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--fs-micro)", fontWeight: 600, letterSpacing: "0.04em", color: "var(--accent-text)", whiteSpace: "nowrap" }}
+          >
+            {anyFolded ? "Unfold all" : "Fold all"}
+          </button>
         </div>
       ) : (
         <div
