@@ -14,7 +14,17 @@ Each item is a self-contained spec — pick any up in a fresh chat, in order.
 > entry stands the hero AND the holdings list at that day, reconstructed
 > server-side; see `docs/technical-decisions.md` → "Named Rewind"), the
 > foldable Vitals/Profile redesign, the unified Pulse block, and the time-true
-> chart axis. Items 1–6 below remain unbuilt as specced; note for item 2 that
+> chart axis. **Items 1 and 5 shipped 2026-07-02** as the "first 60 seconds"
+> pass (see technical-decisions → "The First 60 Seconds"): the mobile First
+> Breath (line draw + dot rise + journal-zone fade,
+> `volnar:mobile-overview-revealed`) and the Demo Confession (the Adyen entry
+> self-selects and unfolds once per demo session, verdict pre-warmed; no
+> auto-rewind), plus a demo-only follow-up question that pre-fills the chat
+> composer. Note: the Overview now RESTS at Now (no entry selected on load),
+> so item 1's "folded journal entry fades in" became "the journal zone fades
+> in" — on the demo the Confession then performs the selection. Item 3's
+> seal-tear animation remains unbuilt; the Confession opens the entry without
+> it. Items 2, 3, 4 and 6 remain unbuilt as specced; note for item 2 that
 > `nearMarkerWithin` now takes an explicit radius argument and the dot radii
 > are deliberately tight (see "Net-Worth Chart: Time-True Axis & Touch Model"
 > in technical-decisions before widening anything).

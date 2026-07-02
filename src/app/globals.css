@@ -526,6 +526,36 @@ html.native-app [contenteditable="true"] {
   color: var(--plate-gold);
 }
 
+/* ── First Breath — the Overview's first-open reveal ─────────────────────────
+   The net-worth line draws on left→right and the decision dots rise along it
+   oldest→newest (per-dot delay set inline in NetWorthChart). Shared by the
+   desktop Overview (.vhome, session key volnar:overview-revealed) and the
+   mobile Overview (volnar:mobile-overview-revealed) — moved here from
+   home-twilight.css so both surfaces animate from ONE definition.
+   pathLength=1 normalises the path so dasharray/offset of 1 works at any
+   width. .nw-reveal-late fades the content below the chart in after the last
+   dot settles. Play-once per session; static under reduced motion. */
+@keyframes nwdraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.nw-line-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: nwdraw 1.15s cubic-bezier(.33,.1,.25,1) .12s forwards;
+}
+@keyframes nwdot { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: scale(1); } }
+.nw-dot-rise {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nwdot .42s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes nwlate { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.nw-reveal-late { animation: nwlate .5s ease 1.5s both; }
+@media (prefers-reduced-motion: reduce) {
+  .nw-line-draw, .nw-dot-rise, .nw-reveal-late { animation: none; }
+  .nw-line-draw { stroke-dasharray: none; stroke-dashoffset: 0; }
+  .nw-dot-rise { opacity: 1; transform: none; }
+}
+
 /* The heartbeat hairline across the plate — draws itself once (~1s) when the
    .animate class is present (gated to once per session by the caller), then
    rests. Static under reduced motion. Lives INSIDE the plate's header row

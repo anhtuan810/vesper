@@ -624,6 +624,35 @@ IBKR-style account drawer, replacing the scattered settings entry points.
   SettingsContent (delete dialog, currency toast) position against the
   viewport, not the transformed drawer.
 
+## The First 60 Seconds (2026-07)
+
+The demo visitor's opening minute, sequenced from three small pieces
+(mobile-wow-moments items 1 + 5, plus a chat hand-off):
+
+- **First Breath (all mobile users).** First Overview open of a session: the
+  net-worth line draws on (~1.15s), the decision dots rise oldest→newest
+  (stagger clamped ~0.5s), and the journal zone fades in as the last dot
+  settles (`.nw-reveal-late`). `PortfolioTab` now passes `revealLine` to
+  `NetWorthChart`; the `nw-line-draw` / `nw-dot-rise` rules moved from
+  `home-twilight.css` (`.vhome`-scoped) to `globals.css` so desktop and mobile
+  animate from one definition. Play-once per session
+  (`volnar:mobile-overview-revealed`); static under reduced motion.
+- **Demo Confession (demo accounts only).** After the reveal settles (~2.4s),
+  the seeded Adyen panic-sell entry selects itself and unfolds — selection
+  only, never an auto-rewind, found by symbol+action (`remove` + `ADYEN*`,
+  never mutation id: reseeds regenerate ids). Its verdict is warmed
+  immediately (fire-and-forget POST to `/api/decisions/verdict`, which caches
+  in `decision_verdicts`) so the look-back is usually ready at unfold. Exactly
+  once per session (`volnar:demo-confession`). `MobileDecisionJournal` now
+  opens when it MOUNTS with a selection (initializer, not just the
+  change-adjust) — required because the journal only mounts on selection since
+  the Now-default change.
+- **The "now what?" beat (demo only).** Under the opened entry, one gold
+  question — "What else did my decisions cost or make me?" — pre-fills the
+  chat composer (`volnar.empty.input`) and lands in chat ready to send.
+- **Measurement TODO**: add `demo_verdict_seen` and time-to-first-asset pilot
+  analytics events to score the 60-second hook rate.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).

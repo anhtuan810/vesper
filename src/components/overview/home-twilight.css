@@ -378,20 +378,11 @@
 .vhome .rv-3{animation-delay:.34s}
 .vhome .rv-4{animation-delay:.46s}
 
-/* The signature gesture: the net-worth line draws on left→right. pathLength=1
-   normalises the path so dasharray/offset of 1 works at any width. */
-@keyframes nwdraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
-.vhome .nw-line-draw{stroke-dasharray:1;stroke-dashoffset:1;animation:nwdraw 1.15s cubic-bezier(.33,.1,.25,1) .12s forwards}
-
-/* Journal dots scale-in from nothing after the line settles (per-dot delay set
-   inline in NetWorthChart). transform-box keeps the scale centred on each dot. */
-@keyframes nwdot{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
-.vhome .nw-dot-rise{opacity:0;transform-box:fill-box;transform-origin:center;animation:nwdot .42s cubic-bezier(.22,.61,.36,1) both}
-
+/* The signature gesture — the line draw + dot rise (nw-line-draw /
+   nw-dot-rise) — moved to globals.css so the mobile Overview shares the SAME
+   definitions ("First Breath"). Only the .rv card cascade stays vhome-scoped. */
 @media (prefers-reduced-motion:reduce){
-  .vhome .rv,.vhome .nw-line-draw,.vhome .nw-dot-rise{animation:none}
-  .vhome .nw-line-draw{stroke-dasharray:none;stroke-dashoffset:0}
-  .vhome .nw-dot-rise{opacity:1;transform:none}
+  .vhome .rv{animation:none}
 }
 
 /* ── Decision Verdict ───────────────────────────────────────────────────────

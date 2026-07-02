@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSubscription } from "@/components/SubscriptionProvider";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import type { HoldingAt } from "@/lib/snapshot";
 import {
@@ -69,6 +71,7 @@ export function PortfolioTab({
   assets, grossTotal, netTotal, initialSnapshots, valuesSettled, mutations,
 }: PortfolioTabProps) {
   const displayCurrency = useDisplayCurrency();
+  const router = useRouter();
 
   // Income pensions (db/state) are off-balance future income — they are kept out
   // of the four net-worth groups, the allocation bars, the position count, and
@@ -85,6 +88,27 @@ export function PortfolioTab({
   // Default to the full history ("All") so the Overview opens on the complete
   // arc — the same lens the desktop leads with.
   const [range, setRange] = useState<Range>("All");
+
+  // ── First Breath ────────────────────────────────────────────────────────────
+  // First open of a session: the net-worth line draws itself on, the decision
+  // dots rise along it, and the journal zone fades in as the last dot settles.
+  // Play-once per session; skipped under prefers-reduced-motion (mirrors the
+  // desktop Overview's reveal, with its own session key). `revealChecked`
+  // gates the demo confession below so it never fires before the reveal
+  // decision is known.
+  const [reveal, setReveal] = useState(false);
+  const [revealChecked, setRevealChecked] = useState(false);
+  useEffect(() => {
+    try {
+      const seen = sessionStorage.getItem("volnar:mobile-overview-revealed");
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      if (!seen && !reduced) {
+        setReveal(true); // eslint-disable-line react-hooks/set-state-in-effect
+        sessionStorage.setItem("volnar:mobile-overview-revealed", "1");
+      }
+    } catch { /* sessionStorage/matchMedia unavailable — no reveal, page is instant */ }
+    setRevealChecked(true);
+  }, []);
   // The FULL DB-backed snapshot history (range=All) — fetched once and kept as
   // the single authority for data extent. Coverage (`trackingSinceDate`), the
   // marker decision, and pill-disable all derive from this, never from a
@@ -421,6 +445,37 @@ export function PortfolioTab({
     setSelectedDecisionId(null);
   };
 
+  // ── The Demo Confession ─────────────────────────────────────────────────────
+  // A prospect's first minute: after the First Breath settles, the seeded
+  // Adyen panic-sell entry selects itself and unfolds — the honest story plus
+  // its "Looking back" verdict is the whole thesis, performed. Demo accounts
+  // only, exactly once per session, selected by symbol + action (never by
+  // mutation id — reseeding regenerates ids). Selection only — no rewind, so
+  // the hero and holdings stay live. The verdict is warmed immediately so the
+  // look-back is usually ready by the time the entry opens.
+  const { data: subData } = useSubscription();
+  const isDemo = subData?.isDemo ?? false;
+  useEffect(() => {
+    if (!revealChecked || !isDemo || navDecisions.length === 0) return;
+    try { if (sessionStorage.getItem("volnar:demo-confession")) return; } catch { return; }
+    const adyen = navDecisions.find(
+      (d) => d.action === "remove" && (d.symbol ?? "").toUpperCase().startsWith("ADYEN"),
+    );
+    if (!adyen) return;
+    try { sessionStorage.setItem("volnar:demo-confession", "1"); } catch {}
+    // Warm the verdict now (server caches in decision_verdicts) so the unfold
+    // lands with the arithmetic already underneath. Fire-and-forget.
+    apiFetch("/api/decisions/verdict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mutation_id: adyen.id, display_currency: displayCurrency }),
+    }).catch(() => {});
+    // After the line draw (~1.15s) + dot rise (~0.5s) + a breath; or a shorter
+    // beat when the reveal didn't play this session.
+    const t = setTimeout(() => setSelectedDecisionId(adyen.id), reveal ? 2400 : 800);
+    return () => clearTimeout(t);
+  }, [revealChecked, isDemo, navDecisions, reveal, displayCurrency]);
+
   // The rewound book, ready to render: per-row display values, category groups
   // with totals, and the grand total the hero shows — summed from the SAME
   // rows the list renders, so the two can never disagree. A row whose value
@@ -555,6 +610,7 @@ export function PortfolioTab({
               selectedMarkerId={activeMarkerId}
               onMarkerClick={onMarkerClick}
               onNow={exitToNow}
+              revealLine={reveal}
             />
           </div>
         )}
@@ -570,7 +626,10 @@ export function PortfolioTab({
           perforation into the "Looking back" verdict (MobileDecisionJournal).
           Content-first: no card — a hairline rule and whitespace part it from the
           chart above, and its text sits flush with the hero. */}
-      <div style={{ maxWidth: 660, marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)" }}>
+      <div
+        className={reveal ? "nw-reveal-late" : undefined}
+        style={{ maxWidth: 660, marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)" }}
+      >
         {navDecisions.length > 0 && activeMarkerId === null && !isIntraday ? (
           // At today with nothing selected — the DEFAULT face, including on a
           // fresh load. Today has no entry, so no entry's details belong here.
@@ -587,13 +646,43 @@ export function PortfolioTab({
             </p>
           </>
         ) : navDecisions.length > 0 ? (
-          <MobileDecisionJournal
-            decisions={navDecisions}
-            selectedId={activeMarkerId}
-            displayCurrency={displayCurrency}
-            onViewDay={liquidOnly ? undefined : onMarkerClick}
-            rewindId={rewind?.id ?? null}
-          />
+          <>
+            <MobileDecisionJournal
+              decisions={navDecisions}
+              selectedId={activeMarkerId}
+              displayCurrency={displayCurrency}
+              onViewDay={liquidOnly ? undefined : onMarkerClick}
+              rewindId={rewind?.id ?? null}
+            />
+            {/* Demo only: the "now what?" beat after the confession — one gold
+                question that lands in chat with the composer pre-filled. */}
+            {isDemo && (
+              <button
+                type="button"
+                onClick={() => {
+                  try { sessionStorage.setItem("volnar.empty.input", "What did my decisions cost or make me, overall?"); } catch {}
+                  router.push("/chat");
+                }}
+                className="focus-ring"
+                style={{
+                  display: "block",
+                  marginTop: "var(--space-3)",
+                  padding: 0,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontFamily: "var(--font-display)",
+                  fontStyle: "italic",
+                  fontSize: "var(--fs-body)",
+                  color: "var(--accent-text)",
+                }}
+              >
+                What else did my decisions cost or make me?{" "}
+                <span style={{ fontStyle: "normal" }}>→</span>
+              </button>
+            )}
+          </>
         ) : (
           // No logged decisions yet — keep the zone visible and explain it fills
           // in once there's data, rather than leaving a blank gap. Lead with the

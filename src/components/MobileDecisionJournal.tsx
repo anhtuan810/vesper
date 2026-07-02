@@ -150,13 +150,17 @@ export function MobileDecisionJournal({
   const m = decisions[index];
 
   // Folded by default so Holdings sits high on screen. Explicitly picking a
-  // decision from the chart is a drill-in, so that opens the entry; the default
-  // (nothing selected → newest) stays a compact teaser — and CLEARING the
+  // decision from the chart is a drill-in, so that opens the entry — including
+  // when the journal MOUNTS with a selection already made (the Overview now
+  // rests on an invitation and only mounts the journal on selection, so the
+  // first selection arrives as initial props, not as a change). CLEARING the
   // selection ("Back to today" / "Now") folds it back down, so returning to
   // now never leaves an old entry's details standing open. Adjusting `open`
   // when the selection changes is done during render (React's endorsed
   // pattern), not in an effect, so it doesn't trigger a cascading re-render.
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(
+    () => !!selectedId && decisions.some((d) => d.id === selectedId),
+  );
   const [prevSelected, setPrevSelected] = useState(selectedId);
   if (selectedId !== prevSelected) {
     setPrevSelected(selectedId);
