@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { NetWorthHero } from "@/components/NetWorthHero";
 import type { HoldingAt } from "@/lib/snapshot";
@@ -139,28 +139,43 @@ export function PortfolioTab({
     setDeselected(false);
   }, [range]);
 
-  // Fetch the reconstructed book for the rewound date (once per date per
-  // session — `holdingsByDate` is both the cache and the guard). On failure,
-  // fall back to today rather than leaving the hero stuck on a skeleton.
+  // One reconstruction fetch per date, shared by the tap path and the
+  // background prefetch below. Two guards make it idempotent — the cache
+  // mirror (already landed) and the in-flight set (already on its way) — so
+  // the prefetch scheduler and a tap can both ask freely and at most one
+  // request per date ever goes out. Successes land in `holdingsByDate` (the
+  // session cache); a failed fetch exits the rewind if the user is currently
+  // standing on that date, rather than leaving a stuck skeleton.
+  const holdingsByDateRef = useRef(holdingsByDate);
   useEffect(() => {
-    if (!rewind || holdingsByDate[rewind.date]) return;
-    const date = rewind.date;
-    const controller = new AbortController();
-    apiFetch(`/api/holdings-at?date=${date}`, { signal: controller.signal })
+    holdingsByDateRef.current = holdingsByDate;
+  }, [holdingsByDate]);
+  const inFlightDatesRef = useRef(new Set<string>());
+  const fetchHoldingsAt = useCallback((date: string) => {
+    if (holdingsByDateRef.current[date] || inFlightDatesRef.current.has(date)) return;
+    inFlightDatesRef.current.add(date);
+    apiFetch(`/api/holdings-at?date=${date}`)
       .then((r) => {
         if (!r.ok) throw new Error(`holdings-at ${r.status}`);
         return r.json();
       })
       .then((body) => {
-        setHoldingsByDate((prev) => ({ ...prev, [date]: body.data ?? [] }));
+        setHoldingsByDate((prev) => (prev[date] ? prev : { ...prev, [date]: body.data ?? [] }));
       })
       .catch((err) => {
-        if (err.name === "AbortError") return;
         console.error("Holdings-at fetch failed:", err);
         setRewind((cur) => (cur?.date === date ? null : cur));
+      })
+      .finally(() => {
+        inFlightDatesRef.current.delete(date);
       });
-    return () => controller.abort();
-  }, [rewind, holdingsByDate]);
+  }, []);
+
+  // Fetch the rewound date's book when it isn't cached or already on its way.
+  useEffect(() => {
+    if (!rewind || holdingsByDate[rewind.date]) return;
+    fetchHoldingsAt(rewind.date);
+  }, [rewind, holdingsByDate, fetchHoldingsAt]);
 
   // Live per-asset-type breakdown (display currency) for the synthesized
   // "today" tip — same equity valuation as netTotal (page.tsx) and the
@@ -315,6 +330,24 @@ export function PortfolioTab({
   // them, since its axis is hours-of-today and calendar-date dots can't map onto
   // it. Mirrors the desktop Overview's journal-dot chart.
   const journalDecisions = useMemo(() => notableDecisions(mutations), [mutations]);
+
+  // Warm the rewind before anyone taps: once the decisions are known, quietly
+  // reconstruct the most recent entry days in the background. By the time a
+  // dot (or "Portfolio on this day") is tapped, the book is usually already
+  // in the session cache — a first impression of instant, not a skeleton.
+  // Staggered timers keep the burst polite; capped to the newest dates (older
+  // ones still get fast after the first call warms the server's price-series
+  // memo). Safe to re-run on remounts/revalidations: fetchHoldingsAt's cache
+  // and in-flight guards make every re-ask a no-op.
+  useEffect(() => {
+    if (journalDecisions.length === 0) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dates = [
+      ...new Set(journalDecisions.map((d) => mDate(d).slice(0, 10)).filter((d) => d < todayStr)),
+    ].slice(0, 8);
+    const timers = dates.map((date, i) => setTimeout(() => fetchHoldingsAt(date), i * 350));
+    return () => timers.forEach(clearTimeout);
+  }, [journalDecisions, fetchHoldingsAt]);
   const navDecisions = useMemo(() => {
     // Bound by the chart's actual first plotted point (which includes clipToRange's
     // left anchor), not rangeStartDate — so every stepper entry has a dot on the

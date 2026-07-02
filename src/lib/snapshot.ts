@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween } from "@/lib/mortgage";
-import { normalizePrice, fetchHistoricalPrice } from "@/lib/prices";
+import { normalizePrice } from "@/lib/prices";
 import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
@@ -173,6 +173,27 @@ async function fetchFullPriceHistory(
   } catch {
     return null;
   }
+}
+
+// Warm-instance memo of full daily price series per symbol. The named rewind
+// values the SAME symbols at a different date on every entry pick — and a
+// symbol's historical closes are immutable — so each symbol costs ONE Yahoo
+// call per server instance (refreshed after the TTL, and refetched when a
+// caller needs coverage starting earlier than what is held). Failures are not
+// memoized, so a transient Yahoo outage never sticks.
+const PRICE_SERIES_TTL_MS = 12 * 60 * 60 * 1000;
+const priceSeriesMemo = new Map<string, { from: string; fetchedAt: number; history: Array<{ date: string; price: number; currency: string }> }>();
+
+async function getPriceSeriesCached(
+  symbol: string,
+  from: string,
+  todayStr: string,
+): Promise<Array<{ date: string; price: number; currency: string }> | null> {
+  const hit = priceSeriesMemo.get(symbol);
+  if (hit && hit.from <= from && Date.now() - hit.fetchedAt < PRICE_SERIES_TTL_MS) return hit.history;
+  const history = await fetchFullPriceHistory(symbol, from, todayStr);
+  if (history && history.length > 0) priceSeriesMemo.set(symbol, { from, fetchedAt: Date.now(), history });
+  return history;
 }
 
 // Returns the most recent price on or before `date`, walking a sorted-ascending history.
@@ -503,8 +524,11 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
   }
 
   // The two slow, independent halves — property curves (PDOK geocode + CBS
-  // index) and one historical close per tradeable symbol (Yahoo) — run
-  // CONCURRENTLY: the wait is the slower of the two, not their sum.
+  // index) and the per-symbol price series (Yahoo) — run CONCURRENTLY: the
+  // wait is the slower of the two, not their sum. Prices come from the same
+  // full-series + at-or-before(+fall-forward) convention the backfill's
+  // computeRow uses, via a warm-instance memo — so after the first rewind,
+  // valuing ANY other date needs no market-data calls at all.
   const symbols = [
     ...new Set(
       assets.filter((a) => TRADEABLE.has(a.type as string) && a.symbol).map((a) => a.symbol as string),
@@ -515,7 +539,8 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
     buildRealEstateProgressSamplers(assets, todayStr),
     Promise.all(
       symbols.map(async (symbol) => {
-        const p = await fetchHistoricalPrice(symbol, date);
+        const history = await getPriceSeriesCached(symbol, earliest, todayStr);
+        const p = history && history.length > 0 ? priceAtOrBefore(history, date) ?? history[0] : null;
         priceBySymbol.set(symbol, p ? { price: p.price, currency: p.currency } : null);
       }),
     ),
