@@ -270,8 +270,24 @@ export function NetWorthChart(props: Props) {
     [series, valuesSettled],
   );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
   // Marker hover-preview (the "peek" layer): the entry the pointer is nearest to.
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
+
+  // The chart's resting state is ALWAYS now. If the app is backgrounded
+  // mid-scrub (app switch, notification pull — cases where even touchcancel
+  // may never fire), drop any held selection so the hero can never come back
+  // from the switcher showing a historical value as if it were live.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        setSelectedIndex(null);
+        setHoveredMarker(null);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
   const haptic = useChartHaptic();
   const { currency: displayCurrency } = useDisplayCurrencyState();
   const [chartWidth, setChartWidth] = useState(280);
@@ -546,12 +562,22 @@ export function NetWorthChart(props: Props) {
         },
         onTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
           // A tap (no meaningful drag) on/near a dot commits that decision; a
-          // drag was just a value scrub and commits nothing.
+          // drag was just a value scrub and commits nothing. Either way the
+          // hero snaps back to the live value — the past is something you
+          // HOLD; letting go always returns to now.
           if (!touchMovedRef.current) {
             const x = e.changedTouches[0]?.clientX;
             const id = x != null ? nearMarkerWithin(x, e.currentTarget.getBoundingClientRect()) : null;
             if (id) props.onMarkerClick?.(id);
           }
+          setSelectedIndex(null);
+          setHoveredMarker(null);
+          haptic(null);
+        },
+        onTouchCancel() {
+          // iOS cancels (not ends) a touch stolen by a system gesture or app
+          // switch — without this, the scrubbed value stayed parked in the
+          // hero and the dot preview froze on screen. Commit nothing.
           setSelectedIndex(null);
           setHoveredMarker(null);
           haptic(null);
@@ -576,6 +602,7 @@ export function NetWorthChart(props: Props) {
           if (hoveredMarker) props.onMarkerClick?.(hoveredMarker);
           setHoveredMarker(null);
         },
+        onTouchCancel() { setHoveredMarker(null); },
       }
     : {
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
@@ -595,6 +622,7 @@ export function NetWorthChart(props: Props) {
           haptic(idx);
         },
         onTouchEnd() { setSelectedIndex(null); haptic(null); },
+        onTouchCancel() { setSelectedIndex(null); haptic(null); },
       };
 
   // Per-class hover card — top-down order (reserves, crypto, markets,
