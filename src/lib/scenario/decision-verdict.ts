@@ -78,6 +78,96 @@ interface MutationRow {
   asset_name: string | null;
 }
 
+// Pure: derives the verdict mode, decision units and the content-addressed
+// cache key for a mutation — or null when the mutation can't carry a verdict
+// (no symbol, not tradeable, no units, too recent). MUST stay in lockstep with
+// the inline derivation in assembleVerdict below (same eligibility, same key
+// format) — it exists so the chat context can bulk-read cached verdicts
+// without recomputing anything.
+export function verdictKeyForMutation(
+  m: {
+    action: string | null;
+    before_units: number | null;
+    after_units: number | null;
+    symbol: string | null;
+    asset_type: string | null;
+    occurred_at: string | null;
+    recorded_at: string | null;
+  },
+  displayCurrency: string,
+): string | null {
+  if (!m.symbol) return null;
+  const assetType = m.asset_type ?? "";
+  const before = typeof m.before_units === "number" ? m.before_units : null;
+  const afterRaw = typeof m.after_units === "number" ? m.after_units : null;
+  const isReduce = m.action === "remove" || (m.action === "edit" && before != null && afterRaw != null && before > afterRaw);
+  let mode: "sell" | "buy";
+  let decisionUnits: number;
+  if (isReduce) {
+    if (!TRADEABLE_SELL.has(assetType) || before == null) return null;
+    const after = m.action === "remove" ? 0 : (afterRaw ?? before);
+    decisionUnits = before - after;
+    mode = "sell";
+  } else if (m.action === "add") {
+    if (!TRADEABLE_BUY.has(assetType) || afterRaw == null) return null;
+    decisionUnits = afterRaw;
+    mode = "buy";
+  } else {
+    return null;
+  }
+  if (!(decisionUnits > 0)) return null;
+  const occurred = (m.occurred_at || m.recorded_at || "").slice(0, 10);
+  if (!occurred) return null;
+  const daysAgo = Math.floor((Date.now() - Date.parse(occurred)) / 86_400_000);
+  if (!(daysAgo >= MIN_LOOKBACK_DAYS)) return null;
+  return `${mode}:${m.symbol}:${occurred}:${decisionUnits}:${displayCurrency}`;
+}
+
+// Bulk cache read for the chat's decision-journal context: cached-only (never
+// computes — chat latency must not depend on price fetches), same-day-fresh
+// only (matching readVerdictCache), keyed back to mutation ids. Degrades to {}
+// when the table is missing or nothing is cached.
+export async function readCachedVerdictsForMutations(
+  supabase: SupabaseClient,
+  mutations: Array<{
+    id: string;
+    action: string | null;
+    before_units: number | null;
+    after_units: number | null;
+    symbol: string | null;
+    asset_type: string | null;
+    occurred_at: string | null;
+    recorded_at: string | null;
+  }>,
+  displayCurrency: string,
+): Promise<Record<string, VerdictData>> {
+  const keyById = new Map<string, string>();
+  for (const m of mutations) {
+    const key = verdictKeyForMutation(m, displayCurrency);
+    if (key) keyById.set(m.id, key);
+  }
+  if (keyById.size === 0) return {};
+  try {
+    const { data } = await supabase
+      .from("decision_verdicts")
+      .select("verdict_key, computed_on, payload")
+      .in("verdict_key", [...new Set(keyById.values())]);
+    const today = new Date().toISOString().slice(0, 10);
+    const byKey = new Map<string, VerdictData>();
+    for (const row of data ?? []) {
+      if (row.computed_on === today && row.payload) byKey.set(row.verdict_key as string, row.payload as VerdictData);
+    }
+    const out: Record<string, VerdictData> = {};
+    for (const [id, key] of keyById) {
+      const v = byKey.get(key);
+      if (v) out[id] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 // "18 months on" / "3 weeks on" / "2 years on" — calm, single-unit, no decimals.
 // Exported (pure) for the deterministic test suite.
 export function lookbackLabel(days: number): string {
@@ -176,7 +266,8 @@ export async function assembleVerdict(
 
   // Cache-first: the verdict only drifts with the slow "now" value, so a row
   // computed earlier today is served as-is. Keyed by content, not mutation id, so
-  // it survives the demo reseed and is shared across identical trades.
+  // it survives the demo reseed and is shared across identical trades. Format
+  // must match verdictKeyForMutation above (the chat context's bulk read).
   const verdictKey = `${mode}:${m.symbol}:${occurred}:${decisionUnits}:${displayCurrency}`;
   const cached = await readVerdictCache(supabase, verdictKey);
   if (cached) return { ok: true, data: cached };

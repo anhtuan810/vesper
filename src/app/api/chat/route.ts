@@ -5,6 +5,7 @@ import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { entitledGate } from "@/lib/require-entitled";
 import { demoExpiredGate } from "@/lib/demo-session";
 import { buildStaticSystem, buildDynamicContext, buildOnboardingPrompt } from "@/lib/claude";
+import { readCachedVerdictsForMutations } from "@/lib/scenario/decision-verdict";
 import { isSupportedCurrency, formatMoney, setUsdRate, type DisplayCurrency } from "@/lib/money";
 import { toUsd, getUsdRates } from "@/lib/fx";
 import { fetchHistoricalPrice } from "@/lib/prices";
@@ -596,12 +597,16 @@ export async function POST(req: NextRequest) {
         .order("created_at", { ascending: false })
         .limit(10),
       supabase.from("users").select("profile, name, display_currency, fingerprint").eq("id", userId).single(),
+      // The full recent log (not just 10): the DECISION JOURNAL context block
+      // needs the real decisions — including years-old exits — or the model
+      // can't answer "what did my decisions cost or make me". 200 covers any
+      // realistic personal log; buildDynamicContext caps what reaches the model.
       supabase
         .from("mutations")
         .select("*")
         .eq("user_id", userId)
         .order("recorded_at", { ascending: false })
-        .limit(10),
+        .limit(200),
     ]);
 
     const currentAssets = assets || [];
@@ -644,12 +649,17 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Build system prompt ---
+    // Cached decision look-backs for the DECISION JOURNAL block — cached-only
+    // (one indexed select; never computes), so chat latency is unaffected.
     const usdRates = isNewUser ? undefined : await getUsdRates();
+    const decisionVerdicts = isNewUser
+      ? {}
+      : await readCachedVerdictsForMutations(supabase, recentMutations || [], displayCurrency);
     const systemBlocks: Anthropic.Messages.TextBlockParam[] = isNewUser
       ? [{ type: "text", text: buildOnboardingPrompt(displayCurrency), cache_control: { type: "ephemeral" } }]
       : [
           { type: "text", text: buildStaticSystem(displayCurrency), cache_control: { type: "ephemeral" } },
-          { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], displayCurrency, userName, usdRates) },
+          { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], displayCurrency, userName, usdRates, decisionVerdicts) },
         ];
 
     // --- Build conversation history (last 6 messages) ---

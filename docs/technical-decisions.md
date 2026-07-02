@@ -650,6 +650,17 @@ The demo visitor's opening minute, sequenced from three small pieces
 - **The "now what?" beat (demo only).** Under the opened entry, one gold
   question — "What else did my decisions cost or make me?" — pre-fills the
   chat composer (`volnar.empty.input`) and lands in chat ready to send.
+- **DECISION JOURNAL chat context.** So that question gets a REAL answer: the
+  chat's dynamic context now carries every logged decision (buys/sells/trims,
+  newest first, capped at 12; the route fetches up to 200 mutations instead of
+  10) with dates, units, recorded values, the user's own notes, and — when a
+  same-day cached verdict exists — the deterministic look-back spelled out
+  with figures ("holding on would have gained ~EUR 4,120…"). Verdicts are
+  cached-only via `readCachedVerdictsForMutations` (one indexed select on
+  `decision_verdicts`, never a live compute — chat latency is unaffected); the
+  key derivation is shared with `assembleVerdict` via `verdictKeyForMutation`.
+  The block instructs the model to use these figures and never invent cost
+  basis. Covered by `scripts/verify-dynamic-context.ts`.
 - **Measurement TODO**: add `demo_verdict_seen` and time-to-first-asset pilot
   analytics events to score the 60-second hook rate.
 

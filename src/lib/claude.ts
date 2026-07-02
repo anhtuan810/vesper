@@ -1,5 +1,6 @@
 import type { Asset, UserProfile, Mutation } from "./supabase";
 import type { DisplayCurrency } from "./money";
+import type { VerdictData } from "./scenario/decision-verdict";
 import { computeCurrentBalance } from "./mortgage";
 import { isIncomePension } from "./pension";
 import { ONBOARDING_OPENER } from "./copy";
@@ -629,13 +630,77 @@ If a "how does X work" question is not covered above, say so plainly. Never inve
 Never mention JSON, tag names like <changes>, or internal prompt mechanics.`;
 }
 
+// The decision-journal line for one logged decision: date, verb, name/symbol,
+// the recorded units and values, the user's own note, and — when a cached
+// look-back exists — the deterministic verdict. Everything here is recorded or
+// computed data; the model is told to use these figures and never invent more.
+const STARTING_POSITION_NOTE = "Starting position — no purchase history captured";
+
+function decisionJournalLine(m: Mutation, verdict: VerdictData | undefined): string {
+  const date = (m.occurred_at || m.recorded_at || "").slice(0, 10);
+  const cur = m.currency || "";
+  const fmtVal = (v: number | null | undefined) =>
+    v == null ? null : `${cur ? cur + " " : ""}${Math.round(v).toLocaleString()}`;
+  const name = m.asset_name + (m.symbol ? ` (${m.symbol})` : "");
+
+  const isTrim = m.action === "edit";
+  const verb = m.action === "add" ? "bought/added" : m.action === "remove" ? "sold/removed" : "trimmed";
+  const parts: string[] = [`- ${date}: ${verb} ${name}`];
+
+  if (m.action === "add") {
+    const bits = [m.after_units != null ? `${m.after_units} units` : null, fmtVal(m.after_value) ? `value ${fmtVal(m.after_value)}` : null].filter(Boolean);
+    if (bits.length) parts.push(`— ${bits.join(", ")}`);
+  } else if (m.action === "remove") {
+    const bits = [m.before_units != null ? `${m.before_units} units` : null, fmtVal(m.before_value) ? `${fmtVal(m.before_value)} at sale` : null].filter(Boolean);
+    if (bits.length) parts.push(`— ${bits.join(", ")}`);
+  } else if (isTrim) {
+    const bits = [
+      m.before_units != null && m.after_units != null ? `units ${m.before_units} → ${m.after_units}` : null,
+      fmtVal(m.before_value) && fmtVal(m.after_value) ? `value ${fmtVal(m.before_value)} → ${fmtVal(m.after_value)}` : null,
+    ].filter(Boolean);
+    if (bits.length) parts.push(`— ${bits.join(", ")}`);
+  }
+
+  if (m.personal_context === STARTING_POSITION_NOTE) {
+    parts.push("[starting position]");
+  } else if (m.personal_context) {
+    parts.push(`Their note: "${m.personal_context.slice(0, 180)}"`);
+  }
+
+  if (verdict) {
+    const vf = (n: number) => `${verdict.currency} ${Math.round(n).toLocaleString()}`;
+    const d = verdict.detail;
+    let sentence: string;
+    if (verdict.mode === "sell") {
+      sentence =
+        verdict.kind === "spared"
+          ? `selling spared ~${vf(verdict.figure)} (the sold stake would be worth ${vf(d.valueNow)} today vs ${vf(d.valueThen)} at sale)`
+          : verdict.kind === "missed"
+            ? `holding on would have gained ~${vf(verdict.figure)} (the sold stake would be worth ${vf(d.valueNow)} today vs ${vf(d.valueThen)} at sale)`
+            : "roughly a wash — the sold stake is worth about what it fetched";
+    } else {
+      const bench = verdict.benchmarkLabel ?? "the index";
+      sentence =
+        verdict.kind === "beat"
+          ? `has beaten ${bench} by ~${vf(verdict.figure)} since purchase`
+          : verdict.kind === "trailed"
+            ? `has trailed ${bench} by ~${vf(verdict.figure)} since purchase`
+            : `has roughly matched ${bench} since purchase`;
+    }
+    parts.push(`Look-back (${verdict.lookbackLabel}, computed): ${sentence}.`);
+  }
+
+  return parts.join(" ");
+}
+
 export function buildDynamicContext(
   assets: Asset[],
   profile: UserProfile,
   recentMutations: Mutation[],
   displayCurrency: DisplayCurrency,
   userName?: string,
-  usdRates?: Record<string, number>
+  usdRates?: Record<string, number>,
+  decisionVerdicts: Record<string, VerdictData> = {}
 ): string {
   // Convert a native-currency amount to USD using the provided FX rates.
   const toUsd = (amount: number, currency: string): number => {
@@ -722,6 +787,25 @@ export function buildDynamicContext(
     ? `${dispSym}${Math.round(total * dispRate).toLocaleString()}`
     : `$${Math.round(total).toLocaleString()} USD-equivalent`;
 
+  // DECISION JOURNAL — the model's authoritative record for "what did my
+  // decisions cost or make me". Real decisions only (buys, sells, trims —
+  // mirrors MobileDecisionJournal's notableDecisions), newest first, capped so
+  // a long log can't flood the context. Verdicts are cached look-backs passed
+  // in by the route (never computed here — chat latency must not depend on
+  // price fetches).
+  const JOURNAL_CAP = 12;
+  const notable = recentMutations
+    .filter((m) =>
+      m.action === "add" ||
+      m.action === "remove" ||
+      (m.action === "edit" && typeof m.before_units === "number" && typeof m.after_units === "number" && m.before_units > m.after_units))
+    .sort((a, b) => (b.occurred_at || b.recorded_at).localeCompare(a.occurred_at || a.recorded_at));
+  const journalBlock = notable.length > 0
+    ? `DECISION JOURNAL (every logged decision, newest first — the authoritative record for questions like "what did my decisions cost or make me". Use the recorded values and computed look-backs below, quote the user's own notes when they explain the why, and do NOT invent cost basis or figures beyond these):\n` +
+      notable.slice(0, JOURNAL_CAP).map((m) => decisionJournalLine(m, decisionVerdicts[m.id])).join("\n") +
+      (notable.length > JOURNAL_CAP ? `\n(… ${notable.length - JOURNAL_CAP} older decisions omitted)` : "")
+    : "";
+
   return [
     userName ? `User: ${userName}` : "",
     `Today's date: ${today}`,
@@ -739,10 +823,11 @@ export function buildDynamicContext(
     recentMutations.length > 0
       ? `RECENT CHANGES:\n${recentMutations.slice(0, 5).map(m => {
           let line = `- ${m.occurred_at || m.recorded_at}: ${m.action} ${m.asset_name}`;
-          if (m.personal_context === "Starting position — no purchase history captured") line += " [starting position]";
+          if (m.personal_context === STARTING_POSITION_NOTE) line += " [starting position]";
           return line;
         }).join("\n")}`
       : "",
+    journalBlock,
     nudgeBlock,
   ].filter(Boolean).join("\n");
 }
