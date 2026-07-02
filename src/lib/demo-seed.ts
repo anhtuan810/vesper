@@ -8,10 +8,15 @@ import { serializeMarketDetail } from "@/lib/market-highlights";
 // Persona: "Alex", early 40s, Amsterdam. A relatable Dutch mass-affluent
 // homeowner — a family apartment in Amsterdam plus a small still-mortgaged rental
 // in Rotterdam, a global-index core, a few high-conviction tech names, a tiny
-// Bitcoin position, a workplace pension and a cash buffer. ~€340k net worth, ~72%
-// of it property equity. Display currency EUR; the only USD/live-priced holdings
-// (NVIDIA, Apple) are a tiny sleeve, so today's live tip is a smooth continuation
-// of the seeded history, never a cliff.
+// Bitcoin position, a workplace pension and a cash buffer. ~€400k net worth,
+// ~62% of it property equity. Display currency EUR.
+//
+// INVARIANT (see docs/audits/demo-networth-cliff.md): the chart's live "today"
+// tip marks the tradeables to CURRENT prices, while this history is fixed EUR.
+// The NEWEST anchor's liquid sleeve (etf + stocks + crypto) must therefore be
+// kept ≈ the live mark of the seeded units, or the last chart segment draws a
+// vertical step instead of a continuation. Re-mark it when prices drift far
+// (audit 2026-06: live liquid ≈ €90.7k).
 //
 // History spans ~5 years (2021-01 → today) as monthly snapshots whose category
 // breakdown evolves with the holdings (cash + ETF → +home 2021 → +crypto → +rental
@@ -253,10 +258,12 @@ const SNAPSHOT_ANCHORS: Array<[string, CategoryValues]> = [
   ["2023-12-01", { real_estate: 196000, etf: 23000, stocks: 6500,  crypto: 3600, pension: 14000, cash: 13000 }],
   // Diversifying the liquid sleeve through 2024: Ethereum, Microsoft, Micron added
   // alongside the index core; markets at highs.
-  ["2024-09-01", { real_estate: 222000, etf: 26000, stocks: 14000, crypto: 6500, pension: 20000, cash: 18000 }],
-  ["2025-06-01", { real_estate: 240000, etf: 28000, stocks: 16500, crypto: 8000, pension: 27000, cash: 22000 }],
-  // Today: €250k property equity + ~€84k markets/cash + €34k pension ≈ €368k.
-  ["2026-06-01", { real_estate: 250000, etf: 30000, stocks: 18800, crypto: 9000, pension: 34000, cash: 26000 }],
+  ["2024-09-01", { real_estate: 222000, etf: 28000, stocks: 22000, crypto: 7500, pension: 20000, cash: 18000 }],
+  ["2025-06-01", { real_estate: 240000, etf: 31000, stocks: 30000, crypto: 9500, pension: 27000, cash: 22000 }],
+  // Newest anchor: liquid sleeve (etf+stocks+crypto = €90.7k) marked ≈ the live
+  // valuation of the seeded units (audit 2026-06), so the live tip continues the
+  // curve instead of stepping. Total ≈ €400.7k — matching what the hero shows.
+  ["2026-06-01", { real_estate: 250000, etf: 36000, stocks: 42000, crypto: 12700, pension: 34000, cash: 26000 }],
 ];
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;

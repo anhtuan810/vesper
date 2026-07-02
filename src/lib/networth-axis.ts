@@ -75,3 +75,49 @@ export function computeYAxisDomain(dataMin: number, dataMax: number): NiceLevels
   // negative net worth extends the axis below zero.
   return computeNiceLevels(lo < 0 ? lo - pad : 0, hi + pad);
 }
+
+// ── Time-true x positions ────────────────────────────────────────────────────
+//
+// X fractions (0..1) for a date-ordered series: each point sits at its date's
+// fraction of the visible time span, NOT at its index. Index spacing was the
+// old behaviour and it distorts the line's shape whenever cadence is mixed —
+// monthly seed history next to daily recent rows gave a day and a month the
+// same horizontal width, and a 3-week gap to the live tip drew as half the
+// chart. Time-true spacing is the honest read of the same numbers.
+//
+// Accepts daily "YYYY-MM-DD" rows and intraday ISO datetimes (the Liquid · 1D
+// series). Falls back to index spacing when the span is degenerate (all one
+// date, unparseable input) so the chart never divides by zero, and clamps
+// non-monotone stragglers so the path can never double back on itself.
+export function timeFractions(dates: string[]): number[] {
+  const n = dates.length;
+  if (n === 0) return [];
+  if (n === 1) return [0];
+  const ts = dates.map((d) => Date.parse(d.length > 10 ? d : `${d}T12:00:00Z`));
+  const t0 = ts[0];
+  const span = ts[n - 1] - t0;
+  if (!Number.isFinite(span) || span <= 0 || ts.some((t) => !Number.isFinite(t))) {
+    return dates.map((_, i) => i / (n - 1));
+  }
+  let prev = 0;
+  return ts.map((t) => {
+    const f = Math.min(1, Math.max(0, (t - t0) / span));
+    prev = Math.max(prev, f);
+    return prev;
+  });
+}
+
+// Nearest point index for a pointer at x fraction `f` (0..1) over time-true
+// positions — the scrub/tap inverse of timeFractions. Positions are sorted
+// ascending, so a linear scan with early exit is O(k) to the answer.
+export function nearestIndexForFraction(fractions: number[], f: number): number {
+  if (fractions.length === 0) return 0;
+  let best = 0;
+  let bestDiff = Infinity;
+  for (let i = 0; i < fractions.length; i++) {
+    const d = Math.abs(fractions[i] - f);
+    if (d < bestDiff) { bestDiff = d; best = i; }
+    else if (d > bestDiff) break; // ascending positions: diffs only grow past the minimum
+  }
+  return best;
+}

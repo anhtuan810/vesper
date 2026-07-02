@@ -7,7 +7,7 @@ import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } f
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
-import { computeNiceLevels } from "@/lib/networth-axis";
+import { computeNiceLevels, timeFractions, nearestIndexForFraction } from "@/lib/networth-axis";
 
 export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -154,14 +154,13 @@ const CHART_PAD_BOTTOM = 8;  // same — prevents clipping when current value is
 const TAP_SLOP = 8;
 
 function buildPath(
-  values: number[], W: number, H: number, yMin: number, yMax: number, drawW: number
+  values: number[], W: number, H: number, yMin: number, yMax: number, xs: number[]
 ): { line: string; projectY: (v: number) => number } {
   const projectY = makeProjectY(H, yMin, yMax);
 
   if (values.length < 2) return { line: "", projectY };
 
-  const toX = (i: number) => (i / (values.length - 1)) * drawW;
-  const pts = values.map((c, i) => ({ x: toX(i), y: projectY(c) }));
+  const pts = values.map((c, i) => ({ x: xs[i], y: projectY(c) }));
   let line = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
   for (let i = 1; i < pts.length; i++) {
     line += ` L ${pts[i].x.toFixed(2)} ${pts[i].y.toFixed(2)}`;
@@ -224,14 +223,13 @@ function computeCategoryProportions(points: SnapshotPoint[]): Record<Category, n
 // cumulative-upper boundaries across all points — straight (L) segments,
 // matching the net-worth line's lack of smoothing.
 function buildAreaPath(
-  lower: number[], upper: number[], projectY: (v: number) => number, drawW: number
+  lower: number[], upper: number[], projectY: (v: number) => number, xs: number[]
 ): string {
   const n = upper.length;
   if (n < 2) return "";
-  const toX = (i: number) => (i / (n - 1)) * drawW;
-  let d = `M ${toX(0).toFixed(2)} ${projectY(upper[0]).toFixed(2)}`;
-  for (let i = 1; i < n; i++) d += ` L ${toX(i).toFixed(2)} ${projectY(upper[i]).toFixed(2)}`;
-  for (let i = n - 1; i >= 0; i--) d += ` L ${toX(i).toFixed(2)} ${projectY(lower[i]).toFixed(2)}`;
+  let d = `M ${xs[0].toFixed(2)} ${projectY(upper[0]).toFixed(2)}`;
+  for (let i = 1; i < n; i++) d += ` L ${xs[i].toFixed(2)} ${projectY(upper[i]).toFixed(2)}`;
+  for (let i = n - 1; i >= 0; i--) d += ` L ${xs[i].toFixed(2)} ${projectY(lower[i]).toFixed(2)}`;
   return d + " Z";
 }
 
@@ -239,13 +237,12 @@ function buildAreaPath(
 // used to stroke the top edge of its band, distinguishing it from the band
 // stacked above.
 function buildEdgePath(
-  upper: number[], projectY: (v: number) => number, drawW: number
+  upper: number[], projectY: (v: number) => number, xs: number[]
 ): string {
   const n = upper.length;
   if (n < 2) return "";
-  const toX = (i: number) => (i / (n - 1)) * drawW;
-  let d = `M ${toX(0).toFixed(2)} ${projectY(upper[0]).toFixed(2)}`;
-  for (let i = 1; i < n; i++) d += ` L ${toX(i).toFixed(2)} ${projectY(upper[i]).toFixed(2)}`;
+  let d = `M ${xs[0].toFixed(2)} ${projectY(upper[0]).toFixed(2)}`;
+  for (let i = 1; i < n; i++) d += ` L ${xs[i].toFixed(2)} ${projectY(upper[i]).toFixed(2)}`;
   return d;
 }
 
@@ -376,9 +373,18 @@ export function NetWorthChart(props: Props) {
 
   const drawW = W - CHART_PAD_RIGHT;
   const projectY = makeProjectY(H, niceMin, niceMax);
+
+  // Time-true x positions — every path, marker, scrub and guide uses THESE, so
+  // the geometry can never disagree with itself. See timeFractions for why
+  // index spacing was wrong (a day and a month drew at equal width).
+  const { xFractions, xs } = useMemo(() => {
+    const fr = timeFractions(displaySeries.map((p) => p.date));
+    return { xFractions: fr, xs: fr.map((f) => f * drawW) };
+  }, [displaySeries, drawW]);
+
   const { line } = useMemo(
-    () => buildPath(values, W, H, niceMin, niceMax, drawW),
-    [values, W, H, niceMin, niceMax, drawW],
+    () => buildPath(values, W, H, niceMin, niceMax, xs),
+    [values, W, H, niceMin, niceMax, xs],
   );
 
   // Gradient area under the line — lineOnly (Liquid) mode only. Same top
@@ -386,15 +392,14 @@ export function NetWorthChart(props: Props) {
   // baseline (y = H) and closed, so the fill fades from the line to nothing.
   const areaPath = useMemo(() => {
     if (!lineOnly || values.length < 2) return "";
-    const toX = (i: number) => (i / (values.length - 1)) * drawW;
-    let d = `M ${toX(0).toFixed(2)} ${projectY(values[0]).toFixed(2)}`;
-    for (let i = 1; i < values.length; i++) d += ` L ${toX(i).toFixed(2)} ${projectY(values[i]).toFixed(2)}`;
-    d += ` L ${toX(values.length - 1).toFixed(2)} ${H.toFixed(2)}`;
-    d += ` L ${toX(0).toFixed(2)} ${H.toFixed(2)} Z`;
+    let d = `M ${xs[0].toFixed(2)} ${projectY(values[0]).toFixed(2)}`;
+    for (let i = 1; i < values.length; i++) d += ` L ${xs[i].toFixed(2)} ${projectY(values[i]).toFixed(2)}`;
+    d += ` L ${xs[values.length - 1].toFixed(2)} ${H.toFixed(2)}`;
+    d += ` L ${xs[0].toFixed(2)} ${H.toFixed(2)} Z`;
     return d;
     // projectY is a fresh closure each render; its inputs are H/niceMin/niceMax.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, drawW, H, niceMin, niceMax, lineOnly]);
+  }, [values, xs, H, niceMin, niceMax, lineOnly]);
 
   // Per-category stacked bands — each point's segments sum exactly to
   // `values[i]` (the displayed total), so the top of the stack equals the
@@ -416,20 +421,20 @@ export function NetWorthChart(props: Props) {
     const paths = {} as Record<Category, { area: string; edge: string }>;
     for (const c of STACK_ORDER) {
       paths[c] = {
-        area: buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, drawW),
-        edge: buildEdgePath(stackBounds[c].upper, projectY, drawW),
+        area: buildAreaPath(stackBounds[c].lower, stackBounds[c].upper, projectY, xs),
+        edge: buildEdgePath(stackBounds[c].upper, projectY, xs),
       };
     }
     return paths;
     // projectY is a fresh closure each render; its inputs are H/niceMin/niceMax.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stackBounds, drawW, H, niceMin, niceMax]);
+  }, [stackBounds, xs, H, niceMin, niceMax]);
 
   const lastY = values.length >= 2 ? projectY(values[values.length - 1]) : H / 2;
 
   const selectedX =
     selectedIndex !== null && displaySeries.length >= 2
-      ? (selectedIndex / (displaySeries.length - 1)) * drawW
+      ? xs[selectedIndex] ?? null
       : null;
   const selectedY =
     selectedIndex !== null && values.length >= 2
@@ -440,8 +445,9 @@ export function NetWorthChart(props: Props) {
 
   function calcIndex(clientX: number, rect: DOMRect): number {
     const relX = (clientX - rect.left) / rect.width;
-    const rawIdx = Math.round(relX * (displaySeries.length - 1));
-    return Math.min(Math.max(rawIdx, 0), displaySeries.length - 1);
+    // Nearest point by time-true position — the exact inverse of the drawing
+    // mapping, so the scrub cursor always lands on the point under the finger.
+    return nearestIndexForFraction(xFractions, Math.min(1, Math.max(0, relX)));
   }
 
   // Decision dots: every journal marker placed at the nearest plotted point whose
@@ -465,12 +471,12 @@ export function NetWorthChart(props: Props) {
           const d = Math.abs(new Date(dates[i]).getTime() - t);
           if (d < bestDiff) { bestDiff = d; best = i; }
         }
-        dots.push({ id: mk.id, x: (best / (values.length - 1)) * drawW, y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value, net: values[best] });
+        dots.push({ id: mk.id, x: xs[best], y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value, net: values[best] });
       }
     }
     return dots;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markerMode, values, displaySeries, props.markers, drawW, H, niceMin, niceMax]);
+  }, [markerMode, values, displaySeries, props.markers, xs, H, niceMin, niceMax]);
 
   // The marker nearest the pointer's x — used so hovering anywhere along the line
   // previews the closest entry (dots can be dense), not only exact dot hits.

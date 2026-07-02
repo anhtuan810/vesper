@@ -12,7 +12,7 @@
 // the OLD floor, then proves the shipped 0-anchored domain keeps every band in
 // view.
 
-import { computeYAxisDomain, computeNiceLevels } from "../src/lib/networth-axis";
+import { computeYAxisDomain, computeNiceLevels, timeFractions, nearestIndexForFraction } from "../src/lib/networth-axis";
 import { categoryBreakdown, STACK_ORDER, type Category } from "../src/lib/categories";
 
 let failures = 0;
@@ -122,4 +122,41 @@ check("0 within [niceMin, niceMax]", neg.niceMin <= 0 && neg.niceMax >= 0,
   `[${neg.niceMin}, ${neg.niceMax}]`);
 
 console.log(`\n${failures === 0 ? "All checks passed." : `${failures} check(s) FAILED.`}`);
+// ── Time-true x positions (timeFractions / nearestIndexForFraction) ─────────
+console.log("\nTime-true x positions:");
+{
+  // Mixed cadence: 5 monthly points then a daily point one day after the last
+  // month — under index spacing that day got a full segment (1/5 of the chart);
+  // time-true gives it its real sliver.
+  const dates = ["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01", "2026-05-01", "2026-05-02"];
+  const fr = timeFractions(dates);
+  check("starts at 0 and ends at 1", fr[0] === 0 && fr[fr.length - 1] === 1);
+  check("monotone non-decreasing", fr.every((f, i) => i === 0 || f >= fr[i - 1]));
+  const monthWidth = fr[1] - fr[0];
+  const dayWidth = fr[5] - fr[4];
+  check("a day is ~1/30 of a month, not a full segment", dayWidth < monthWidth / 20, `day=${dayWidth.toFixed(4)} month=${monthWidth.toFixed(4)}`);
+
+  // Even monthly spacing ≈ even fractions (months differ by ±3 days).
+  const even = timeFractions(["2026-01-01", "2026-02-01", "2026-03-01"]);
+  check("evenish cadence stays evenish", Math.abs(even[1] - 0.5) < 0.03, String(even[1]));
+
+  // Intraday ISO datetimes parse (Liquid · 1D series).
+  const intra = timeFractions(["2026-07-01T13:30:00.000Z", "2026-07-01T15:30:00.000Z", "2026-07-01T20:00:00.000Z"]);
+  check("intraday datetimes: monotone 0..1", intra[0] === 0 && intra[2] === 1 && intra[1] > 0 && intra[1] < 1);
+
+  // Degenerate spans fall back to index spacing (never divide by zero).
+  const dup = timeFractions(["2026-01-01", "2026-01-01", "2026-01-01"]);
+  check("all-same-date falls back to index spacing", dup[0] === 0 && dup[1] === 0.5 && dup[2] === 1);
+  const bad = timeFractions(["nonsense", "alsonot", "dates!!"]);
+  check("unparseable dates fall back to index spacing", bad[0] === 0 && bad[1] === 0.5 && bad[2] === 1);
+
+  // Scrub inverse: nearest point by position, clamped at the ends.
+  check("inverse: fraction at a point returns it", nearestIndexForFraction(fr, fr[3]) === 3);
+  check("inverse: midpoint resolves to nearer point", nearestIndexForFraction([0, 0.8, 1], 0.35) === 0);
+  check("inverse: 0 and 1 clamp to the ends", nearestIndexForFraction(fr, 0) === 0 && nearestIndexForFraction(fr, 1) === fr.length - 1);
+  // The daily sliver is still reachable: a tap at the far right edge between
+  // the last two points snaps to whichever is closer.
+  check("inverse: near-right tap hits the last point", nearestIndexForFraction(fr, 0.999) === 5);
+}
+
 process.exit(failures === 0 ? 0 : 1);
