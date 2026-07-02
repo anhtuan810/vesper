@@ -347,8 +347,8 @@ export function PortfolioTab({
   // with totals, and the grand total the hero shows — summed from the SAME
   // rows the list renders, so the two can never disagree. A row whose value
   // couldn't be established (no price record for that day, or no usable FX
-  // rate) is listed with a dash and makes the total approximate — honest and
-  // visible, never silently guessed. null while the reconstruction loads.
+  // rate) is listed with a dash — honest and visible, never silently guessed.
+  // null while the reconstruction loads.
   const rewindBook = useMemo(() => {
     const holdings = rewind ? holdingsByDate[rewind.date] : undefined;
     if (!rewind || !holdings) return null;
@@ -372,8 +372,6 @@ export function PortfolioTab({
     return {
       groups,
       total: rows.reduce((s, r) => s + (r.displayValue ?? 0), 0),
-      approx: rows.some((r) => r.displayValue == null),
-      count: rows.length,
     };
   }, [rewind, holdingsByDate, displayCurrency]);
 
@@ -457,7 +455,7 @@ export function PortfolioTab({
             liquidOnly={liquidOnly}
             onSetLiquid={setLiquid}
             scrubPoint={scrubPoint}
-            rewind={rewind ? { date: rewind.date, total: rewindBook?.total ?? null, approx: rewindBook?.approx ?? false } : null}
+            rewind={rewind ? { date: rewind.date, total: rewindBook?.total ?? null } : null}
             onExitRewind={() => setRewind(null)}
           />
         </div>

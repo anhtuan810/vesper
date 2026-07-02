@@ -28,14 +28,14 @@ const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
   "All": null,
 };
 
-// A parked rewind: the user tapped a decision dot, so the hero stands at that
-// day. `total` is the sum of the reconstructed as-of holdings (null while the
-// reconstruction loads) — the SAME rows the list below renders, so the two can
-// never disagree. `approx` marks a book with an unpriceable position in it.
+// A parked rewind: the user picked a decision entry, so the hero stands at
+// that day. `total` is the sum of the reconstructed as-of holdings (null
+// while the reconstruction loads) — the SAME rows the list below renders, so
+// the two can never disagree. Any position that couldn't be valued for the
+// day speaks through its own row ("no price record"), not through the number.
 export interface HeroRewind {
   date: string;
   total: number | null;
-  approx: boolean;
 }
 
 interface NetWorthHeroProps {
@@ -222,8 +222,7 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
       )}
 
       {/* Hero number — monochrome. Rewound at rest it steps down from the hero
-          tone (this is a reconstruction, not your money right now) and carries
-          ≈ when a position in the book couldn't be priced for that day. */}
+          tone (this is a reconstruction, not your money right now). */}
       {displayValue == null ? (
         <div
           className="bg-surface-elev rounded-lg animate-pulse"
@@ -240,7 +239,7 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
             fontVariationSettings: "'opsz' 48",
           }}
         >
-          <span>{rewind && !scrubbing && rewind.approx ? "≈ " : ""}{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
+          <span>{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
         </div>
       )}
 

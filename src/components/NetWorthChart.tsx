@@ -533,18 +533,22 @@ export function NetWorthChart(props: Props) {
   }
 
   // Like nearestMarkerId, but only when the pointer is genuinely near a dot —
-  // so scrubbing the open stretches of the line reads the value without a
-  // distant dot hijacking the tap or flashing its preview. The threshold is a
-  // full finger-pad's width (a dot is ~5px; fingers land 20px+ off-centre —
-  // Apple's minimum touch target is 44pt for a reason), because a tap that
-  // was AIMED at a dot but misses this window commits nothing at all, which
-  // reads as the feature being broken.
-  function nearMarkerWithin(clientX: number, rect: DOMRect): string | null {
+  // so reading the open stretches of the line stays a scrub (breakdown card,
+  // hero readout) without a distant dot hijacking it. Two radii, both TIGHT:
+  // on a dense timeline (the demo has a dot every ~15px) any generous window
+  // makes every hover an entry preview and every casual tap an accidental
+  // rewind — the reconstruction fetch then reads as "the hero is slow".
+  // Hover must be essentially ON the dot; a touch tap gets a small allowance
+  // for finger placement. The journal entry's "Portfolio on this day" action
+  // is the deliberate, big-target way in — the dots don't have to be one.
+  const PREVIEW_RADIUS = Math.max(10, W * 0.03);
+  const TAP_COMMIT_RADIUS = Math.max(12, W * 0.035);
+  function nearMarkerWithin(clientX: number, rect: DOMRect, radius: number): string | null {
     const id = nearestMarkerId(clientX, rect);
     if (!id) return null;
     const xView = ((clientX - rect.left) / rect.width) * W;
     const dot = markerDots.find((d) => d.id === id)!;
-    return Math.abs(dot.x - xView) <= Math.max(28, W * 0.08) ? id : null;
+    return Math.abs(dot.x - xView) <= radius ? id : null;
   }
 
   const chartHandlers = !interactive
@@ -562,7 +566,7 @@ export function NetWorthChart(props: Props) {
           const idx = calcIndex(e.clientX, rect);
           setSelectedIndex(idx);
           haptic(idx);
-          setHoveredMarker(nearMarkerWithin(e.clientX, rect));
+          setHoveredMarker(nearMarkerWithin(e.clientX, rect, PREVIEW_RADIUS));
         },
         onMouseLeave() {
           if (touchedRef.current) return;
@@ -570,7 +574,9 @@ export function NetWorthChart(props: Props) {
         },
         onClick(e: React.MouseEvent<HTMLDivElement>) {
           if (touchedRef.current) return; // touchend already committed the tap
-          const id = nearMarkerWithin(e.clientX, e.currentTarget.getBoundingClientRect());
+          // Commit exactly what the hover previews (same radius) — a click can
+          // never rewind to an entry whose box wasn't already showing.
+          const id = nearMarkerWithin(e.clientX, e.currentTarget.getBoundingClientRect(), PREVIEW_RADIUS);
           if (id) props.onMarkerClick?.(id);
         },
         onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
@@ -582,7 +588,7 @@ export function NetWorthChart(props: Props) {
           const idx = calcIndex(x, rect);
           setSelectedIndex(idx);
           haptic(idx);
-          setHoveredMarker(nearMarkerWithin(x, rect));
+          setHoveredMarker(nearMarkerWithin(x, rect, PREVIEW_RADIUS));
         },
         onTouchMove(e: React.TouchEvent<HTMLDivElement>) {
           const rect = e.currentTarget.getBoundingClientRect();
@@ -591,16 +597,16 @@ export function NetWorthChart(props: Props) {
           const idx = calcIndex(x, rect);
           setSelectedIndex(idx);
           haptic(idx);
-          setHoveredMarker(nearMarkerWithin(x, rect));
+          setHoveredMarker(nearMarkerWithin(x, rect, PREVIEW_RADIUS));
         },
         onTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
-          // A tap (no meaningful drag) on/near a dot commits that decision; a
-          // drag was just a value scrub and commits nothing. Either way the
-          // hero snaps back to the live value — the past is something you
-          // HOLD; letting go always returns to now.
+          // A tap (no meaningful drag) ON a dot commits that decision; a drag
+          // was just a value scrub and commits nothing. Either way the hero
+          // snaps back — the past is something you HOLD; letting go always
+          // returns to now (or the parked entry).
           if (!touchMovedRef.current) {
             const x = e.changedTouches[0]?.clientX;
-            const id = x != null ? nearMarkerWithin(x, e.currentTarget.getBoundingClientRect()) : null;
+            const id = x != null ? nearMarkerWithin(x, e.currentTarget.getBoundingClientRect(), TAP_COMMIT_RADIUS) : null;
             if (id) props.onMarkerClick?.(id);
           }
           setSelectedIndex(null);
