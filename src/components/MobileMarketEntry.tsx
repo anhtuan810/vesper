@@ -6,16 +6,18 @@ import { formatDate } from "@/lib/utils";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
 
-// Mobile diary entry for a big market swing — a quiet, collapsible ledger line.
-// At rest it reads as a peer to the holdings rows (index · % · your € impact ·
-// date); a tap unfolds Volnar's one-line read of the day plus the per-holding
-// breakdown as a tidy ledger. Progressive disclosure keeps the timeline calm
-// while the real portfolio impact stays one tap away — the phone-native
-// counterpart to the desktop Journal's always-open DesktopMarketEntry.
+// Mobile diary entry for a big market swing — a collapsible ledger line on a
+// soft gold wash. At rest it reads index · % · your € impact · date; a tap
+// unfolds Volnar's one-line read of the day plus the per-holding breakdown as
+// a tidy ledger. Progressive disclosure keeps the timeline calm while the real
+// portfolio impact stays one tap away — the phone-native counterpart to the
+// desktop Journal's always-open DesktopMarketEntry.
 //
-// Deliberately NOT the web's loud card: no background wash, no accent stripe,
-// no chips. The circular market glyph (vs the square asset logos) and the
-// index/€ formatting are all that mark it as an auto-logged market note.
+// The wash is deliberate product signalling (2026-07): auto-logged market
+// entries are a Volnar differentiator — the diary writes itself when the
+// market moves your money — so they sit on the brand's accent-soft tint,
+// visually apart from the user's own plain-paper entries. Same rule as the
+// Pulse family: gold ground = "Volnar noticed this for you."
 
 function ActivityIcon({ color, size = 13 }: { color: string; size?: number }) {
   return (
@@ -47,8 +49,8 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
     : `Your portfolio ${portUp ? "gained" : "softened"} about ${money(imp.total)} that day.`;
 
   return (
-    <div style={{ borderBottom: "0.5px solid var(--border)" }}>
-      {/* Resting line — a calm ledger row, peer to the holdings rows */}
+    <div style={{ background: "var(--accent-soft)", borderRadius: "var(--radius-md)", padding: "0 12px", margin: "6px 0" }}>
+      {/* Resting line — a calm ledger row on the auto-entry wash */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -59,16 +61,18 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
           textAlign: "left", cursor: "pointer", color: "inherit", font: "inherit",
         }}
       >
-        {/* Market glyph — a circle distinguishes it from the square asset logos */}
+        {/* Market glyph — a surface circle on the wash, gold like the brand's
+            other auto-generated marks (vs the square asset logos) */}
         <span
           aria-hidden
           style={{
             width: 26, height: 26, flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
-            borderRadius: "50%", border: "1px solid var(--border)",
+            borderRadius: "50%", border: "0.5px solid var(--border)",
+            background: "var(--surface)",
           }}
         >
-          <ActivityIcon color="var(--cat-reserves-band)" />
+          <ActivityIcon color="var(--accent-text)" />
         </span>
 
         <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -139,7 +143,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
                 );
                 const rowStyle = {
                   display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                  gap: 12, padding: "4px 0", borderTop: "0.5px solid var(--border)",
+                  gap: 12, padding: "4px 0", borderTop: "0.5px solid var(--border-strong)",
                   textDecoration: "none" as const,
                 };
                 return h.assetId ? (

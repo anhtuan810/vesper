@@ -11,17 +11,22 @@ interface DiaryMarketRowProps {
   move: DiaryMarketMove;
 }
 
+// Auto-logged market note (no computed impact) — same soft gold wash as the
+// full MobileMarketEntry, so every machine-written diary line shares one
+// ground: gold = "Volnar noticed this for you", plain paper = the user's own
+// entries. Kept textually quiet (dim/faint ink) since it carries no € figure.
 export function DiaryMarketRow({ move }: DiaryMarketRowProps) {
   const positive = move.pct_change >= 0;
   return (
-    <div style={{ display: "flex", gap: 10, padding: "6px 0", alignItems: "center", opacity: 0.6 }}>
+    <div style={{ display: "flex", gap: 10, padding: "6px 12px", margin: "6px 0", alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--radius-md)" }}>
       <div
         aria-hidden
         style={{
           width: 26, height: 26, flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          borderRadius: "50%", border: "1px solid var(--border)",
-          fontSize: "var(--fs-meta)", color: "var(--text-faint)",
+          borderRadius: "50%", border: "0.5px solid var(--border)",
+          background: "var(--surface)",
+          fontSize: "var(--fs-meta)", color: "var(--accent-text)",
           fontFamily: "var(--font-ui)",
         }}
       >
