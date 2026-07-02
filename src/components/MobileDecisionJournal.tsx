@@ -1,11 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { displayName, unitNoun, STARTING_POSITION_CTX } from "@/lib/diary-utils";
 import { apiFetch } from "@/lib/api";
+import { isNative } from "@/lib/platform";
+import { useSubscription } from "@/components/SubscriptionProvider";
 import type { Mutation } from "@/lib/supabase";
 import type { VerdictData } from "@/lib/scenario/decision-verdict";
+
+// One quiet Light tap as the verdict sentence settles (Seal Tears). Mirrors
+// useChartHaptic's platform handling; silent under reduced motion and on
+// devices without haptics; never throws.
+function fireVerdictHaptic() {
+  if (typeof window === "undefined") return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (isNative()) {
+    import("@capacitor/haptics")
+      .then(({ Haptics, ImpactStyle }) => Haptics.impact({ style: ImpactStyle.Light }))
+      .catch(() => {});
+  } else if (typeof navigator?.vibrate === "function") {
+    navigator.vibrate(6);
+  }
+}
 
 // The phone equivalent of the desktop Overview's selected-entry panel: the
 // latest (or chart-selected) decision, shown as a *folding* journal entry. By
@@ -102,26 +120,57 @@ function buildVerdictCopy(verdict: VerdictData, unitLabel: string): { line: stri
 
 // The unfolded look-back — a perforation marking the passage of time, then the
 // verdict sentence (figure in gold) and the figuring behind it.
+//
+// The Seal Tears: the FIRST verdict opened in a session performs its reveal —
+// the perforation draws itself left→right (~0.5s), then the "Looking back…"
+// sentence rises 4px with the gold figure simply present (no count-up), and a
+// single Light haptic fires as the sentence settles (onAnimationEnd, never a
+// timer). Every later open in the session is instant; reduced-motion users
+// get the static layout (the animation classes are inert for them, and the
+// haptic guards itself).
 function VerdictBody({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: string }) {
   const { line, money, calc } = buildVerdictCopy(verdict, unitLabel);
   const headline = line.split(money);
+  const [tear] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      if (sessionStorage.getItem("volnar:verdict-torn")) return false;
+      sessionStorage.setItem("volnar:verdict-torn", "1");
+      return true;
+    } catch {
+      return false;
+    }
+  });
   return (
     <div>
-      <div className="perforation" style={{ margin: "var(--space-4) 0" }} role="separator" aria-label="time passes" />
-      <p style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>
-        <span style={{ fontStyle: "italic", color: "var(--text-dim)" }}>Looking back, {verdict.lookbackLabel} — </span>
-        {headline.map((part, i) => (
-          <span key={i}>
-            {part}
-            {i < headline.length - 1 && (
-              <span className="tnum" style={{ fontWeight: 600, color: "var(--accent-text)" }}>{money}</span>
-            )}
-          </span>
-        ))}
-      </p>
-      {/* Figuring — the actual numbers behind the verdict, one size below the
-          headline (matching the reflection above); colour carries the hierarchy. */}
-      <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0" }}>{calc}</p>
+      <div
+        className={tear ? "perforation perf-draw" : "perforation"}
+        style={{ margin: "var(--space-4) 0" }}
+        role="separator"
+        aria-label="time passes"
+      />
+      <div
+        className={tear ? "lookback-rise" : undefined}
+        style={tear ? { animationDelay: "0.45s" } : undefined}
+        onAnimationEnd={(e) => {
+          if (e.animationName === "lookback-rise") fireVerdictHaptic();
+        }}
+      >
+        <p style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: 0 }}>
+          <span style={{ fontStyle: "italic", color: "var(--text-dim)" }}>Looking back, {verdict.lookbackLabel} — </span>
+          {headline.map((part, i) => (
+            <span key={i}>
+              {part}
+              {i < headline.length - 1 && (
+                <span className="tnum" style={{ fontWeight: 600, color: "var(--accent-text)" }}>{money}</span>
+              )}
+            </span>
+          ))}
+        </p>
+        {/* Figuring — the actual numbers behind the verdict, one size below the
+            headline (matching the reflection above); colour carries the hierarchy. */}
+        <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-read)", margin: "var(--space-3) 0 0" }}>{calc}</p>
+      </div>
     </div>
   );
 }
@@ -189,6 +238,21 @@ export function MobileDecisionJournal({
       .catch(() => { if (!cancelled) asked.current.delete(key); });
     return () => { cancelled = true; };
   }, [m, displayCurrency]);
+
+  // 60-second-hook measurement: the moment a demo visitor first has a verdict
+  // on screen (an open entry with its look-back resolved). Once per session,
+  // demo accounts only, no properties — nothing identifying leaves the device.
+  const { data: subData } = useSubscription();
+  const isDemoAccount = subData?.isDemo ?? false;
+  useEffect(() => {
+    if (!isDemoAccount || !open || !m) return;
+    if (!verdicts[`${m.id}|${displayCurrency}`]) return;
+    try {
+      if (sessionStorage.getItem("volnar:demo-verdict-tracked")) return;
+      sessionStorage.setItem("volnar:demo-verdict-tracked", "1");
+    } catch { return; }
+    track("demo_verdict_seen");
+  }, [isDemoAccount, open, m, verdicts, displayCurrency]);
 
   if (decisions.length === 0 || !m) return null;
 

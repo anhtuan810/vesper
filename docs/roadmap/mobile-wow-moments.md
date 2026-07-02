@@ -22,9 +22,11 @@ Each item is a self-contained spec — pick any up in a fresh chat, in order.
 > gesture — once per demo session, verdict + reconstruction pre-warmed), plus
 > a demo-only follow-up question that pre-fills the chat composer. Note: the Overview now RESTS at Now (no entry selected on load),
 > so item 1's "folded journal entry fades in" became "the journal zone fades
-> in" — on the demo the Confession then performs the selection. Item 3's
-> seal-tear animation remains unbuilt; the Confession opens the entry without
-> it. Items 2, 3, 4 and 6 remain unbuilt as specced; note for item 2 that
+> in" — on the demo the Confession then performs the selection. **Item 3 (The
+> Seal Tears) also shipped 2026-07-02**: the first verdict opened in a session
+> draws its perforation, rises the sentence, and lands one Light haptic
+> (`volnar:verdict-torn`); later opens are instant. Items 2, 4 and 6 remain
+> unbuilt as specced; note for item 2 that
 > `nearMarkerWithin` now takes an explicit radius argument and the dot radii
 > are deliberately tight (see "Net-Worth Chart: Time-True Axis & Touch Model"
 > in technical-decisions before widening anything).

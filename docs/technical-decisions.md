@@ -663,8 +663,21 @@ The demo visitor's opening minute, sequenced from three small pieces
   key derivation is shared with `assembleVerdict` via `verdictKeyForMutation`.
   The block instructs the model to use these figures and never invent cost
   basis. Covered by `scripts/verify-dynamic-context.ts`.
-- **Measurement TODO**: add `demo_verdict_seen` and time-to-first-asset pilot
-  analytics events to score the 60-second hook rate.
+- **The Seal Tears (all users).** The FIRST verdict opened in a session
+  performs its reveal: the perforation draws itself left→right (`.perf-draw`,
+  clip-path, ~0.5s), the "Looking back…" sentence rises a beat later
+  (`.lookback-rise` + 0.45s delay; the gold figure is simply present — no
+  count-up), and one Light haptic fires as the sentence settles
+  (`onAnimationEnd`, never a timer). Once per session
+  (`volnar:verdict-torn`); static under reduced motion.
+- **Measurement (shipped).** `demo_verdict_seen` fires once per demo session
+  when an open entry first has its look-back on screen (no properties).
+  `first_asset_added` now carries `minutes_since_signup` (server-computed from
+  the auth user's `created_at`, forwarded via `analyticsProps`) — the
+  time-to-first-asset half of the 60-second-hook metric.
+- **Screenshot-first empty state.** The fresh-account Overview's "Try starting
+  with" list now leads with the screenshot row ("the fastest way in") — one
+  screenshot of a broker's positions page beats typing ten holdings.
 
 ## Known Technical Debt
 

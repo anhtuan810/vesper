@@ -350,17 +350,20 @@ export function PortfolioEmptyState() {
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+          {/* Screenshot leads — the fastest path from empty to a real
+              portfolio (one screenshot vs typing ten holdings), so it's the
+              first suggestion a fresh account sees. */}
+          <ExampleRow
+            icon={<ImageIcon size={16} />}
+            label="A screenshot — the fastest way in"
+            example="Your broker app's positions page; I'll read it"
+            onClick={() => photoInputRef.current?.click()}
+          />
           <ExampleRow
             icon={<QuoteIcon size={16} />}
             label="A sentence"
             example={"\"100 shares of VOO at $520 each\""}
             onClick={() => prefillText("100 shares of VOO at $520 each")}
-          />
-          <ExampleRow
-            icon={<ImageIcon size={16} />}
-            label="A screenshot"
-            example="Your broker app, your bank, anything"
-            onClick={() => photoInputRef.current?.click()}
           />
           <ExampleRow
             icon={<FileSpreadsheetIcon size={16} />}

@@ -970,6 +970,7 @@ export async function POST(req: NextRequest) {
     let needsBackfill = false;
     let hasAdds = false;
     let analyticsEvent: string | null = null;
+    let analyticsProps: Record<string, number> | null = null;
     // Earliest date whose snapshot rows this turn invalidated — every row from
     // here forward must be rebuilt (not upsert-skipped) to include/exclude the
     // touched asset. Returned by applyPortfolioChanges (the one place that
@@ -996,6 +997,13 @@ export async function POST(req: NextRequest) {
           hasAdds = changes.some((c) => c.action === "add");
           if (isNewUser && hasAdds) {
             analyticsEvent = "first_asset_added";
+            // Time-to-first-asset: how fast the empty state converts (the
+            // 60-second-hook metric). Signup time from the auth user; a
+            // count-only figure, nothing identifying.
+            const signedUp = Date.parse(user.created_at ?? "");
+            if (Number.isFinite(signedUp)) {
+              analyticsProps = { minutes_since_signup: Math.max(0, Math.round((Date.now() - signedUp) / 60_000)) };
+            }
           } else if ((recentMutations || []).length === 0) {
             analyticsEvent = "first_chat_mutation";
           }
@@ -1272,7 +1280,7 @@ export async function POST(req: NextRequest) {
       portfolioChanged,
       remaining: CHAT_DAILY_LIMIT - used,
       suggested_replies: suggestedReplies,
-      ...(analyticsEvent ? { analyticsEvent } : {}),
+      ...(analyticsEvent ? { analyticsEvent, ...(analyticsProps ? { analyticsProps } : {}) } : {}),
     });
   } catch (err) {
     console.error("[/api/chat] unhandled error:", err);

@@ -35,6 +35,9 @@ interface ChatResponse {
   scenarioPending?: Record<string, unknown> | null;
   remaining?: number;
   analyticsEvent?: string;
+  /** Optional numeric properties attached to analyticsEvent (e.g.
+   * minutes_since_signup on first_asset_added). */
+  analyticsProps?: Record<string, number>;
   assets?: unknown;
   /** Explicit signal that the portfolio mutated this turn; preferred over
    * inferring from `assets` for cache invalidation. */
@@ -354,7 +357,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     // Success side-effects — outside the catch so a throw here can't render a
     // spurious connection-error bubble after the answer was already shown.
     applyAssistantResponse(data);
-    if (data.analyticsEvent) track(data.analyticsEvent);
+    if (data.analyticsEvent) track(data.analyticsEvent, data.analyticsProps);
     if (data.portfolioChanged ?? !!data.assets) {
       if (userId) invalidateAssetsCache(userId);
       invalidateInsightCache();
@@ -479,7 +482,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     // Success side-effects — outside the catch so a throw here can't render a
     // spurious connection-error bubble after the answer was already shown.
     applyAssistantResponse(data);
-    if (data.analyticsEvent) track(data.analyticsEvent);
+    if (data.analyticsEvent) track(data.analyticsEvent, data.analyticsProps);
     if (data.portfolioChanged ?? !!data.assets) {
       if (userId) invalidateAssetsCache(userId);
       invalidateInsightCache();

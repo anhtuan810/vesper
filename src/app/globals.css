@@ -717,4 +717,14 @@ html.native-app [contenteditable="true"] {
   }
   /* The look-back movement fades up when opened — the page replying a beat late. */
   .lookback-rise { animation: lookback-rise 0.4s ease both; }
+
+  /* The Seal Tears — first verdict open of a session: the perforation draws
+     itself left→right, then the "Looking back…" sentence rises (the caller
+     pairs .lookback-rise with a delay so it follows the tear). The gold figure
+     is simply present — no count-up. */
+  @keyframes perf-draw {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+  }
+  .perf-draw { animation: perf-draw 0.5s ease-out both; }
 }
