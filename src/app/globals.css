@@ -27,6 +27,12 @@
   --font-display: var(--sans);   /* wordmark · screen titles · net-worth figure · italic notes */
   --font-ui:      var(--sans);   /* body · list names · buttons · nav — everything structural */
   --font-label:   var(--sans);   /* uppercase micro-labels (eyebrows) — sans, NOT mono */
+  /* THE VOICE — everything the app SPEAKS (the Pulse sentence, signal rows,
+     insights, what-if questions) as opposed to what it MEASURES. A true serif
+     italic, native on iOS/macOS (Iowan Old Style is the Apple Books face), so
+     the spoken layer costs zero font payload. Figures inside spoken sentences
+     stay in the instrument sans (see .pulse-fig). */
+  --font-voice: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
   /* One UI family: numeric detail now uses the sans too (Inter), with tabular
      figures coming from font-feature-settings "tnum" (body + .tnum) rather than
      a separate monospace — so money, %, shares and dates match everything else. */
@@ -56,6 +62,7 @@
   --fs-caption: 11.5px;
   --fs-meta:    12px;
   --fs-body:    13px;
+  --fs-voice:   14px; /* spoken sentences (--font-voice): serifs run small, so +1 over body */
   --fs-subhead: 14px;
   --fs-title:   17px;
   --fs-metric:  24px;
@@ -143,25 +150,27 @@
 
 :root,
 [data-theme="light"] {
-  /* "Nocturne · Light" — the daylight half of the redesign: cool slate-paper,
-     near-black ink, and a single restrained brass accent. Gains read in a calm
-     green (deliberately NOT the accent), losses in muted clay. Markets = green,
+  /* "Nocturne · Light", warmed (2026-07 "Voice & Plate" pass) — the cool
+     slate-paper turned to bone: every neutral now carries a slight hue bias
+     toward the brass accent instead of blue, so the page reads as chosen
+     paper rather than default grey. Gains still read in a calm green
+     (deliberately NOT the accent), losses in muted clay. Markets = green,
      property = steel-blue, crypto = amber, reserves = olive — hue-separated so
      the categorical chart palette stays legible against the brass. */
-  --bg:            #F7F8FA;
+  --bg:            #F6F5F1;
   --surface:       #FFFFFF;
-  --surface-elev:  #EEF0F4;
+  --surface-elev:  #EDEBE4;
   /* Lighter center/elevated column surface — the desktop focal area sits on this,
      a hair brighter than the paper page and lifted off it. */
-  --surface-center: #FBFCFD;
+  --surface-center: #FCFBF8;
   /* Brass used by data bars. */
   --data-bar:      #9C7A37;
-  --border:        rgba(18, 22, 30, 0.08);
-  --border-strong: rgba(18, 22, 30, 0.14);
-  --text:          #171A20;
-  --text-dim:      #565D69;
-  --text-faint:    #868D99;
-  --hero:          #0A0C10;
+  --border:        rgba(32, 27, 16, 0.09);
+  --border-strong: rgba(32, 27, 16, 0.16);
+  --text:          #26221A;
+  --text-dim:      #5C564A;
+  --text-faint:    #8C8574;
+  --hero:          #17130A;
   --accent:        #9C7A37;
   --accent-soft:   rgba(156, 122, 55, 0.12);
   --accent-text:   #7E6026;
@@ -176,18 +185,25 @@
   --negative-soft: rgba(180, 80, 46, 0.12);
   --negative-text: #9A4326;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
-  --nav-surface:   rgba(247, 248, 250, 0.85);
+  --nav-surface:   rgba(246, 245, 241, 0.85);
   --category-public-markets: #3E8E6B;
   --category-reserves:       #948A66;
   --category-property:       #4E7398;
   --category-crypto:         #C2832F;
-  --surface-deep:  #E7E9ED;
+  --surface-deep:  #E9E7DF;
   --accent-deep:   #7E6026;
   --negative-deep: #7E3A22;
   --amber:         #B07A2E;
   --amber-deep:    #8A5E22;
   --amber-soft:    rgba(176, 122, 46, 0.13);
-  --bg-deep:           #EDEEF1;
+  --bg-deep:           #EFEDE7;
+  /* THE PLATE — the Pulse's surface: the one dark object on the light page
+     (warm ink), flipping to gold leaf in dark mode. Figures on the plate are
+     set in plate-gold so the numbers glint inside the spoken sentence. */
+  --plate:      #1A150C;
+  --plate-text: #F1E9D6;
+  --plate-dim:  rgba(241, 233, 214, 0.62);
+  --plate-gold: #E3C077;
   --cat-property:      #4E7398;
   --cat-property-soft: rgba(78, 115, 152, 0.14);
   --cat-markets:       #3E8E6B;
@@ -220,20 +236,21 @@
 }
 
 [data-theme="dark"] {
-  /* "Nocturne · Dark" — the hero of the redesign: near-black slate, hairline
-     grid, the same brass accent lifted for dark. Gains calm green, losses muted
-     clay. The trading-terminal mood, kept calm for value investors. */
-  --bg:            #0E1116;
-  --surface:       #151922;
-  --surface-elev:  #1B202B;
-  --surface-center: #12161D;
+  /* "Nocturne · Dark", warmed (2026-07 "Voice & Plate" pass) — the blue-black
+     slate turned to warm charcoal: neutrals biased toward the brass accent so
+     night mode reads as a lamplit study rather than a trading terminal. Gains
+     calm green, losses muted clay; the same brass accent, lifted for dark. */
+  --bg:            #131109;
+  --surface:       #1B1810;
+  --surface-elev:  #232015;
+  --surface-center: #171410;
   --data-bar:      #CBA75E;
-  --border:        rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.13);
-  --text:          #E7EAF0;
-  --text-dim:      #9AA3B2;
-  --text-faint:    #697184;
-  --hero:          #FAFBFD;
+  --border:        rgba(255, 248, 230, 0.08);
+  --border-strong: rgba(255, 248, 230, 0.15);
+  --text:          #EDE7DA;
+  --text-dim:      #A79F8C;
+  --text-faint:    #7C755F;
+  --hero:          #FBF7EC;
   --accent:        #CBA75E;
   --accent-soft:   rgba(203, 167, 94, 0.14);
   --accent-text:   #DCBE82;
@@ -247,18 +264,24 @@
   --negative-soft: rgba(208, 135, 99, 0.15);
   --negative-text: #E0A488;
   /* iOS-style frosted nav surface — pairs with a saturate+blur backdrop filter */
-  --nav-surface:   rgba(14, 17, 22, 0.82);
+  --nav-surface:   rgba(19, 17, 9, 0.82);
   --category-public-markets: #6FAE8B;
   --category-reserves:       #A9A382;
   --category-property:       #6E8FB0;
   --category-crypto:         #D6A14E;
-  --surface-deep:  rgba(255, 255, 255, 0.06);
+  --surface-deep:  rgba(255, 248, 230, 0.06);
   --accent-deep:   #E0C281;
   --negative-deep: #E0A488;
   --amber:         #D9A24A;
   --amber-deep:    #E6BE7A;
   --amber-soft:    rgba(217, 162, 74, 0.18);
-  --bg-deep:           #0A0C10;
+  --bg-deep:           #0D0B06;
+  /* THE PLATE, at night — the negative of the day plate: gold leaf carrying
+     warm ink, so the daily sentence reads minted in both themes. */
+  --plate:      #E9D9A8;
+  --plate-text: #26200F;
+  --plate-dim:  rgba(38, 32, 15, 0.60);
+  --plate-gold: #6B4E14;
   --cat-property:      #6E8FB0;
   --cat-property-soft: rgba(110, 143, 176, 0.16);
   --cat-markets:       #6FAE8B;
@@ -287,7 +310,7 @@
   --perspective-card-grad-end:   rgba(203, 167, 94, 0.06);
   --perspective-panel:           rgba(231, 234, 240, 0.06);
   --perspective-chip-bg:         rgba(231, 234, 240, 0.08);
-  --perspective-dot-border:      #151922;
+  --perspective-dot-border:      #1B1810;
 }
 
 @theme inline {
@@ -486,6 +509,58 @@ html.native-app [contenteditable="true"] {
 .tnum {
   font-family: var(--font-numeric);
   font-feature-settings: "tnum" 1;
+}
+
+/* ── The Pulse plate ─────────────────────────────────────────────────────────
+   The one dark object on the page (gold leaf in dark mode) that carries the
+   daily Pulse sentence. Emphasis spans come from toSafeHtml (PulseBanner):
+   .pulse-em for nouns, .pulse-em.pulse-fig for anything carrying a digit —
+   figures switch to the instrument sans and glint in plate-gold. */
+.pulse-plate {
+  background: var(--plate);
+  color: var(--plate-text);
+}
+.pulse-em {
+  font-weight: 600;
+  font-style: italic;
+}
+.pulse-plate .pulse-fig {
+  font-family: var(--font-ui);
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.93em;
+  color: var(--plate-gold);
+  font-feature-settings: "tnum" 1;
+}
+
+/* The heartbeat hairline across the plate — draws itself once (~1s) when the
+   .animate class is present (gated to once per session by the caller), then
+   rests. Static under reduced motion. */
+.pulse-trace {
+  display: block;
+  width: 100%;
+  height: 10px;
+  margin: 6px 0 7px;
+}
+.pulse-trace path {
+  fill: none;
+  stroke: var(--plate-gold);
+  stroke-width: 1.1;
+  opacity: 0.6;
+}
+.pulse-trace.animate path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pulse-trace-draw 1.1s ease-out 0.2s forwards;
+}
+@keyframes pulse-trace-draw {
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-trace.animate path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
 
 /* ── Reusable surface + control primitives ───────────────────────────────────

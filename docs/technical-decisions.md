@@ -553,6 +553,37 @@ what they owned and reflect on why they decided. Model:
     discarded, prefetch re-warms. **A rewound book must never outlive the
     records it was built from.**
 
+## The Voice & the Plate (2026-07)
+
+Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pulse-voice-plate.html`).
+
+- **Two voices.** Everything the app SPEAKS (the Pulse sentence, signal rows,
+  insight/market details) is set in `--font-voice` — a native serif italic
+  (Iowan Old Style / Palatino / Georgia; zero font payload). Everything it
+  MEASURES (figures, labels, vital rows, titles) stays in the instrument sans
+  with tabular numerals. `SIGNAL_TEXT_STYLE` is the single switch. Figures
+  inside spoken sentences stay sans+gold (`toSafeHtml` emits `.pulse-em`, plus
+  `.pulse-fig` when the emphasis carries a digit).
+- **The plate.** The Pulse renders on `--plate`: warm ink on the light theme,
+  gold leaf on dark — the one dark object on the page. A heartbeat hairline
+  (`PulseTrace`) draws once per session (`usePulseTraceOnce`,
+  `volnar:pulse-trace` in sessionStorage; static under reduced motion). A quiet
+  "· new" appears on the dateline only when today's sentence differs from the
+  last one this device saw (`volnar:pulse-seen` in localStorage).
+- **Doorways.** The plate's trailing clause ("Pressure-test this →") opens the
+  what-if explorer via `requestExplore` — the same hand-off as the projection
+  row. Markets slides show the cron's stored `impact_eur` as a tabular aside
+  ("≈ +€85", hidden when null/sub-euro), via `SwipeExpandItem.aside`.
+- **Warmed neutrals.** Both themes' neutrals now bias toward the brass accent
+  (paper `#F6F5F1`, night `#131109`) instead of blue; semantic
+  (positive/negative/amber) and categorical chart tokens are unchanged. Synced
+  in `globals.css`, `layout.tsx` `themeColor`, and `src/lib/tokens.ts`.
+- **Vertical compactness rule**: the Pulse family must not push the first
+  vital rows below the fold — plate padding 9/11, projection copy terse
+  ("Assuming ~5%/yr, about €649K by 2036."), meta row tightened. Deferred to
+  v2: ember plate on band-change days, tense-matched what-if seeds for
+  insight/market details, vitals-aware explorer chips.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).

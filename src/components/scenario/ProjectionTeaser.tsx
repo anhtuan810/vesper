@@ -166,12 +166,13 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
       >
         {/* Sentence + CTA share one line — the clause trails the statement inline
             (in accent-text) rather than sitting on its own row, so the projection
-            costs a single compact row instead of two. Rendered through the shared
-            SignalRow shell + text spec so it matches Worth knowing / Markets and
-            the Pulse sentence exactly. */}
+            costs a single compact row instead of two. Copy deliberately terse
+            (vertical compactness: one wrapped line, not two). Rendered through
+            the shared SignalRow shell + text spec so it matches Worth knowing /
+            Markets and the Pulse sentence exactly. */}
         <SignalRow icon={<TrendingUpIcon size={14} color="var(--text-faint)" />}>
           <div style={SIGNAL_TEXT_STYLE}>
-            Assuming ~{ratePct}/yr, you could reach about{" "}
+            Assuming ~{ratePct}/yr, about{" "}
             <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
             by <span style={{ fontWeight: 600 }}>{year}</span>.{" "}
             <span style={{ color: "var(--accent-text)", whiteSpace: "nowrap" }}>

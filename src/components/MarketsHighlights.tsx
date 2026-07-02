@@ -3,15 +3,19 @@
 import { useEffect } from "react";
 import type { MarketHighlight } from "@/lib/market-highlights";
 import { SwipeExpandCarousel } from "@/components/SwipeExpandCarousel";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoneyCompact, isSupportedCurrency } from "@/lib/money";
 
 // "Markets" — PortfolioSummaryCard's carousel of up to 3 daily market-news
 // items (cron-generated `type='market'` highlights, deserialized via
 // parseMarketDetail and delivered through dashboard-init's
 // `marketHighlights`). Shares its presentation — collapsible slides, inline
 // dots, leading icon, borderless — with Worth knowing via
-// SwipeExpandCarousel. Read-only: no chat hand-off. When there are no
-// current market highlights it renders nothing, so the section (and its
-// divider) doesn't show.
+// SwipeExpandCarousel. Each slide's stored EUR portfolio impact (estimated
+// by the cron; null when not inferable) shows as a quiet tabular aside, so
+// the news reads as YOUR news at a glance. Read-only: no chat hand-off.
+// When there are no current market highlights it renders nothing, so the
+// section (and its divider) doesn't show.
 
 function ActivityIcon({ size = 14, color }: { size?: number; color: string }) {
   return (
@@ -30,6 +34,7 @@ interface MarketsHighlightsProps {
 
 export function MarketsHighlights({ marketHighlights, onVisibleChange }: MarketsHighlightsProps) {
   const hasMarket = marketHighlights.length > 0;
+  const displayCurrency = useDisplayCurrency();
 
   useEffect(() => {
     onVisibleChange?.(hasMarket);
@@ -37,7 +42,19 @@ export function MarketsHighlights({ marketHighlights, onVisibleChange }: Markets
 
   if (!hasMarket) return null;
 
-  const items = marketHighlights.map((m) => ({ title: m.title, detail: m.detail }));
+  // "≈ +€85" — the cron's estimated impact, converted like every other
+  // EUR-normalized figure. Sub-euro estimates are noise, not signal.
+  const dc = isSupportedCurrency(displayCurrency) ? displayCurrency : "EUR";
+  const fmtImpact = (eur: number | null): string | null => {
+    if (eur == null || !isFinite(eur) || Math.abs(eur) < 1) return null;
+    return `≈ ${eur < 0 ? "−" : "+"}${formatMoneyCompact(Math.abs(eur), "EUR", dc)}`;
+  };
+
+  const items = marketHighlights.map((m) => ({
+    title: m.title,
+    detail: m.detail,
+    aside: fmtImpact(m.impact_eur),
+  }));
 
   return (
     <div style={{ padding: "var(--space-1) 0" }}>

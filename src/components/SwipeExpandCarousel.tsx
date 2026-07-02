@@ -11,16 +11,21 @@ const CHEVRON_PROPS = {
 export interface SwipeExpandItem {
   title: string;
   detail?: string | null;
+  /** Quiet tabular figure shown next to the dots while this slide is active
+   *  (e.g. Markets' "≈ +€85" portfolio impact). */
+  aside?: string | null;
 }
 
-// ── The one signal-row family (the rows under the Vitals Pulse band) ─────────
+// ── The one signal-row family (the rows under the Vitals Pulse plate) ────────
 // Every row — projection, Worth knowing, Markets — and the Pulse sentence
 // itself share this text spec, so the whole block reads as one design from one
-// source: italic display voice at --fs-body, exactly like the band's sentence.
+// source. This is THE VOICE: everything the app speaks is set in the serif
+// italic (--font-voice); everything it measures stays in the instrument sans
+// (figures inside spoken sentences included — see .pulse-fig in globals.css).
 export const SIGNAL_TEXT_STYLE: React.CSSProperties = {
-  fontFamily: "var(--font-display)",
+  fontFamily: "var(--font-voice)",
   fontStyle: "italic",
-  fontSize: "var(--fs-body)",
+  fontSize: "var(--fs-voice)",
   lineHeight: "var(--lh-body)",
   color: "var(--text)",
 };
@@ -96,13 +101,25 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
 
   if (items.length === 0) return null;
 
+  const activeAside = items[safeActiveIndex]?.aside ?? null;
+
   return (
     <SignalRow
       icon={icon}
       right={
-        items.length > 1 ? (
-          <div style={{ marginTop: 3, flexShrink: 0 }}>
-            <CarouselDots count={items.length} activeIndex={safeActiveIndex} onSelect={goTo} />
+        activeAside || items.length > 1 ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexShrink: 0 }}>
+            {activeAside && (
+              <span
+                className="tnum"
+                style={{ fontSize: "var(--fs-caption)", fontWeight: 500, color: "var(--text-dim)", whiteSpace: "nowrap" }}
+              >
+                {activeAside}
+              </span>
+            )}
+            {items.length > 1 && (
+              <CarouselDots count={items.length} activeIndex={safeActiveIndex} onSelect={goTo} />
+            )}
           </div>
         ) : undefined
       }
@@ -158,13 +175,14 @@ export function SwipeExpandCarousel({ icon, items, getKey, onDetailClick }: Swip
                         style={{
                           display: "block", width: "100%", textAlign: "left", marginTop: 4,
                           background: "none", border: "none", cursor: "pointer", padding: 0,
-                          fontSize: "var(--fs-meta)", lineHeight: "var(--lh-snug)", color: "var(--text)", opacity: 0.6,
+                          fontFamily: "var(--font-voice)", fontStyle: "italic",
+                          fontSize: "var(--fs-body)", lineHeight: "var(--lh-body)", color: "var(--text-dim)",
                         }}
                       >
                         {item.detail}
                       </button>
                     ) : (
-                      <div style={{ marginTop: 4, fontSize: "var(--fs-meta)", lineHeight: "var(--lh-snug)", color: "var(--text)", opacity: 0.6 }}>
+                      <div style={{ marginTop: 4, fontFamily: "var(--font-voice)", fontStyle: "italic", fontSize: "var(--fs-body)", lineHeight: "var(--lh-body)", color: "var(--text-dim)" }}>
                         {item.detail}
                       </div>
                     )

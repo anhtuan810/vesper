@@ -67,10 +67,10 @@ export const viewport: Viewport = {
   // resolves to real values (needed by the bottom nav on notched iOS devices).
   viewportFit: "cover",
   // Native WebView background fallback / browser chrome tint. Matches --bg
-  // (Nocturne cool slate-paper light / near-black slate dark).
+  // (warmed bone paper light / warm charcoal dark — the Voice & Plate pass).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F7F8FA" },
-    { media: "(prefers-color-scheme: dark)", color: "#0E1116" },
+    { media: "(prefers-color-scheme: light)", color: "#F6F5F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#131109" },
   ],
 };
 

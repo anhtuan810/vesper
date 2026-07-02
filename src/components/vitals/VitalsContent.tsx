@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PulseBanner, toSafeHtml } from "@/components/vitals/PulseBanner";
+import { PulseBanner, PulseTrace, toSafeHtml, usePulseTraceOnce } from "@/components/vitals/PulseBanner";
+import { requestExplore } from "@/lib/scenario/explore";
 import { FoldRow } from "@/components/FoldRow";
 import { SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
 import { VitalCard } from "@/components/vitals/VitalCard";
@@ -891,6 +892,34 @@ export function VitalsContent({
     router.push(`/chat?seed=insight&key=vital-${key}`);
   }
 
+  // The plate's doorway — "Pressure-test this →" opens the what-if explorer
+  // (same hand-off the projection row uses via PortfolioSummaryCardLoader).
+  function pressureTest() {
+    if (!requestExplore(false)) router.push("/chat");
+  }
+
+  // Heartbeat trace: draws once per session, rests on revisits.
+  const traceAnimate = usePulseTraceOnce();
+
+  // Freshness: a quiet "new" on the dateline, only when today's sentence
+  // differs from the one this device last saw. The comparison key is the
+  // sentence itself — no schema, no extra fetch.
+  const pulseSentence = data
+    ? (showProperty ? data.pulse : (data.pulseLiquid ?? data.pulse)) ?? null
+    : null;
+  const [pulseIsNew, setPulseIsNew] = useState(false);
+  useEffect(() => {
+    if (!pulseSentence) return;
+    try {
+      const prev = localStorage.getItem("volnar:pulse-seen");
+      if (prev !== pulseSentence) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPulseIsNew(true);
+        localStorage.setItem("volnar:pulse-seen", pulseSentence);
+      }
+    } catch {}
+  }, [pulseSentence]);
+
   const hasMixed = useMemo(() => {
     if (!data?.assets?.length) return false;
     return (
@@ -1266,15 +1295,14 @@ export function VitalsContent({
              markets sit below it as sibling signals — all read as a family of
              pulses. Desktop (no host slot) keeps the standalone Pulse banner. */}
       {(() => {
-        const pulseSentence = showProperty ? data.pulse : (data.pulseLiquid ?? data.pulse);
         const hasAssets = data.assets.length > 0;
 
-        // Desktop / no host slot: the standalone Pulse banner, unchanged.
+        // Desktop / no host slot: the standalone Pulse plate card.
         if (!topSlot) {
           if (pulseSentence) {
             return (
               <PulseBanner
-                dateLabel={`Pulse · ${fmtDate()}`}
+                dateLabel={`Pulse · ${fmtDate()}${pulseIsNew ? " · new" : ""}`}
                 sentence={pulseSentence}
                 metaLabel={`${activeVitals.length} vitals`}
               />
@@ -1283,35 +1311,58 @@ export function VitalsContent({
           return hasAssets ? <PulseBannerSkeleton /> : null;
         }
 
-        // Mobile: the Pulse as a full-bleed accent band (edge-to-edge, like
-        // Diary's "On this day"), with the relocated signals (projection /
-        // worth knowing / markets) as plain rows beneath — no card chrome.
+        // Mobile: the Pulse as a full-bleed PLATE — the one dark object on the
+        // page (gold leaf in dark mode) — with the relocated signals
+        // (projection / worth knowing / markets) as plain rows beneath.
+        // Vertically compact: the vitals list must stay above the fold.
         return (
           <>
             {(pulseSentence || hasAssets) && (
-              <div style={{ margin: "0 calc(var(--space-5) * -1)", background: "var(--accent-soft)", padding: "11px var(--space-5) 12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-                  <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.75 }}>
+              <div className="pulse-plate" style={{ margin: "0 calc(var(--space-5) * -1)", padding: "9px var(--space-5) 11px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <div className="eyebrow" style={{ color: "var(--plate-gold)", opacity: 0.85 }}>
                     Pulse · {fmtDate()}
+                    {pulseIsNew && (
+                      <span style={{ color: "var(--plate-gold)", opacity: 1 }}>
+                        {" "}· new
+                      </span>
+                    )}
                   </div>
-                  <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.55 }}>
+                  <div className="eyebrow" style={{ color: "var(--plate-dim)" }}>
                     {activeVitals.length} vitals
                   </div>
                 </div>
+                <PulseTrace animate={traceAnimate} />
                 {pulseSentence ? (
-                  <div
-                    style={SIGNAL_TEXT_STYLE}
-                    dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
-                  />
+                  <div style={{ ...SIGNAL_TEXT_STYLE, color: "var(--plate-text)" }}>
+                    <span dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }} />{" "}
+                    <button
+                      type="button"
+                      onClick={pressureTest}
+                      className="focus-ring"
+                      style={{
+                        display: "inline",
+                        padding: 0,
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        font: "inherit",
+                        color: "var(--plate-gold)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Pressure-test this <span style={{ fontStyle: "normal" }}>→</span>
+                    </button>
+                  </div>
                 ) : (
-                  // Pulse still loading (or unavailable): keep the band's real
-                  // anatomy — eyebrow + a shimmering sentence-length bar — so the
-                  // slot reads as "loading", never as an empty tinted block.
-                  <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)" }} />
+                  // Pulse still loading (or unavailable): keep the plate's real
+                  // anatomy — eyebrow + trace + a shimmering sentence-length
+                  // bar — so the slot reads as "loading", never as an empty plate.
+                  <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--plate-dim)", opacity: 0.35 }} />
                 )}
               </div>
             )}
-            <div style={{ padding: "var(--space-2) 0 var(--space-1)" }}>{topSlot}</div>
+            <div style={{ padding: "var(--space-1) 0 0" }}>{topSlot}</div>
           </>
         );
       })()}
@@ -1331,14 +1382,15 @@ export function VitalsContent({
       ) : layout === "stack" ? (
         // Mobile meta row — mirrors Overview's "12 positions · Collapse all":
         // the count on the left, a quiet global fold action on the right.
+        // Tight top spacing: the vitals list must start above the fold.
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             borderTop: "1px solid var(--border)",
-            marginTop: "var(--space-4)",
-            paddingTop: "var(--space-3)",
+            marginTop: "var(--space-3)",
+            paddingTop: "var(--space-2)",
             marginBottom: "var(--space-1)",
           }}
         >
