@@ -13,6 +13,14 @@ threshold, or adding a vital. Pairs with `vitals-build-state.md` (status) and
   subtracting any mortgage.
 - Each module exports `applies()`, `compute()`, `band()`, and `scope`. All pure,
   deterministic, no DB or LLM. Band values: `green` | `amber` | `red`.
+- **Letter grades (2026-07, mobile fold rows):** `src/lib/vitals/grade.ts` maps
+  each vital to A–D for at-a-glance legibility. Derived, never independent:
+  amber → C and red → D always; the only refinement is inside green — A
+  comfortably in range, B approaching the amber threshold — with cut-offs
+  anchored to the `band()` thresholds listed per vital below. Concentration
+  self-derives from `investableTopPositionPct ?? topPositionPct` (same basis as
+  its band); liquidity's `insufficient` state carries no grade. Consistency is
+  locked by `scripts/verify-vital-grade.ts`.
 - All economic constants come from `getCountryDefaults()` (V1 = NL).
 - **Income pensions are excluded (2026-06).** Assets where `isIncomePension` (`pension_kind` `db` | `state`) are filtered out at the top of `compute` for the five aggregating vitals — concentration, real-asset weight, liquidity posture, leverage, drawdown — **before any value math**; `build-inputs.ts` also skips them in EUR-normalization, and the shared `computeNetWorth` excludes them. They are off-balance future income, not holdings. Capital pensions (`dc` / null) are unchanged, and a capital pension still maps to the liquidity `locked` tier. (Commit `2a7bb26`.)
 

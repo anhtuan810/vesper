@@ -5,8 +5,8 @@
 - **Next.js 16** (Turbopack) with App Router
 - **React** with TypeScript
 - **Tailwind CSS** for styling
-- **Fonts**: Source Serif 4 (serif, hero numbers + section titles), Albert Sans (body, with `font-feature-settings: "tnum" 1` on `body` for tabular numbers), Geist Mono (retained but used sparingly — only the few elements where tabular precision really matters). All loaded from Google Fonts.
-- **Design tokens** in `src/app/globals.css` (CSS vars on `:root, [data-theme="light"]` and `[data-theme="dark"]`) + `tailwind.config.ts` (utilities) + `src/lib/tokens.ts` (TypeScript mirror for inline JS contexts)
+- **Fonts**: Spectral (serif display — big money figures, headings, italic notes, via `--font-serif`), Inter (body + labels via `--font-sans`, tabular figures via `font-feature-settings: "tnum" 1`), IBM Plex Mono (numeric/label detail via `--font-mono`, used sparingly). Loaded by `next/font` in `layout.tsx`; `globals.css` maps them to semantic roles (`--font-display` / `--font-ui` / `--font-label` / `--font-numeric`) — change a role's family there, never in markup.
+- **Design tokens** in `src/app/globals.css` (CSS vars on `:root, [data-theme="light"]` and `[data-theme="dark"]`) + `tailwind.config.ts` (utilities) + `src/lib/tokens.ts` (TypeScript mirror for inline JS contexts). Neutrals warmed toward the brass accent 2026-07-02 (see "The Voice & the Plate").
 - **Theme system**: two modes — `light`, `dark`. `auto` is not supported: the DB check constraint still lists it for backward compatibility, but `PATCH /api/users/me` rejects `theme=auto` with 400 and the Profile picker only shows light/dark. Active theme applied via `data-theme="light"` or `data-theme="dark"` on the document root by `ThemeProvider`. Cookie (`volnar.theme`) read in the root layout for SSR to avoid flash. `useTheme()` hook reads `users.theme`, `setTheme()` writes the cookie and PATCHes `users.theme`.
 - No state management library — local React state and custom hooks only
 - No component library — custom styles using Tailwind utility classes
@@ -179,7 +179,7 @@ Configured in `vercel.json`:
 
 `GET /api/users/me` — returns `{ name, avatar_url, display_currency, theme, fingerprint, profile }` for the authenticated user. `Cache-Control: private, max-age=300, stale-while-revalidate=1800`. Added alongside the HTTP caching work as the foundation for loading user preferences in `UserProvider`.
 
-`PATCH /api/users/me` — the only public write path for `users` columns. Strict field allowlist: `{ display_currency, theme, profile }`. Any other field in the body is rejected with 400. `profile` patches are merged (not replaced) — pass `null` or `""` for a field to remove it. Added in PR 1; absorbed avatar updates (PR 7) and theme updates (PR 1). The defunct `/settings` route was removed per Decision 5 — preferences live on Profile.
+`PATCH /api/users/me` — the only public write path for `users` columns. Strict field allowlist: `{ display_currency, theme, profile }`. Any other field in the body is rejected with 400. `profile` patches are merged (not replaced) — pass `null` or `""` for a field to remove it. Added in PR 1; absorbed avatar updates (PR 7) and theme updates (PR 1). (Historical note: the `/settings` route was removed per Decision 5, later reinstated; since 2026-07-02 settings live in the **account panel** — see "Account Panel" below — with `/settings` kept for deep links.)
 
 ## AI / Claude Integration Approach
 
@@ -474,10 +474,12 @@ full chart/detail. Rules that make it work:
   "insufficient" state gets no grade. Covered by
   `scripts/verify-vital-grade.ts`. Mobile-only for now (desktop cards
   unchanged).
-- **One Pulse family**: the Pulse band sentence and every row under it
-  (projection, Worth knowing, Markets) render through `SIGNAL_TEXT_STYLE` +
-  `SignalRow` exported from `SwipeExpandCarousel.tsx` — one text spec, one row
-  shell, one source. New signal-like rows must use these, not hand-rolled flex.
+- **One Pulse family**: the Pulse sentence and every row under it (projection,
+  Worth knowing, Markets) share `SIGNAL_TEXT_STYLE` from
+  `SwipeExpandCarousel.tsx` — one text spec, one source. New signal-like rows
+  must use it, not hand-rolled styles. (Superseded in part by the 2026-07-02
+  "Voice & the Plate" pass below: the family is now four one-line rows on one
+  wash, and the old `SignalRow` shell is gone.)
 - Profile follows the same grammar (Perspective open by default, Context, Plan
   via `SubscriptionSection`'s `embedded` prop).
 
@@ -507,11 +509,17 @@ full chart/detail. Rules that make it work:
   held/parked scrub, exits the rewind, deselects the entry. It must never park
   a selection at the tip (its pre-rewind behavior).
 - **Demo history protection**: `backfillSnapshots` returns early for demo
-  accounts (entitlements `product_id = 'demo'`) — the demo curve is
-  hand-authored (`SNAPSHOT_ANCHORS`) and a mutation-timeline rebuild would
-  replace it with a collapsed one. Its price valuation also falls FORWARD to the
-  first candle (`priceAtOrBefore(...) ?? history[0]`) so pre-listing dates can't
-  zero a row. Full incident analysis: `docs/audits/demo-networth-cliff.md`.
+  accounts — the demo curve is hand-authored (`SNAPSHOT_ANCHORS`) and a
+  mutation-timeline rebuild would replace it with a collapsed one (symptom:
+  deep near-zero notches at the start of the line, bottoming at the first
+  decision's date). Hardened 2026-07-02 into TWO layers: an env short-circuit
+  (`DEMO_USER_ID`, no DB read — race/outage-proof) and a FAIL-SAFE entitlement
+  check (`product_id = 'demo'`; an errored read aborts the pass — a skipped
+  real-user backfill just retries later). Price valuation also falls FORWARD
+  to the first candle (`priceAtOrBefore(...) ?? history[0]`) so pre-listing
+  dates can't zero a row. A corrupted demo history self-heals on the next
+  demo entry (reseed wipes snapshots). Full incident analysis:
+  `docs/audits/demo-networth-cliff.md`.
 
 ## Named Rewind — Decision Time Travel (2026-07)
 
@@ -605,6 +613,12 @@ Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pul
   (paper `#F6F5F1`, night `#131109`) instead of blue; semantic
   (positive/negative/amber) and categorical chart tokens are unchanged. Synced
   in `globals.css`, `layout.tsx` `themeColor`, and `src/lib/tokens.ts`.
+- **Gold ground = "Volnar noticed this for you".** The `--accent-soft` wash is
+  the one signalling rule for machine-written content: the pulse family wash
+  on Vitals AND the Journal's auto-logged market entries (`DiaryMarketRow`,
+  `MobileMarketEntry` — surface-circle gold glyph, mover-ledger hairlines at
+  `border-strong` so they read on the tint). The user's own entries stay on
+  plain paper; the contrast is the selling point.
 - **Vertical compactness rule**: the pulse family must not push the first
   vital rows below the fold — one line per row collapsed, terse projection
   copy, meta row tightened. Deferred to v2: ember treatment on band-change
@@ -689,12 +703,48 @@ The demo visitor's opening minute, sequenced from three small pieces
   with" list now leads with the screenshot row ("the fastest way in") — one
   screenshot of a broker's positions page beats typing ten holdings.
 
+## Session log — 2026-07-02 (Pulse family → account panel → the first 60 seconds)
+
+One session, seventeen commits on `main`; every item has a full section above.
+The audit trail for "why does X look/behave like this since July 2":
+
+- **Pulse family redesigned three times to converge** (mock → dark plate →
+  four one-line rows, each expanding in place with ONE gold trigger into
+  chat): see "The Voice & the Plate". A serif voice and white drop-down boxes
+  were tried and explicitly rejected — don't reintroduce them.
+- **Warm retheme**: both themes' neutrals biased toward the brass accent;
+  browser/theme-color + `tokens.ts` synced.
+- **Gold ground rule**: `--accent-soft` marks machine-written content
+  everywhere (pulse rows, Journal market entries).
+- **Account panel**: IBKR-style left drawer behind the top-left silhouette
+  button; ALL settings live there; NavBar right side is empty (name, gear and
+  price-refresh removed); Profile tab is purely Perspective/Context/Plan.
+- **Overview rests at Now**: no journal entry selected on load; the old
+  `deselected` tri-state is gone. See "Named Rewind → Ways out".
+- **The first 60 seconds** (demo hook): First Breath reveal, Demo Confession
+  (full dot-tap gesture incl. rewind), Seal Tears verdict reveal, pre-filled
+  chat question, DECISION JOURNAL chat context (the model now sees every
+  logged decision with values/notes/cached verdicts), `demo_verdict_seen` +
+  `minutes_since_signup` metrics, screenshot-first empty state. See "The
+  First 60 Seconds". mobile-wow items 1, 3, 5 shipped; 2, 4, 6 remain.
+- **Demo backfill guard hardened** (env short-circuit + fail-safe entitlement
+  read) after the chart-dip incident resurfaced. See "Demo history
+  protection" under Net-Worth Chart.
+- **Vitals letter grades** (A–D, derived from bands, mobile fold rows): see
+  the foldable-Vitals section and `vitals-metrics-reference.md`.
+- **Chat APP KNOWLEDGE block updated** (`src/lib/claude.ts`): settings
+  location (account panel), Vitals pulse rows + grades, Journal gold entries,
+  chart rewind — the model no longer directs users to "Profile →
+  Preferences".
+- Design explorations archived: `docs/design/redesign/pulse-whatif-compact.html`,
+  `pulse-voice-plate.html`.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).
 - **System prompt is verbose**. At 50+ assets, ~50% token compression is achievable. Not yet implemented.
 - ~~**No tests**. Zero unit, integration, or E2E coverage.~~ — **shipped**: per-commit hermetic suite (`npm test`) + manual-trigger model and demo behaviour evals. See "Automated Testing & Chat Behaviour Evals" above.
-- ~~**No analytics**~~ — **shipped**: `@vercel/analytics` with 4 pilot events (signup, first_asset_added, first_chat_mutation, return_visit_day2_plus). See `current-features.md` → Pilot Analytics.
+- ~~**No analytics**~~ — **shipped**: `@vercel/analytics` with 5 pilot events (signup, first_asset_added — now carrying `minutes_since_signup`, first_chat_mutation, return_visit_day2_plus, demo_verdict_seen) plus chip impression/interaction telemetry (`src/lib/chip-telemetry.ts`). See "The First 60 Seconds" above for the two hook metrics.
 - **Hardcoded FX fallback rates drift**. Review annually if both DB cache and frankfurter.app fail.
 - **Two-write atomicity**. Asset + mutation insert is not a DB transaction. The **add** path now rolls back the orphaned asset if its mutation insert fails (2026-06); a multi-row batch is still per-row best-effort (one bad row reports and skips, doesn't abort the others — intentional). A true all-or-nothing RPC remains unimplemented. Sentry captures failures.
 - **UTC "today" off-by-one**. `occurred_at` / sale-date defaults use `new Date().toISOString()` (UTC), so a same-day event near midnight in a far-from-UTC timezone can be dated one day off. Needs the client's local date/timezone passed to the server. Edge-case; deferred.
