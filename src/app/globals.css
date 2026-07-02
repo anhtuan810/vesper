@@ -27,12 +27,6 @@
   --font-display: var(--sans);   /* wordmark · screen titles · net-worth figure · italic notes */
   --font-ui:      var(--sans);   /* body · list names · buttons · nav — everything structural */
   --font-label:   var(--sans);   /* uppercase micro-labels (eyebrows) — sans, NOT mono */
-  /* THE VOICE — everything the app SPEAKS (the Pulse sentence, signal rows,
-     insights, what-if questions) as opposed to what it MEASURES. A true serif
-     italic, native on iOS/macOS (Iowan Old Style is the Apple Books face), so
-     the spoken layer costs zero font payload. Figures inside spoken sentences
-     stay in the instrument sans (see .pulse-fig). */
-  --font-voice: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
   /* One UI family: numeric detail now uses the sans too (Inter), with tabular
      figures coming from font-feature-settings "tnum" (body + .tnum) rather than
      a separate monospace — so money, %, shares and dates match everything else. */
@@ -62,7 +56,6 @@
   --fs-caption: 11.5px;
   --fs-meta:    12px;
   --fs-body:    13px;
-  --fs-voice:   14px; /* spoken sentences (--font-voice): serifs run small, so +1 over body */
   --fs-subhead: 14px;
   --fs-title:   17px;
   --fs-metric:  24px;

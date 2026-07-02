@@ -167,8 +167,8 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
           <SignalDropBox
             detail={
               <>
-                Could land anywhere between {lowFig} and {highFig} — the ~{ratePct} is a
-                fixed assumption, not a forecast from your history.
+                Between {lowFig} and {highFig}, depending on markets — the ~{ratePct} is
+                an assumption, not a forecast.
               </>
             }
             trigger={{ label: clause, onActivate: handleCardActivate }}

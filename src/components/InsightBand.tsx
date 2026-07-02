@@ -8,23 +8,42 @@ import { SwipeExpandCarousel } from "@/components/SwipeExpandCarousel";
 // The pre-made question a "Worth knowing" card hands to chat — matched to the
 // content the deterministic detectors write about (portfolio-insights.ts:
 // concentration / cash drag / currency mismatch, plus the property-anchor
-// legacy insight). Fit beats cleverness: each question names the same subject
-// the card does, so the hand-off never feels like a topic change.
-export function insightQuestion(title: string, detail: string): string {
+// legacy insight). `label` is the short trigger clause shown on the row;
+// `question` is the full standalone question pre-filled into the chat
+// composer (it must carry its own context — the model won't see the card).
+export function insightQuestion(
+  title: string,
+  detail: string,
+): { label: string; question: string } {
   const t = `${title} ${detail}`.toLowerCase();
   if (/(home|property|real estate|housing)/.test(t)) {
-    return "What if housing dipped 15% — what would it mean for my net worth?";
+    return {
+      label: "What if housing dipped 15%?",
+      question: "What if housing dipped 15% — what would it mean for my net worth?",
+    };
   }
   if (/(concentrat|biggest|largest|top position|single position)/.test(t)) {
-    return "What if my biggest holding dropped 30%?";
+    return {
+      label: "What if it dropped 30%?",
+      question: "What if my biggest holding dropped 30%?",
+    };
   }
   if (/(cash|savings|idle)/.test(t)) {
-    return "What is my idle cash costing me — and what if I put part of it to work?";
+    return {
+      label: "What is this costing me?",
+      question: "What is my idle cash costing me — and what if I put part of it to work?",
+    };
   }
   if (/(currency|dollar|euro|usd|eur|gbp|exchange)/.test(t)) {
-    return "What does my currency exposure mean for my portfolio?";
+    return {
+      label: "What about my currency risk?",
+      question: "What does my currency exposure mean for my portfolio?",
+    };
   }
-  return "Why does this matter for my portfolio?";
+  return {
+    label: "Why does this matter?",
+    question: `${title} — why does this matter for my portfolio?`,
+  };
 }
 
 // "Worth knowing" — the pulse row for the portfolio insight cards from
@@ -51,17 +70,20 @@ export function InsightBand({ onVisibleChange }: { onVisibleChange?: (visible: b
 
   if (insights.length === 0) return null;
 
+  // Pre-fills the chat composer with the question (volnar.empty.input is the
+  // existing prefill channel the chat page reads on mount), so the user lands
+  // with the text ready to edit or send — no intermediate seed bubble.
   const askQuestion = (question: string) => {
-    try { sessionStorage.setItem("volnar.insight.seed", question); } catch {}
-    router.push("/chat?seed=insight&key=current");
+    try { sessionStorage.setItem("volnar.empty.input", question); } catch {}
+    router.push("/chat");
   };
 
   const items = insights.map((ins) => {
-    const question = insightQuestion(ins.title, ins.detail);
+    const { label, question } = insightQuestion(ins.title, ins.detail);
     return {
       title: ins.title,
       detail: ins.detail,
-      trigger: { label: question, onActivate: () => askQuestion(question) },
+      trigger: { label, onActivate: () => askQuestion(question) },
     };
   });
 

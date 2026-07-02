@@ -41,19 +41,21 @@ export function MarketsHighlights({ marketHighlights, onVisibleChange }: Markets
     return `≈ ${eur < 0 ? "−" : "+"}${formatMoneyCompact(Math.abs(eur), "EUR", dc)}`;
   };
 
+  // Pre-fills the chat composer with the question (volnar.empty.input is the
+  // existing prefill channel the chat page reads on mount), so the user lands
+  // with the text ready to edit or send — no intermediate seed bubble.
   const askQuestion = (question: string) => {
-    try { sessionStorage.setItem("volnar.insight.seed", question); } catch {}
-    router.push("/chat?seed=insight&key=current");
+    try { sessionStorage.setItem("volnar.empty.input", question); } catch {}
+    router.push("/chat");
   };
 
   const items = marketHighlights.map((m) => {
     const impact = fmtImpact(m.impact_eur);
+    // The composer question carries the headline — the model won't see the row.
     const question = m.symbol
       ? `${m.title} — what does this mean for my ${m.symbol} position?`
       : `${m.title} — what does this news mean for my portfolio?`;
-    const label = m.symbol
-      ? `What does this mean for my ${m.symbol}?`
-      : "What does this mean for me?";
+    const label = m.symbol ? `What does this mean for my ${m.symbol}?` : "What does this mean for me?";
     return {
       title: m.title,
       detail: m.detail,

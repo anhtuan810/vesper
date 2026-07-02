@@ -22,28 +22,29 @@ export interface SwipeExpandItem {
 
 // ── The one signal-row family (the pulse rows at the top of Vitals) ──────────
 // Every row — Pulse, projection, Worth knowing, Markets — shares this text
-// spec, so the whole block reads as one design from one source. This is THE
-// VOICE: ALL text in the family (titles, details, triggers, even figures) is
-// set in the serif italic (--font-voice) — no mid-sentence font switches.
+// spec, so the whole block reads as one design from one source: the same
+// italic display voice (Inter) the rest of Volnar uses — Vitals must not
+// read as a different app. Figures differ by gold colour only, never font.
 export const SIGNAL_TEXT_STYLE: React.CSSProperties = {
-  fontFamily: "var(--font-voice)",
+  fontFamily: "var(--font-display)",
   fontStyle: "italic",
-  fontSize: "var(--fs-voice)",
+  fontSize: "var(--fs-body)",
   lineHeight: "var(--lh-body)",
   color: "var(--text)",
 };
 
 // The trigger clause — one gold spoken sentence, the row's single action.
 export const TRIGGER_TEXT_STYLE: React.CSSProperties = {
-  fontFamily: "var(--font-voice)",
+  fontFamily: "var(--font-display)",
   fontStyle: "italic",
   fontSize: "var(--fs-body)",
   lineHeight: "var(--lh-body)",
   color: "var(--accent-text)",
 };
 
-// The drop-down box under an expanded row: a full-width surface card holding
-// the detail and the trigger clause, flush with the row's left edge.
+// The expanded content under a row: plain text, no box chrome — the detail in
+// dim ink, the trigger clause in gold beneath it, flush with the row's left
+// edge.
 export function SignalDropBox({
   detail,
   trigger,
@@ -53,20 +54,11 @@ export function SignalDropBox({
 }) {
   if (!detail && !trigger) return null;
   return (
-    <div
-      style={{
-        marginTop: 6,
-        marginBottom: 2,
-        background: "var(--surface)",
-        border: "0.5px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-        padding: "9px 11px",
-      }}
-    >
+    <div style={{ marginTop: 4, marginBottom: 2 }}>
       {detail && (
         <div
           style={{
-            fontFamily: "var(--font-voice)",
+            fontFamily: "var(--font-display)",
             fontStyle: "italic",
             fontSize: "var(--fs-body)",
             lineHeight: "var(--lh-body)",

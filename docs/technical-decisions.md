@@ -557,21 +557,19 @@ what they owned and reflect on why they decided. Model:
 
 Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pulse-voice-plate.html`).
 
-- **Two voices.** Everything the app SPEAKS (the Pulse sentence, signal rows,
-  insight/market details) is set in `--font-voice` — a native serif italic
-  (Iowan Old Style / Palatino / Georgia; zero font payload). Everything it
-  MEASURES (figures, labels, vital rows, titles) stays in the instrument sans
-  with tabular numerals. `SIGNAL_TEXT_STYLE` is the single switch. Figures
-  inside spoken sentences stay sans+gold (`toSafeHtml` emits `.pulse-em`, plus
-  `.pulse-fig` when the emphasis carries a digit).
+- **One face, one voice.** The pulse family uses the SAME typography as the
+  rest of Volnar — the italic display voice (Inter) at `--fs-body` via
+  `SIGNAL_TEXT_STYLE`. No dedicated typeface: a serif "voice" was tried and
+  rejected (Vitals read as a different app). Figures inside the Pulse
+  sentence differ by gold colour only, never by font (`toSafeHtml` emits
+  `.pulse-em`, plus `.pulse-fig` when the emphasis carries a digit).
 - **Four one-line pulse rows (mobile).** The narrative Pulse, projection,
   Worth knowing and Markets are four single-line rows on ONE full-bleed
-  `--accent-soft` wash — no icons, everything flush left, EVERYTHING in the
-  voice serif (figures inside sentences differ by gold colour only, never by
-  font). Each row expands to a full-width drop-down box (`SignalDropBox`:
-  detail + exactly ONE gold trigger sentence); the box renders BELOW the title
-  row, outside the carousel flex, so the aside/dots column can never squeeze
-  it. The wash header carries the dateline, the heartbeat hairline
+  `--accent-soft` wash — no icons, no boxes, everything flush left. Each row
+  expands in place (`SignalDropBox`: plain dim detail + exactly ONE short gold
+  trigger clause, no card chrome); the expanded content renders BELOW the
+  title row, outside the carousel flex, so the aside/dots column can never
+  squeeze it. The wash header carries the dateline, the heartbeat hairline
   (`PulseTrace`, draws once per session via `usePulseTraceOnce`; static under
   reduced motion) and the vitals count — the trace lives inside the header row
   so it costs no height. A quiet "· new" appears on the dateline only when
@@ -581,14 +579,15 @@ Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pul
   first line.
 - **The plate (desktop).** The standalone `PulseBanner` renders on `--plate`:
   warm ink on the light theme, gold leaf on dark.
-- **Triggers → chat, with a fitting pre-made question.** Pulse:
-  "Pressure-test this →" opens the what-if explorer (`requestExplore`).
-  Projection: "See what moves it →" (same explorer) with the low–high range in
-  its drop-down. Worth knowing: `insightQuestion()` pattern-matches the card's
-  content to the detectors (housing / concentration / cash / currency) and
-  seeds chat via `volnar.insight.seed`. Markets: "What does this mean for my
-  NVDA?" seeds chat with the headline + question; slides also show the cron's
-  stored `impact_eur` aside ("≈ +€85", hidden when null/sub-euro).
+- **Triggers pre-fill the chat composer.** Worth knowing
+  (`insightQuestion()`: short row label + full standalone question matched to
+  the card — housing / concentration / cash / currency) and Markets (headline
+  + "what does this mean for my NVDA position?") write the question into
+  `volnar.empty.input` — the chat page's existing composer-prefill channel —
+  so the user lands with the text ready to edit or send. Pulse
+  ("Pressure-test this →") and projection ("See what moves it →") open the
+  what-if explorer (`requestExplore`: cone + chips). Markets slides also show
+  the cron's stored `impact_eur` aside ("≈ +€85", hidden when null/sub-euro).
 - **Warmed neutrals.** Both themes' neutrals now bias toward the brass accent
   (paper `#F6F5F1`, night `#131109`) instead of blue; semantic
   (positive/negative/amber) and categorical chart tokens are unchanged. Synced
