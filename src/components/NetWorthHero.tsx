@@ -2,7 +2,7 @@
 
 import { formatMoney } from "@/lib/money";
 import { useDisplayCurrencyState } from "@/lib/hooks";
-import type { SnapshotPoint, Range } from "@/components/NetWorthChart";
+import { fmtTipDate, type SnapshotPoint, type Range } from "@/components/NetWorthChart";
 import type { Mutation } from "@/lib/supabase";
 import { firstSnapshotDate, hasSufficientHistory } from "@/lib/networth-history";
 
@@ -28,6 +28,16 @@ const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
   "All": null,
 };
 
+// A parked rewind: the user tapped a decision dot, so the hero stands at that
+// day. `total` is the sum of the reconstructed as-of holdings (null while the
+// reconstruction loads) — the SAME rows the list below renders, so the two can
+// never disagree. `approx` marks a book with an unpriceable position in it.
+export interface HeroRewind {
+  date: string;
+  total: number | null;
+  approx: boolean;
+}
+
 interface NetWorthHeroProps {
   netTotal: number;
   range: Range;
@@ -36,6 +46,12 @@ interface NetWorthHeroProps {
   mutations?: Mutation[];
   liquidOnly: boolean;
   onSetLiquid: (v: boolean) => void;
+  // The point under a HELD scrub gesture (already display-currency). Transient
+  // by construction — the chart emits null the moment the finger lifts, so the
+  // hero springs back to whatever it was showing before (rewind or live).
+  scrubPoint?: SnapshotPoint | null;
+  rewind?: HeroRewind | null;
+  onExitRewind?: () => void;
 }
 
 function fmtSelectedDate(dateStr: string): string {
@@ -81,12 +97,17 @@ function LiquidToggle({ liquidOnly, onSetLiquid }: { liquidOnly: boolean; onSetL
   );
 }
 
-// The hero has ONE job, always: the live value. It never rewinds — scrubbing
-// the chart reads out in the chart's own tooltip, and decision dots speak
-// through the journal entry below. (The old scrubbed-point rewind is gone by
-// design: an interrupted gesture could park a historical value up here posing
-// as the current one.)
-export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations, liquidOnly, onSetLiquid }: NetWorthHeroProps) {
+// The hero answers "how much?" for whatever moment the page is standing at.
+// Three states, strict precedence:
+//   1. Scrub (held) — the value under the finger, captioned with its date. A
+//      gesture, not a state: release always springs back to 2 or 3. Anonymous
+//      time can be READ but never parked.
+//   2. Rewind (parked) — a tapped decision dot stands the whole page at that
+//      day: date eyebrow, the reconstructed book's total, "Back to today" out.
+//      Named time may persist, because the journal entry below says what it is.
+//   3. Live (rest) — the current value with its range delta. The default, and
+//      the ONLY state that can show a change pill.
+export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations, liquidOnly, onSetLiquid, scrubPoint, rewind, onExitRewind }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
 
   const seriesStart = series?.[0];
@@ -152,7 +173,10 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
   const activeAbs = rangeAbs;
   const activePct = rangePct;
   const isPositive = activeAbs != null ? activeAbs >= 0 : true;
-  const displayValue = netTotal;
+  const scrubbing = scrubPoint != null;
+  // Strict precedence: held scrub > parked rewind > live. Null only while a
+  // rewind's reconstruction is still loading (renders as a skeleton, never 0).
+  const displayValue = scrubbing ? scrubPoint.total_value : rewind ? rewind.total : netTotal;
 
   const earliestDate = series ? firstSnapshotDate(series) : null;
   const label = isIntradayLiquid
@@ -182,35 +206,78 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
 
   return (
     <div>
-      {/* Net worth / Liquid segmented toggle — drives liquidOnly (number/series/
-          delta already follow it). */}
-      <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
-
-      {/* Hero number — monochrome */}
-      <div
-        className="font-display leading-none"
-        style={{
-          fontSize: "var(--fs-hero)",
-          fontWeight: 600,
-          letterSpacing: "var(--tracking-hero)",
-          color: "var(--hero)",
-          fontVariationSettings: "'opsz' 48",
-        }}
-      >
-        <span>{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
-      </div>
-
-      {/* Change pill — compact tinted, mirrors the asset-detail delta pill */}
-      {formattedAbs != null && (
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
-          <span className="tnum" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: "var(--radius-pill)", fontSize: "var(--fs-meta)", fontWeight: 500, background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)", color: isPositive ? "var(--positive-text)" : "var(--negative-text)" }}>
-            <svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
-              {isPositive ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" /> : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}
-            </svg>
-            {sign}{formattedAbs}{showPct && formattedPct != null ? ` (${formattedPct}%)` : ""}
-          </span>
-          <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-caption)", fontFamily: "var(--font-numeric)" }}>{label}</span>
+      {/* Top slot follows the PARKED state (stable through a held scrub):
+          rewound → the day's date as an eyebrow; otherwise the Net worth /
+          Liquid segmented toggle. minHeight matches the toggle so swapping
+          modes doesn't jolt the chart below. */}
+      {rewind ? (
+        <div
+          className="eyebrow"
+          style={{ color: "var(--accent-text)", display: "flex", alignItems: "center", minHeight: 25, marginBottom: "var(--space-3)" }}
+        >
+          {fmtSelectedDate(rewind.date)}
         </div>
+      ) : (
+        <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
+      )}
+
+      {/* Hero number — monochrome. Rewound at rest it steps down from the hero
+          tone (this is a reconstruction, not your money right now) and carries
+          ≈ when a position in the book couldn't be priced for that day. */}
+      {displayValue == null ? (
+        <div
+          className="bg-surface-elev rounded-lg animate-pulse"
+          style={{ height: 42, width: "60%", maxWidth: 280 }}
+        />
+      ) : (
+        <div
+          className="font-display leading-none"
+          style={{
+            fontSize: "var(--fs-hero)",
+            fontWeight: 600,
+            letterSpacing: "var(--tracking-hero)",
+            color: rewind && !scrubbing ? "var(--text)" : "var(--hero)",
+            fontVariationSettings: "'opsz' 48",
+          }}
+        >
+          <span>{rewind && !scrubbing && rewind.approx ? "≈ " : ""}{formatMoney(displayValue, displayCurrency, displayCurrency)}</span>
+        </div>
+      )}
+
+      {/* The line under the number follows the same precedence as the number:
+          held scrub → the held point's dateline; parked rewind → the way back
+          ("Back to today") + what this number is; live → the change pill. */}
+      {scrubbing ? (
+        <div style={{ display: "flex", alignItems: "center", marginTop: "var(--space-2)" }}>
+          <span className="tnum" style={{ display: "inline-flex", alignItems: "center", padding: "3px 9px", borderRadius: "var(--radius-pill)", fontSize: "var(--fs-meta)", fontWeight: 500, background: "var(--surface-elev)", color: "var(--text-dim)" }}>
+            {fmtTipDate(scrubPoint.date)}
+          </span>
+        </div>
+      ) : rewind ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
+          <button
+            type="button"
+            onClick={onExitRewind}
+            className="tnum"
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: "var(--radius-pill)", fontSize: "var(--fs-meta)", fontWeight: 500, background: "none", border: "0.5px solid var(--border)", color: "var(--accent-text)", cursor: "pointer" }}
+          >
+            ← Back to today
+          </button>
+          <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-caption)", fontFamily: "var(--font-numeric)" }}>reconstructed from your records</span>
+        </div>
+      ) : (
+        /* Change pill — compact tinted, mirrors the asset-detail delta pill */
+        formattedAbs != null && (
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
+            <span className="tnum" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: "var(--radius-pill)", fontSize: "var(--fs-meta)", fontWeight: 500, background: isPositive ? "var(--positive-soft)" : "var(--negative-soft)", color: isPositive ? "var(--positive-text)" : "var(--negative-text)" }}>
+              <svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                {isPositive ? <path d="M216,72v96a8,8,0,0,1-8,8H112a8,8,0,0,1-5.66-13.66L208,60.69Z" /> : <path d="M216,184v-96a8,8,0,0,0-8-8H112a8,8,0,0,0-5.66,13.66L208,195.31Z" />}
+              </svg>
+              {sign}{formattedAbs}{showPct && formattedPct != null ? ` (${formattedPct}%)` : ""}
+            </span>
+            <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-caption)", fontFamily: "var(--font-numeric)" }}>{label}</span>
+          </div>
+        )
       )}
     </div>
   );

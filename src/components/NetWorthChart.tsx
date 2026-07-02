@@ -90,12 +90,12 @@ interface Props {
   onRangeChange: (r: Range) => void;
   series: SnapshotPoint[];
   loading: boolean;
+  // Fires with the point under the finger while a scrub gesture is HELD, and
+  // with null the moment it releases (touch end/cancel, mouse leave, app
+  // backgrounded) — the consumer's resting state is always "no selection".
+  // The mobile hero renders this as a transient readout: the value changes
+  // under the finger and springs back when the finger lifts.
   onSelectPoint?: (point: SnapshotPoint | null) => void;
-  // Enable value-scrubbing (cursor + date/total tooltip) WITHOUT wiring the
-  // selection anywhere: the readout lives in the chart's own tooltip and the
-  // hero above stays at the live value. The mobile Overview uses this — the
-  // hero's one job at rest (and now at all times) is "your money, current".
-  scrub?: boolean;
   valuesSettled?: boolean;
   // Count of real (DB-backed) snapshot rows on distinct days, before `buildSeries`
   // synthesizes today's live tip — distinguishes "day one" from "real history".
@@ -151,9 +151,10 @@ function formatXLabel(date: string, range: Range): string {
   return `${mon} '${date.slice(2, 4)}`;
 }
 
-// Tooltip dateline — "1 Jan 2025" for daily rows, "14:35 · 1 Jul" for the
-// intraday (Liquid · 1D) series' ISO timestamps.
-function fmtTipDate(date: string): string {
+// Scrub dateline — "1 Jan 2025" for daily rows, "14:35 · 1 Jul" for the
+// intraday (Liquid · 1D) series' ISO timestamps. Exported for the hero, which
+// captions the held-scrub value with the same dateline.
+export function fmtTipDate(date: string): string {
   const d = new Date(date.length > 10 ? date : date + "T12:00:00Z");
   if (Number.isNaN(d.getTime())) return date;
   if (date.length > 10) {
@@ -315,7 +316,7 @@ export function NetWorthChart(props: Props) {
   // Whether the consumer wants a value readout on scrub. Only the mobile
   // Overview (PortfolioTab) passes onSelectPoint; the desktop Overview and the
   // marketing chart do not, so they keep the pure decision-dot interaction.
-  const scrubbable = !!props.onSelectPoint || !!props.scrub;
+  const scrubbable = !!props.onSelectPoint;
 
   useEffect(() => {
     const el = svgContainerRef.current;
@@ -836,12 +837,12 @@ export function NetWorthChart(props: Props) {
             </svg>
           )}
 
-          {/* Scrub readout — the point's date + total lead, category rows
-              beneath. This card is the ONE place a historical value appears:
-              the hero above never rewinds, so "what am I looking at?" always
-              has the same answer — the hero is now, this card is the point
-              under your finger, the journal below is the entry. */}
-          {selectedIndex !== null && selectedX !== null && !hoveredDot && (
+          {/* Scrub annotation — category breakdown ONLY. The held point's date
+              and total live in the hero (which follows the finger and springs
+              back on release), so this card never repeats them; it answers the
+              second question — "made of what?" — next to the finger. Liquid
+              (lineOnly) has no real breakdown, so it renders no card at all. */}
+          {selectedIndex !== null && selectedX !== null && !hoveredDot && tooltipSegments.length > 0 && (
             <div
               style={{
                 position: "absolute",
@@ -857,21 +858,6 @@ export function NetWorthChart(props: Props) {
                 zIndex: 2,
               }}
             >
-              <div
-                style={{
-                  display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8,
-                  ...(tooltipSegments.length > 0
-                    ? { borderBottom: "0.5px solid var(--border)", paddingBottom: 6, marginBottom: 6 }
-                    : {}),
-                }}
-              >
-                <span className="tnum" style={{ fontSize: "var(--fs-micro)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)", whiteSpace: "nowrap" }}>
-                  {fmtTipDate(displaySeries[selectedIndex]?.date ?? "")}
-                </span>
-                <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 600, color: "var(--hero)" }}>
-                  {formatMoney(values[selectedIndex] ?? 0, displayCurrency, displayCurrency)}
-                </span>
-              </div>
               {tooltipSegments.map(({ category, value }) => (
                 <div key={category} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>

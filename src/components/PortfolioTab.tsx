@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { NetWorthHero } from "@/components/NetWorthHero";
+import type { HoldingAt } from "@/lib/snapshot";
 import {
   NetWorthChart,
   type SnapshotPoint,
@@ -51,6 +52,10 @@ function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
 const LIQUID_TYPES = ["stocks", "etf", "crypto"];
 const LIQUID_ONLY_KEY = "volnar:liquid-only";
 
+// Unit count for a rewound tradeable row — nl-NL grouping, up to 4 decimals
+// (crypto fractions stay readable, whole share counts stay clean).
+const fmtUnits = (u: number) => new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 4 }).format(u);
+
 interface PortfolioTabProps {
   assets: LiveAsset[];
   grossTotal: number;
@@ -89,10 +94,20 @@ export function PortfolioTab({
   const [loading, setLoading] = useState(!initialSnapshots);
   // The decision selected on the chart / in the journal (shared between the two,
   // mirroring the desktop). null → default to the newest in-range decision.
-  // NOTE: there is deliberately NO scrubbed-point state up here anymore — the
-  // hero always shows the live value; the scrub readout lives in the chart's
-  // own tooltip (date + total at the point under the finger).
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  // The point under a HELD scrub — the chart emits it while the finger is down
+  // and null on release, so the hero readout is transient by construction.
+  const [scrubPoint, setScrubPoint] = useState<SnapshotPoint | null>(null);
+  // A parked NAMED rewind: tapping a decision dot stands the whole page — hero
+  // number AND holdings list — at that entry's day. Only a dot tap can set it
+  // (anonymous points on the line can be read via scrub but never parked); it
+  // clears via "Back to today", a range switch, the Liquid lens, or leaving
+  // the tab. `date` is the entry's YYYY-MM-DD day.
+  const [rewind, setRewind] = useState<{ id: string; date: string } | null>(null);
+  // As-of-date books already reconstructed this session, keyed by date — a
+  // past day's book never changes under the user's feet, so re-tapping a dot
+  // must not refetch. This doubles as the fetch guard.
+  const [holdingsByDate, setHoldingsByDate] = useState<Record<string, HoldingAt[]>>({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,7 +127,31 @@ export function PortfolioTab({
 
   useEffect(() => {
     setSelectedDecisionId(null);
+    setRewind(null);
   }, [range]);
+
+  // Fetch the reconstructed book for the rewound date (once per date per
+  // session — `holdingsByDate` is both the cache and the guard). On failure,
+  // fall back to today rather than leaving the hero stuck on a skeleton.
+  useEffect(() => {
+    if (!rewind || holdingsByDate[rewind.date]) return;
+    const date = rewind.date;
+    const controller = new AbortController();
+    apiFetch(`/api/holdings-at?date=${date}`, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`holdings-at ${r.status}`);
+        return r.json();
+      })
+      .then((body) => {
+        setHoldingsByDate((prev) => ({ ...prev, [date]: body.data ?? [] }));
+      })
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        console.error("Holdings-at fetch failed:", err);
+        setRewind((cur) => (cur?.date === date ? null : cur));
+      });
+    return () => controller.abort();
+  }, [rewind, holdingsByDate]);
 
   // Live per-asset-type breakdown (display currency) for the synthesized
   // "today" tip — same equity valuation as netTotal (page.tsx) and the
@@ -156,6 +195,9 @@ export function PortfolioTab({
   }, []);
   const setLiquid = (v: boolean) => {
     setLiquidOnly(v);
+    // The rewound book is the full net worth — it has no liquid lens, so
+    // switching lenses returns to today first.
+    if (v) setRewind(null);
     try { sessionStorage.setItem(LIQUID_ONLY_KEY, String(v)); } catch {}
     // 1D is liquid-only; leaving the liquid view drops back to the default window.
     if (!v && range === "1D") setRange("All");
@@ -283,6 +325,53 @@ export function PortfolioTab({
       ? selectedDecisionId
       : navDecisions[0]?.id ?? null;
 
+  // Tapping a decision dot selects the journal entry AND parks the rewind at
+  // its day — the user said what moment they mean, so the hero and the
+  // holdings below both stand there. A today-dated entry has nothing to
+  // reconstruct (the live page IS that day), and the Liquid lens shows a
+  // subset the full-book rewind doesn't speak for — both just select.
+  const onMarkerClick = (id: string) => {
+    setSelectedDecisionId(id);
+    const d = navDecisions.find((x) => x.id === id);
+    if (!d || liquidOnly) return;
+    const day = mDate(d).slice(0, 10);
+    if (day < new Date().toISOString().slice(0, 10)) setRewind({ id, date: day });
+  };
+
+  // The rewound book, ready to render: per-row display values, category groups
+  // with totals, and the grand total the hero shows — summed from the SAME
+  // rows the list renders, so the two can never disagree. A row whose value
+  // couldn't be established (no price record for that day, or no usable FX
+  // rate) is listed with a dash and makes the total approximate — honest and
+  // visible, never silently guessed. null while the reconstruction loads.
+  const rewindBook = useMemo(() => {
+    const holdings = rewind ? holdingsByDate[rewind.date] : undefined;
+    if (!rewind || !holdings) return null;
+    const rows = holdings.map((h) => ({
+      ...h,
+      displayValue: h.value != null ? toDisplay(h.value, h.currency || "USD", displayCurrency) : null,
+    }));
+    const byCategory: Record<string, typeof rows> = {};
+    for (const r of rows) {
+      const cat = CATEGORY_MAP[r.type] ?? "reserves";
+      (byCategory[cat] ??= []).push(r);
+    }
+    const groups = Object.entries(byCategory)
+      .map(([cat, items]) => ({
+        category: cat,
+        label: CATEGORY_LABEL[cat] ?? cat,
+        items: [...items].sort((a, b) => (b.displayValue ?? -1) - (a.displayValue ?? -1)),
+        total: items.reduce((s, r) => s + (r.displayValue ?? 0), 0),
+      }))
+      .sort((a, b) => (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99));
+    return {
+      groups,
+      total: rows.reduce((s, r) => s + (r.displayValue ?? 0), 0),
+      approx: rows.some((r) => r.displayValue == null),
+      count: rows.length,
+    };
+  }, [rewind, holdingsByDate, displayCurrency]);
+
   // Group by semantic category, ordered by the fixed CATEGORY_ORDER (Crypto above
   // Reserves); rows within a group still sort by value desc.
   const groups = useMemo(() => {
@@ -354,7 +443,18 @@ export function PortfolioTab({
           number, chart and range pills sit flush with the full-bleed market/insight band edges. */}
       <div style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={heroTotal} range={range} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onSetLiquid={setLiquid} />
+          <NetWorthHero
+            netTotal={heroTotal}
+            range={range}
+            series={heroSeriesActive}
+            valuesSettled={valuesSettled}
+            mutations={mutations}
+            liquidOnly={liquidOnly}
+            onSetLiquid={setLiquid}
+            scrubPoint={scrubPoint}
+            rewind={rewind ? { date: rewind.date, total: rewindBook?.total ?? null, approx: rewindBook?.approx ?? false } : null}
+            onExitRewind={() => setRewind(null)}
+          />
         </div>
 
         {heroTotal > 0 && (
@@ -364,7 +464,7 @@ export function PortfolioTab({
               onRangeChange={setRange}
               series={chartSeriesActive}
               loading={isIntraday ? intradayLoading : loading}
-              scrub
+              onSelectPoint={setScrubPoint}
               valuesSettled={valuesSettled}
               realPointCount={fullSnapshots.length}
               trackingSinceDate={trackingSinceDate}
@@ -372,7 +472,7 @@ export function PortfolioTab({
               liquidOnly={liquidOnly}
               markers={isIntraday ? undefined : markers}
               selectedMarkerId={activeMarkerId}
-              onMarkerClick={setSelectedDecisionId}
+              onMarkerClick={onMarkerClick}
             />
           </div>
         )}
@@ -411,10 +511,104 @@ export function PortfolioTab({
         )}
       </div>
 
-      {/* Holdings — content-first, no "Holdings" title. A quiet meta line (the
-          position count + a global expand/collapse-all) sits at the top of the
-          block, under the hairline rule that parts it from the journal; the
-          category groups follow, leading with Property. */}
+      {/* Holdings. Rewound: the list stands at the tapped entry's day — dated
+          header, every group open, each row valued at that day's prices from
+          the same reconstruction the hero total is summed from. This is the
+          "what did I own, and why did I decide that?" view: the entry above
+          says why, this list says what. Live: content-first, no "Holdings"
+          title — a quiet meta line (the position count + a global
+          expand/collapse-all) sits at the top of the block, under the hairline
+          rule that parts it from the journal; the category groups follow,
+          leading with Property. */}
+      {rewind ? (
+        <div>
+          <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)", marginBottom: "var(--space-2)" }}>
+            <span className="eyebrow" style={{ color: "var(--text-faint)" }}>
+              Holdings · {shortDate(rewind.date)}
+            </span>
+            <button
+              onClick={() => setRewind(null)}
+              className="font-ui"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--fs-micro)", letterSpacing: "0.04em", color: "var(--accent-text)", whiteSpace: "nowrap" }}
+            >
+              ← Back to today
+            </button>
+          </div>
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginBottom: "var(--space-3)", lineHeight: "var(--lh-body)" }}>
+            What you owned on this day, valued at that day&apos;s prices — reconstructed from your records.
+          </div>
+          {rewindBook == null ? (
+            <div style={{ display: "grid", gap: "var(--space-2)" }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="bg-surface-elev rounded-lg animate-pulse" style={{ height: 48 }} />
+              ))}
+            </div>
+          ) : rewindBook.groups.length === 0 ? (
+            <p style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+              Nothing on record for this day.
+            </p>
+          ) : (
+            <div className="holds-list">
+              {rewindBook.groups.map((group, i) => (
+                <HoldingsGroup
+                  key={group.category}
+                  first={i === 0}
+                  label={group.label}
+                  barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
+                  barPct={rewindBook.total > 0 ? Math.max((group.total / rewindBook.total) * 100, 2) : 2}
+                  total={group.total}
+                  expanded
+                  onToggle={() => {}}
+                >
+                  {group.items.map((h) => (
+                    <div
+                      key={h.id}
+                      className="flex items-center border-b border-border-strong last:border-0 gap-3"
+                      style={{ paddingTop: "var(--space-row)", paddingBottom: "var(--space-row)" }}
+                    >
+                      <AssetLogo type={h.type} symbol={h.symbol} name={h.name} size={32} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-fg truncate" style={{ fontSize: "var(--fs-body)", fontWeight: 500, lineHeight: "var(--lh-tight)" }}>
+                          {h.name}
+                        </div>
+                        {/* One quiet honesty line per row kind: the unit count
+                            actually held that day (tradeables), the equity
+                            basis (property), or the flat recorded value the
+                            reconstruction had to fall back on. */}
+                        {h.units != null ? (
+                          <div className="tnum" style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginTop: 1 }}>
+                            {fmtUnits(h.units)} units
+                          </div>
+                        ) : h.type === "real_estate" ? (
+                          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginTop: 1 }}>
+                            equity after mortgage
+                          </div>
+                        ) : h.approx ? (
+                          <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginTop: 1 }}>
+                            recorded value
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {h.displayValue != null ? (
+                          <div className="text-fg tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500 }}>
+                            {formatMoney(h.displayValue, displayCurrency, displayCurrency)}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, color: "var(--text-faint)" }}>—</div>
+                            <div style={{ fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>no price record</div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </HoldingsGroup>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div>
         <div className="flex items-center justify-between" style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)", marginBottom: "var(--space-3)" }}>
           <span className="eyebrow" style={{ color: "var(--text-faint)" }}>
@@ -508,6 +702,7 @@ export function PortfolioTab({
           </div>
         )}
       </div>
+      )}
     </>
   );
 }

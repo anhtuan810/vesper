@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween } from "@/lib/mortgage";
-import { normalizePrice } from "@/lib/prices";
+import { normalizePrice, fetchHistoricalPrice } from "@/lib/prices";
 import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
@@ -326,6 +326,258 @@ export function targetSnapshotDates(earliest: string, todayStr: string, hasTrade
     .sort();
 }
 
+// Per real-estate asset: a progress sampler tAt(date) → fraction of the
+// buy→current move reached by that date. CBS supplies shape only; the two
+// anchors (buy_price at buy_date, current value at today) are honored by
+// construction. Falls back to linear-in-time when CBS is unavailable/flat.
+// Shared by backfillSnapshots and reconstructHoldingsAt so historical rows and
+// the named-rewind holdings value property identically.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function buildRealEstateProgressSamplers(assets: any[], todayStr: string): Promise<Map<string, (date: string) => number>> {
+  const realEstateT = new Map<string, (date: string) => number>();
+  const todayFy = fractionalYear(todayStr);
+  await Promise.all(
+    assets
+      .filter((a) => a.type === "real_estate")
+      .map(async (a) => {
+        const buyPrice = a.buy_price as number | null;
+        const buyDateNorm = normalizeBuyDate(a.buy_date as string | null);
+        if (!buyPrice || buyPrice <= 0 || !buyDateNorm) return;
+        const buyFy = fractionalYear(buyDateNorm);
+        if (todayFy <= buyFy) return;
+
+        const linearT = (date: string) => (fractionalYear(date) - buyFy) / (todayFy - buyFy);
+
+        let shapeT: ((date: string) => number) | null = null;
+        if (isNL(a.country as string | null) && a.address) {
+          const region = await resolveRegion(a.address as string);
+          if (region) {
+            const idx = await getRegionIndex(region.gemeente, region.province);
+            if (idx && idx.points.length >= 2) {
+              const cps: XY[] = normalizeIndex(idx.points).map((p) => ({ x: p.year + 0.5, y: p.index }));
+              if (cps.length >= 2) {
+                const S = monotoneCubic(cps);
+                const sBuy = S(buyFy);
+                const denom = S(todayFy) - sBuy;
+                if (Math.abs(denom) > 1e-9) {
+                  shapeT = (date: string) => (S(fractionalYear(date)) - sBuy) / denom;
+                }
+              }
+            }
+          }
+        }
+        realEstateT.set(a.id as string, shapeT ?? linearT);
+      }),
+  );
+  return realEstateT;
+}
+
+// Per real-estate asset: a historical mortgage-balance sampler from
+// projectMortgage — the same schedule the MortgageBlock card uses, so the
+// today value matches. Callers fall back to computeCurrentBalance when an
+// asset has no usable schedule. Shared by backfillSnapshots and
+// reconstructHoldingsAt.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildRealEstateBalanceSamplers(assets: any[], todayStr: string): Map<string, (date: string) => number> {
+  const realEstateBalanceAt = new Map<string, (date: string) => number>();
+  const todayDate = new Date(todayStr + "T12:00:00Z");
+  for (const a of assets.filter((x) => x.type === "real_estate")) {
+    const currentBalance = computeCurrentBalance(a, todayDate);
+    if (currentBalance <= 0) continue;
+    const rate = a.mortgage_rate as number | null;
+    const type = (a.mortgage_type as string | null) ?? "annuity";
+    const startStr = (a.mortgage_start_date as string | null) ?? (a.buy_date as string | null);
+    const endStr = a.mortgage_end_date as string | null;
+    if (!startStr || rate == null) continue;
+    let pmt = a.monthly_payment as number | null;
+    const startDate = new Date(startStr);
+    const endDate = endStr ? new Date(endStr) : undefined;
+    if (pmt == null && type !== "interest_only" && endDate) {
+      const rem = monthsBetween(todayDate, endDate);
+      if (rem > 0) pmt = annuityPayment(currentBalance, rate, rem);
+    }
+    if (pmt == null && type !== "interest_only") continue;
+    const proj = projectMortgage(currentBalance, rate, pmt ?? 0, type as "annuity" | "linear" | "interest_only", startDate, todayDate, endDate);
+    if (proj.status !== "ok" || proj.balanceCurve.length < 2) continue;
+    const curve = proj.balanceCurve;
+    const startFy = fractionalYear(startStr.slice(0, 10));
+    const balAt = (date: string): number => {
+      const k = (fractionalYear(date) - startFy) * 12;
+      if (k <= 0) return curve[0].balance;
+      const i = Math.floor(k);
+      if (i >= curve.length - 1) return curve[curve.length - 1].balance;
+      const frac = k - i;
+      return curve[i].balance + frac * (curve[i + 1].balance - curve[i].balance);
+    };
+    realEstateBalanceAt.set(a.id as string, balAt);
+  }
+  return realEstateBalanceAt;
+}
+
+export interface HoldingAt {
+  id: string;
+  name: string;
+  type: string;
+  symbol: string | null;
+  /** Units held at the date — tradeables only. */
+  units: number | null;
+  /** Value at the date in `currency`; null when priceable is false. */
+  value: number | null;
+  currency: string;
+  /** false → no price record exists for the date; the row is listed, never guessed. */
+  priceable: boolean;
+  /** true → flat-held type (cash/pension/bonds/other) shown at its recorded value. */
+  approx: boolean;
+}
+
+// Reconstructs the portfolio AS OF a past date from the user's records: which
+// assets existed then (mutation timeline / acquisition dates), each
+// tradeable's units then × the historical close, real estate on the same
+// CBS-shaped progress + mortgage schedule the backfill uses, and flat-held
+// types at their recorded value. This is the named-rewind's data source (tap
+// a decision dot → the hero and the holdings list stand at that day, summed
+// from THESE rows so they can never disagree). Read-only — writes nothing.
+// Income pensions (db/state) are off-balance and excluded, matching the live
+// page. A held tradeable with no price record for the date comes back
+// priceable: false with value null.
+export async function reconstructHoldingsAt(userId: string, date: string): Promise<HoldingAt[]> {
+  const supabase = createServerSupabase();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (date >= todayStr) return [];
+
+  const { data: assets, error: aErr } = await supabase
+    .from("assets")
+    .select("id, name, type, value, currency, symbol, pension_kind, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
+    .eq("user_id", userId);
+  if (aErr) throw aErr;
+  if (!assets || assets.length === 0) return [];
+
+  const { data: mutations, error: mErr } = await supabase
+    .from("mutations")
+    .select("asset_id, action, after_units, occurred_at, recorded_at")
+    .eq("user_id", userId)
+    .not("asset_id", "is", null);
+  if (mErr) throw mErr;
+
+  // Removal / acquisition dates — same rules as backfillSnapshots.
+  const removalByAsset = new Map<string, string>();
+  for (const m of mutations ?? []) {
+    if (m.asset_id && m.action === "remove" && m.occurred_at) {
+      const d = (m.occurred_at as string).slice(0, 10);
+      const prev = removalByAsset.get(m.asset_id as string);
+      if (!prev || d < prev) removalByAsset.set(m.asset_id as string, d);
+    }
+  }
+  for (const a of assets) {
+    if (a.removed_at && !removalByAsset.has(a.id as string)) {
+      removalByAsset.set(a.id as string, (a.removed_at as string).slice(0, 10));
+    }
+  }
+  const acquisitionByAsset = new Map<string, string>();
+  for (const m of mutations ?? []) {
+    if (!m.asset_id || m.action !== "add" || !m.occurred_at) continue;
+    acquisitionByAsset.set(m.asset_id as string, (m.occurred_at as string).slice(0, 10));
+  }
+
+  // Unit timelines; null-dated starting positions sit at the earliest known date.
+  const datedDates = (mutations ?? []).filter((m) => m.occurred_at).map((m) => (m.occurred_at as string).slice(0, 10));
+  const assetDates = assets.map((a) => (a.created_at as string).slice(0, 10));
+  const earliest = [...datedDates, ...assetDates].filter(Boolean).sort()[0] ?? todayStr;
+  const mutsByAsset = new Map<string, Array<{ date: string; units: number; seq: string }>>();
+  for (const m of mutations ?? []) {
+    if (!m.asset_id) continue;
+    const afterUnits = m.action === "remove" ? 0 : (m.after_units as number | null);
+    if (afterUnits === null) continue;
+    const d = m.occurred_at ? (m.occurred_at as string).slice(0, 10) : earliest;
+    const seq = (m.recorded_at as string | null) ?? "";
+    if (!mutsByAsset.has(m.asset_id as string)) mutsByAsset.set(m.asset_id as string, []);
+    mutsByAsset.get(m.asset_id as string)!.push({ date: d, units: afterUnits, seq });
+  }
+  for (const timeline of mutsByAsset.values()) {
+    timeline.sort((a, b) => a.date.localeCompare(b.date) || a.seq.localeCompare(b.seq));
+  }
+
+  const realEstateT = await buildRealEstateProgressSamplers(assets, todayStr);
+  const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr);
+
+  // One historical price lookup per tradeable symbol.
+  const symbols = [
+    ...new Set(
+      assets.filter((a) => TRADEABLE.has(a.type as string) && a.symbol).map((a) => a.symbol as string),
+    ),
+  ];
+  const priceBySymbol = new Map<string, { price: number; currency: string } | null>();
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      const p = await fetchHistoricalPrice(symbol, date);
+      priceBySymbol.set(symbol, p ? { price: p.price, currency: p.currency } : null);
+    }),
+  );
+
+  const out: HoldingAt[] = [];
+  for (const a of assets) {
+    const type = a.type as string;
+    // Income pensions (db/state) are off-balance future income — never part of
+    // net worth, so never part of a rewound book either.
+    if (type === "pension" && (a.pension_kind === "db" || a.pension_kind === "state")) continue;
+    const id = a.id as string;
+    const name = (a.name as string) ?? "";
+    const inception = acquisitionByAsset.get(id) ?? (a.created_at as string).slice(0, 10);
+    const removalDate = removalByAsset.get(id);
+    const removed = removalDate != null && date >= removalDate;
+
+    if (TRADEABLE.has(type) && a.symbol) {
+      const units = unitsAtDate(mutsByAsset.get(id) ?? [], date);
+      if (units <= 0) continue;
+      const p = priceBySymbol.get(a.symbol as string) ?? null;
+      if (p) {
+        const cur = p.currency === "GBp" ? "GBP" : p.currency;
+        out.push({
+          id, name, type, symbol: a.symbol as string, units,
+          value: Math.round(normalizePrice(p.price, p.currency) * units),
+          currency: cur, priceable: true, approx: false,
+        });
+      } else {
+        out.push({
+          id, name, type, symbol: a.symbol as string, units,
+          value: null, currency: (a.currency as string | null) || "USD",
+          priceable: false, approx: false,
+        });
+      }
+    } else if (type === "real_estate") {
+      const buyDateNorm = normalizeBuyDate(a.buy_date as string | null);
+      const reInception = buyDateNorm ?? inception;
+      if (date < reInception || removed) continue;
+      const monthStart = date.slice(0, 7) + "-01";
+      const anchor = monthStart < reInception ? reInception : monthStart;
+      const buyPrice = a.buy_price as number | null;
+      const currentValue = a.value as number;
+      const tFn = realEstateT.get(id);
+      const gross = (tFn && buyPrice && buyPrice > 0)
+        ? buyPrice + tFn(anchor) * (currentValue - buyPrice)
+        : currentValue;
+      const balFn = realEstateBalanceAt.get(id);
+      let balance = balFn ? balFn(anchor) : computeCurrentBalance(a, new Date(anchor + "T12:00:00Z"));
+      balance = Math.max(0, Math.min(balance, gross));
+      out.push({
+        id, name, type, symbol: null, units: null,
+        value: Math.round(gross - balance),
+        currency: (a.currency as string | null) || "USD",
+        priceable: true, approx: false,
+      });
+    } else {
+      if (date < inception || removed) continue;
+      out.push({
+        id, name, type, symbol: (a.symbol as string | null) ?? null, units: null,
+        value: a.value as number,
+        currency: (a.currency as string | null) || "USD",
+        priceable: true, approx: true,
+      });
+    }
+  }
+  return out;
+}
+
 // Backfills historical net-worth snapshots using the actual asset set held at
 // each date (units from the mutation timeline; property/cash/etc. gated by
 // acquisition and sale dates). Target dates come from a CALENDAR-anchored
@@ -424,81 +676,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       acquisitionByAsset.set(m.asset_id as string, (m.occurred_at as string).slice(0, 10));
     }
 
-    // Per real-estate asset: build a progress sampler tAt(date) -> fraction of
-    // the buy->current move reached by that date. CBS supplies shape only; the
-    // two anchors (buy_price at buy_date, current value at today) are honored by
-    // construction. Falls back to linear-in-time when CBS is unavailable/flat.
-    const realEstateT = new Map<string, (date: string) => number>();
-    const todayFy = fractionalYear(todayStr);
-    await Promise.all(
-      assets
-        .filter((a) => a.type === "real_estate")
-        .map(async (a) => {
-          const buyPrice = a.buy_price as number | null;
-          const buyDateNorm = normalizeBuyDate(a.buy_date as string | null);
-          if (!buyPrice || buyPrice <= 0 || !buyDateNorm) return;
-          const buyFy = fractionalYear(buyDateNorm);
-          if (todayFy <= buyFy) return;
-
-          const linearT = (date: string) => (fractionalYear(date) - buyFy) / (todayFy - buyFy);
-
-          let shapeT: ((date: string) => number) | null = null;
-          if (isNL(a.country as string | null) && a.address) {
-            const region = await resolveRegion(a.address as string);
-            if (region) {
-              const idx = await getRegionIndex(region.gemeente, region.province);
-              if (idx && idx.points.length >= 2) {
-                const cps: XY[] = normalizeIndex(idx.points).map((p) => ({ x: p.year + 0.5, y: p.index }));
-                if (cps.length >= 2) {
-                  const S = monotoneCubic(cps);
-                  const sBuy = S(buyFy);
-                  const denom = S(todayFy) - sBuy;
-                  if (Math.abs(denom) > 1e-9) {
-                    shapeT = (date: string) => (S(fractionalYear(date)) - sBuy) / denom;
-                  }
-                }
-              }
-            }
-          }
-          realEstateT.set(a.id as string, shapeT ?? linearT);
-        }),
-    );
-
-    // Per real-estate asset: build a historical balance sampler from projectMortgage.
-    // Uses the same schedule the MortgageBlock card uses so the today value matches.
-    // Falls back to computeCurrentBalance in computeRow when no usable schedule.
-    const realEstateBalanceAt = new Map<string, (date: string) => number>();
-    const todayDate = new Date(todayStr + "T12:00:00Z");
-    for (const a of assets.filter((x) => x.type === "real_estate")) {
-      const currentBalance = computeCurrentBalance(a, todayDate);
-      if (currentBalance <= 0) continue;
-      const rate = a.mortgage_rate as number | null;
-      const type = (a.mortgage_type as string | null) ?? "annuity";
-      const startStr = (a.mortgage_start_date as string | null) ?? (a.buy_date as string | null);
-      const endStr = a.mortgage_end_date as string | null;
-      if (!startStr || rate == null) continue;
-      let pmt = a.monthly_payment as number | null;
-      const startDate = new Date(startStr);
-      const endDate = endStr ? new Date(endStr) : undefined;
-      if (pmt == null && type !== "interest_only" && endDate) {
-        const rem = monthsBetween(todayDate, endDate);
-        if (rem > 0) pmt = annuityPayment(currentBalance, rate, rem);
-      }
-      if (pmt == null && type !== "interest_only") continue;
-      const proj = projectMortgage(currentBalance, rate, pmt ?? 0, type as "annuity" | "linear" | "interest_only", startDate, todayDate, endDate);
-      if (proj.status !== "ok" || proj.balanceCurve.length < 2) continue;
-      const curve = proj.balanceCurve;
-      const startFy = fractionalYear(startStr.slice(0, 10));
-      const balAt = (date: string): number => {
-        const k = (fractionalYear(date) - startFy) * 12;
-        if (k <= 0) return curve[0].balance;
-        const i = Math.floor(k);
-        if (i >= curve.length - 1) return curve[curve.length - 1].balance;
-        const frac = k - i;
-        return curve[i].balance + frac * (curve[i + 1].balance - curve[i].balance);
-      };
-      realEstateBalanceAt.set(a.id as string, balAt);
-    }
+    const realEstateT = await buildRealEstateProgressSamplers(assets, todayStr);
+    const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr);
 
     // Build per-asset unit timeline.
     // Mutations with null occurred_at (starting positions) are placed at earliest.
