@@ -1319,8 +1319,10 @@ export function VitalsContent({
           <>
             {(pulseSentence || hasAssets) && (
               <div className="pulse-plate" style={{ margin: "0 calc(var(--space-5) * -1)", padding: "9px var(--space-5) 11px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <div className="eyebrow" style={{ color: "var(--plate-gold)", opacity: 0.85 }}>
+                {/* Header row carries the heartbeat trace between the dateline
+                    and the count — the trace costs no extra vertical space. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                  <div className="eyebrow" style={{ color: "var(--plate-gold)", opacity: 0.85, whiteSpace: "nowrap" }}>
                     Pulse · {fmtDate()}
                     {pulseIsNew && (
                       <span style={{ color: "var(--plate-gold)", opacity: 1 }}>
@@ -1328,11 +1330,13 @@ export function VitalsContent({
                       </span>
                     )}
                   </div>
-                  <div className="eyebrow" style={{ color: "var(--plate-dim)" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <PulseTrace animate={traceAnimate} />
+                  </div>
+                  <div className="eyebrow" style={{ color: "var(--plate-dim)", whiteSpace: "nowrap" }}>
                     {activeVitals.length} vitals
                   </div>
                 </div>
-                <PulseTrace animate={traceAnimate} />
                 {pulseSentence ? (
                   <div style={{ ...SIGNAL_TEXT_STYLE, color: "var(--plate-text)" }}>
                     <span dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }} />{" "}

@@ -535,12 +535,13 @@ html.native-app [contenteditable="true"] {
 
 /* The heartbeat hairline across the plate — draws itself once (~1s) when the
    .animate class is present (gated to once per session by the caller), then
-   rests. Static under reduced motion. */
+   rests. Static under reduced motion. Lives INSIDE the plate's header row
+   (between the dateline and the vitals count) so it costs zero extra height —
+   the plate must not push the vitals list below the fold. */
 .pulse-trace {
   display: block;
   width: 100%;
   height: 10px;
-  margin: 6px 0 7px;
 }
 .pulse-trace path {
   fill: none;

@@ -71,11 +71,14 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
         borderRadius: "var(--radius-lg)",
       }}
     >
+      {/* Header row carries the heartbeat trace between the dateline and the
+          meta label — the trace costs no extra vertical space. */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 5,
         }}
       >
         <div
@@ -83,22 +86,26 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
           style={{
             color: "var(--plate-gold)",
             opacity: 0.85,
+            whiteSpace: "nowrap",
           }}
         >
           {dateLabel}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <PulseTrace animate={animate} />
         </div>
         {metaLabel && (
           <div
             className="eyebrow"
             style={{
               color: "var(--plate-dim)",
+              whiteSpace: "nowrap",
             }}
           >
             {metaLabel}
           </div>
         )}
       </div>
-      <PulseTrace animate={animate} />
       <div
         style={{ ...SIGNAL_TEXT_STYLE, color: "var(--plate-text)" }}
         dangerouslySetInnerHTML={{ __html: toSafeHtml(sentence) }}
