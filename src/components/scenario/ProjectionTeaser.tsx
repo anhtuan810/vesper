@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { SignalRow, SignalIconChip, SignalDropBox, SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
+import { SignalDropBox, ExpandChevron, SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
 import { trackChipInteraction, trackChipImpression, markImpression } from "@/lib/chip-telemetry";
@@ -21,15 +21,6 @@ import { apiFetch } from "@/lib/api";
 
 const HORIZON_YEARS = 10;
 const SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
-
-function TrendingUpIcon({ size = 12, color }: { size?: number; color: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size, flexShrink: 0, marginTop: 2 }}>
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-      <polyline points="16 7 22 7 22 13" />
-    </svg>
-  );
-}
 
 interface ProjResp {
   startUsd: number;
@@ -153,55 +144,36 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
     const lowFig = compact(netTotal * (resp.startUsd !== 0 ? resp.trajectory.low / resp.startUsd : 1));
     const highFig = compact(netTotal * (resp.startUsd !== 0 ? resp.trajectory.high / resp.startUsd : 1));
 
-    // One line collapsed (title + inline chevron), a drop-down box expanded —
-    // the same anatomy as Worth knowing / Markets, hand-rolled here because the
-    // projection isn't a carousel.
+    // One line collapsed (title + inline chevron), a full-width drop-down box
+    // expanded — the same anatomy as Worth knowing / Markets, hand-rolled here
+    // because the projection isn't a carousel.
     return (
       <div style={{ padding: "var(--space-1) 0", opacity: shown ? 1 : 0, transform: shown ? "translateY(0)" : "translateY(3px)", transition: "opacity 0.7s ease, transform 0.7s ease" }}>
-        <SignalRow
-          icon={
-            <SignalIconChip>
-              <TrendingUpIcon size={13} color="currentColor" />
-            </SignalIconChip>
-          }
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={aria}
+          onClick={() => setOpen((v) => !v)}
+          style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
         >
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-label={aria}
-            onClick={() => setOpen((v) => !v)}
-            style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-          >
-            <span style={SIGNAL_TEXT_STYLE}>
-              Assuming ~{ratePct}/yr, about{" "}
-              <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
-              by <span style={{ fontWeight: 600 }}>{year}</span>.
-              <svg
-                viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth={20}
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                style={{
-                  width: 10, height: 10, color: "var(--accent-text)", opacity: 0.5,
-                  marginLeft: 6, display: "inline-block", verticalAlign: "baseline",
-                  transition: "transform 0.15s",
-                  transform: open ? "rotate(90deg)" : undefined,
-                }}
-              >
-                <polyline points="96 48 176 128 96 208" />
-              </svg>
-            </span>
-          </button>
-          {open && (
-            <SignalDropBox
-              detail={
-                <>
-                  Could land anywhere between {lowFig} and {highFig} — the ~{ratePct} is a
-                  fixed assumption, not a forecast from your history.
-                </>
-              }
-              trigger={{ label: clause, onActivate: handleCardActivate }}
-            />
-          )}
-        </SignalRow>
+          <span style={SIGNAL_TEXT_STYLE}>
+            Assuming ~{ratePct}/yr, about{" "}
+            <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
+            by <span style={{ fontWeight: 600 }}>{year}</span>.
+            <ExpandChevron open={open} />
+          </span>
+        </button>
+        {open && (
+          <SignalDropBox
+            detail={
+              <>
+                Could land anywhere between {lowFig} and {highFig} — the ~{ratePct} is a
+                fixed assumption, not a forecast from your history.
+              </>
+            }
+            trigger={{ label: clause, onActivate: handleCardActivate }}
+          />
+        )}
       </div>
     );
   }

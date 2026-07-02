@@ -566,15 +566,19 @@ Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pul
   `.pulse-fig` when the emphasis carries a digit).
 - **Four one-line pulse rows (mobile).** The narrative Pulse, projection,
   Worth knowing and Markets are four single-line rows on ONE full-bleed
-  `--accent-soft` wash, each with a white `SignalIconChip` (EKG / trend /
-  bulb / bars), an expandable drop-down box (`SignalDropBox`: detail + tabular
-  meta + trigger), and exactly ONE gold trigger sentence. The wash header
-  carries the dateline, the heartbeat hairline (`PulseTrace`, draws once per
-  session via `usePulseTraceOnce`; static under reduced motion) and the vitals
-  count — the trace lives inside the header row so it costs no height. A quiet
-  "· new" appears on the dateline only when today's sentence differs from the
-  last one this device saw (`volnar:pulse-seen` in localStorage). The Pulse
-  sentence renders clipped to one line collapsed; expanded it unclips.
+  `--accent-soft` wash — no icons, everything flush left, EVERYTHING in the
+  voice serif (figures inside sentences differ by gold colour only, never by
+  font). Each row expands to a full-width drop-down box (`SignalDropBox`:
+  detail + exactly ONE gold trigger sentence); the box renders BELOW the title
+  row, outside the carousel flex, so the aside/dots column can never squeeze
+  it. The wash header carries the dateline, the heartbeat hairline
+  (`PulseTrace`, draws once per session via `usePulseTraceOnce`; static under
+  reduced motion) and the vitals count — the trace lives inside the header row
+  so it costs no height. A quiet "· new" appears on the dateline only when
+  today's sentence differs from the last one this device saw
+  (`volnar:pulse-seen` in localStorage). The Pulse sentence renders clipped to
+  one line collapsed; expanded it unclips, with the chevron pinned to the
+  first line.
 - **The plate (desktop).** The standalone `PulseBanner` renders on `--plate`:
   warm ink on the light theme, gold leaf on dark.
 - **Triggers → chat, with a fitting pre-made question.** Pulse:

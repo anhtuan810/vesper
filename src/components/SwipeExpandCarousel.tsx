@@ -14,9 +14,6 @@ export interface SwipeExpandItem {
   /** Quiet tabular figure shown next to the dots while this slide is active
    *  (e.g. Markets' "≈ +€85" portfolio impact). */
   aside?: string | null;
-  /** Small tabular sub-line inside the expanded box (e.g. "≈ +€85 on your
-   *  sheet · NVDA"). */
-  meta?: string | null;
   /** The row's one trigger sentence — a gold clause at the foot of the
    *  expanded box that hands off to chat with a pre-made, content-fitting
    *  question. */
@@ -26,9 +23,8 @@ export interface SwipeExpandItem {
 // ── The one signal-row family (the pulse rows at the top of Vitals) ──────────
 // Every row — Pulse, projection, Worth knowing, Markets — shares this text
 // spec, so the whole block reads as one design from one source. This is THE
-// VOICE: everything the app speaks is set in the serif italic (--font-voice);
-// everything it measures stays in the instrument sans (figures inside spoken
-// sentences included — see .pulse-fig in globals.css).
+// VOICE: ALL text in the family (titles, details, triggers, even figures) is
+// set in the serif italic (--font-voice) — no mid-sentence font switches.
 export const SIGNAL_TEXT_STYLE: React.CSSProperties = {
   fontFamily: "var(--font-voice)",
   fontStyle: "italic",
@@ -42,60 +38,20 @@ export const TRIGGER_TEXT_STYLE: React.CSSProperties = {
   fontFamily: "var(--font-voice)",
   fontStyle: "italic",
   fontSize: "var(--fs-body)",
+  lineHeight: "var(--lh-body)",
   color: "var(--accent-text)",
 };
 
-// Each pulse row's identity mark: a small surface chip holding a 13px gold
-// icon. On the family's tinted wash the white chips are what set these rows
-// apart from the plain vital rows below.
-export function SignalIconChip({ children }: { children: ReactNode }) {
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        width: 24,
-        height: 24,
-        borderRadius: 8,
-        flexShrink: 0,
-        marginTop: -2,
-        background: "var(--surface)",
-        border: "0.5px solid var(--border)",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "var(--accent-text)",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-// The one signal-row shell: a leading icon chip, the content, and an optional
-// right slot (aside figure + swipe dots). Rows must render through this rather
-// than hand-rolling their own flex rows.
-export function SignalRow({ icon, right, children }: { icon: ReactNode; right?: ReactNode; children: ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-      {icon}
-      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-      {right}
-    </div>
-  );
-}
-
-// The drop-down box under an expanded row: a small surface card holding the
-// detail, an optional tabular meta line, and the trigger clause.
+// The drop-down box under an expanded row: a full-width surface card holding
+// the detail and the trigger clause, flush with the row's left edge.
 export function SignalDropBox({
   detail,
-  meta,
   trigger,
 }: {
   detail?: ReactNode;
-  meta?: string | null;
   trigger?: { label: string; onActivate: () => void } | null;
 }) {
-  if (!detail && !meta && !trigger) return null;
+  if (!detail && !trigger) return null;
   return (
     <div
       style={{
@@ -120,14 +76,6 @@ export function SignalDropBox({
           {detail}
         </div>
       )}
-      {meta && (
-        <div
-          className="tnum"
-          style={{ marginTop: detail ? 5 : 0, fontSize: "var(--fs-caption)", color: "var(--text-faint)" }}
-        >
-          {meta}
-        </div>
-      )}
       {trigger && (
         <button
           type="button"
@@ -135,7 +83,7 @@ export function SignalDropBox({
           className="focus-ring"
           style={{
             display: "block",
-            marginTop: detail || meta ? 6 : 0,
+            marginTop: detail ? 6 : 0,
             padding: 0,
             background: "none",
             border: "none",
@@ -144,27 +92,44 @@ export function SignalDropBox({
             ...TRIGGER_TEXT_STYLE,
           }}
         >
-          {trigger.label} <span style={{ fontStyle: "normal" }}>→</span>
+          {trigger.label}
+          {" "}
+          <span style={{ fontStyle: "normal" }}>→</span>
         </button>
       )}
     </div>
   );
 }
 
+// The shared inline expand chevron, sitting right after a row's title text.
+export function ExpandChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      {...CHEVRON_PROPS}
+      aria-hidden="true"
+      style={{
+        width: 10, height: 10, color: "var(--accent-text)", opacity: 0.5,
+        marginLeft: 6, display: "inline-block", verticalAlign: "baseline",
+        transition: "transform 0.15s",
+        transform: open ? "rotate(90deg)" : undefined,
+      }}
+    >
+      <polyline points="96 48 176 128 96 208" />
+    </svg>
+  );
+}
+
 interface SwipeExpandCarouselProps {
-  /** Leading icon chip, fixed at the left of the row (SignalIconChip). */
-  icon: ReactNode;
   items: SwipeExpandItem[];
   getKey?: (item: SwipeExpandItem, index: number) => string | number;
 }
 
-// Shared "Worth knowing" / "Markets" presentation: one flex row — a leading
-// icon chip, a full-width scroll-snap carousel of collapsible title slides
-// (flex: 1), and the active slide's aside figure + inline swipe dots on the
-// right. Expanding a slide opens its drop-down box (detail + meta + the
-// trigger clause). The carousel's height transitions to match the active
-// slide.
-export function SwipeExpandCarousel({ icon, items, getKey }: SwipeExpandCarouselProps) {
+// Shared "Worth knowing" / "Markets" presentation: a one-line title row — a
+// full-width scroll-snap carousel of headlines (flex: 1) with the active
+// slide's aside figure + inline swipe dots on the right — and, when the
+// active slide is expanded, its drop-down box BELOW the row at full width
+// (never squeezed by the aside/dots column).
+export function SwipeExpandCarousel({ items, getKey }: SwipeExpandCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const trackRef = useRef<HTMLDivElement>(null);
@@ -180,9 +145,8 @@ export function SwipeExpandCarousel({ icon, items, getKey }: SwipeExpandCarousel
       return next;
     });
 
-  // Sync the wrapper's height to the active slide's natural height every
-  // render, so the carousel grows/shrinks smoothly between a slide's
-  // collapsed (headline-only) and expanded (headline + box) states.
+  // Sync the wrapper's height to the active slide's natural title height every
+  // render (a long headline can wrap on a narrow viewport).
   useLayoutEffect(() => {
     const slide = slideRefs.current[safeActiveIndex];
     const wrapper = wrapperRef.current;
@@ -205,14 +169,53 @@ export function SwipeExpandCarousel({ icon, items, getKey }: SwipeExpandCarousel
 
   if (items.length === 0) return null;
 
-  const activeAside = items[safeActiveIndex]?.aside ?? null;
+  const activeItem = items[safeActiveIndex];
+  const activeAside = activeItem?.aside ?? null;
+  const activeOpen = expanded.has(safeActiveIndex);
 
   return (
-    <SignalRow
-      icon={icon}
-      right={
-        activeAside || items.length > 1 ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexShrink: 0 }}>
+    <div>
+      {/* Title row: swipeable headlines left, aside + dots right. */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div ref={wrapperRef} style={{ flex: 1, minWidth: 0, overflow: "hidden", transition: "height 0.2s ease" }}>
+          <div
+            ref={trackRef}
+            onScroll={handleScroll}
+            className="no-scrollbar"
+            style={{ display: "flex", overflowX: "auto", scrollSnapType: "x mandatory" }}
+          >
+            {items.map((item, i) => {
+              const isOpen = expanded.has(i);
+              const expandable = !!(item.detail || item.trigger);
+              return (
+                <div key={getKey ? getKey(item, i) : i} style={{ flex: "0 0 100%", minWidth: 0, scrollSnapAlign: "start" }}>
+                  <div ref={(el) => { slideRefs.current[i] = el; }}>
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => expandable && toggle(i)}
+                      style={{
+                        display: "block", width: "100%",
+                        textAlign: "left", background: "none", border: "none",
+                        cursor: expandable ? "pointer" : "default", padding: 0,
+                      }}
+                    >
+                      {/* Title carries the expand chevron inline, right after
+                          the text, so a short headline reads as a tight unit.
+                          The aside + swipe dots (row-level, right) stay put. */}
+                      <span style={SIGNAL_TEXT_STYLE}>
+                        {item.title}
+                        {expandable && <ExpandChevron open={isOpen} />}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {(activeAside || items.length > 1) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexShrink: 0 }}>
             {activeAside && (
               <span
                 className="tnum"
@@ -225,62 +228,12 @@ export function SwipeExpandCarousel({ icon, items, getKey }: SwipeExpandCarousel
               <CarouselDots count={items.length} activeIndex={safeActiveIndex} onSelect={goTo} />
             )}
           </div>
-        ) : undefined
-      }
-    >
-      <div ref={wrapperRef} style={{ overflow: "hidden", transition: "height 0.2s ease" }}>
-        <div
-          ref={trackRef}
-          onScroll={handleScroll}
-          className="no-scrollbar"
-          style={{ display: "flex", overflowX: "auto", scrollSnapType: "x mandatory" }}
-        >
-          {items.map((item, i) => {
-            const isOpen = expanded.has(i);
-            const expandable = !!(item.detail || item.meta || item.trigger);
-            return (
-              <div key={getKey ? getKey(item, i) : i} style={{ flex: "0 0 100%", minWidth: 0, scrollSnapAlign: "start" }}>
-                <div ref={(el) => { slideRefs.current[i] = el; }}>
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => toggle(i)}
-                    style={{
-                      display: "block", width: "100%",
-                      textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0,
-                    }}
-                  >
-                    {/* Title carries the expand chevron inline, right after the
-                        text, so a short headline (e.g. "Hosingenhof 19") reads
-                        as a tight unit instead of stranding the chevron at the
-                        far edge. The swipe dots (row-level, right) stay put. */}
-                    <span style={SIGNAL_TEXT_STYLE}>
-                      {item.title}
-                      {expandable && (
-                        <svg
-                          {...CHEVRON_PROPS}
-                          aria-hidden="true"
-                          style={{
-                            width: 10, height: 10, color: "var(--accent-text)", opacity: 0.5,
-                            marginLeft: 6, display: "inline-block", verticalAlign: "baseline",
-                            transition: "transform 0.15s",
-                            transform: isOpen ? "rotate(90deg)" : undefined,
-                          }}
-                        >
-                          <polyline points="96 48 176 128 96 208" />
-                        </svg>
-                      )}
-                    </span>
-                  </button>
-                  {isOpen && (
-                    <SignalDropBox detail={item.detail} meta={item.meta} trigger={item.trigger} />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        )}
       </div>
-    </SignalRow>
+      {/* The active slide's drop-down box, full row width. */}
+      {activeOpen && (
+        <SignalDropBox detail={activeItem?.detail} trigger={activeItem?.trigger} />
+      )}
+    </div>
   );
 }

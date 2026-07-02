@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PulseBanner, PulseTrace, toSafeHtml, usePulseTraceOnce } from "@/components/vitals/PulseBanner";
 import { requestExplore } from "@/lib/scenario/explore";
 import { FoldRow } from "@/components/FoldRow";
-import { SIGNAL_TEXT_STYLE, SignalRow, SignalIconChip, SignalDropBox } from "@/components/SwipeExpandCarousel";
+import { SIGNAL_TEXT_STYLE, SignalDropBox } from "@/components/SwipeExpandCarousel";
 import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
@@ -1315,10 +1315,10 @@ export function VitalsContent({
         }
 
         // Mobile: the pulse family as ONE full-bleed tinted wash holding four
-        // one-line rows — Pulse, projection, Worth knowing, Markets — each with
-        // its own icon chip, an expandable drop-down, and one trigger sentence
-        // into chat. The wash + white icon chips + serif voice are what set
-        // these rows apart from the plain vital rows below.
+        // one-line rows — Pulse, projection, Worth knowing, Markets — each an
+        // expandable drop-down with one trigger sentence into chat. Everything
+        // flush left, everything in the voice serif: the wash + the serif are
+        // what set these rows apart from the plain vital rows below.
         return (
           <>
             {(pulseSentence || hasAssets) && (
@@ -1339,63 +1339,48 @@ export function VitalsContent({
                 </div>
 
                 {/* Row 1 — the Pulse. One clipped line collapsed; the full
-                    sentence + the pressure-test trigger when expanded. */}
+                    sentence + the pressure-test trigger when expanded. The
+                    chevron pins to the first line, never the block's middle. */}
                 <div style={{ padding: "var(--space-1) 0" }}>
                   {pulseSentence ? (
-                    <SignalRow
-                      icon={
-                        <SignalIconChip>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
-                            <polyline points="2 12 6 12 9 5 14 19 17 12 22 12" />
-                          </svg>
-                        </SignalIconChip>
-                      }
-                    >
+                    <>
                       <button
                         type="button"
                         aria-expanded={pulseOpen}
                         onClick={() => setPulseOpen((v) => !v)}
-                        style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                        style={{ display: "flex", alignItems: "flex-start", gap: 6, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                       >
-                        <span style={{ ...SIGNAL_TEXT_STYLE, display: "flex", alignItems: "baseline", gap: 6 }}>
-                          <span
-                            style={pulseOpen ? { minWidth: 0 } : { minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                            dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
-                          />
-                          <svg
-                            viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth={20}
-                            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                            style={{
-                              width: 10, height: 10, flexShrink: 0, alignSelf: "center",
-                              color: "var(--accent-text)", opacity: 0.5,
-                              transition: "transform 0.15s",
-                              transform: pulseOpen ? "rotate(90deg)" : undefined,
-                            }}
-                          >
-                            <polyline points="96 48 176 128 96 208" />
-                          </svg>
-                        </span>
+                        <span
+                          style={
+                            pulseOpen
+                              ? { ...SIGNAL_TEXT_STYLE, flex: 1, minWidth: 0 }
+                              : { ...SIGNAL_TEXT_STYLE, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }
+                          }
+                          dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
+                        />
+                        <svg
+                          viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth={20}
+                          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                          style={{
+                            width: 10, height: 10, flexShrink: 0, marginTop: 5,
+                            color: "var(--accent-text)", opacity: 0.5,
+                            transition: "transform 0.15s",
+                            transform: pulseOpen ? "rotate(90deg)" : undefined,
+                          }}
+                        >
+                          <polyline points="96 48 176 128 96 208" />
+                        </svg>
                       </button>
                       {pulseOpen && (
                         <SignalDropBox
                           trigger={{ label: "Pressure-test this", onActivate: pressureTest }}
                         />
                       )}
-                    </SignalRow>
+                    </>
                   ) : (
-                    // Pulse still loading (or unavailable): keep the row's real
-                    // anatomy — icon chip + a shimmering sentence-length bar.
-                    <SignalRow
-                      icon={
-                        <SignalIconChip>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
-                            <polyline points="2 12 6 12 9 5 14 19 17 12 22 12" />
-                          </svg>
-                        </SignalIconChip>
-                      }
-                    >
-                      <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--surface)", opacity: 0.7, marginTop: 4 }} />
-                    </SignalRow>
+                    // Pulse still loading (or unavailable): a shimmering
+                    // sentence-length bar holds the row's slot.
+                    <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--surface)", opacity: 0.7, margin: "4px 0" }} />
                   )}
                 </div>
 

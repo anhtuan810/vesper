@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useInsight } from "@/lib/hooks";
-import { BulbIcon } from "@/components/vitals/SuggestionStrip";
-import { SwipeExpandCarousel, SignalIconChip } from "@/components/SwipeExpandCarousel";
+import { SwipeExpandCarousel } from "@/components/SwipeExpandCarousel";
 
 // The pre-made question a "Worth knowing" card hands to chat — matched to the
 // content the deterministic detectors write about (portfolio-insights.ts:
@@ -68,14 +67,7 @@ export function InsightBand({ onVisibleChange }: { onVisibleChange?: (visible: b
 
   return (
     <div style={{ padding: "var(--space-1) 0" }}>
-      <SwipeExpandCarousel
-        icon={
-          <SignalIconChip>
-            <BulbIcon size={13} color="currentColor" />
-          </SignalIconChip>
-        }
-        items={items}
-      />
+      <SwipeExpandCarousel items={items} />
     </div>
   );
 }

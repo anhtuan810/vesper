@@ -524,13 +524,10 @@ html.native-app [contenteditable="true"] {
   font-weight: 600;
   font-style: italic;
 }
+/* Figures inside the spoken sentence stay in the SAME voice face (no
+   mid-sentence font switch) — they differ by colour only, glinting in gold. */
 .pulse-fig {
-  font-family: var(--font-ui);
-  font-style: normal;
-  font-weight: 600;
-  font-size: 0.93em;
   color: var(--accent-text);
-  font-feature-settings: "tnum" 1;
 }
 .pulse-plate .pulse-fig {
   color: var(--plate-gold);
