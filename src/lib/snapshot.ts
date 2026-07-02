@@ -639,14 +639,20 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // contain what the seeded timeline says existed then — so a visitor's chat
     // edit (rebuildFrom) or a stray standard pass would replace the authored
     // curve with a collapsed one. The next demo entry reseeds anyway.
-    const { data: demoEnt } = await supabase
+    // Two layers, because a single corrupting pass costs a whole demo session:
+    // (1) the shared demo account is recognised by env id with NO db read (race-
+    // and outage-proof); (2) the entitlement check FAILS SAFE — an errored read
+    // aborts the pass (a skipped backfill for a real user just retries on the
+    // next trigger; a wrongly-run pass on the demo shreds the authored curve).
+    if (process.env.DEMO_USER_ID && userId === process.env.DEMO_USER_ID) return;
+    const { data: demoEnt, error: demoErr } = await supabase
       .from("entitlements")
       .select("id")
       .eq("user_id", userId)
       .eq("product_id", "demo")
       .limit(1)
       .maybeSingle();
-    if (demoEnt) return;
+    if (demoErr || demoEnt) return;
 
     // Load all assets — INCLUDING soft-deleted (removed_at set) ones, so a sold
     // position is still reconstructed as held up to its sale date. (Current-
