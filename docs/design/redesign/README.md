@@ -42,16 +42,24 @@ Theme switching uses the existing user preference (`data-theme`, toggled in
 Settings); both themes are Nocturne now. Verified with `tsc`, `next build`, and
 real `/login` renders in both modes.
 
-### Not yet done (follow-ups)
-- **Compactness pass** — tighten the per-screen layouts (`NetWorthHero`,
+### Follow-ups — status
+- **Compactness pass** (phone) — tighten the per-screen layouts (`NetWorthHero`,
   `HoldingsGroup`/`PositionRow`, vitals cards, journal rows, `BottomNav`) to the
   denser mockup spec. The theme is in; the layout tightening is the next increment.
-- **Desktop Overview shell** — `overview/twilight-app.css` (`.vapp`) and
-  `home-twilight.css` (`.vhome`) define their own Twilight tokens scoped to those
-  desktop-only wrappers, so the desktop web Overview still reads Twilight. Phone is
-  unaffected (those shells don't render on mobile).
-- **Marketing site** — scoped under `.tw` with its own `--mkt-*` tokens; left on
-  Twilight deliberately. Aligning the landing page to Nocturne is a separate call.
+- **Desktop web shell — DONE (2026-07-02)** — `home-twilight.css` (`.vhome`) no
+  longer carries its own Twilight palette: every Twilight-era token name is an
+  alias onto the global Nocturne tokens, the shell follows the user's theme (dark
+  mode works on desktop web), money direction is the phone's green/clay, the trust
+  band renders on the plate, and all type maps onto the canonical `--fs-*` scale
+  with a desktop-dose density pass. Only the unlinked `/overview` static mock
+  (`twilight-app.css`, `.vapp`) still shows the original Twilight design — kept as
+  a historical reference.
+- **Marketing site — DONE (2026-07-02)** — `.tw` tokens are aliases onto the global
+  Nocturne tokens (the page's own light/dark toggle re-scopes them via its wrapper
+  `data-theme`; dark bands render on the plate); display/labels/figures all in
+  Inter with tabular digits (the Spectral + IBM Plex Mono loaders are gone); the
+  hero chart bands/legend/chips fill from the shared `--cat-*` tokens; the OG
+  image matches the bone/brass/ink palette.
 
 The two alternate directions (`daylight.html`, `atelier.html`) remain here as
 reference if you want to switch later — each is the same token-level swap.

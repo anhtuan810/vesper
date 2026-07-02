@@ -463,7 +463,7 @@ full chart/detail. Rules that make it work:
   the meta row. Fold state persists per session (`volnar:vitals-open`,
   `volnar:profile-open` in sessionStorage).
 - **Desktop unchanged** — the fold grammar is mobile-only; the grid cards remain
-  for the Twilight shell (`buildConfig(key)` is shared by both renderers).
+  for the desktop WebShell (`buildConfig(key)` is shared by both renderers).
 - **Letter grades (2026-07)**: each active vital's fold row carries an A–D chip
   (`src/lib/vitals/grade.ts`) so the number is instantly legible. DERIVED, never
   independent: amber → C, red → D always (the grade cannot contradict the
