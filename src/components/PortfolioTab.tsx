@@ -111,9 +111,33 @@ export function PortfolioTab({
   // the tab. `date` is the entry's YYYY-MM-DD day.
   const [rewind, setRewind] = useState<{ id: string; date: string } | null>(null);
   // As-of-date books already reconstructed this session, keyed by date — a
-  // past day's book never changes under the user's feet, so re-tapping a dot
-  // must not refetch. This doubles as the fetch guard.
+  // past day's book never changes under the user's feet AS LONG AS the records
+  // it was built from don't, so re-tapping a dot must not refetch. This
+  // doubles as the fetch guard.
   const [holdingsByDate, setHoldingsByDate] = useState<Record<string, HoldingAt[]>>({});
+
+  // The records generation: advances whenever the mutation log changes (an
+  // add / edit / removal — the same events that make backfillSnapshots rebuild
+  // the chart's history). The rewind caches key on it, at BOTH layers: the
+  // session map above is dropped, and the fetch URL carries the stamp so the
+  // browser's HTTP cache can't serve a reconstruction built from records that
+  // no longer exist. A book must never outlive its records.
+  const recordsStamp = useMemo(() => {
+    let latest = "";
+    for (const m of mutations) if (m.recorded_at > latest) latest = m.recorded_at;
+    return `${mutations.length}.${latest}`;
+  }, [mutations]);
+  const recordsStampRef = useRef(recordsStamp);
+  useEffect(() => {
+    recordsStampRef.current = recordsStamp;
+  }, [recordsStamp]);
+  // Drop stale books during render (React's endorsed adjust-on-prop-change
+  // pattern — same as MobileDecisionJournal's fold state), not in an effect.
+  const [prevRecordsStamp, setPrevRecordsStamp] = useState(recordsStamp);
+  if (prevRecordsStamp !== recordsStamp) {
+    setPrevRecordsStamp(recordsStamp);
+    setHoldingsByDate({});
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -154,12 +178,17 @@ export function PortfolioTab({
   const fetchHoldingsAt = useCallback((date: string) => {
     if (holdingsByDateRef.current[date] || inFlightDatesRef.current.has(date)) return;
     inFlightDatesRef.current.add(date);
-    apiFetch(`/api/holdings-at?date=${date}`)
+    // The stamp busts the browser HTTP cache when records change; the server
+    // ignores it. Captured here so a response that lands AFTER the records
+    // changed under it is discarded instead of cached as if current.
+    const stampAtStart = recordsStampRef.current;
+    apiFetch(`/api/holdings-at?date=${date}&r=${encodeURIComponent(stampAtStart)}`)
       .then((r) => {
         if (!r.ok) throw new Error(`holdings-at ${r.status}`);
         return r.json();
       })
       .then((body) => {
+        if (recordsStampRef.current !== stampAtStart) return;
         setHoldingsByDate((prev) => (prev[date] ? prev : { ...prev, [date]: body.data ?? [] }));
       })
       .catch((err) => {
