@@ -11,14 +11,14 @@
     {
       "id": "background",
       "type": "background",
-      "paint": { "background-color": "#14141E" }
+      "paint": { "background-color": "#131109" }
     },
     {
       "id": "water",
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "water",
-      "paint": { "fill-color": "#0E1620" }
+      "paint": { "fill-color": "#111A1F" }
     },
     {
       "id": "landcover-green",
@@ -26,7 +26,7 @@
       "source": "openmaptiles",
       "source-layer": "landcover",
       "filter": ["in", "class", "grass", "park", "wood", "forest", "farmland"],
-      "paint": { "fill-color": "#16201A" }
+      "paint": { "fill-color": "#171E12" }
     },
     {
       "id": "landuse-park",
@@ -34,14 +34,14 @@
       "source": "openmaptiles",
       "source-layer": "landuse",
       "filter": ["in", "class", "park", "grass", "garden"],
-      "paint": { "fill-color": "#16201A" }
+      "paint": { "fill-color": "#171E12" }
     },
     {
       "id": "building",
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "building",
-      "paint": { "fill-color": "#1A1A22", "fill-opacity": 0.85 }
+      "paint": { "fill-color": "#1C1810", "fill-opacity": 0.85 }
     },
     {
       "id": "road-service",
@@ -49,7 +49,7 @@
       "source": "openmaptiles",
       "source-layer": "transportation",
       "filter": ["in", "class", "service", "path", "track"],
-      "paint": { "line-color": "#1C1C24", "line-width": 0.6 }
+      "paint": { "line-color": "#201C12", "line-width": 0.6 }
     },
     {
       "id": "road-minor",
@@ -57,7 +57,7 @@
       "source": "openmaptiles",
       "source-layer": "transportation",
       "filter": ["in", "class", "minor", "residential"],
-      "paint": { "line-color": "#22222A", "line-width": 0.8 }
+      "paint": { "line-color": "#262115", "line-width": 0.8 }
     },
     {
       "id": "road-major",
@@ -65,7 +65,7 @@
       "source": "openmaptiles",
       "source-layer": "transportation",
       "filter": ["in", "class", "primary", "secondary", "tertiary", "trunk", "motorway"],
-      "paint": { "line-color": "#34343C", "line-width": 1.4 }
+      "paint": { "line-color": "#3A3323", "line-width": 1.4 }
     }
   ]
 }

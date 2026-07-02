@@ -40,10 +40,12 @@ npm run mobile:open    # Xcode → run/archive
 ### Icons & splash
 
 Source assets live in `assets/` (`icon.png` 1024×1024, `splash.png` 2732×2732);
-regenerate the iOS asset catalog with `npm run mobile:assets`. ⚠️ The current
-artwork was generated programmatically from the Volnar "V" mark — functional
-and on-brand, but not designer-produced. Replace with final artwork before the
-App Store submission, then rerun `npm run mobile:assets`.
+regenerate the iOS asset catalog with `npm run mobile:assets`. The artwork is
+generated programmatically from the Volnar "V" mark in the current brand
+(cream V + brass triangle on warm ink — updated 2026-07-02 to match the warmed
+Nocturne tokens; sharp-rendered, see the session notes). Functional and
+on-brand, but not designer-produced — replace with final artwork before a
+flagship App Store push, then rerun `npm run mobile:assets`.
 
 
 Rules learned the hard way:
