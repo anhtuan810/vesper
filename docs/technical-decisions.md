@@ -601,11 +601,14 @@ Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pul
 
 IBKR-style account drawer, replacing the scattered settings entry points.
 
-- **Entry**: the avatar (initial circle) at the far LEFT of the mobile/desktop
-  `NavBar` opens `AccountPanel` — a left slide-in drawer (scrim + panel,
-  `--z-modal`, Escape/scrim-tap closes, body scroll locked). The top bar's
-  right side lost the user name and the Portfolio gear; only the price-refresh
-  control remains.
+- **Entry**: a person-silhouette in a hairline circle (the brokerage
+  convention — deliberately monochrome, not an initial "avatar") at the far
+  LEFT of the mobile/desktop `NavBar` opens `AccountPanel` — a left slide-in
+  drawer (scrim + panel, `--z-modal`, Escape/scrim-tap closes, body scroll
+  locked). The top bar's right side is now EMPTY: user name, Portfolio gear
+  and the price-refresh control are all gone (prices refresh on load and on
+  the price cache's TTL; NavBar still accepts the refresh props for call-site
+  compatibility but ignores them).
 - **Contents**: account header (avatar · name · email · net worth in the
   display currency) + ALL settings via `SettingsContent embedded` (same
   component as `/settings`, minus the page chrome). Settings body lazy-mounts
