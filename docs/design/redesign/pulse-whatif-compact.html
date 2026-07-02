@@ -1,0 +1,407 @@
+<title>Volnar — Pulse × What-if, compact</title>
+<style>
+/* ============ PULSE × WHAT-IF — COMPACT (design proposal, 2026-07) ============
+   Uses the SHIPPED app tokens (src/app/globals.css) and the shipped mobile
+   grammar: full-bleed accent band, SignalRow text spec (italic, 13px), tnum
+   figures, hairline rules, no boxes. What's NEW on show:
+     1. every pulse line ends in a gold doorway clause → the what-if explorer
+     2. Markets shows the stored-but-never-rendered impact_eur ("≈ +€85")
+     3. a quiet "new" marker when today's Pulse sentence changed
+     4. collapsed rows are ONE line each — the family gets ~1/3 shorter
+     5. a play-once staggered settle-in (≤0.6s, 4px, reduced-motion → fade)
+   ============================================================================ */
+:root{
+  --stage:#E7E9ED;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--stage);color:#171A20;font-family:var(--sans);-webkit-font-smoothing:antialiased}
+
+/* ---------- theme tokens (mirrors src/app/globals.css) ---------- */
+.light{
+  --bg:#F7F8FA; --surface:#FFFFFF; --surface-elev:#EEF0F4;
+  --border:rgba(18,22,30,.08); --border-strong:rgba(18,22,30,.14);
+  --text:#171A20; --dim:#565D69; --faint:#868D99; --hero:#0A0C10;
+  --accent:#9C7A37; --accent-soft:rgba(156,122,55,.12); --accent-text:#7E6026; --accent-deep:#7E6026;
+  --pos:#2E8B5E; --pos-text:#277A52;
+  --neg:#B4502E; --neg-text:#9A4326;
+}
+.dark{
+  --bg:#0E1116; --surface:#151922; --surface-elev:#1B202B;
+  --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.13);
+  --text:#E7EAF0; --dim:#9AA3B2; --faint:#697184; --hero:#FAFBFD;
+  --accent:#CBA75E; --accent-soft:rgba(203,167,94,.14); --accent-text:#DCBE82; --accent-deep:#E0C281;
+  --pos:#5FB58A; --pos-text:#7FC7A2;
+  --neg:#D08763; --neg-text:#E0A488;
+}
+
+/* ---------- gallery stage ---------- */
+.stage{min-height:100vh;padding:48px clamp(16px,4vw,56px) 90px;
+  background:radial-gradient(1200px 600px at 80% -10%,rgba(156,122,55,.06),transparent 60%),var(--stage)}
+.intro{max-width:1180px;margin:0 auto 20px}
+.kicker{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#9C7A37}
+.intro h1{font-size:clamp(28px,4.4vw,42px);font-weight:600;letter-spacing:-.03em;margin:12px 0 10px;color:#0A0C10;text-wrap:balance}
+.intro h1 b{color:#9C7A37;font-weight:600}
+.intro>p{max-width:720px;color:#565D69;font-size:15px;line-height:1.6}
+.gallery{max-width:1560px;margin:34px auto 0;display:flex;flex-wrap:wrap;gap:46px 40px;justify-content:center;align-items:flex-start}
+.unit{display:flex;flex-direction:column;align-items:center;gap:14px}
+.cap{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#868D99;text-align:center}
+.cap b{color:#9C7A37;font-weight:600}
+.notes{max-width:1180px;margin:52px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px 26px}
+.note{font-size:13px;line-height:1.55;color:#565D69;border-top:1px solid rgba(18,22,30,.14);padding-top:10px}
+.note b{color:#171A20;font-weight:600;display:block;margin-bottom:2px}
+.note i{color:#7E6026;font-style:normal;font-weight:600}
+
+/* ---------- phone frames (unrolled: content defines height) ---------- */
+.device{width:340px;border-radius:50px;padding:11px;background:linear-gradient(160deg,#E6E7EB,#C3C5CC);
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 30px 70px -32px rgba(18,22,30,.32),0 0 0 1px rgba(18,22,30,.10)}
+.device.dk{background:linear-gradient(160deg,#3A3D45,#17181C)}
+.screen{position:relative;width:100%;border-radius:40px;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+.notch{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:104px;height:28px;background:#000;border-radius:16px;z-index:40}
+.status{height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 7px;font-size:12px;font-weight:500;color:var(--text)}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* app bar (mirrors shipped mobile NavBar) */
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 0;height:36px}
+.wm{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;letter-spacing:-.04em;color:var(--hero)}
+.wm .mark{width:20px;height:20px;border-radius:5px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:12px}
+.appbar .who{font-size:14px;font-weight:500;color:var(--faint)}
+.pad{padding:16px 18px 4px}
+
+/* ---------- shared vocabulary ---------- */
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);line-height:1}
+.titlerow{display:flex;align-items:center;justify-content:space-between}
+.title{font-size:17px;font-weight:500;letter-spacing:-.018em;color:var(--hero);line-height:1.1}
+.pill{display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-deep);font-size:12px;font-weight:500;white-space:nowrap}
+.go{color:var(--accent-text);font-weight:500;font-style:italic;white-space:nowrap}
+.go .ar{display:inline-block;font-style:normal}
+
+/* full-bleed Pulse band — a band, not a box */
+.band{margin:14px -18px 0;background:var(--accent-soft);padding:12px 18px 13px}
+.band .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.band .hd .eyebrow{color:var(--accent-deep);opacity:.78}
+.band .hd .eyebrow .nw{opacity:1;color:var(--accent-deep)}
+.band .hd .eyebrow .nw::before{content:"";display:inline-block;width:4px;height:4px;border-radius:2px;background:var(--accent);margin:0 5px 1px 7px;vertical-align:middle}
+.band p{font-style:italic;font-size:13px;line-height:1.45;color:var(--text)}
+.band p em{font-style:italic;font-weight:600}
+
+/* signal rows — one line each when collapsed */
+.sig{padding:2px 0 6px}
+.sigrow{display:flex;align-items:flex-start;gap:9px;padding:9px 0}
+.sigrow+.sigrow{border-top:1px solid var(--border)}
+.sigrow .ic{width:15px;height:15px;flex:none;color:var(--faint);margin-top:2px}
+.sigrow .bd{flex:1;min-width:0}
+.sigrow p{font-style:italic;font-size:13px;line-height:1.4;color:var(--text)}
+.sigrow p.clip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sigrow p b{font-style:italic;font-weight:600}
+.sigrow .aside{flex:none;display:flex;align-items:center;gap:8px;margin-top:2px}
+.sigrow .impact{font-size:11.5px;font-weight:500;color:var(--dim)}
+.dots{display:flex;gap:4px;align-items:center}
+.dots i{width:4px;height:4px;border-radius:2px;background:var(--faint);opacity:.4}
+.dots i.on{background:var(--accent);opacity:1}
+.chev{color:var(--faint);opacity:.7;flex:none;margin-top:3px}
+
+/* expanded detail inside a signal row */
+.detail{margin-top:5px;font-style:italic;font-size:12.5px;line-height:1.5;color:var(--dim)}
+.metaline{margin-top:6px;font-size:11px;color:var(--faint)}
+.doorway{margin-top:7px;font-size:12.5px}
+
+/* active-vitals meta row + folded vital rows (context below the family) */
+.metarow{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);margin-top:14px;padding-top:12px}
+.qact{font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--accent-text)}
+.fold{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--border)}
+.fold .l .t{font-size:13.5px;font-weight:500;color:var(--text)}
+.fold .l .q{font-size:11.5px;color:var(--faint);margin-top:2px}
+.fold .r{text-align:right;display:flex;align-items:center;gap:9px}
+.fold .r .v{font-size:15px;font-weight:600;color:var(--hero)}
+.fold .r .s{display:block;font-size:11px;font-weight:500;color:var(--pos-text);margin-top:1px}
+.fadeout{height:56px;margin:0 -18px -4px;background:linear-gradient(to bottom,transparent,var(--bg))}
+
+/* ---------- chat / what-if frame ---------- */
+.chatbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 0;height:36px}
+.chatbar .back{font-size:20px;color:var(--faint);line-height:1}
+.chatbar .ct{font-size:14px;font-weight:600;color:var(--hero)}
+.chatbar .sp{width:20px}
+.msg{padding:18px 18px 8px}
+.msg .m{font-style:italic;font-size:13.5px;line-height:1.55;color:var(--text)}
+.cone{margin:14px -4px 2px}
+.coneline{font-style:italic;font-size:12.5px;color:var(--accent-text);margin-top:2px}
+.coneline b{font-weight:600}
+.chips{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px 18px 6px}
+.chip{display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.5px;font-weight:500}
+.chip.gold{border-color:transparent;background:var(--accent-soft);color:var(--accent-deep)}
+.composer{margin:18px 18px 20px;display:flex;align-items:center;gap:10px;height:44px;border-radius:999px;
+  border:1px solid var(--border-strong);background:var(--surface);padding:0 6px 0 16px}
+.composer .ph{flex:1;font-size:13px;color:var(--faint)}
+.composer .send{width:32px;height:32px;border-radius:16px;background:var(--accent-soft);color:var(--accent-deep);
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+
+/* ---------- play-once settle-in (the section's ONLY motion) ---------- */
+@keyframes settle{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.s1,.s2,.s3,.s4,.s5{animation:settle .38s ease both}
+.s2{animation-delay:.07s}.s3{animation-delay:.14s}.s4{animation-delay:.21s}.s5{animation-delay:.28s}
+@media (prefers-reduced-motion:reduce){
+  .s1,.s2,.s3,.s4,.s5{animation:none;opacity:1;transform:none}
+}
+</style>
+
+<div class="stage">
+  <div class="intro">
+    <div class="kicker">Volnar · design proposal · 2 Jul 2026</div>
+    <h1>The Pulse, compact — <b>every line ends in a question</b></h1>
+    <p>Same family, same voice, one new rule: each pulse closes with a gold doorway
+    clause into the what-if explorer — the grammar the projection row already
+    speaks, extended to all four. Collapsed rows cost one line each; Markets
+    finally shows the portfolio impact the cron already computes; the only motion
+    is a play-once settle-in.</p>
+  </div>
+
+  <div class="gallery">
+
+    <!-- ═══════════ FRAME 1 · COLLAPSED (light) ═══════════ -->
+    <div class="unit light">
+      <div class="device">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="status"><span>9:41</span><span class="tnum">100%</span></div>
+          <div class="appbar">
+            <div class="wm"><span class="mark">V</span>Volnar</div>
+            <div class="who">Alex</div>
+          </div>
+          <div class="pad">
+            <div class="titlerow">
+              <div class="title">Vitals</div>
+              <div class="pill">Including property</div>
+            </div>
+
+            <!-- Pulse band: tappable, with freshness marker + doorway clause -->
+            <div class="band s1">
+              <div class="hd">
+                <div class="eyebrow">Pulse · 2 Jul<span class="nw">new</span></div>
+                <div class="eyebrow" style="opacity:.55">7 vitals</div>
+              </div>
+              <p><em>€365.000</em> net worth anchors on <em>68,4%</em> real estate,
+              while <em>67,5%</em> loan-to-value and <em>36,6%</em> drawdown exposure
+              offset the <em>green</em> liquidity posture.
+              <span class="go">Pressure-test this <span class="ar">→</span></span></p>
+            </div>
+
+            <!-- Signal rows: one line each, collapsed -->
+            <div class="sig">
+              <div class="sigrow s2">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                <div class="bd"><p>Assuming ~5%/yr, about <b>€649K</b> by <b>2036</b>.
+                <span class="go">See what moves it <span class="ar">→</span></span></p></div>
+              </div>
+              <div class="sigrow s3">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+                <div class="bd"><p class="clip">Real estate foundation</p></div>
+                <div class="aside">
+                  <div class="dots"><i class="on"></i><i></i><i></i></div>
+                  <svg class="chev" width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"><polyline points="60 100 128 168 196 100"/></svg>
+                </div>
+              </div>
+              <div class="sigrow s4">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <div class="bd"><p class="clip">NVIDIA steady after earnings</p></div>
+                <div class="aside">
+                  <span class="impact tnum">≈ +€85</span>
+                  <div class="dots"><i class="on"></i><i></i><i></i></div>
+                  <svg class="chev" width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"><polyline points="60 100 128 168 196 100"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- context: the vitals list continues unchanged below -->
+            <div class="metarow s5">
+              <span class="eyebrow">Active vitals · 7</span>
+              <span class="qact">Unfold all</span>
+            </div>
+            <div class="fold s5">
+              <div class="l"><div class="t">Concentration</div><div class="q">how much rides on your biggest holding</div></div>
+              <div class="r"><div><span class="v tnum">52,0%</span><span class="s">balanced</span></div>
+                <svg class="chev" width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"><polyline points="60 100 128 168 196 100"/></svg></div>
+            </div>
+            <div class="fold s5" style="border-bottom:none">
+              <div class="l"><div class="t">Real-asset weight</div><div class="q">how much of your wealth sits in property</div></div>
+              <div class="r"><div><span class="v tnum">68,4%</span><span class="s">in range</span></div>
+                <svg class="chev" width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"><polyline points="60 100 128 168 196 100"/></svg></div>
+            </div>
+            <div class="fadeout"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">01 · Collapsed — <b>one line per pulse</b></div>
+    </div>
+
+    <!-- ═══════════ FRAME 2 · EXPANDED (light) ═══════════ -->
+    <div class="unit light">
+      <div class="device">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="status"><span>9:41</span><span class="tnum">100%</span></div>
+          <div class="appbar">
+            <div class="wm"><span class="mark">V</span>Volnar</div>
+            <div class="who">Alex</div>
+          </div>
+          <div class="pad">
+            <div class="titlerow">
+              <div class="title">Vitals</div>
+              <div class="pill">Including property</div>
+            </div>
+
+            <div class="band">
+              <div class="hd">
+                <div class="eyebrow">Pulse · 2 Jul<span class="nw">new</span></div>
+                <div class="eyebrow" style="opacity:.55">7 vitals</div>
+              </div>
+              <p><em>€365.000</em> net worth anchors on <em>68,4%</em> real estate,
+              while <em>67,5%</em> loan-to-value and <em>36,6%</em> drawdown exposure
+              offset the <em>green</em> liquidity posture.
+              <span class="go">Pressure-test this <span class="ar">→</span></span></p>
+            </div>
+
+            <div class="sig">
+              <div class="sigrow">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                <div class="bd"><p>Assuming ~5%/yr, about <b>€649K</b> by <b>2036</b>.
+                <span class="go">See what moves it <span class="ar">→</span></span></p></div>
+              </div>
+
+              <!-- Worth knowing, expanded: detail + tense-matched doorway -->
+              <div class="sigrow">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+                <div class="bd">
+                  <p><b>Real estate foundation</b></p>
+                  <p class="detail">Your Amsterdam home anchors 68,4% of your net worth —
+                  the structural base the rest of your sheet builds on.</p>
+                  <p class="doorway"><span class="go">What if housing dips 15%? <span class="ar">→</span></span></p>
+                </div>
+                <div class="aside">
+                  <div class="dots"><i class="on"></i><i></i><i></i></div>
+                  <svg class="chev" width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="60 100 128 168 196 100"/></svg>
+                </div>
+              </div>
+
+              <!-- Markets, expanded: detail + impact + past-tense doorway -->
+              <div class="sigrow">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <div class="bd">
+                  <p><b>NVIDIA steady after earnings</b></p>
+                  <p class="detail">Nvidia closed flat after Q2 results; data-centre revenue
+                  grew 40% year on year, in line with guidance.</p>
+                  <p class="metaline tnum">≈ +€85 on your sheet · 40 NVDA</p>
+                  <p class="doorway"><span class="go">What did NVIDIA do for you? <span class="ar">→</span></span></p>
+                </div>
+                <div class="aside">
+                  <div class="dots"><i class="on"></i><i></i><i></i></div>
+                  <svg class="chev" width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="60 100 128 168 196 100"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="metarow">
+              <span class="eyebrow">Active vitals · 7</span>
+              <span class="qact">Unfold all</span>
+            </div>
+            <div class="fold" style="border-bottom:none">
+              <div class="l"><div class="t">Concentration</div><div class="q">how much rides on your biggest holding</div></div>
+              <div class="r"><div><span class="v tnum">52,0%</span><span class="s">balanced</span></div>
+                <svg class="chev" width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"><polyline points="60 100 128 168 196 100"/></svg></div>
+            </div>
+            <div class="fadeout"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">02 · Expanded — <b>the doorway grammar</b></div>
+    </div>
+
+    <!-- ═══════════ FRAME 3 · THE HAND-OFF (dark) ═══════════ -->
+    <div class="unit dark">
+      <div class="device dk">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="status"><span>9:41</span><span class="tnum">100%</span></div>
+          <div class="chatbar">
+            <div class="back">‹</div>
+            <div class="ct">Chat</div>
+            <div class="sp"></div>
+          </div>
+
+          <div class="msg">
+            <div class="eyebrow" style="margin-bottom:8px">What if · from today&rsquo;s Pulse</div>
+            <p class="m">Here&rsquo;s where your portfolio could be heading if nothing
+            changes — and a few ways to pressure-test the two things today&rsquo;s
+            Pulse flagged: your <b style="font-weight:600">leverage</b> and your
+            <b style="font-weight:600">drawdown exposure</b>.</p>
+
+            <!-- projection cone (deterministic: /api/scenarios/project) -->
+            <div class="cone">
+              <svg viewBox="0 0 300 150" width="100%" height="auto" role="img" aria-label="Projection cone from 365 thousand euros today to about 649 thousand by 2036">
+                <polygon points="120,86 292,30 292,122" style="fill:var(--accent-soft)"/>
+                <polyline points="10,118 30,112 50,115 70,104 90,98 105,92 120,86" style="fill:none;stroke:var(--dim);stroke-width:1.6"/>
+                <line x1="120" y1="86" x2="292" y2="64" style="stroke:var(--accent);stroke-width:1.4" stroke-dasharray="3 4"/>
+                <circle cx="120" cy="86" r="3.2" style="fill:var(--accent)"/>
+                <text x="120" y="105" text-anchor="middle" style="fill:var(--faint);font-size:9px" class="tnum">today · €365K</text>
+                <text x="288" y="34" text-anchor="end" style="fill:var(--faint);font-size:9px" class="tnum">€880K</text>
+                <text x="288" y="67" text-anchor="end" style="fill:var(--accent-deep);font-size:10px;font-weight:600" class="tnum">€649K</text>
+                <text x="288" y="119" text-anchor="end" style="fill:var(--faint);font-size:9px" class="tnum">€480K</text>
+                <text x="14" y="144" style="fill:var(--faint);font-size:9px" class="tnum">2022</text>
+                <text x="120" y="144" text-anchor="middle" style="fill:var(--faint);font-size:9px" class="tnum">2026</text>
+                <text x="285" y="144" text-anchor="end" style="fill:var(--faint);font-size:9px" class="tnum">2036</text>
+              </svg>
+              <p class="coneline">Keep this pace and you&rsquo;re near <b>€649K</b> by 2036.</p>
+            </div>
+          </div>
+
+          <!-- chips seeded from the vitals the Pulse sentence named -->
+          <div class="chips">
+            <div class="chip gold">What if rates rise 2%?</div>
+            <div class="chip">What if markets drop 30%?</div>
+            <div class="chip">What if you pay down €10.000 of the mortgage?</div>
+          </div>
+
+          <div class="composer">
+            <span class="ph">Ask your own what-if…</span>
+            <span class="send">→</span>
+          </div>
+        </div>
+      </div>
+      <div class="cap">03 · The hand-off — <b>pressure-test in chat</b></div>
+    </div>
+  </div>
+
+  <!-- ---------- design decisions ---------- -->
+  <div class="notes">
+    <div class="note"><b>One grammar: statement → question → number</b>
+      Every pulse keeps the shipped voice (italic, 13px, SignalRow shell) and gains
+      the projection row&rsquo;s trailing <i>gold clause</i> — no buttons, no new
+      chrome. The clause IS the affordance, exactly as &ldquo;See what moves
+      it&nbsp;→&rdquo; already works today.</div>
+    <div class="note"><b>Tense-matched doorways</b>
+      The band pressure-tests <i>today</i> (chips built from the vitals the sentence
+      named), Worth&nbsp;knowing asks the detector&rsquo;s canonical what-if
+      (housing&nbsp;−15% — the shock model the app already uses), Markets asks the
+      <i>past-tense</i> counterfactual the engine already computes.</div>
+    <div class="note"><b>Markets becomes yours</b>
+      The cron already stores an estimated euro impact per story
+      (<i>impact_eur</i>) — the UI just never rendered it. A quiet tabular figure
+      (&ldquo;≈&nbsp;+€85&rdquo;) on the collapsed row makes the news personal at a
+      glance; the expanded row names the holding behind it.</div>
+    <div class="note"><b>Freshness without noise</b>
+      A small gold &ldquo;new&rdquo; on the dateline, only when today&rsquo;s
+      sentence differs from the one last seen. No badges, no counters — the cache
+      already knows.</div>
+    <div class="note"><b>Compact: one line per pulse</b>
+      Collapsed carousels clamp to a single line (title only, dots inline); row
+      padding tightens 11→9px; the projection sentence is shortened. The family
+      costs roughly a third less height, so the first vital rows are visible
+      without scrolling.</div>
+    <div class="note"><b>Motion budget: one settle-in</b>
+      Band, then rows, rise 4px in sequence — ≤0.6s total, play-once per session,
+      plain fade under reduced-motion. Nothing else moves; no auto-advancing
+      carousels, no count-ups. Within the brand guardrails in
+      <i>mobile-wow-moments.md</i>.</div>
+  </div>
+</div>
