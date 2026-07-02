@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Volnar — Profile v3: the same foldable grammar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ============ VITALS + PROFILE — CONTENT-FIRST (Nocturne, no boxes) ============
+   Uses the SHIPPED app tokens (globals.css): Inter everywhere, tnum figures,
+   the same type scale, the same colours. The only change on show here is the
+   removal of card chrome: sections part with hairline rules + whitespace,
+   exactly like the mobile Overview. Frames are "unrolled" — full page height —
+   so the whole composition can be judged at once.
+   ============================================================================ */
+:root{
+  --stage:#E7E9ED;
+  --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--stage);color:#171A20;font-family:var(--sans);-webkit-font-smoothing:antialiased}
+
+/* ---------- theme tokens (mirrors src/app/globals.css) ---------- */
+.light{
+  --bg:#F7F8FA; --surface:#FFFFFF; --surface-elev:#EEF0F4;
+  --border:rgba(18,22,30,.08); --border-strong:rgba(18,22,30,.14);
+  --text:#171A20; --dim:#565D69; --faint:#868D99; --hero:#0A0C10;
+  --accent:#9C7A37; --accent-soft:rgba(156,122,55,.12); --accent-text:#7E6026; --accent-deep:#7E6026;
+  --pos:#2E8B5E; --pos-soft:rgba(46,139,94,.12); --pos-text:#277A52;
+  --neg:#B4502E; --neg-soft:rgba(180,80,46,.12); --neg-text:#9A4326;
+  --prop:#4E7398; --mkt:#3E8E6B; --cry:#C2832F; --res:#948A66;
+  --nav:rgba(247,248,250,.85);
+}
+.dark{
+  --bg:#0E1116; --surface:#151922; --surface-elev:#1B202B;
+  --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.13);
+  --text:#E7EAF0; --dim:#9AA3B2; --faint:#697184; --hero:#FAFBFD;
+  --accent:#CBA75E; --accent-soft:rgba(203,167,94,.14); --accent-text:#DCBE82; --accent-deep:#E0C281;
+  --pos:#5FB58A; --pos-soft:rgba(95,181,138,.15); --pos-text:#7FC7A2;
+  --neg:#D08763; --neg-soft:rgba(208,135,99,.15); --neg-text:#E0A488;
+  --prop:#6E8FB0; --mkt:#6FAE8B; --cry:#D6A14E; --res:#A9A382;
+  --nav:rgba(14,17,22,.82);
+}
+
+/* ---------- gallery stage ---------- */
+.stage{min-height:100vh;padding:48px clamp(16px,4vw,56px) 90px;
+  background:radial-gradient(1200px 600px at 80% -10%,rgba(156,122,55,.06),transparent 60%),var(--stage)}
+.intro{max-width:1180px;margin:0 auto 20px}
+.kicker{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#9C7A37}
+.intro h1{font-size:clamp(28px,4.4vw,42px);font-weight:600;letter-spacing:-.03em;margin:12px 0 10px;color:#0A0C10}
+.intro h1 b{color:#9C7A37;font-weight:600}
+.intro>p{max-width:720px;color:#565D69;font-size:15px;line-height:1.6}
+.notes{max-width:1180px;margin:22px auto 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px 26px}
+.note{font-size:13px;line-height:1.55;color:#565D69;border-top:1px solid rgba(18,22,30,.14);padding-top:10px}
+.note b{color:#171A20;font-weight:600;display:block;margin-bottom:2px}
+.note i{color:#7E6026;font-style:normal;font-weight:600}
+
+/* ---------- phone frames (unrolled: full page height) ---------- */
+.gallery{max-width:1560px;margin:0 auto;display:flex;flex-wrap:wrap;gap:46px 40px;justify-content:center;align-items:flex-start}
+.unit{display:flex;flex-direction:column;align-items:center;gap:14px}
+.cap{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#868D99}
+.cap b{color:#9C7A37;font-weight:600}
+.device{width:340px;border-radius:50px;padding:11px;background:linear-gradient(160deg,#E6E7EB,#C3C5CC);
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 30px 70px -32px rgba(18,22,30,.32),0 0 0 1px rgba(18,22,30,.10)}
+.dark .device,.device.dk{background:linear-gradient(160deg,#3A3D45,#17181C)}
+.screen{position:relative;width:100%;border-radius:40px;overflow:hidden;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+.notch{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:104px;height:28px;background:#000;border-radius:16px;z-index:40}
+.status{height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 7px;font-size:12px;font-weight:500;color:var(--text)}
+.tnum{font-feature-settings:"tnum" 1}
+
+/* app bar (matches shipped mobile NavBar: logo left, name right, in-flow) */
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 0;height:36px}
+.wm{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;letter-spacing:-.04em;color:var(--hero)}
+.wm .mark{width:20px;height:20px;border-radius:5px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:12px}
+.appbar .who{font-size:14px;font-weight:500;color:var(--faint)}
+
+/* page column (root layout px-5 ≈ 18px at this scale) */
+.pad{padding:16px 18px 20px}
+
+/* ---------- shared, box-free vocabulary ---------- */
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);line-height:1}
+.title{font-size:17px;font-weight:500;letter-spacing:-.018em;color:var(--hero);line-height:1.1}
+.rule{border-top:1px solid var(--border)}
+.metarow{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);margin-top:20px;padding-top:12px;margin-bottom:12px}
+.qact{font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--accent-text)}
+.serif-it{font-style:italic;color:var(--dim);font-size:13px;line-height:1.45}
+.lead{font-style:normal;font-weight:600;color:var(--accent-text)}
+.caption{font-size:11.5px;color:var(--faint);line-height:1.45}
+.pill{display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-deep);font-size:12px;font-weight:500;white-space:nowrap}
+.chev{color:var(--faint);opacity:.7}
+
+/* full-bleed accent band (the Pulse) — a band, not a box: no border, no radius */
+.band{margin:14px -18px 0;background:var(--accent-soft);padding:12px 18px 13px}
+.band .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.band .hd .eyebrow{color:var(--accent-deep);opacity:.78}
+.band p{font-style:italic;font-size:13px;line-height:1.45;color:var(--text)}
+.band p em{font-style:italic;font-weight:600}
+
+/* signal rows (projection / insight / markets) — rows, not a card */
+.sigrow{display:flex;align-items:center;gap:11px;padding:11px 0}
+.sigrow+.sigrow{border-top:1px solid var(--border)}
+.sigrow .ic{width:16px;height:16px;flex:none;color:var(--accent-text)}
+.sigrow p{flex:1;min-width:0;font-style:italic;font-size:13px;line-height:1.4;color:var(--text)}
+.sigrow p b{font-style:italic;font-weight:600}
+.sigrow p .go{color:var(--accent-text);font-weight:500}
+.sigrow .chev{flex:none}
+
+/* vital section */
+.vital{padding:18px 0 20px;border-top:1px solid var(--border)}
+.vital .hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;gap:10px}
+.vital .hd .eyebrow{white-space:nowrap}
+.vital .hd .rs{white-space:nowrap}
+.vital .hd .rs{display:flex;align-items:baseline;gap:6px}
+.vital .hd .rs .v{font-size:12px;font-weight:500;color:var(--text)}
+.metric{display:flex;align-items:baseline;gap:8px;margin-bottom:13px;flex-wrap:wrap}
+.metric .n{font-size:27px;font-weight:600;letter-spacing:-.02em;color:var(--hero);line-height:1.05}
+.metric .n.neg{color:var(--neg-text)}
+.metric .s{font-size:11.5px;color:var(--dim)}
+.bench{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim);margin-top:9px}
+.bench i{display:block;width:10px;height:1px;background:var(--faint)}
+.sugg{margin-top:10px;font-size:13px;line-height:1.45;font-style:italic;color:var(--dim)}
+.sugg b{font-style:normal;font-weight:600;color:var(--accent-text)}
+.sugg strong{font-style:italic;font-weight:600;color:var(--text)}
+
+/* concentration — stacked rows: name + value on one line, full-width bar
+   beneath. Names can never truncate; every bar shares the same origin, so the
+   one faint threshold line stays meaningful across the whole staircase. */
+.cbar{margin-bottom:10px;position:relative;z-index:1}
+.cbar .lab{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.cbar .lab .logo{width:16px;height:16px;border-radius:5px;flex:none;background:var(--surface-elev);
+  display:flex;align-items:center;justify-content:center;font-size:7.5px;font-weight:600;color:var(--dim);box-shadow:inset 0 0 0 .5px var(--border)}
+.cbar .lab span{flex:1;min-width:0;font-size:12px;color:var(--text);line-height:1.3}
+.cbar .lab .v{flex:none;font-size:12px;color:var(--dim);line-height:1}
+.cbar .bar{height:6px;border-radius:2px}
+.cwrap{position:relative;padding-top:18px}
+.cwrap .thresh{position:absolute;top:18px;bottom:4px;border-left:1px dashed var(--border-strong);z-index:0}
+.cwrap .threshlab{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:500;color:var(--faint);white-space:nowrap}
+.cmore{font-size:11.5px;color:var(--faint)}
+
+/* liquidity stack */
+.lstack{display:flex;gap:2px;height:16px;margin:4px 0 8px;position:relative}
+.lstack i{border-radius:2px;display:block}
+.lbuffer{position:absolute;top:-4px;bottom:-4px;border-left:1px dashed var(--dim);opacity:.7}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.legend span{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--faint)}
+.legend i{width:6px;height:6px;border-radius:50%;display:block}
+
+/* small svg charts */
+svg text{font-family:var(--sans)}
+
+/* ---------- profile ---------- */
+.fingerprint{font-style:italic;font-size:13px;line-height:1.45;color:var(--dim);margin-top:9px}
+.persp-syn{font-style:italic;font-size:13px;line-height:1.45;color:var(--text);margin:10px 0 10px}
+.persp-syn em{font-style:italic;font-weight:600}
+.cohort{padding:12px 0;border-top:1px solid var(--border)}
+.cohort .top{display:flex;align-items:center;gap:12px}
+.cohort .l{flex:0 0 88px}
+.cohort .l .n{font-size:13px;font-weight:500;color:var(--text);line-height:1.25}
+.cohort .l .s{font-size:11.5px;color:var(--dim);margin-top:1px}
+.cohort .m{flex:1;min-width:0}
+.cohort .m .trk{height:3px;border-radius:999px;background:var(--accent-soft);position:relative}
+.cohort .m .fill{position:absolute;left:0;top:0;height:100%;border-radius:999px;background:var(--accent)}
+.cohort .m .dot{position:absolute;top:-3px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);transform:translateX(-50%)}
+.cohort .ctx{font-size:11.5px;color:var(--faint);margin-top:7px;line-height:1.4}
+.cohort .r{flex:0 0 56px;text-align:right}
+.cohort .r .p{font-size:17px;font-weight:600;color:var(--hero);line-height:1.1}
+.cohort .r .p span{font-size:11.5px;font-weight:500;color:var(--dim)}
+.cohort .r .eyebrow{margin-top:3px}
+.traj{display:flex;align-items:center;gap:7px;margin:4px 0 0;padding:10px 0 0;font-size:11.5px;color:var(--dim)}
+.traj svg{width:12px;height:12px;color:var(--pos-text);flex:none}
+.traj b{font-weight:600;color:var(--text)}
+.aphorism{font-style:italic;font-size:13px;line-height:1.45;color:var(--dim);border-top:1px solid var(--border);margin-top:14px;padding-top:13px}
+.ctxrow{padding:12px 0;border-top:1px solid var(--border)}
+.ctxrow:first-of-type{border-top:none;padding-top:2px}
+.ctxrow .k{font-size:14px;font-weight:500;letter-spacing:-.01em;color:var(--text);margin-bottom:3px}
+.ctxrow .v{font-size:13px;color:var(--dim);line-height:1.45}
+.planrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 0}
+.planrow .l .n{font-size:13px;font-weight:500;color:var(--text)}
+.planrow .l .s{font-size:11.5px;color:var(--dim);margin-top:2px}
+.setrow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);margin-top:22px;padding:14px 0 2px;color:var(--dim)}
+.setrow svg{width:16px;height:16px;color:var(--faint)}
+.setrow span{flex:1;font-size:13px;font-weight:500;color:var(--text)}
+
+/* tab bar */
+.tabbar{margin-top:26px;height:64px;display:flex;align-items:flex-start;padding:8px 10px 0;
+  background:var(--nav);backdrop-filter:blur(18px) saturate(180%);border-top:1px solid var(--border)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint)}
+.tab.on{color:var(--accent)}
+.tab span{font-size:10px;font-weight:500;letter-spacing:.02em}
+.tab svg{width:21px;height:21px}
+.tab.mid .ring{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--accent);background:var(--accent-soft);display:flex;align-items:center;justify-content:center;margin-top:-2px}
+.tab.mid .ring svg{width:16px;height:16px}
+
+/* v2 additions: status word + exception note */
+.metric .s b{font-weight:600;font-style:normal}
+.metric .s b.ok{color:var(--pos-text)}
+.metric .s b.warn{color:var(--neg-text)}
+.exc{margin-top:11px;font-size:13px;line-height:1.45;font-style:italic;color:var(--dim)}
+.exc b{font-style:normal;font-weight:600;color:var(--neg-text)}
+.vital{padding:20px 0 22px}
+.sigrow p{font-style:normal;color:var(--dim)}
+.sigrow p b{font-style:normal;font-weight:600;color:var(--text)}
+
+/* v3: foldable vital rows */
+.frow{display:flex;align-items:center;gap:10px;padding:13px 0;border-top:1px solid var(--border)}
+.frow:first-of-type{border-top:none}
+.frow .fl,.frowhd .fl{flex:1;min-width:0}
+.frow .fl .n,.frowhd .fl .n{font-size:13px;font-weight:500;color:var(--text);line-height:1.25}
+.frow .fl .q,.frowhd .fl .q{font-size:11.5px;color:var(--faint);margin-top:2px;line-height:1.35}
+.frow .fr,.frowhd .fr{flex:none;text-align:right}
+.frow .fr .v,.frowhd .fr .v{font-size:14px;font-weight:600;color:var(--hero);line-height:1.2}
+.frow .fr .v.neg,.frowhd .fr .v.neg{color:var(--neg-text)}
+.frow .fr .st,.frowhd .fr .st{font-size:11px;font-weight:600;margin-top:2px}
+.frow .fr .st.ok,.frowhd .fr .st.ok{color:var(--pos-text)}
+.frow .fr .st.warn,.frowhd .fr .st.warn{color:var(--neg-text)}
+.frow .ch,.frowhd .ch{flex:none;color:var(--faint);opacity:.65}
+.fopen{border-top:1px solid var(--border);padding:13px 0 20px}
+.fopen .frowhd{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.fopen .frowhd .fl{flex:1;min-width:0}
+.fopen .fbody{padding-top:2px}
+.fopen .exp{margin-top:11px;font-size:13px;line-height:1.45;color:var(--dim)}
+.fopen .exp b{font-weight:600;color:var(--text)}
+
+/* profile-specific bits reused from v2 */
+.fingerprint{font-style:italic;font-size:13px;line-height:1.45;color:var(--dim);margin-top:9px}
+.persp-syn{font-style:italic;font-size:13px;line-height:1.45;color:var(--text);margin:2px 0 10px}
+.persp-syn em{font-style:italic;font-weight:600}
+.cohort{padding:12px 0;border-top:1px solid var(--border)}
+.cohort .top{display:flex;align-items:center;gap:12px}
+.cohort .l{flex:0 0 88px}
+.cohort .l .n{font-size:13px;font-weight:500;color:var(--text);line-height:1.25}
+.cohort .l .s{font-size:11.5px;color:var(--dim);margin-top:1px}
+.cohort .m{flex:1;min-width:0}
+.cohort .m .trk{height:3px;border-radius:999px;background:var(--accent-soft);position:relative}
+.cohort .m .fill{position:absolute;left:0;top:0;height:100%;border-radius:999px;background:var(--accent)}
+.cohort .m .dot{position:absolute;top:-3px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);transform:translateX(-50%)}
+.cohort .r{flex:0 0 56px;text-align:right}
+.cohort .r .p{font-size:17px;font-weight:600;color:var(--hero);line-height:1.1}
+.cohort .r .p span{font-size:11.5px;font-weight:500;color:var(--dim)}
+.traj{display:flex;align-items:center;gap:7px;margin:4px 0 0;padding:10px 0 0;font-size:11.5px;color:var(--dim)}
+.traj svg{width:12px;height:12px;color:var(--pos-text);flex:none}
+.traj b{font-weight:600;color:var(--text)}
+.aphorism{font-style:italic;font-size:13px;line-height:1.45;color:var(--dim);border-top:1px solid var(--border);margin-top:14px;padding-top:13px}
+.ctxrow{padding:12px 0;border-top:1px solid var(--border)}
+.ctxrow:first-of-type{border-top:none;padding-top:2px}
+.ctxrow .k{font-size:14px;font-weight:500;letter-spacing:-.01em;color:var(--text);margin-bottom:3px}
+.ctxrow .v{font-size:13px;color:var(--dim);line-height:1.45}
+.setrow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);margin-top:10px;padding:14px 0 2px;color:var(--dim)}
+.setrow svg{width:16px;height:16px;color:var(--faint)}
+.setrow span{flex:1;font-size:13px;font-weight:500;color:var(--text)}
+.frow .fr .sub,.frowhd .fr .sub{font-size:11px;font-weight:500;color:var(--dim);margin-top:2px}
+</style>
+<body>
+<div class="stage">
+  <div class="intro">
+    <div class="kicker">Volnar · mockup v3 · July 2026</div>
+    <h1>Profile in the <b>same foldable grammar</b></h1>
+    <p>Name and fingerprint stay as the page's face. Below them, the same two-line rows as Vitals:
+    a plain-language line, a figure, a chevron. Perspective — the page's one wow — arrives unfolded;
+    Context and Plan rest folded. Settings stays a plain navigation row.</p>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>One grammar, two pages</b>Vitals and Profile now share the exact same row anatomy, fold gesture and "the important one arrives open" rule — the app gets simpler to learn, not just each page.</div>
+    <div class="note"><b>Perspective leads</b>Folded it still shows the two things that matter: your wealth figure and "top 9% worldwide". Unfolded it's the full distribution story.</div>
+    <div class="note"><b>Context earns its privacy</b>"What Volnar has noted about you · 3 notes" folded — personal notes aren't on screen every time you open the tab.</div>
+  </div>
+
+  <div class="gallery">
+    
+    <div class="unit light">
+      <div class="cap"><b>Profile v3</b> · resting — Perspective open</div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span class="tnum">9:41</span><span class="tnum">100%</span></div>
+        <div class="appbar">
+          <div class="wm"><span class="mark">V</span>Volnar</div>
+          <div class="who"></div>
+        </div>
+        <div class="pad">
+          <div class="title">Alex Demo</div>
+          <p class="fingerprint">Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.</p>
+
+          <div class="metarow">
+            <span class="eyebrow">Your picture</span>
+          </div>
+
+          <div class="fopen" style="border-top:none;padding-top:4px">
+            <div class="frowhd">
+              <div class="fl"><div class="n">Perspective</div><div class="q">where you stand among households</div></div>
+              <div class="fr"><div class="v tnum">€399.992</div><div class="sub">top 9% worldwide</div></div>
+              <svg class="ch" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="fbody">
+              <p class="persp-syn">Above <em>84%</em> of EU households and <em>91%</em> globally — a position most reach only after decades of compounding.</p>
+              <svg viewBox="0 0 300 104" style="width:100%;display:block;overflow:visible;margin-top:6px">
+                <defs>
+                  <linearGradient id="dens" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stop-color="var(--accent)" stop-opacity=".05"/>
+                    <stop offset="50%" stop-color="var(--accent)" stop-opacity=".10"/>
+                    <stop offset="80%" stop-color="var(--accent)" stop-opacity=".16"/>
+                    <stop offset="100%" stop-color="var(--accent)" stop-opacity=".04"/>
+                  </linearGradient>
+                </defs>
+                <path d="M13,62 C44,60 71,54 101,47 C128,40 154,38 181,34 C199,32 216,38 234,47 C251,56 269,62 287,66 L287,66 L13,66 Z" fill="url(#dens)" opacity=".85"/>
+                <path d="M13,62 C44,60 71,54 101,47 C128,40 154,38 181,34 C199,32 216,38 234,47 C251,56 269,62 287,66" fill="none" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+                <line x1="13" y1="66" x2="287" y2="66" stroke="var(--dim)" stroke-width=".6"/>
+                <line x1="78" y1="54" x2="78" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+                <text x="78" y="50" text-anchor="middle" font-size="9" fill="var(--dim)">World median</text>
+                <line x1="159" y1="24" x2="159" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+                <text x="163" y="20" text-anchor="middle" font-size="9" fill="var(--dim)">NL med</text>
+                <line x1="205" y1="10" x2="205" y2="66" stroke="var(--dim)" stroke-width=".7" stroke-dasharray="2 2" opacity=".5"/>
+                <text x="205" y="6" text-anchor="middle" font-size="9" fill="var(--dim)">World top 1%</text>
+                <line x1="196" y1="66" x2="196" y2="94" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 2" opacity=".6"/>
+                <circle cx="196" cy="66" r="6.5" fill="none" stroke="var(--accent)" stroke-opacity=".28" stroke-width="2"/>
+                <circle cx="196" cy="66" r="3.8" fill="var(--accent)"/>
+                <text x="196" y="102" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--accent-deep)">you · €400k</text>
+                <text x="13" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€1k</text>
+                <text x="78" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€10k</text>
+                <text x="146" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€100k</text>
+                <text x="213" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€1M</text>
+                <text x="283" y="78" text-anchor="middle" font-size="9" fill="var(--faint)">€10M</text>
+              </svg>
+              <div style="margin-top:12px">
+                <div class="cohort">
+                  <div class="top">
+                    <div class="l"><div class="n">Netherlands</div><div class="s">your country</div></div>
+                    <div class="m"><div class="trk"><div class="fill" style="width:82%"></div><div class="dot" style="left:82%"></div></div></div>
+                    <div class="r"><div class="p tnum">82<span>nd</span></div></div>
+                  </div>
+                </div>
+                <div class="cohort">
+                  <div class="top">
+                    <div class="l"><div class="n">European Union</div><div class="s">27 countries</div></div>
+                    <div class="m"><div class="trk"><div class="fill" style="width:84%"></div><div class="dot" style="left:84%"></div></div></div>
+                    <div class="r"><div class="p tnum">84<span>th</span></div></div>
+                  </div>
+                </div>
+                <div class="cohort">
+                  <div class="top">
+                    <div class="l"><div class="n">Worldwide</div><div class="s">5.4 bn adults</div></div>
+                    <div class="m"><div class="trk"><div class="fill" style="width:91%"></div><div class="dot" style="left:91%"></div></div></div>
+                    <div class="r"><div class="p tnum">91<span>st</span></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="traj">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-9"/><path d="M14 6h7v7"/></svg>
+                <span>Up <b>2 percentile points</b> in NL this year</span>
+              </div>
+              <p class="aphorism">Most of the world manages without an investment portfolio at all. Worth holding lightly.</p>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fl"><div class="n">Context</div><div class="q">what Volnar has noted about you</div></div>
+            <div class="fr"><div class="v tnum">3</div><div class="sub">notes</div></div>
+            <svg class="ch" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          <div class="frow">
+            <div class="fl"><div class="n">Plan</div><div class="q">your subscription</div></div>
+            <div class="fr"><div class="v">Premium</div><div class="sub">renews Jun '27</div></div>
+            <svg class="ch" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          <div class="setrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Settings</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" class="chev"><path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="128" r="104"/><polyline points="128 128 128 40"/><polyline points="128 128 195.89 184.6"/></svg><span>Overview</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:19px;height:19px"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12"/></svg><span>Vitals</span></div>
+          <div class="tab mid"><div class="ring"><svg viewBox="0 0 256 256" fill="none" stroke="var(--faint)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/></svg></div><span>Chat</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32"/><path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z"/></svg><span>Journal</span></div>
+          <div class="tab on"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="96" r="64"/><path d="M30.99,224a112.04,112.04,0,0,1,194.02,0"/></svg><span>Profile</span></div>
+        </div>
+      </div></div>
+    </div>
+    
+    <div class="unit light">
+      <div class="cap"><b>Profile v3</b> · Perspective folded · Context open</div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span class="tnum">9:41</span><span class="tnum">100%</span></div>
+        <div class="appbar">
+          <div class="wm"><span class="mark">V</span>Volnar</div>
+          <div class="who"></div>
+        </div>
+        <div class="pad">
+          <div class="title">Alex Demo</div>
+          <p class="fingerprint">Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.</p>
+
+          <div class="metarow">
+            <span class="eyebrow">Your picture</span>
+          </div>
+
+          <div class="frow" style="padding-top:4px;border-top:none">
+            <div class="fl"><div class="n">Perspective</div><div class="q">where you stand among households</div></div>
+            <div class="fr"><div class="v tnum">€399.992</div><div class="sub">top 9% worldwide</div></div>
+            <svg class="ch" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fopen">
+            <div class="frowhd">
+              <div class="fl"><div class="n">Context</div><div class="q">what Volnar has noted about you</div></div>
+              <div class="fr"><div class="v tnum">3</div><div class="sub">notes</div></div>
+              <svg class="ch" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="fbody">
+              <div class="ctxrow">
+                <div class="k">Life and direction</div>
+                <div class="v">Settled in Amsterdam with a long horizon; optimising for optionality over income.</div>
+              </div>
+              <div class="ctxrow">
+                <div class="k">Approach</div>
+                <div class="v">Index core, deliberate satellites. Adds on weakness, trims strength.</div>
+              </div>
+              <div class="ctxrow">
+                <div class="k">Currently exploring</div>
+                <div class="v">Whether the Rotterdam rental still earns its place versus the index core.</div>
+              </div>
+              <p class="caption" style="margin-top:4px">Noted quietly as you chat — edit or clear any note in Settings.</p>
+            </div>
+          </div>
+
+          <div class="frow">
+            <div class="fl"><div class="n">Plan</div><div class="q">your subscription</div></div>
+            <div class="fr"><div class="v">Premium</div><div class="sub">renews Jun '27</div></div>
+            <svg class="ch" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          <div class="setrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Settings</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" class="chev"><path d="M4.5 2.5L8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="128" r="104"/><polyline points="128 128 128 40"/><polyline points="128 128 195.89 184.6"/></svg><span>Overview</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:19px;height:19px"><path d="M2 12 L6.5 12 L8.8 7 L13.2 18.5 L16 12 L22 12"/></svg><span>Vitals</span></div>
+          <div class="tab mid"><div class="ring"><svg viewBox="0 0 256 256" fill="none" stroke="var(--faint)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/></svg></div><span>Chat</span></div>
+          <div class="tab"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32"/><path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z"/></svg><span>Journal</span></div>
+          <div class="tab on"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="96" r="64"/><path d="M30.99,224a112.04,112.04,0,0,1,194.02,0"/></svg><span>Profile</span></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
