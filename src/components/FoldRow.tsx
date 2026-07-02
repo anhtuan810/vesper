@@ -18,6 +18,9 @@ export interface FoldRowProps {
   /** Small line under the figure: a status word (ok/warn) or a quiet sub-label. */
   sub?: ReactNode;
   subTone?: "ok" | "warn" | "neutral";
+  /** Optional letter grade (A–D) rendered as a small chip before the figure —
+   *  the at-a-glance read for someone who can't yet interpret the number. */
+  grade?: { letter: string; tone: "good" | "warn" | "bad" } | null;
   open: boolean;
   onToggle: () => void;
   /** First row after a section header — drops its top hairline. */
@@ -25,8 +28,14 @@ export interface FoldRowProps {
   children: ReactNode;
 }
 
+const GRADE_COLORS: Record<"good" | "warn" | "bad", { bg: string; fg: string }> = {
+  good: { bg: "var(--positive-soft)", fg: "var(--positive-text)" },
+  warn: { bg: "var(--amber-soft)", fg: "var(--amber-deep)" },
+  bad: { bg: "var(--negative-soft)", fg: "var(--negative-text)" },
+};
+
 export function FoldRow({
-  title, question, value, valueTone = "default", sub, subTone = "neutral",
+  title, question, value, valueTone = "default", sub, subTone = "neutral", grade,
   open, onToggle, first = false, children,
 }: FoldRowProps) {
   const bodyId = useId();
@@ -59,6 +68,27 @@ export function FoldRow({
             {question}
           </span>
         </span>
+        {grade && (
+          <span
+            aria-label={`Grade ${grade.letter}`}
+            style={{
+              flex: "none",
+              width: 22,
+              height: 22,
+              borderRadius: 7,
+              background: GRADE_COLORS[grade.tone].bg,
+              color: GRADE_COLORS[grade.tone].fg,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-caption)",
+              fontWeight: 700,
+            }}
+          >
+            {grade.letter}
+          </span>
+        )}
         <span style={{ flex: "none", textAlign: "right" }}>
           <span
             className="tnum"

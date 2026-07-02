@@ -20,6 +20,7 @@ import { DrawdownBars } from "@/components/vitals/charts/DrawdownBars";
 import { CashWaterfall } from "@/components/vitals/charts/CashWaterfall";
 import { RealGrowthDualLine } from "@/components/vitals/charts/RealGrowthDualLine";
 import { useVitals } from "@/lib/hooks";
+import { vitalGrade } from "@/lib/vitals/grade";
 import type { VitalResult } from "@/lib/vitals/index";
 import type { VitalScope } from "@/lib/vitals/types";
 import type { ConcentrationValue } from "@/lib/vitals/concentration";
@@ -1195,6 +1196,10 @@ export function VitalsContent({
     const meta = FOLD_META[key] ?? { title: VITAL_LABELS[key] ?? key, question: "" };
     const status = foldStatus(key, vital, showProperty);
     const open = effectiveOpen(key);
+    // Letter grade — derived from the same band/value the status word uses
+    // (grade.ts guarantees green→A/B, amber→C, red→D, so the two never
+    // disagree). The instant good/bad read for someone new to the numbers.
+    const grade = vitalGrade(key, vital.band, vital.value);
     return (
       <FoldRow
         key={key}
@@ -1205,6 +1210,7 @@ export function VitalsContent({
         valueTone={cfg.props.heroNumberClass === "negative" ? "negative" : "default"}
         sub={status.label}
         subTone={status.tone}
+        grade={grade}
         open={open}
         onToggle={() => setFold(key, !open)}
       >

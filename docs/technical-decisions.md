@@ -464,6 +464,16 @@ full chart/detail. Rules that make it work:
   `volnar:profile-open` in sessionStorage).
 - **Desktop unchanged** — the fold grammar is mobile-only; the grid cards remain
   for the Twilight shell (`buildConfig(key)` is shared by both renderers).
+- **Letter grades (2026-07)**: each active vital's fold row carries an A–D chip
+  (`src/lib/vitals/grade.ts`) so the number is instantly legible. DERIVED, never
+  independent: amber → C, red → D always (the grade cannot contradict the
+  status word); the only refinement is inside green — A comfortably in range,
+  B approaching the amber threshold, with cut-offs anchored to the band
+  functions' own thresholds. Concentration self-derives from the
+  investable-first pct so both property lenses agree. Liquidity's
+  "insufficient" state gets no grade. Covered by
+  `scripts/verify-vital-grade.ts`. Mobile-only for now (desktop cards
+  unchanged).
 - **One Pulse family**: the Pulse band sentence and every row under it
   (projection, Worth knowing, Markets) render through `SIGNAL_TEXT_STYLE` +
   `SignalRow` exported from `SwipeExpandCarousel.tsx` — one text spec, one row
