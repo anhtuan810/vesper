@@ -27,10 +27,10 @@ function Ic({ id }: { id: string }) {
 // Static (locale-independent) pieces of the Vitals section.
 const PRIVACY_ICONS = ["i-ban", "i-msgoff", "i-shield"];
 const DASH_BARS = [
-  { w: "47%", c: "#117A52" },
-  { w: "33%", c: "#3F7CA8" },
-  { w: "14%", c: "#A89968" },
-  { w: "5%", c: "#E0922A" },
+  { w: "47%", c: "var(--cat-markets)" },
+  { w: "33%", c: "var(--cat-property)" },
+  { w: "14%", c: "var(--cat-reserves)" },
+  { w: "5%", c: "var(--cat-crypto)" },
 ];
 const VITAL_VALUES = ["38%", "54%", "28%", "−23%", "−1,3%", "+8,3%"];
 const VITAL_SVGS: ReactNode[] = [

@@ -25,10 +25,11 @@ export const ENTRY_META: EntryMeta[] = [
   { nw: "€1.290.083", tag: "auto", kind: "market", impc: "dn", sym: "" },
 ];
 
-// Symbol → swatch colour for the "writes the entry" chip.
+// Symbol → swatch colour for the "writes the entry" chip — the app's shared
+// category tokens, so the chips match the chart bands in both themes.
 export const SYMBOL_COLORS: Record<string, string> = {
-  NV: "#117A52", AS: "#117A52", VW: "#117A52",
-  "₿": "#E0922A", MG: "#3F7CA8", "€": "#A89968", Au: "#C9A227",
+  NV: "var(--cat-markets)", AS: "var(--cat-markets)", VW: "var(--cat-markets)",
+  "₿": "var(--cat-crypto)", MG: "var(--cat-property)", "€": "var(--cat-reserves)", Au: "var(--cat-tangible)",
 };
 
 // The generic chat chip always shows NVIDIA's swatch.

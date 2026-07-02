@@ -105,7 +105,7 @@ export function NetWorthChart() {
       ? M.tag.autoMilestone
       : M.tag.autoMarket;
   const sel = MARKERS[cur];
-  const chipColor = SYMBOL_COLORS[chat.sym] ?? "#117A52";
+  const chipColor = SYMBOL_COLORS[chat.sym] ?? "var(--cat-markets)";
   const pop = popIndex != null ? M.entries[popIndex] : null;
   const popDn = popIndex != null && ENTRY_META[popIndex].impc === "dn";
 
@@ -127,7 +127,7 @@ export function NetWorthChart() {
           <svg viewBox="0 0 520 200">
             <g className="stack">
               {CHART_AREAS.map((a) => (
-                <path key={a.fill} d={a.d} fill={a.fill} />
+                <path key={a.fill} d={a.d} style={{ fill: a.fill }} />
               ))}
               <path className="line" d={CHART_LINE} />
             </g>
@@ -182,19 +182,19 @@ export function NetWorthChart() {
 
         <div className="st-legend">
           <span className="lg">
-            <span className="sw" style={{ background: "#3F7CA8" }} />
+            <span className="sw" style={{ background: "var(--cat-property)" }} />
             {M.legend.property}
           </span>
           <span className="lg">
-            <span className="sw" style={{ background: "#A89968" }} />
+            <span className="sw" style={{ background: "var(--cat-reserves)" }} />
             {M.legend.reserves}
           </span>
           <span className="lg">
-            <span className="sw" style={{ background: "#E0922A" }} />
+            <span className="sw" style={{ background: "var(--cat-crypto)" }} />
             {M.legend.crypto}
           </span>
           <span className="lg">
-            <span className="sw" style={{ background: "#117A52" }} />
+            <span className="sw" style={{ background: "var(--cat-markets)" }} />
             {M.legend.publicMarkets}
           </span>
         </div>
