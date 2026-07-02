@@ -1,26 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { MarketHighlight } from "@/lib/market-highlights";
-import { SwipeExpandCarousel } from "@/components/SwipeExpandCarousel";
+import { SwipeExpandCarousel, SignalIconChip } from "@/components/SwipeExpandCarousel";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoneyCompact, isSupportedCurrency } from "@/lib/money";
 
-// "Markets" — PortfolioSummaryCard's carousel of up to 3 daily market-news
-// items (cron-generated `type='market'` highlights, deserialized via
-// parseMarketDetail and delivered through dashboard-init's
-// `marketHighlights`). Shares its presentation — collapsible slides, inline
-// dots, leading icon, borderless — with Worth knowing via
-// SwipeExpandCarousel. Each slide's stored EUR portfolio impact (estimated
-// by the cron; null when not inferable) shows as a quiet tabular aside, so
-// the news reads as YOUR news at a glance. Read-only: no chat hand-off.
+// "Markets" — the pulse row for the daily market-news items (cron-generated
+// `type='market'` highlights). One line per story with the estimated EUR
+// portfolio impact as a quiet aside; expanding opens the drop-down box with
+// the detail, the impact meta line, and the row's trigger sentence, which
+// seeds chat with a question about what the story means for THIS portfolio.
 // When there are no current market highlights it renders nothing, so the
 // section (and its divider) doesn't show.
 
-function ActivityIcon({ size = 14, color }: { size?: number; color: string }) {
+function BarsIcon({ size = 13 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size, flexShrink: 0, marginTop: 2 }}>
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: size, height: size, flexShrink: 0 }}>
+      <line x1="5" y1="20" x2="5" y2="12" />
+      <line x1="12" y1="20" x2="12" y2="5" />
+      <line x1="19" y1="20" x2="19" y2="9" />
     </svg>
   );
 }
@@ -35,6 +35,7 @@ interface MarketsHighlightsProps {
 export function MarketsHighlights({ marketHighlights, onVisibleChange }: MarketsHighlightsProps) {
   const hasMarket = marketHighlights.length > 0;
   const displayCurrency = useDisplayCurrency();
+  const router = useRouter();
 
   useEffect(() => {
     onVisibleChange?.(hasMarket);
@@ -50,16 +51,36 @@ export function MarketsHighlights({ marketHighlights, onVisibleChange }: Markets
     return `≈ ${eur < 0 ? "−" : "+"}${formatMoneyCompact(Math.abs(eur), "EUR", dc)}`;
   };
 
-  const items = marketHighlights.map((m) => ({
-    title: m.title,
-    detail: m.detail,
-    aside: fmtImpact(m.impact_eur),
-  }));
+  const askQuestion = (question: string) => {
+    try { sessionStorage.setItem("volnar.insight.seed", question); } catch {}
+    router.push("/chat?seed=insight&key=current");
+  };
+
+  const items = marketHighlights.map((m) => {
+    const impact = fmtImpact(m.impact_eur);
+    const question = m.symbol
+      ? `${m.title} — what does this mean for my ${m.symbol} position?`
+      : `${m.title} — what does this news mean for my portfolio?`;
+    const label = m.symbol
+      ? `What does this mean for my ${m.symbol}?`
+      : "What does this mean for me?";
+    return {
+      title: m.title,
+      detail: m.detail,
+      aside: impact,
+      meta: impact ? `${impact} on your sheet${m.symbol ? ` · ${m.symbol}` : ""}` : null,
+      trigger: { label, onActivate: () => askQuestion(question) },
+    };
+  });
 
   return (
     <div style={{ padding: "var(--space-1) 0" }}>
       <SwipeExpandCarousel
-        icon={<ActivityIcon color="var(--text-faint)" />}
+        icon={
+          <SignalIconChip>
+            <BarsIcon />
+          </SignalIconChip>
+        }
         items={items}
         getKey={(_item, i) => marketHighlights[i].id ?? `${marketHighlights[i].title}-${i}`}
       />

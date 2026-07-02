@@ -4,14 +4,35 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useInsight } from "@/lib/hooks";
 import { BulbIcon } from "@/components/vitals/SuggestionStrip";
-import { SwipeExpandCarousel, type SwipeExpandItem } from "@/components/SwipeExpandCarousel";
+import { SwipeExpandCarousel, SignalIconChip } from "@/components/SwipeExpandCarousel";
 
-// "Worth knowing" — PortfolioSummaryCard's carousel of up to 3 ordered
-// {title, detail} cards from /api/insight (deterministic portfolio
-// detectors, phrased by Haiku; or a single legacy free-form insight as
-// fallback). Shares its presentation — collapsible slides, inline dots,
-// leading icon, borderless — with Markets via SwipeExpandCarousel. Tapping
-// an expanded detail seeds a chat prompt with that observation.
+// The pre-made question a "Worth knowing" card hands to chat — matched to the
+// content the deterministic detectors write about (portfolio-insights.ts:
+// concentration / cash drag / currency mismatch, plus the property-anchor
+// legacy insight). Fit beats cleverness: each question names the same subject
+// the card does, so the hand-off never feels like a topic change.
+export function insightQuestion(title: string, detail: string): string {
+  const t = `${title} ${detail}`.toLowerCase();
+  if (/(home|property|real estate|housing)/.test(t)) {
+    return "What if housing dipped 15% — what would it mean for my net worth?";
+  }
+  if (/(concentrat|biggest|largest|top position|single position)/.test(t)) {
+    return "What if my biggest holding dropped 30%?";
+  }
+  if (/(cash|savings|idle)/.test(t)) {
+    return "What is my idle cash costing me — and what if I put part of it to work?";
+  }
+  if (/(currency|dollar|euro|usd|eur|gbp|exchange)/.test(t)) {
+    return "What does my currency exposure mean for my portfolio?";
+  }
+  return "Why does this matter for my portfolio?";
+}
+
+// "Worth knowing" — the pulse row for the portfolio insight cards from
+// /api/insight (deterministic detectors, phrased by Haiku; or a single legacy
+// free-form insight as fallback). One line per card; expanding opens the
+// drop-down box with the detail and the row's trigger sentence, which seeds
+// chat with a content-fitting question.
 export function InsightBand({ onVisibleChange }: { onVisibleChange?: (visible: boolean) => void } = {}) {
   const { insights, loading } = useInsight();
   const router = useRouter();
@@ -31,17 +52,29 @@ export function InsightBand({ onVisibleChange }: { onVisibleChange?: (visible: b
 
   if (insights.length === 0) return null;
 
-  const handleDetailClick = (item: SwipeExpandItem) => {
-    sessionStorage.setItem("volnar.insight.seed", `Tell me more about: ${item.detail}`);
+  const askQuestion = (question: string) => {
+    try { sessionStorage.setItem("volnar.insight.seed", question); } catch {}
     router.push("/chat?seed=insight&key=current");
   };
+
+  const items = insights.map((ins) => {
+    const question = insightQuestion(ins.title, ins.detail);
+    return {
+      title: ins.title,
+      detail: ins.detail,
+      trigger: { label: question, onActivate: () => askQuestion(question) },
+    };
+  });
 
   return (
     <div style={{ padding: "var(--space-1) 0" }}>
       <SwipeExpandCarousel
-        icon={<BulbIcon size={14} color="var(--text-faint)" />}
-        items={insights}
-        onDetailClick={handleDetailClick}
+        icon={
+          <SignalIconChip>
+            <BulbIcon size={13} color="currentColor" />
+          </SignalIconChip>
+        }
+        items={items}
       />
     </div>
   );

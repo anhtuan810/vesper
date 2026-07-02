@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PulseBanner, PulseTrace, toSafeHtml, usePulseTraceOnce } from "@/components/vitals/PulseBanner";
 import { requestExplore } from "@/lib/scenario/explore";
 import { FoldRow } from "@/components/FoldRow";
-import { SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
+import { SIGNAL_TEXT_STYLE, SignalRow, SignalIconChip, SignalDropBox } from "@/components/SwipeExpandCarousel";
 import { VitalCard } from "@/components/vitals/VitalCard";
 import type { VitalCardProps } from "@/components/vitals/VitalCard";
 import { LibraryExpander } from "@/components/vitals/LibraryExpander";
@@ -901,6 +901,9 @@ export function VitalsContent({
   // Heartbeat trace: draws once per session, rests on revisits.
   const traceAnimate = usePulseTraceOnce();
 
+  // The Pulse row's expand state (collapsed = one clipped line).
+  const [pulseOpen, setPulseOpen] = useState(false);
+
   // Freshness: a quiet "new" on the dateline, only when today's sentence
   // differs from the one this device last saw. The comparison key is the
   // sentence itself — no schema, no extra fetch.
@@ -1290,10 +1293,10 @@ export function VitalsContent({
              the body paints, so until the sentence lands we hold the slot with a
              shimmer (only when the user has assets) to avoid shifting the cards.
 
-             On mobile these are unified into ONE "Pulse" card: the narrative
-             pulse leads (gold band) and the relocated projection / worth-knowing /
-             markets sit below it as sibling signals — all read as a family of
-             pulses. Desktop (no host slot) keeps the standalone Pulse banner. */}
+             On mobile the four pulses — narrative Pulse, projection, Worth
+             knowing, Markets — are four one-line rows on one tinted wash, each
+             with an icon chip, a drop-down box, and one trigger sentence into
+             chat. Desktop (no host slot) keeps the standalone Pulse plate. */}
       {(() => {
         const hasAssets = data.assets.length > 0;
 
@@ -1311,62 +1314,95 @@ export function VitalsContent({
           return hasAssets ? <PulseBannerSkeleton /> : null;
         }
 
-        // Mobile: the Pulse as a full-bleed PLATE — the one dark object on the
-        // page (gold leaf in dark mode) — with the relocated signals
-        // (projection / worth knowing / markets) as plain rows beneath.
-        // Vertically compact: the vitals list must stay above the fold.
+        // Mobile: the pulse family as ONE full-bleed tinted wash holding four
+        // one-line rows — Pulse, projection, Worth knowing, Markets — each with
+        // its own icon chip, an expandable drop-down, and one trigger sentence
+        // into chat. The wash + white icon chips + serif voice are what set
+        // these rows apart from the plain vital rows below.
         return (
           <>
             {(pulseSentence || hasAssets) && (
-              <div className="pulse-plate" style={{ margin: "0 calc(var(--space-5) * -1)", padding: "9px var(--space-5) 11px" }}>
+              <div style={{ margin: "0 calc(var(--space-5) * -1)", background: "var(--accent-soft)", padding: "7px var(--space-5) 3px" }}>
                 {/* Header row carries the heartbeat trace between the dateline
                     and the count — the trace costs no extra vertical space. */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                  <div className="eyebrow" style={{ color: "var(--plate-gold)", opacity: 0.85, whiteSpace: "nowrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0 4px" }}>
+                  <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.8, whiteSpace: "nowrap" }}>
                     Pulse · {fmtDate()}
-                    {pulseIsNew && (
-                      <span style={{ color: "var(--plate-gold)", opacity: 1 }}>
-                        {" "}· new
-                      </span>
-                    )}
+                    {pulseIsNew && <span> · new</span>}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, color: "var(--accent)" }}>
                     <PulseTrace animate={traceAnimate} />
                   </div>
-                  <div className="eyebrow" style={{ color: "var(--plate-dim)", whiteSpace: "nowrap" }}>
+                  <div className="eyebrow" style={{ color: "var(--accent-deep)", opacity: 0.55, whiteSpace: "nowrap" }}>
                     {activeVitals.length} vitals
                   </div>
                 </div>
-                {pulseSentence ? (
-                  <div style={{ ...SIGNAL_TEXT_STYLE, color: "var(--plate-text)" }}>
-                    <span dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }} />{" "}
-                    <button
-                      type="button"
-                      onClick={pressureTest}
-                      className="focus-ring"
-                      style={{
-                        display: "inline",
-                        padding: 0,
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        font: "inherit",
-                        color: "var(--plate-gold)",
-                        whiteSpace: "nowrap",
-                      }}
+
+                {/* Row 1 — the Pulse. One clipped line collapsed; the full
+                    sentence + the pressure-test trigger when expanded. */}
+                <div style={{ padding: "var(--space-1) 0" }}>
+                  {pulseSentence ? (
+                    <SignalRow
+                      icon={
+                        <SignalIconChip>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+                            <polyline points="2 12 6 12 9 5 14 19 17 12 22 12" />
+                          </svg>
+                        </SignalIconChip>
+                      }
                     >
-                      Pressure-test this <span style={{ fontStyle: "normal" }}>→</span>
-                    </button>
-                  </div>
-                ) : (
-                  // Pulse still loading (or unavailable): keep the plate's real
-                  // anatomy — eyebrow + trace + a shimmering sentence-length
-                  // bar — so the slot reads as "loading", never as an empty plate.
-                  <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--plate-dim)", opacity: 0.35 }} />
-                )}
+                      <button
+                        type="button"
+                        aria-expanded={pulseOpen}
+                        onClick={() => setPulseOpen((v) => !v)}
+                        style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      >
+                        <span style={{ ...SIGNAL_TEXT_STYLE, display: "flex", alignItems: "baseline", gap: 6 }}>
+                          <span
+                            style={pulseOpen ? { minWidth: 0 } : { minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                            dangerouslySetInnerHTML={{ __html: toSafeHtml(pulseSentence) }}
+                          />
+                          <svg
+                            viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth={20}
+                            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                            style={{
+                              width: 10, height: 10, flexShrink: 0, alignSelf: "center",
+                              color: "var(--accent-text)", opacity: 0.5,
+                              transition: "transform 0.15s",
+                              transform: pulseOpen ? "rotate(90deg)" : undefined,
+                            }}
+                          >
+                            <polyline points="96 48 176 128 96 208" />
+                          </svg>
+                        </span>
+                      </button>
+                      {pulseOpen && (
+                        <SignalDropBox
+                          trigger={{ label: "Pressure-test this", onActivate: pressureTest }}
+                        />
+                      )}
+                    </SignalRow>
+                  ) : (
+                    // Pulse still loading (or unavailable): keep the row's real
+                    // anatomy — icon chip + a shimmering sentence-length bar.
+                    <SignalRow
+                      icon={
+                        <SignalIconChip>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+                            <polyline points="2 12 6 12 9 5 14 19 17 12 22 12" />
+                          </svg>
+                        </SignalIconChip>
+                      }
+                    >
+                      <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--surface)", opacity: 0.7, marginTop: 4 }} />
+                    </SignalRow>
+                  )}
+                </div>
+
+                {/* Rows 2–4 — projection / Worth knowing / Markets, same shell. */}
+                <div style={{ borderTop: "1px solid var(--border)" }}>{topSlot}</div>
               </div>
             )}
-            <div style={{ padding: "var(--space-1) 0 0" }}>{topSlot}</div>
           </>
         );
       })()}

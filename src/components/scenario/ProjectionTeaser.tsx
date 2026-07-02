@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { SignalRow, SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
+import { SignalRow, SignalIconChip, SignalDropBox, SIGNAL_TEXT_STYLE } from "@/components/SwipeExpandCarousel";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
 import { trackChipInteraction, trackChipImpression, markImpression } from "@/lib/chip-telemetry";
@@ -60,6 +60,7 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
   const displayCurrency = useDisplayCurrency();
   const [resp, setResp] = useState<ProjResp | null>(null);
   const [shown, setShown] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -147,47 +148,61 @@ export function ProjectionTeaser({ onExplore, snapshots, netTotal, variant, onVi
       onExplore();
     };
 
+    // The projection's cone edges, anchored to the same display-currency net
+    // worth as the mid figure (identical growth-factor treatment).
+    const lowFig = compact(netTotal * (resp.startUsd !== 0 ? resp.trajectory.low / resp.startUsd : 1));
+    const highFig = compact(netTotal * (resp.startUsd !== 0 ? resp.trajectory.high / resp.startUsd : 1));
+
+    // One line collapsed (title + inline chevron), a drop-down box expanded —
+    // the same anatomy as Worth knowing / Markets, hand-rolled here because the
+    // projection isn't a carousel.
     return (
-      <button
-        type="button"
-        onClick={handleCardActivate}
-        aria-label={aria}
-        className="group text-left w-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        style={{
-          display: "block",
-          background: "none",
-          border: "none",
-          padding: "var(--space-1) 0",
-          cursor: "pointer",
-          opacity: shown ? 1 : 0,
-          transform: shown ? "translateY(0)" : "translateY(3px)",
-          transition: "opacity 0.7s ease, transform 0.7s ease",
-        }}
-      >
-        {/* Sentence + CTA share one line — the clause trails the statement inline
-            (in accent-text) rather than sitting on its own row, so the projection
-            costs a single compact row instead of two. Copy deliberately terse
-            (vertical compactness: one wrapped line, not two). Rendered through
-            the shared SignalRow shell + text spec so it matches Worth knowing /
-            Markets and the Pulse sentence exactly. */}
-        <SignalRow icon={<TrendingUpIcon size={14} color="var(--text-faint)" />}>
-          <div style={SIGNAL_TEXT_STYLE}>
-            Assuming ~{ratePct}/yr, about{" "}
-            <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
-            by <span style={{ fontWeight: 600 }}>{year}</span>.{" "}
-            <span style={{ color: "var(--accent-text)", whiteSpace: "nowrap" }}>
-              {clause}{" "}
-              <span
-                aria-hidden="true"
-                className="inline-block transition-transform duration-200 group-hover:translate-x-[2px] group-active:translate-x-[2px]"
-                style={{ fontStyle: "normal" }}
+      <div style={{ padding: "var(--space-1) 0", opacity: shown ? 1 : 0, transform: shown ? "translateY(0)" : "translateY(3px)", transition: "opacity 0.7s ease, transform 0.7s ease" }}>
+        <SignalRow
+          icon={
+            <SignalIconChip>
+              <TrendingUpIcon size={13} color="currentColor" />
+            </SignalIconChip>
+          }
+        >
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={aria}
+            onClick={() => setOpen((v) => !v)}
+            style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
+            <span style={SIGNAL_TEXT_STYLE}>
+              Assuming ~{ratePct}/yr, about{" "}
+              <span style={{ fontWeight: 600 }}>{projected}</span>{" "}
+              by <span style={{ fontWeight: 600 }}>{year}</span>.
+              <svg
+                viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth={20}
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                style={{
+                  width: 10, height: 10, color: "var(--accent-text)", opacity: 0.5,
+                  marginLeft: 6, display: "inline-block", verticalAlign: "baseline",
+                  transition: "transform 0.15s",
+                  transform: open ? "rotate(90deg)" : undefined,
+                }}
               >
-                →
-              </span>
+                <polyline points="96 48 176 128 96 208" />
+              </svg>
             </span>
-          </div>
+          </button>
+          {open && (
+            <SignalDropBox
+              detail={
+                <>
+                  Could land anywhere between {lowFig} and {highFig} — the ~{ratePct} is a
+                  fixed assumption, not a forecast from your history.
+                </>
+              }
+              trigger={{ label: clause, onActivate: handleCardActivate }}
+            />
+          )}
         </SignalRow>
-      </button>
+      </div>
     );
   }
 

@@ -524,13 +524,16 @@ html.native-app [contenteditable="true"] {
   font-weight: 600;
   font-style: italic;
 }
-.pulse-plate .pulse-fig {
+.pulse-fig {
   font-family: var(--font-ui);
   font-style: normal;
   font-weight: 600;
   font-size: 0.93em;
-  color: var(--plate-gold);
+  color: var(--accent-text);
   font-feature-settings: "tnum" 1;
+}
+.pulse-plate .pulse-fig {
+  color: var(--plate-gold);
 }
 
 /* The heartbeat hairline across the plate — draws itself once (~1s) when the
@@ -545,7 +548,7 @@ html.native-app [contenteditable="true"] {
 }
 .pulse-trace path {
   fill: none;
-  stroke: var(--plate-gold);
+  stroke: currentColor; /* wrapper sets the tone: plate-gold on the plate, accent on the wash */
   stroke-width: 1.1;
   opacity: 0.6;
 }

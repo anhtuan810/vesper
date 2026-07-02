@@ -564,25 +564,35 @@ Token-level retheme + the Pulse-family redesign (mock: `docs/design/redesign/pul
   with tabular numerals. `SIGNAL_TEXT_STYLE` is the single switch. Figures
   inside spoken sentences stay sans+gold (`toSafeHtml` emits `.pulse-em`, plus
   `.pulse-fig` when the emphasis carries a digit).
-- **The plate.** The Pulse renders on `--plate`: warm ink on the light theme,
-  gold leaf on dark — the one dark object on the page. A heartbeat hairline
-  (`PulseTrace`) draws once per session (`usePulseTraceOnce`,
-  `volnar:pulse-trace` in sessionStorage; static under reduced motion). A quiet
+- **Four one-line pulse rows (mobile).** The narrative Pulse, projection,
+  Worth knowing and Markets are four single-line rows on ONE full-bleed
+  `--accent-soft` wash, each with a white `SignalIconChip` (EKG / trend /
+  bulb / bars), an expandable drop-down box (`SignalDropBox`: detail + tabular
+  meta + trigger), and exactly ONE gold trigger sentence. The wash header
+  carries the dateline, the heartbeat hairline (`PulseTrace`, draws once per
+  session via `usePulseTraceOnce`; static under reduced motion) and the vitals
+  count — the trace lives inside the header row so it costs no height. A quiet
   "· new" appears on the dateline only when today's sentence differs from the
-  last one this device saw (`volnar:pulse-seen` in localStorage).
-- **Doorways.** The plate's trailing clause ("Pressure-test this →") opens the
-  what-if explorer via `requestExplore` — the same hand-off as the projection
-  row. Markets slides show the cron's stored `impact_eur` as a tabular aside
-  ("≈ +€85", hidden when null/sub-euro), via `SwipeExpandItem.aside`.
+  last one this device saw (`volnar:pulse-seen` in localStorage). The Pulse
+  sentence renders clipped to one line collapsed; expanded it unclips.
+- **The plate (desktop).** The standalone `PulseBanner` renders on `--plate`:
+  warm ink on the light theme, gold leaf on dark.
+- **Triggers → chat, with a fitting pre-made question.** Pulse:
+  "Pressure-test this →" opens the what-if explorer (`requestExplore`).
+  Projection: "See what moves it →" (same explorer) with the low–high range in
+  its drop-down. Worth knowing: `insightQuestion()` pattern-matches the card's
+  content to the detectors (housing / concentration / cash / currency) and
+  seeds chat via `volnar.insight.seed`. Markets: "What does this mean for my
+  NVDA?" seeds chat with the headline + question; slides also show the cron's
+  stored `impact_eur` aside ("≈ +€85", hidden when null/sub-euro).
 - **Warmed neutrals.** Both themes' neutrals now bias toward the brass accent
   (paper `#F6F5F1`, night `#131109`) instead of blue; semantic
   (positive/negative/amber) and categorical chart tokens are unchanged. Synced
   in `globals.css`, `layout.tsx` `themeColor`, and `src/lib/tokens.ts`.
-- **Vertical compactness rule**: the Pulse family must not push the first
-  vital rows below the fold — plate padding 9/11, projection copy terse
-  ("Assuming ~5%/yr, about €649K by 2036."), meta row tightened. Deferred to
-  v2: ember plate on band-change days, tense-matched what-if seeds for
-  insight/market details, vitals-aware explorer chips.
+- **Vertical compactness rule**: the pulse family must not push the first
+  vital rows below the fold — one line per row collapsed, terse projection
+  copy, meta row tightened. Deferred to v2: ember treatment on band-change
+  days, vitals-aware explorer chips.
 
 ## Known Technical Debt
 

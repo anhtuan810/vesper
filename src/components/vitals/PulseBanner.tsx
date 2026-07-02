@@ -91,7 +91,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
         >
           {dateLabel}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, color: "var(--plate-gold)" }}>
           <PulseTrace animate={animate} />
         </div>
         {metaLabel && (
