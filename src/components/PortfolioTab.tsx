@@ -95,6 +95,12 @@ export function PortfolioTab({
   // The decision selected on the chart / in the journal (shared between the two,
   // mirroring the desktop). null → default to the newest in-range decision.
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  // Explicitly-nothing-selected — a THIRD face, distinct from the load default.
+  // Returning to today ("Now" / "Back to today") sets it: the chart highlights
+  // no dot and the entry zone shows a generic invitation instead of an entry,
+  // because today has no entry to stand on. A fresh page load keeps the
+  // newest-entry teaser (deselected=false, selection null → default).
+  const [deselected, setDeselected] = useState(false);
   // The point under a HELD scrub — the chart emits it while the finger is down
   // and null on release, so the hero readout is transient by construction.
   const [scrubPoint, setScrubPoint] = useState<SnapshotPoint | null>(null);
@@ -128,6 +134,9 @@ export function PortfolioTab({
   useEffect(() => {
     setSelectedDecisionId(null);
     setRewind(null);
+    // A range switch is a fresh look at the window, not a "back to today" —
+    // return to the default face (newest entry teaser).
+    setDeselected(false);
   }, [range]);
 
   // Fetch the reconstructed book for the rewound date (once per date per
@@ -320,8 +329,11 @@ export function PortfolioTab({
   // Fall back to the newest in-range decision whenever the selected id isn't in
   // the current set (range narrowed, or `mutations` revalidated out from under
   // it) — keeps the chart highlight and the journal panel agreeing on one entry.
-  const activeMarkerId =
-    selectedDecisionId && navDecisions.some((d) => d.id === selectedDecisionId)
+  // Explicit deselection ("Now" / "Back to today") overrides the fallback: no
+  // dot is highlighted, no entry is shown.
+  const activeMarkerId = deselected
+    ? null
+    : selectedDecisionId && navDecisions.some((d) => d.id === selectedDecisionId)
       ? selectedDecisionId
       : navDecisions[0]?.id ?? null;
 
@@ -331,6 +343,7 @@ export function PortfolioTab({
   // reconstruct (the live page IS that day), and the Liquid lens shows a
   // subset the full-book rewind doesn't speak for — both just select.
   const onMarkerClick = (id: string) => {
+    setDeselected(false);
     setSelectedDecisionId(id);
     const d = navDecisions.find((x) => x.id === id);
     if (!d || liquidOnly) return;
@@ -351,6 +364,7 @@ export function PortfolioTab({
   const exitToNow = () => {
     setRewind(null);
     setSelectedDecisionId(null);
+    setDeselected(true);
   };
 
   // The rewound book, ready to render: per-row display values, category groups
@@ -503,7 +517,20 @@ export function PortfolioTab({
           Content-first: no card — a hairline rule and whitespace part it from the
           chart above, and its text sits flush with the hero. */}
       <div style={{ maxWidth: 660, marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)" }}>
-        {navDecisions.length > 0 ? (
+        {navDecisions.length > 0 && deselected ? (
+          // Back at today with nothing selected — today has no entry, so no
+          // entry's details belong here. A quiet invitation keeps the zone a
+          // journal and teaches the way back in.
+          <>
+            <svg width="15" height="15" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--accent-text)", display: "block", marginBottom: "var(--space-2)" }}>
+              <path d="M128,88a31.79,31.79,0,0,1,24-24h78a2,2,0,0,1,2,2V194.86a2,2,0,0,1-2.4,2A40,40,0,0,0,224,196H160a32,32,0,0,0-32,32" />
+              <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
+            </svg>
+            <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)", margin: 0 }}>
+              Tap a dot on the line to see what happened that day — the decision you logged, and the portfolio you held.
+            </p>
+          </>
+        ) : navDecisions.length > 0 ? (
           <MobileDecisionJournal
             decisions={navDecisions}
             selectedId={selectedDecisionId}
