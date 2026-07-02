@@ -348,6 +348,21 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
   try {
     const supabase = createServerSupabase();
 
+    // Demo accounts: never reconstruct. Their snapshot history is hand-authored
+    // (demo-seed's SNAPSHOT_ANCHORS tell the persona's five-year story); a
+    // mutation-timeline reconstruction cannot reproduce it — early dates only
+    // contain what the seeded timeline says existed then — so a visitor's chat
+    // edit (rebuildFrom) or a stray standard pass would replace the authored
+    // curve with a collapsed one. The next demo entry reseeds anyway.
+    const { data: demoEnt } = await supabase
+      .from("entitlements")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("product_id", "demo")
+      .limit(1)
+      .maybeSingle();
+    if (demoEnt) return;
+
     // Load all assets — INCLUDING soft-deleted (removed_at set) ones, so a sold
     // position is still reconstructed as held up to its sale date. (Current-
     // holdings reads filter removed_at; historical reconstruction must not.)
@@ -602,7 +617,11 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
           if (units > 0) {
             const history = priceHistories.get(asset.symbol as string);
             if (history) {
-              const priceEntry = priceAtOrBefore(history, date);
+              // Fall FORWARD to the earliest candle when the date precedes the
+              // symbol's price history: the timeline says the position was held,
+              // so the earliest known price is the honest estimate — valuing it
+              // at 0 carved a notch into the curve at exactly these dates.
+              const priceEntry = priceAtOrBefore(history, date) ?? history[0];
               if (priceEntry) {
                 const raw = normalizePrice(priceEntry.price, priceEntry.currency);
                 const cur = priceEntry.currency === "GBp" ? "GBP" : priceEntry.currency;
