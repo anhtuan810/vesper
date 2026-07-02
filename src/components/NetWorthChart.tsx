@@ -91,6 +91,11 @@ interface Props {
   series: SnapshotPoint[];
   loading: boolean;
   onSelectPoint?: (point: SnapshotPoint | null) => void;
+  // Enable value-scrubbing (cursor + date/total tooltip) WITHOUT wiring the
+  // selection anywhere: the readout lives in the chart's own tooltip and the
+  // hero above stays at the live value. The mobile Overview uses this — the
+  // hero's one job at rest (and now at all times) is "your money, current".
+  scrub?: boolean;
   valuesSettled?: boolean;
   // Count of real (DB-backed) snapshot rows on distinct days, before `buildSeries`
   // synthesizes today's live tip — distinguishes "day one" from "real history".
@@ -144,6 +149,17 @@ function formatXLabel(date: string, range: Range): string {
   const mon = X_MONTHS[Math.max(0, Math.min(11, parseInt(date.slice(5, 7), 10) - 1))];
   if (range === "1D" || range === "1W" || range === "1M") return `${parseInt(date.slice(8, 10), 10)} ${mon}`;
   return `${mon} '${date.slice(2, 4)}`;
+}
+
+// Tooltip dateline — "1 Jan 2025" for daily rows, "14:35 · 1 Jul" for the
+// intraday (Liquid · 1D) series' ISO timestamps.
+function fmtTipDate(date: string): string {
+  const d = new Date(date.length > 10 ? date : date + "T12:00:00Z");
+  if (Number.isNaN(d.getTime())) return date;
+  if (date.length > 10) {
+    return `${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+  }
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 const CHART_PAD_TOP = 6;
@@ -299,7 +315,7 @@ export function NetWorthChart(props: Props) {
   // Whether the consumer wants a value readout on scrub. Only the mobile
   // Overview (PortfolioTab) passes onSelectPoint; the desktop Overview and the
   // marketing chart do not, so they keep the pure decision-dot interaction.
-  const scrubbable = !!props.onSelectPoint;
+  const scrubbable = !!props.onSelectPoint || !!props.scrub;
 
   useEffect(() => {
     const el = svgContainerRef.current;
@@ -630,7 +646,8 @@ export function NetWorthChart(props: Props) {
   // cursor near the chart's right edge so it never overflows. Breakdown-only
   // annotation — the hero already surfaces the date and total on hover.
   const TOOLTIP_WIDTH = 168;
-  const tooltipSegments = selectedIndex !== null
+  // Liquid (lineOnly) points carry no real breakdown — header-only tooltip.
+  const tooltipSegments = !lineOnly && selectedIndex !== null
     ? [...STACK_ORDER].reverse()
         .map((c) => ({ category: c, value: values[selectedIndex] * categoryProportions[selectedIndex][c] }))
         .filter((s) => Math.abs(s.value) >= 0.5)
@@ -819,10 +836,12 @@ export function NetWorthChart(props: Props) {
             </svg>
           )}
 
-          {/* Per-class breakdown card — one row per non-zero category. The hero
-              already surfaces the date and total on hover, so this is an
-              annotation only: no header, no divider, no total. */}
-          {!lineOnly && selectedIndex !== null && selectedX !== null && tooltipSegments.length > 0 && !hoveredDot && (
+          {/* Scrub readout — the point's date + total lead, category rows
+              beneath. This card is the ONE place a historical value appears:
+              the hero above never rewinds, so "what am I looking at?" always
+              has the same answer — the hero is now, this card is the point
+              under your finger, the journal below is the entry. */}
+          {selectedIndex !== null && selectedX !== null && !hoveredDot && (
             <div
               style={{
                 position: "absolute",
@@ -838,6 +857,21 @@ export function NetWorthChart(props: Props) {
                 zIndex: 2,
               }}
             >
+              <div
+                style={{
+                  display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8,
+                  ...(tooltipSegments.length > 0
+                    ? { borderBottom: "0.5px solid var(--border)", paddingBottom: 6, marginBottom: 6 }
+                    : {}),
+                }}
+              >
+                <span className="tnum" style={{ fontSize: "var(--fs-micro)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)", whiteSpace: "nowrap" }}>
+                  {fmtTipDate(displaySeries[selectedIndex]?.date ?? "")}
+                </span>
+                <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 600, color: "var(--hero)" }}>
+                  {formatMoney(values[selectedIndex] ?? 0, displayCurrency, displayCurrency)}
+                </span>
+              </div>
               {tooltipSegments.map(({ category, value }) => (
                 <div key={category} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>

@@ -87,9 +87,11 @@ export function PortfolioTab({
   // mistaken for "this account has no real history before this point".
   const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
-  const [selectedPoint, setSelectedPoint] = useState<SnapshotPoint | null>(null);
   // The decision selected on the chart / in the journal (shared between the two,
   // mirroring the desktop). null → default to the newest in-range decision.
+  // NOTE: there is deliberately NO scrubbed-point state up here anymore — the
+  // hero always shows the live value; the scrub readout lives in the chart's
+  // own tooltip (date + total at the point under the finger).
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -109,7 +111,6 @@ export function PortfolioTab({
   }, []);
 
   useEffect(() => {
-    setSelectedPoint(null);
     setSelectedDecisionId(null);
   }, [range]);
 
@@ -353,7 +354,7 @@ export function PortfolioTab({
           number, chart and range pills sit flush with the full-bleed market/insight band edges. */}
       <div style={{ maxWidth: 660 }}>
         <div className="mb-5">
-          <NetWorthHero netTotal={heroTotal} range={range} selectedPoint={selectedPoint} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onSetLiquid={setLiquid} />
+          <NetWorthHero netTotal={heroTotal} range={range} series={heroSeriesActive} valuesSettled={valuesSettled} mutations={mutations} liquidOnly={liquidOnly} onSetLiquid={setLiquid} />
         </div>
 
         {heroTotal > 0 && (
@@ -363,7 +364,7 @@ export function PortfolioTab({
               onRangeChange={setRange}
               series={chartSeriesActive}
               loading={isIntraday ? intradayLoading : loading}
-              onSelectPoint={setSelectedPoint}
+              scrub
               valuesSettled={valuesSettled}
               realPointCount={fullSnapshots.length}
               trackingSinceDate={trackingSinceDate}

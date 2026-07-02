@@ -31,7 +31,6 @@ const RANGE_WINDOW_DAYS: Record<Range, number | null> = {
 interface NetWorthHeroProps {
   netTotal: number;
   range: Range;
-  selectedPoint?: SnapshotPoint | null;
   series?: SnapshotPoint[];
   valuesSettled: boolean;
   mutations?: Mutation[];
@@ -45,15 +44,6 @@ function fmtSelectedDate(dateStr: string): string {
   const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
-  });
-}
-
-// Intraday (1D) scrub label — full weekday + date and the bar's wall-clock time
-// in the viewer's local zone (e.g. "Sat, 14 Jun 2026, 14:35").
-function fmtSelectedDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString("en-GB", {
-    weekday: "short", day: "numeric", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
   });
 }
 
@@ -91,7 +81,12 @@ function LiquidToggle({ liquidOnly, onSetLiquid }: { liquidOnly: boolean; onSetL
   );
 }
 
-export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSettled, mutations, liquidOnly, onSetLiquid }: NetWorthHeroProps) {
+// The hero has ONE job, always: the live value. It never rewinds — scrubbing
+// the chart reads out in the chart's own tooltip, and decision dots speak
+// through the journal entry below. (The old scrubbed-point rewind is gone by
+// design: an interrupted gesture could park a historical value up here posing
+// as the current one.)
+export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations, liquidOnly, onSetLiquid }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
 
   const seriesStart = series?.[0];
@@ -115,7 +110,7 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
   // or a data-entry edit, not a market return. If one falls in the compared
   // window, the delta is partly data entry — never present that as a percentage.
   const todayStr = new Date().toISOString().slice(0, 10);
-  const compareEnd = selectedPoint?.date ?? todayStr;
+  const compareEnd = todayStr;
   const includesHoldingsChange =
     seriesStart != null &&
     (mutations ?? []).some((m) => {
@@ -131,17 +126,6 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
       if (!day) return false;
       return day >= seriesStart.date && day <= compareEnd;
     });
-
-  // Scrub change — series[0] to selectedPoint
-  const selAbs =
-    selectedPoint != null && seriesStart != null
-      ? selectedPoint.total_value - seriesStart.total_value
-      : null;
-  const selPct =
-    selAbs != null && seriesStart != null && seriesStart.total_value !== 0
-      ? (selAbs / seriesStart.total_value) * 100
-      : null;
-  const showSelected = selectedPoint != null && selAbs != null && selPct != null;
 
   // Range change — series[0] to netTotal (inherits whichever range the chart is on)
   const baseValue = seriesStart?.total_value;
@@ -165,19 +149,17 @@ export function NetWorthHero({ netTotal, range, selectedPoint, series, valuesSet
     ? true
     : (seriesStart?.total_value ?? 1000) >= 1000 && sufficientHistory && !includesHoldingsChange;
 
-  const activeAbs = showSelected ? selAbs! : rangeAbs;
-  const activePct = showSelected ? selPct! : rangePct;
+  const activeAbs = rangeAbs;
+  const activePct = rangePct;
   const isPositive = activeAbs != null ? activeAbs >= 0 : true;
-  const displayValue = selectedPoint != null ? selectedPoint.total_value : netTotal;
+  const displayValue = netTotal;
 
   const earliestDate = series ? firstSnapshotDate(series) : null;
-  const label = selectedPoint != null
-    ? (isIntradayLiquid ? fmtSelectedDateTime(selectedPoint.date) : fmtSelectedDate(selectedPoint.date))
-    : isIntradayLiquid
-      ? RANGE_LABEL[range]
-      : !sufficientHistory && earliestDate != null
-        ? `since ${fmtSelectedDate(earliestDate)}`
-        : RANGE_LABEL[range];
+  const label = isIntradayLiquid
+    ? RANGE_LABEL[range]
+    : !sufficientHistory && earliestDate != null
+      ? `since ${fmtSelectedDate(earliestDate)}`
+      : RANGE_LABEL[range];
 
   if (!currencyLoaded || !valuesSettled) {
     return (
