@@ -127,11 +127,19 @@ function VerdictBody({ verdict, unitLabel }: { verdict: VerdictData; unitLabel: 
 }
 
 export function MobileDecisionJournal({
-  decisions, selectedId, displayCurrency,
+  decisions, selectedId, displayCurrency, onViewDay, rewindId,
 }: {
   decisions: Mutation[];
   selectedId: string | null;
   displayCurrency: DisplayCurrency;
+  // Rewind affordance: "Portfolio on this day" stands the page (hero +
+  // holdings) at this entry's date. The entry itself is the natural place to
+  // ask that question — the chart dots are a 5px target. Optional so other
+  // mounts of the journal are unaffected.
+  onViewDay?: (id: string) => void;
+  // The entry currently rewound to (if any) — its action row flips to a quiet
+  // confirmation instead of re-offering the jump.
+  rewindId?: string | null;
 }) {
   // Controlled by the shared selection (a tapped chart dot). When nothing is
   // selected, default to the newest decision so the panel is never empty.
@@ -233,6 +241,31 @@ export function MobileDecisionJournal({
       <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>
         {note}
       </p>
+
+      {/* Rewind — tap to stand the whole page (hero + holdings) at this
+          entry's day. Flips to a quiet confirmation while standing there.
+          Today-dated entries have nothing to rewind (the live page IS that
+          day), so they offer nothing. */}
+      {onViewDay && mDate(m).slice(0, 10) < new Date().toISOString().slice(0, 10) && (
+        rewindId === m.id ? (
+          <p style={{ fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)", margin: "var(--space-2) 0 0" }}>
+            Showing your portfolio as it stood on this day.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onViewDay(m.id)}
+            className="font-ui"
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, marginTop: "var(--space-2)", cursor: "pointer", fontSize: "var(--fs-caption)", fontWeight: 500, color: "var(--accent-text)" }}
+          >
+            Portfolio on this day
+            <svg width="11" height="11" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="40" y1="128" x2="216" y2="128" />
+              <polyline points="144 56 216 128 144 200" />
+            </svg>
+          </button>
+        )
+      )}
 
       {/* Dropped down — the full look-back verdict (chevron reveals it). */}
       {hasVerdict && open && <VerdictBody key={m.id} verdict={verdict} unitLabel={unitLabel} />}

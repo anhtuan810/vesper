@@ -335,7 +335,12 @@ export function PortfolioTab({
     const d = navDecisions.find((x) => x.id === id);
     if (!d || liquidOnly) return;
     const day = mDate(d).slice(0, 10);
-    if (day < new Date().toISOString().slice(0, 10)) setRewind({ id, date: day });
+    // Keep the state's identity when re-committing the same entry (mobile taps
+    // replay as a synthetic click; users re-tap) — a fresh object would re-run
+    // the fetch effect and abort/restart the reconstruction mid-flight.
+    if (day < new Date().toISOString().slice(0, 10)) {
+      setRewind((cur) => (cur && cur.id === id && cur.date === day ? cur : { id, date: day }));
+    }
   };
 
   // The rewound book, ready to render: per-row display values, category groups
@@ -494,6 +499,8 @@ export function PortfolioTab({
             decisions={navDecisions}
             selectedId={selectedDecisionId}
             displayCurrency={displayCurrency}
+            onViewDay={liquidOnly ? undefined : onMarkerClick}
+            rewindId={rewind?.id ?? null}
           />
         ) : (
           // No logged decisions yet — keep the zone visible and explain it fills

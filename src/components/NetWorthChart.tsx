@@ -313,6 +313,13 @@ export function NetWorthChart(props: Props) {
   // while a drag scrubs the value along the line.
   const touchStartXRef = useRef(0);
   const touchMovedRef = useRef(false);
+  // Mobile browsers replay every tap as synthetic mouse events (mousemove →
+  // click) AFTER the touch sequence — and never send a mouseleave. Unguarded,
+  // that ghost mousemove re-parks the scrub cursor the touchend just cleared,
+  // leaving a historical value stuck in the hero. Once the chart has seen a
+  // real touch, its mouse handlers go quiet for good (a phone has no hover);
+  // desktop never touches, so hover-scrub there is unaffected.
+  const touchedRef = useRef(false);
   // Whether the consumer wants a value readout on scrub. Only the mobile
   // Overview (PortfolioTab) passes onSelectPoint; the desktop Overview and the
   // marketing chart do not, so they keep the pure decision-dot interaction.
@@ -528,13 +535,16 @@ export function NetWorthChart(props: Props) {
   // Like nearestMarkerId, but only when the pointer is genuinely near a dot —
   // so scrubbing the open stretches of the line reads the value without a
   // distant dot hijacking the tap or flashing its preview. The threshold is a
-  // comfortable finger's width in view units.
+  // full finger-pad's width (a dot is ~5px; fingers land 20px+ off-centre —
+  // Apple's minimum touch target is 44pt for a reason), because a tap that
+  // was AIMED at a dot but misses this window commits nothing at all, which
+  // reads as the feature being broken.
   function nearMarkerWithin(clientX: number, rect: DOMRect): string | null {
     const id = nearestMarkerId(clientX, rect);
     if (!id) return null;
     const xView = ((clientX - rect.left) / rect.width) * W;
     const dot = markerDots.find((d) => d.id === id)!;
-    return Math.abs(dot.x - xView) <= Math.max(16, W * 0.05) ? id : null;
+    return Math.abs(dot.x - xView) <= Math.max(28, W * 0.08) ? id : null;
   }
 
   const chartHandlers = !interactive
@@ -547,18 +557,24 @@ export function NetWorthChart(props: Props) {
         // the value. Both layers live together so the value is never hidden
         // behind the entry picker.
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+          if (touchedRef.current) return;
           const rect = e.currentTarget.getBoundingClientRect();
           const idx = calcIndex(e.clientX, rect);
           setSelectedIndex(idx);
           haptic(idx);
           setHoveredMarker(nearMarkerWithin(e.clientX, rect));
         },
-        onMouseLeave() { setSelectedIndex(null); setHoveredMarker(null); haptic(null); },
+        onMouseLeave() {
+          if (touchedRef.current) return;
+          setSelectedIndex(null); setHoveredMarker(null); haptic(null);
+        },
         onClick(e: React.MouseEvent<HTMLDivElement>) {
+          if (touchedRef.current) return; // touchend already committed the tap
           const id = nearMarkerWithin(e.clientX, e.currentTarget.getBoundingClientRect());
           if (id) props.onMarkerClick?.(id);
         },
         onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+          touchedRef.current = true;
           const rect = e.currentTarget.getBoundingClientRect();
           const x = e.touches[0].clientX;
           touchStartXRef.current = x;
@@ -605,14 +621,20 @@ export function NetWorthChart(props: Props) {
         // Pure decision-dot selection (desktop Overview / marketing): move
         // previews the nearest entry, click commits it. No value scrub.
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+          if (touchedRef.current) return;
           setHoveredMarker(nearestMarkerId(e.clientX, e.currentTarget.getBoundingClientRect()));
         },
-        onMouseLeave() { setHoveredMarker(null); },
+        onMouseLeave() {
+          if (touchedRef.current) return;
+          setHoveredMarker(null);
+        },
         onClick(e: React.MouseEvent<HTMLDivElement>) {
+          if (touchedRef.current) return; // touchend already committed the tap
           const id = nearestMarkerId(e.clientX, e.currentTarget.getBoundingClientRect());
           if (id) props.onMarkerClick?.(id);
         },
         onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+          touchedRef.current = true;
           setHoveredMarker(nearestMarkerId(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
         },
         onTouchEnd() {
@@ -623,12 +645,17 @@ export function NetWorthChart(props: Props) {
       }
     : {
         onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+          if (touchedRef.current) return;
           const idx = calcIndex(e.clientX, e.currentTarget.getBoundingClientRect());
           setSelectedIndex(idx);
           haptic(idx);
         },
-        onMouseLeave() { setSelectedIndex(null); haptic(null); },
+        onMouseLeave() {
+          if (touchedRef.current) return;
+          setSelectedIndex(null); haptic(null);
+        },
         onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+          touchedRef.current = true;
           const idx = calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
           setSelectedIndex(idx);
           haptic(idx);
