@@ -40,13 +40,13 @@ const NAV = [
 ];
 
 /**
- * Desktop web layout shell — the approved Twilight two-column design: a top nav,
- * the scrolling page content (children), and the persistent chat rail. Used by
- * every authenticated desktop web page (home, journal, vitals, profile, settings,
- * asset detail). `tab` drives the nav's active state. The chat rail reuses the
- * working session/thread machinery. Forced light (the design is light-only); the
- * rest of the app keeps its theme. Only mounts on desktop web — mobile/native
- * never reach it.
+ * Desktop web layout shell — two-column: a top nav, the scrolling page content
+ * (children), and the persistent chat rail. Used by every authenticated desktop
+ * web page (home, journal, vitals, profile, settings, asset detail). `tab`
+ * drives the nav's active state. The chat rail reuses the working session/
+ * thread machinery. Colours come from the app's global Nocturne tokens and the
+ * shell follows the user's theme (data-theme on <html>), exactly like the
+ * phone. Only mounts on desktop web — mobile/native never reach it.
  */
 export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }) {
   const { user } = useUser();
@@ -140,7 +140,7 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
   }, [hasMore, isLoadingMore, loadMore]);
 
   return (
-    <div className="vhome" data-theme="light">
+    <div className="vhome">
       <style>{`
         @keyframes up { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
         @keyframes blink { 0%,100%{opacity:0.2}50%{opacity:1} }

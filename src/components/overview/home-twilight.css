@@ -1,28 +1,33 @@
 /* ============================================================================
-   Twilight Overview — DESKTOP HOME (route "/") integration.
+   Desktop web shell (route "/" + journal/vitals/profile/settings/asset).
    ----------------------------------------------------------------------------
-   The same approved design as /overview, but embedded in the app's desktop
-   shell and wired to live data. Every rule is scoped under `.vhome`, which also
-   carries data-theme="light" so the reused app components in the chat rail
-   (ChatThread, AssetLogo, MiniSparkline, NetWorthChart) render in the same light
-   Twilight palette. Mobile/native and Diary/Profile never mount this.
-   Light values only — the approved design is light-only.
+   The desktop layout wired to live data. Every rule is scoped under `.vhome`.
+   COLOURS COME FROM THE APP'S GLOBAL TOKENS (globals.css — warmed Nocturne):
+   the old Twilight names below are kept only as local aliases onto those
+   globals, so the phone and the desktop read as one instrument, both themes
+   work (the shell follows the user's data-theme like the phone), and any
+   future phone retune propagates here automatically.
    ========================================================================== */
 
 .vhome {
-  /* Twilight colour tokens (light) — verbatim from the approved mockup. */
-  --bg:#F3ECE0;--soft:#FCF8F0;--surface2:#FBF6EC;--chip:#F2ECDF;
-  --ink:#221E26;--body:#46423C;--muted:#7C7268;--faint:#8C8478;
-  --green:#97703D;--gb:#8F6A38;--mint:#EBDFCB;--mint2:#F0E6D5;
-  --line:rgba(34,30,38,.13);--line2:rgba(34,30,38,.07);--track:#E7DFD0;
-  --dark:#1A1A24;--darkfg:#ECE7DC;--darkmuted:#B7B2A6;--btnfg:#FBF7EF;--neg:#AF5530;
-  --navbg:rgba(243,236,224,.85);--glow:rgba(151,112,61,.07);
-  --ok:#2E8B5E;--okbg:#DCEBE2;--warn:#B07A2E;--warnbg:#F0E4CE;--bad:#B0552F;--badbg:#EDD9CC;
-  --eq:#117A52;--prop:#3F7CA8;--res:#A89968;--cry:#E0922A;
-  /* Money direction — warm, not traffic-light: gains gold, losses a desaturated
-     clay. --neg/--bad stay reserved for Vitals bands and destructive actions.
-     --negative is overridden so the chart's down-line is warm too. */
-  --up:var(--gb);--down:#9A6A4C;--negative:#9A6A4C;
+  /* Twilight-era names → global Nocturne tokens. Alias only; no raw colours. */
+  --soft:var(--surface);--surface2:var(--surface-elev);--chip:var(--surface-elev);
+  --ink:var(--text);--body:var(--text);--muted:var(--text-dim);--faint:var(--text-faint);
+  --green:var(--accent);--gb:var(--accent-text);
+  --mint:var(--accent-soft);--mint2:color-mix(in srgb, var(--accent) 8%, transparent);
+  --line:var(--border);--line2:color-mix(in srgb, var(--border) 62%, transparent);
+  --track:var(--surface-elev);
+  /* The one dark object on the page — the trust band renders on the plate. */
+  --dark:var(--plate);--darkfg:var(--plate-text);--darkmuted:var(--plate-dim);
+  --btnfg:var(--on-accent);--neg:var(--negative);
+  --navbg:var(--nav-surface);--glow:color-mix(in srgb, var(--accent) 7%, transparent);
+  --ok:var(--positive);--okbg:var(--positive-soft);
+  --warn:var(--amber);--warnbg:var(--amber-soft);
+  --bad:var(--negative);--badbg:var(--negative-soft);
+  --eq:var(--cat-markets);--prop:var(--cat-property);--res:var(--cat-reserves);--cry:var(--cat-crypto);
+  /* Money direction — the phone convention: gains a calm green (distinct from
+     the brass accent), losses a muted clay. */
+  --up:var(--positive-text);--down:var(--negative-text);
 
   /* Full-viewport surface — replaces DesktopShell for the home tab. */
   position: fixed;
@@ -55,7 +60,7 @@
 .vhome .vh-nav-r{display:flex;align-items:center;gap:14px}
 .vhome .vh-priv{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-numeric);font-size:11.5px;color:var(--muted);letter-spacing:.03em}
 .vhome .vh-priv svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
-.vhome .vh-av{width:36px;height:36px;border-radius:11px;background:linear-gradient(140deg,#A9824B,#6F5026);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:600;font-size:14px;text-decoration:none;flex:0 0 auto;overflow:hidden}
+.vhome .vh-av{width:36px;height:36px;border-radius:11px;background:linear-gradient(140deg,var(--accent),var(--accent-deep));color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:600;font-size:14px;text-decoration:none;flex:0 0 auto;overflow:hidden}
 .vhome .vh-av-img{width:100%;height:100%;object-fit:cover;display:block}
 /* Account menu — the avatar opens a dropdown (Profile / Settings / Sign out). */
 .vhome .vh-av-person{width:21px;height:21px;fill:currentColor;display:block}
@@ -64,7 +69,7 @@
 .vhome .vh-acct-btn:focus-visible{outline:2.5px solid var(--green);outline-offset:2px}
 .vhome .vh-av-caret{width:14px;height:14px;fill:none;stroke:var(--faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s,stroke .15s}
 .vhome .vh-acct-btn[aria-expanded="true"] .vh-av-caret{transform:rotate(180deg);stroke:var(--muted)}
-.vhome .vh-menu{position:absolute;top:calc(100% + 10px);right:0;width:240px;background:var(--soft);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(34,30,38,.14);padding:7px;z-index:40;animation:up .15s ease forwards}
+.vhome .vh-menu{position:absolute;top:calc(100% + 10px);right:0;width:240px;background:var(--soft);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-soft);padding:7px;z-index:40;animation:up .15s ease forwards}
 .vhome .vh-menu-id{padding:9px 11px 11px;border-bottom:1px solid var(--line2);margin-bottom:6px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .vhome .vh-menu-name{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--ink)}
 .vhome .vh-menu-email{font-family:var(--font-numeric);font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -78,7 +83,7 @@
 .vhome .vh-shell{flex:1;min-height:0;max-width:1280px;width:100%;margin:0 auto;padding:0 28px;display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:28px;align-items:start;height:100%}
 .vhome .vh-content{min-width:0;height:100%;overflow-y:auto;padding:32px 4px 80px;scrollbar-width:thin}
 .vhome .vh-content::-webkit-scrollbar{width:10px}
-.vhome .vh-content::-webkit-scrollbar-thumb{background:rgba(34,30,38,.14);border-radius:10px;border:2px solid var(--bg)}
+.vhome .vh-content::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--text) 16%, transparent);border-radius:10px;border:2px solid var(--bg)}
 .vhome .vh-rail{height:calc(100% - 40px);margin-top:32px;background:var(--soft);border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;overflow:hidden}
 .vhome .vh-rail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line2);flex:0 0 auto}
 .vhome .vh-rail-title{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--ink)}
@@ -339,11 +344,11 @@
 .vhome .st-legal .note{font-size:12px;color:var(--faint);text-align:center;max-width:340px;line-height:1.5}
 .vhome .st-del{font-size:13px;color:var(--faint);background:none;border:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-family:var(--font-ui)}
 .vhome a.st-link{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
-.vhome .st-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+.vhome .st-modal{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:20px;z-index:var(--z-modal)}
 .vhome .st-modal-box{width:100%;max-width:400px;background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:24px 22px 20px}
 .vhome .st-modal-box h3{font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--ink);margin-bottom:10px}
 .vhome .st-modal-box .desc{font-size:13.5px;color:var(--muted);line-height:1.55;margin-bottom:16px}
-.vhome .st-modal-warn{font-size:13px;color:var(--neg);background:rgba(175,85,48,.08);border:1px solid rgba(175,85,48,.18);border-radius:10px;padding:10px 12px;margin-bottom:16px;line-height:1.5}
+.vhome .st-modal-warn{font-size:13px;color:var(--neg);background:var(--negative-soft);border:1px solid color-mix(in srgb, var(--negative) 24%, transparent);border-radius:10px;padding:10px 12px;margin-bottom:16px;line-height:1.5}
 .vhome .st-modal-box input{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;font-family:var(--font-ui);margin-bottom:14px;box-sizing:border-box}
 .vhome .st-modal-err{font-size:13px;color:var(--neg);margin-bottom:12px;line-height:1.5}
 .vhome .st-modal-btns{display:flex;gap:10px}
@@ -351,7 +356,7 @@
 .vhome .st-cancel{border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
 .vhome .st-confirm{border:1px solid var(--neg);background:var(--bg);color:var(--faint);cursor:default}
 .vhome .st-confirm.armed{background:var(--surface2);color:var(--neg);cursor:pointer}
-.vhome .st-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--muted);box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:50}
+.vhome .st-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--muted);box-shadow:var(--shadow-soft);z-index:50}
 
 /* ── asset detail: gold section eyebrows on desktop (shared .ad-eyebrow hook;
       base styling in globals.css keeps mobile unchanged) ── */
@@ -406,14 +411,6 @@
 .vhome .ep-verdict-notes li{position:relative;padding-left:17px;font-size:13.5px;color:var(--muted);line-height:1.55}
 .vhome .ep-verdict-notes li::before{content:"";position:absolute;left:2px;top:8px;width:5px;height:5px;border-radius:99px;background:var(--faint)}
 
-/* ── Asset-class palette (from the marketing chart) ──────────────────────────
-   The shared NetWorthChart fills its stacked bands with these CSS vars;
-   overriding them under .vhome recolours ONLY the desktop Overview to the
-   marketing hues (property blue, public markets green, reserves khaki, crypto
-   orange). The mobile chart renders outside .vhome and keeps globals.css. */
-.vhome{
-  --cat-property-band:#3F7CA8;--cat-property-edge:#2F6189;
-  --cat-markets-band:#117A52;--cat-markets-edge:#0C5C3E;
-  --cat-reserves-band:#A89968;--cat-reserves-edge:#877A4C;
-  --cat-crypto-band:#E0922A;--cat-crypto-edge:#B5731C;
-}
+/* The stacked-area chart palette is NOT overridden here anymore — the desktop
+   chart fills with the same global --cat-*-band/-edge tokens as the phone, so
+   the two surfaces tell the same colour story. */
