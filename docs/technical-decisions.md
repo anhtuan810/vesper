@@ -458,10 +458,12 @@ plus a plain-language question on the left ("how much rides on your biggest
 holding"), the figure plus a one-word status on the right, chevron to unfold the
 full chart/detail. Rules that make it work:
 
-- **Exceptions self-open**: an amber/red vital starts unfolded (`foldStatus` in
-  `VitalsContent.tsx`); green ones start folded. "Unfold all / Fold all" sits in
-  the meta row. Fold state persists per session (`volnar:vitals-open`,
-  `volnar:profile-open` in sessionStorage).
+- **All rows rest folded (2026-07-03)**: every vital arrives closed, so the
+  page opens as a calm scannable index; the grade chip + status word carry the
+  attention read. (Supersedes the earlier "exceptions self-open" rule where
+  amber/red vitals started unfolded — the owner found the pre-expanded rows
+  noisy.) "Unfold all / Fold all" sits in the meta row. Fold state persists per
+  session (`volnar:vitals-open`, `volnar:profile-open` in sessionStorage).
 - **Desktop unchanged** — the fold grammar is mobile-only; the grid cards remain
   for the desktop WebShell (`buildConfig(key)` is shared by both renderers).
 - **Letter grades (2026-07)**: each active vital's fold row carries an A–D chip
@@ -473,7 +475,11 @@ full chart/detail. Rules that make it work:
   investable-first pct so both property lenses agree. Liquidity's
   "insufficient" state gets no grade. Covered by
   `scripts/verify-vital-grade.ts`. Mobile-only for now (desktop cards
-  unchanged).
+  unchanged). Since 2026-07-03 the chip is the row's FIRST element — a straight
+  left rail, report-card style — rendered as a solid tone fill with a soft halo
+  ring and the letter in `--on-accent` (high-contrast in both themes). It was
+  moved off the mid-row position (it floated wherever the figure's width put
+  it) and off the washed soft-on-soft fill.
 - **One Pulse family**: the Pulse sentence and every row under it (projection,
   Worth knowing, Markets) share `SIGNAL_TEXT_STYLE` from
   `SwipeExpandCarousel.tsx` — one text spec, one source. New signal-like rows
@@ -573,6 +579,20 @@ what they owned and reflect on why they decided. Model:
     browser HTTP cache), in-flight responses from the old records are
     discarded, prefetch re-warms. **A rewound book must never outlive the
     records it was built from.**
+- **Inline asset mentions (2026-07-03)**: wherever the entry names its holding
+  — the title ("Added Micron Technology") and any exact, case-insensitive
+  occurrence of the display name in the note / market-context prose — the name
+  itself is a dotted-underline hyperlink to `/asset?id=` (news-site
+  convention; `src/components/AssetMention.tsx`, used by
+  `MobileDecisionJournal` and the desktop entry panel). Deliberately NOT an
+  "Open X →" action line (tried and rejected by the owner) and deliberately
+  exact-match only — fuzzy matching would link words like "Apartment" in
+  unrelated sentences, so nickname mentions ("Micron") stay plain. Exited
+  positions (`asset_id` null) have no page and stay plain text — the Journal
+  rows' rule. The mobile entry header is a `role="button"` div (a real
+  `<button>` can't contain the link); the link stops propagation and the
+  header's keydown ignores events not targeting the header itself, so
+  keyboard-activating the link navigates instead of toggling.
 
 ## The Voice & the Plate (2026-07)
 
@@ -703,6 +723,35 @@ The demo visitor's opening minute, sequenced from three small pieces
   with" list now leads with the screenshot row ("the fastest way in") — one
   screenshot of a broker's positions page beats typing ten holdings.
 
+## Demo Entry Latency (2026-07-03)
+
+The owner reported multi-second hangs clicking the marketing site's demo
+button. `/demo` signs in and reseeds the whole demo account before redirecting
+— originally ~15 sequential Supabase round trips. Three layers of fix:
+
+- **`seedDemoUser` writes in waves** (`src/lib/demo-seed.ts`): the wipe runs as
+  one parallel wave (assets last — mutations reference them; the reap-demo cron
+  keeps its sequential loop, where `DEMO_USER_TABLES` order still encodes
+  that), then the assets insert, then everything else (mutations, snapshots,
+  highlights, entitlement, users profile) in one parallel wave. ~15 sequential
+  round trips → 4. Error semantics unchanged: any failed write still throws so
+  the caller falls back to /login rather than serve a half-reset account.
+- **Sign-in overlaps the reseed** (`/demo` + `/api/demo-session`, legacy
+  shared-account mode): when `DEMO_USER_ID` pins the target, the reseed no
+  longer waits for `signInWithPassword` to learn the user id — both run
+  concurrently. A reseed raced against a failed sign-in only resets the demo
+  account to its canonical state (harmless). Without `DEMO_USER_ID` the old
+  sequential order is kept. The per-visitor (`DEMO_ENABLED`) paths skip the
+  wipe entirely (`{ freshUser: true }` — the anonymous user was created a
+  moment ago) and write the `demo_users` row concurrently with the seed.
+- **The preparing veil** (`MarketingBody.tsx` + `twilight.css .demo-veil`):
+  every marketing demo CTA paints a full-screen localized "Preparing your live
+  demo…" cover on click (i18n key `demoPreparing`, all four locales) so the
+  remaining wait reads as progress, not a frozen page. Cleared on bfcache
+  restore (`pageshow` + `persisted`); modified clicks (new tab: meta/ctrl/
+  shift/alt or non-primary button) get no veil since this page never swaps
+  documents. The login page already had its own cover (`preparingDemo`).
+
 ## Session log — 2026-07-02 (Pulse family → account panel → the first 60 seconds)
 
 One session, seventeen commits on `main`; every item has a full section above.
@@ -738,6 +787,28 @@ The audit trail for "why does X look/behave like this since July 2":
   Preferences".
 - Design explorations archived: `docs/design/redesign/pulse-whatif-compact.html`,
   `pulse-voice-plate.html`.
+
+## Session log — 2026-07-03 (demo entry latency → vitals scannability → inline mentions)
+
+Owner-driven session; every item has a full section above. The audit trail for
+"why does X look/behave like this since July 3":
+
+- **Demo entry sped up ~3-4× + preparing veil** on every marketing demo CTA:
+  see "Demo Entry Latency". Seed waves, sign-in/reseed overlap, `freshUser`
+  wipe skip, `.demo-veil`.
+- **Vitals: all rows rest folded** (the amber/red self-open rule is gone) and
+  the **A–D grade chip moved to a leading left rail with a solid tone fill +
+  halo** — the grade is now the attention read. See "Mobile Foldable Vitals &
+  Profile". The chip's mid-row placement and soft-on-soft fill were explicitly
+  rejected as washed out / badly aligned.
+- **Journal entries hyperlink their holding inline** — the mention itself (in
+  the title and the entry's own prose) links to the asset page, news-site
+  style; an "Open X →" action line was tried first and explicitly rejected.
+  See "Named Rewind → Inline asset mentions" and
+  `src/components/AssetMention.tsx`.
+- Process note: this session ran on a remote branch first
+  (`claude/demo-account-startup-delays-k2kt99`, merged fast-forward), then
+  committed straight to `main` per the working agreement.
 
 ## Known Technical Debt
 

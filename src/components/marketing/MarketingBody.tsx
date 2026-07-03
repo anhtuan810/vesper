@@ -94,8 +94,15 @@ export function MarketingBody() {
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
   // Spread onto every demo CTA. No preventDefault — the navigation proceeds;
-  // the veil only covers the wait.
-  const demoCta = { href: DEMO_URL, onClick: () => setLaunchingDemo(true) };
+  // the veil only covers the wait. Modified clicks (new tab/window) leave this
+  // page in place with no navigation to swap it out, so they get no veil.
+  const demoCta = {
+    href: DEMO_URL,
+    onClick: (e: React.MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      setLaunchingDemo(true);
+    },
+  };
 
   return (
     <>

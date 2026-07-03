@@ -20,7 +20,9 @@ threshold, or adding a vital. Pairs with `vitals-build-state.md` (status) and
   anchored to the `band()` thresholds listed per vital below. Concentration
   self-derives from `investableTopPositionPct ?? topPositionPct` (same basis as
   its band); liquidity's `insufficient` state carries no grade. Consistency is
-  locked by `scripts/verify-vital-grade.ts`.
+  locked by `scripts/verify-vital-grade.ts`. Rendered (2026-07-03) as a
+  solid tone-filled chip with a soft halo on the fold row's left rail; all
+  rows rest folded, so the chip carries the page's at-a-glance read.
 - All economic constants come from `getCountryDefaults()` (V1 = NL).
 - **Income pensions are excluded (2026-06).** Assets where `isIncomePension` (`pension_kind` `db` | `state`) are filtered out at the top of `compute` for the five aggregating vitals — concentration, real-asset weight, liquidity posture, leverage, drawdown — **before any value math**; `build-inputs.ts` also skips them in EUR-normalization, and the shared `computeNetWorth` excludes them. They are off-balance future income, not holdings. Capital pensions (`dc` / null) are unchanged, and a capital pension still maps to the liquidity `locked` tier. (Commit `2a7bb26`.)
 

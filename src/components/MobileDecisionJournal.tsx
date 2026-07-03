@@ -316,6 +316,9 @@ export function MobileDecisionJournal({
           tabIndex={0}
           onClick={() => setOpen((v) => !v)}
           onKeyDown={(e) => {
+            // Only when the row itself is focused — Enter on the title's inline
+            // asset link bubbles here too, and must navigate, not toggle.
+            if (e.target !== e.currentTarget) return;
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setOpen((v) => !v);
