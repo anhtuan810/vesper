@@ -32,13 +32,18 @@ export async function middleware(request: NextRequest) {
 
   // Shared metadata routes (robots, sitemap, generated icons) resolve at the
   // app root on every domain: skip the marketing rewrite AND the login gate.
+  // /_vercel is the platform's own namespace — Vercel Analytics loads
+  // /_vercel/insights/script.js and POSTs /_vercel/insights/event. The
+  // marketing rewrite below used to fold those into /marketing/_vercel/* (a
+  // 404), which silently killed analytics on volnar.nl.
   {
     const { pathname } = request.nextUrl;
     if (
       pathname === "/robots.txt" ||
       pathname === "/sitemap.xml" ||
       pathname.startsWith("/icon") ||
-      pathname.startsWith("/apple-icon")
+      pathname.startsWith("/apple-icon") ||
+      pathname.startsWith("/_vercel")
     ) {
       return NextResponse.next();
     }
