@@ -167,6 +167,7 @@ export function MarketingBody() {
   const stickyRef = useRef<HTMLDivElement>(null);
   const [heroPast, setHeroPast] = useState(false);
   const [closeNear, setCloseNear] = useState(false);
+  const [btnOnScreen, setBtnOnScreen] = useState(false);
   useEffect(() => {
     const hero = heroRef.current;
     const close = closeRef.current;
@@ -185,12 +186,31 @@ export function MarketingBody() {
     });
     heroObs.observe(hero);
     closeObs.observe(close);
+    // The bar also yields whenever one of the page's OWN button-styled demo
+    // CTAs (mid-band, pricing cards…) is on screen — two identical gold
+    // buttons stacked read as a glitch, not emphasis. Text-link launchers
+    // (ledger caption, ask chip, what-if input) don't count: they don't look
+    // like the bar's button. The nav's and the bar's own are excluded — both
+    // are fixed/sticky, so they'd otherwise veto the bar permanently.
+    const visibleBtns = new Set<Element>();
+    const btnObs = new IntersectionObserver((es) => {
+      for (const e of es) {
+        if (e.isIntersecting) visibleBtns.add(e.target);
+        else visibleBtns.delete(e.target);
+      }
+      setBtnOnScreen(visibleBtns.size > 0);
+    });
+    document.querySelectorAll<HTMLAnchorElement>(`a.btn[href="${DEMO_URL}"]`).forEach((a) => {
+      if (a.closest(".nav") || a.closest(".mcta")) return;
+      btnObs.observe(a);
+    });
     return () => {
       heroObs.disconnect();
       closeObs.disconnect();
+      btnObs.disconnect();
     };
   }, []);
-  const showSticky = heroPast && !closeNear && !launchingDemo;
+  const showSticky = heroPast && !closeNear && !btnOnScreen && !launchingDemo;
   // If the bar hides while its link holds keyboard focus, focus would sit on
   // an aria-hidden, off-screen control — release it.
   useEffect(() => {

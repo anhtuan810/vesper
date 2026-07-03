@@ -71,6 +71,11 @@
 .tw .reveal{opacity:1;transform:none}
 @supports (animation-timeline: view()){
   .tw .reveal{animation:tw-reveal .01s linear both;animation-timeline:view();animation-range:entry 0% cover 22%}
+  /* The closing section sits so close to the page end that its view()
+     timeline can never reach "cover 22%" on tall viewports — the scroll runs
+     out first and the headline/CTA sit permanently half-faded. Render the
+     page's final ask at full ink instead. */
+  .tw .close .reveal{animation:none}
 }
 
 /* ---- nav ---- */
