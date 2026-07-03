@@ -461,6 +461,41 @@
   .tw .led-title{font-size:14px}
   .tw .led.open .led-exp{max-height:150px}
   .tw .led-exp .led-why{white-space:normal}
+  /* Full-page vertical compaction (the page ran ~11.4 phone screens):
+     tighter hero, section headers, mock cards and footers. Copy is untouched
+     — only air is removed. */
+  .tw .hero{padding:34px 0 40px}
+  .tw h1{margin:16px 0 0}
+  .tw .lead{margin:14px 0 0}
+  .tw .cta{margin-top:20px}
+  .tw .hero-stores{margin-top:16px}
+  .tw .mech{margin-top:26px}
+  .tw .mech-cap{margin-top:12px}
+  .tw h2{margin:10px 0 0}
+  .tw .body{margin:12px 0 0}
+  .tw .split{gap:24px}
+  .tw .dv-grid{gap:14px;margin-top:20px}
+  .tw .mem{margin-top:18px}
+  /* The six vital cards stacked one-per-row was the tallest block on the
+     page — two columns halves it. */
+  .tw .vitals{grid-template-columns:1fr 1fr;gap:9px}
+  .tw .vital{padding:11px 12px}
+  .tw .vital-top{flex-wrap:wrap;row-gap:2px;margin-bottom:6px}
+  .tw .vital-val{font-size:19px}
+  .tw .vc{margin:8px 0 8px}
+  .tw .dash{padding:16px}
+  .tw .dash-nw{margin-bottom:12px}
+  .tw .marq{margin-top:20px}
+  .tw .vs{margin-top:24px}
+  .tw .vsrow{padding:14px 0}
+  .tw .prices{margin-top:20px}
+  .tw .price{padding:20px}
+  .tw .flist{margin:14px 0 16px}
+  .tw .flist li{padding:4px 0}
+  .tw .close{padding:56px 0}
+  .tw .close .cta{margin-top:24px}
+  .tw .foot{padding:30px 0 28px}
+  .tw .foot .bot{margin-top:20px}
 }
 @media(max-width:480px){
   /* CTAs share one line: the demo button leads and flexes, the ghost "How it

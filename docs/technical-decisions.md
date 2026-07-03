@@ -822,6 +822,12 @@ Owner-driven session; every item has a full section above. The audit trail for
   third grid column (the 2-column collapse auto-placed it on its own row) and
   the title line runs date + tag first with the title after (flex `order`), so
   a long title wraps to a clean line instead of stranding the YOU/AUTO tag.
+  A second full-page compaction pass then cut the page from ~9,620px to
+  ~8,470px at 390w (11.4 → 10.0 phone screens): tighter hero/section/footer
+  rhythm and mock-card padding, and the six vital cards go 2-up (they were the
+  single tallest block, 2,106px → 1,321px). Copy untouched — only air removed.
+  Measured with a Playwright section-height script; re-measure before/after if
+  touching this again.
 - Process note: this session ran on a remote branch first
   (`claude/demo-account-startup-delays-k2kt99`, merged fast-forward), then
   committed straight to `main` per the working agreement.
