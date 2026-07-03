@@ -6,15 +6,14 @@ import { generatePortfolioInsights, valueToEur, type SnapshotRow, type AssetWith
 import { generateInsight } from "@/lib/insight-generator";
 import { getUsdRates } from "@/lib/fx";
 import type { Asset } from "@/lib/supabase";
+import { assertCron } from "@/lib/cron-auth";
 
 const MIN_TRADEABLE_VALUE_EUR = 1000;
 const SNAPSHOT_LOOKBACK_DAYS = 35;
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = assertCron(req);
+  if (denied) return denied;
 
   const supabase = createServerSupabase();
   const now = new Date().toISOString();

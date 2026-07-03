@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateEnv } from "@/lib/env";
 import { getAuthUser } from "@/lib/supabase";
 import { fetchYahooPrice, fetchPriceWithFallback } from "@/lib/prices-server";
+import { mapWithConcurrency } from "@/lib/concurrency";
+import { PRICES_MAX_SYMBOLS, PRICES_FETCH_CONCURRENCY } from "@/lib/constants";
 
 validateEnv();
 
@@ -45,9 +47,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No valid symbols" }, { status: 400 });
   }
 
-  const results = await Promise.allSettled(
-    entries.map(({ symbol, country }) => fetchPriceWithFallback(symbol, country ?? undefined))
+  // Bound the work: cap the batch and the number of concurrent upstream fetches
+  // so one request can't fan out to thousands of outbound Yahoo calls (socket
+  // exhaustion + a likely IP ban that would break live pricing for everyone).
+  const capped = entries.slice(0, PRICES_MAX_SYMBOLS);
+  const results = await mapWithConcurrency(capped, PRICES_FETCH_CONCURRENCY, ({ symbol, country }) =>
+    fetchPriceWithFallback(symbol, country ?? undefined).catch(() => null),
   );
-  const prices = results.map((r) => r.status === "fulfilled" ? r.value : null).filter(Boolean);
+  const prices = results.filter(Boolean);
   return NextResponse.json({ prices });
 }

@@ -28,11 +28,27 @@ const NOMINATIM_HEADERS = {
   "Accept-Language": "en",
 };
 
+// Serialize slot reservations through a single promise chain. The previous
+// implementation read `lastRequestTime` and slept, but only advanced it AFTER
+// the await — so N concurrent callers all read the same timestamp, computed the
+// same (often zero) wait, and fired Nominatim in a burst, violating its 1 req/s
+// policy and risking an IP ban. Chaining makes each caller wait for the prior
+// reservation before claiming and stamping its own 1.1s-spaced slot.
+let throttleChain: Promise<void> = Promise.resolve();
+
+function reserveNominatimSlot(): Promise<void> {
+  const run = throttleChain.then(async () => {
+    const wait = MIN_INTERVAL_MS - (Date.now() - lastRequestTime);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastRequestTime = Date.now();
+  });
+  // Keep the chain alive even if a reservation somehow rejects.
+  throttleChain = run.catch(() => {});
+  return run;
+}
+
 async function nominatimFetch(url: string): Promise<NominatimResult[] | null> {
-  const now = Date.now();
-  const wait = MIN_INTERVAL_MS - (now - lastRequestTime);
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastRequestTime = Date.now();
+  await reserveNominatimSlot();
 
   try {
     const res = await fetch(url, { headers: NOMINATIM_HEADERS });

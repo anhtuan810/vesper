@@ -7,6 +7,7 @@ import {
   transferRevokeWrites,
   type RevenueCatWebhookBody,
 } from "@/lib/revenuecat-webhook";
+import { safeEqual } from "@/lib/safe-compare";
 
 export const runtime = "nodejs";
 
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     Sentry.captureMessage("REVENUECAT_WEBHOOK_AUTH is not set", { level: "error" });
     return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
   }
-  if ((request.headers.get("authorization") ?? "") !== expected) {
+  if (!safeEqual(request.headers.get("authorization") ?? "", expected)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

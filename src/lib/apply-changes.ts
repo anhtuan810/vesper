@@ -774,7 +774,7 @@ export async function applyPortfolioChanges({
           }
         }
 
-        const { error } = await supabase.from("assets").update(updateData).eq("id", existing.id);
+        const { error } = await supabase.from("assets").update(updateData).eq("id", existing.id).eq("user_id", userId);
 
         if (error) {
           console.error("EDIT ERROR:", error);
@@ -884,7 +884,7 @@ export async function applyPortfolioChanges({
           // recomputed without it.
           considerRebuild(existing.buy_date ?? (existing.created_at ? existing.created_at.slice(0, 10) : null));
           await supabase.from("mutations").delete().eq("user_id", userId).eq("asset_id", existing.id);
-          const { error } = await supabase.from("assets").delete().eq("id", existing.id);
+          const { error } = await supabase.from("assets").delete().eq("id", existing.id).eq("user_id", userId);
           if (error) {
             console.error("REMOVE (mistake) ERROR:", error);
           } else {

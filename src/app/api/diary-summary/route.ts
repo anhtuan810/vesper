@@ -7,7 +7,7 @@ import { entitledGate } from "@/lib/require-entitled";
 import { validateEnv } from "@/lib/env";
 import { getUsdRates } from "@/lib/fx";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
-import { DIARY_DAILY_LIMIT } from "@/lib/constants";
+import { DIARY_DAILY_LIMIT, DIARY_MAX_MUTATIONS, DIARY_MAX_CONTEXT_LEN } from "@/lib/constants";
 import { ADVICE_BOUNDARY } from "@/lib/claude";
 
 validateEnv();
@@ -51,8 +51,19 @@ export async function POST(req: NextRequest) {
     const { mutations, startVal, endVal, periodLabel } = JSON.parse(text);
 
     // 3. Bail on invalid
-    if (!mutations || mutations.length === 0) {
+    if (!mutations || !Array.isArray(mutations) || mutations.length === 0) {
       return NextResponse.json({ error: "No mutations" }, { status: 400 });
+    }
+    // The activity list and its free-text notes come straight from the client and
+    // are interpolated into the LLM prompt. Cap both so an oversized payload can't
+    // inflate token cost (each distinct payload also misses the cache).
+    if (mutations.length > DIARY_MAX_MUTATIONS) {
+      return NextResponse.json({ error: "Too many entries" }, { status: 400 });
+    }
+    for (const m of mutations as MutationRow[]) {
+      if (m.personal_context && typeof m.personal_context === "string" && m.personal_context.length > DIARY_MAX_CONTEXT_LEN) {
+        m.personal_context = m.personal_context.slice(0, DIARY_MAX_CONTEXT_LEN);
+      }
     }
 
     // 4. Fetch user (display currency)

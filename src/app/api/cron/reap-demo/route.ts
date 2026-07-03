@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { DEMO_USER_TABLES } from "@/lib/demo-seed";
 import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS, DEMO_VISITOR_RETENTION_MS } from "@/lib/demo-session";
+import { assertCron } from "@/lib/cron-auth";
 
 // Reaps expired per-visitor demo accounts. Runs daily (vercel.json), but the cron
 // cadence has no bearing on session length — that is the per-user TTL the
@@ -13,10 +14,8 @@ import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS, DEMO_VISITOR_RETENTION_MS }
 // Safety invariant: the reaper ONLY ever deletes uids present in demo_users. It
 // never enumerates auth.users, so a real account can never be caught up in a reap.
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = assertCron(req);
+  if (denied) return denied;
 
   // The per-visitor demo only mints demo_users rows when it's switched on, so the
   // reaper is a clean no-op while DEMO_ENABLED is off — it never touches demo_users

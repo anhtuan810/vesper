@@ -13,6 +13,8 @@ import {
   type AssetWithEur,
 } from "@/lib/portfolio-insights";
 import { getUsdRates } from "@/lib/fx";
+import { bumpRateLimit } from "@/lib/rate-limit";
+import { INSIGHT_FRESH_DAILY_LIMIT } from "@/lib/constants";
 
 validateEnv();
 
@@ -68,8 +70,14 @@ export async function GET(request: NextRequest) {
   // A forced read (the client sends fresh=1 after a portfolio mutation, the same
   // signal holdings/Vitals refresh on) regenerates the band from current assets
   // BEFORE reading, so the cards below reflect the current top position.
+  // Regeneration runs an LLM call, so cap forced refreshes per user per day; over
+  // the cap we skip regeneration and serve the existing cached cards (never a
+  // 429). Fails open (count == null → still regenerate) if the limiter is down.
   if (request.nextUrl.searchParams.get("fresh") === "1") {
-    await regenPortfolioHighlights(supabase, user.id);
+    const count = await bumpRateLimit(supabase, user.id, "insight_fresh");
+    if (count == null || count <= INSIGHT_FRESH_DAILY_LIMIT) {
+      await regenPortfolioHighlights(supabase, user.id);
+    }
   }
 
   const now = new Date().toISOString();

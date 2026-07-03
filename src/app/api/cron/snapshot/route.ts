@@ -4,12 +4,11 @@ import { createServerSupabase } from "@/lib/supabase";
 import { writeSnapshot } from "@/lib/snapshot";
 import { writeVitalSnapshots } from "@/lib/vitals/persist";
 import { generateMarketSwings } from "@/lib/diary-market-moves";
+import { assertCron } from "@/lib/cron-auth";
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = assertCron(req);
+  if (denied) return denied;
 
   const supabase = createServerSupabase();
   const { data: rows } = await supabase.from("assets").select("user_id");

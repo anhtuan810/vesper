@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geocodeAddress } from "@/lib/geocode";
-import { getAuthUser } from "@/lib/supabase";
+import { getAuthUser, createServerSupabase } from "@/lib/supabase";
+import { rateLimitGate } from "@/lib/rate-limit";
+import { GEOCODE_DAILY_LIMIT } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Geocoding hits Nominatim (shared 3rd-party dependency with a strict usage
+  // policy). Cap per-user daily calls so a loop can't get the server IP banned,
+  // which would break property-add for every user.
+  const limited = await rateLimitGate(createServerSupabase(), user.id, "geocode", GEOCODE_DAILY_LIMIT);
+  if (limited) return limited;
 
   const address = request.nextUrl.searchParams.get("address")?.trim();
   if (!address) {

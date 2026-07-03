@@ -524,6 +524,17 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
   const changes = geo.changes;
 
+  // Irreversible-delete guard (mirrors the tag path in /api/chat): a bare
+  // removal_reason "mistake" HARD-deletes the asset AND all its history,
+  // unrecoverable. The agent loop carries no per-turn confirmation signal, so
+  // downgrade it to "sold" (a recoverable soft-delete) — the agent can never
+  // erase history on its own; a genuine mistake-delete needs an explicit path.
+  for (const change of changes) {
+    if (change.action === "remove" && change.removal_reason === "mistake") {
+      change.removal_reason = "sold";
+    }
+  }
+
   // Auto-fill cost basis: an "add" for a tradeable with a stated acquisition
   // month/date but no stated price gets its buy_price filled from Yahoo's
   // closing price for that month — silently. Never surfaced to the user (no

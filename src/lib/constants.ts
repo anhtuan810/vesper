@@ -24,6 +24,27 @@ export const MESSAGES_MAX_LIMIT     = 50;
 export const CHAT_LOAD_LIMIT        = 20;
 export const DIARY_PAGE_SIZE        = 100;
 
+// ── Abuse / cost caps (server-enforced) ───────────────────────────────────────
+// A price request resolves one live quote per symbol; bound both the batch size
+// and how many upstream fetches run at once, so one request can't fan out to
+// thousands of outbound Yahoo calls. 100 comfortably covers any real portfolio's
+// distinct tradeable symbols (the client dedupes before sending).
+export const PRICES_MAX_SYMBOLS       = 100;
+export const PRICES_FETCH_CONCURRENCY = 8;
+// Direct /api/geocode calls per user per day. Geocoding only happens when adding
+// or editing a property address, so this is generous for real use yet caps a
+// loop that would otherwise get the server IP banned by Nominatim.
+export const GEOCODE_DAILY_LIMIT      = 100;
+// Forced (fresh=1) portfolio-insight regenerations per user per day. Each one is
+// an LLM call; a real user only triggers it by mutating their portfolio. Over
+// the cap we serve the cached cards instead of regenerating (never a 429).
+export const INSIGHT_FRESH_DAILY_LIMIT = 60;
+// Chat: cap screenshots per turn (each is up to 5 MB of vision input) and the
+// client-supplied diary-summary activity list + free-text note length.
+export const CHAT_MAX_IMAGES          = 8;
+export const DIARY_MAX_MUTATIONS      = 400;
+export const DIARY_MAX_CONTEXT_LEN    = 500;
+
 // ── Polling ────────────────────────────────────────────────────────────────────
 export const PRICES_POLL_INTERVAL_MS   = 10 * 60 * 1000; // 10 minutes
 export const PRICES_SAFETY_TIMEOUT_MS  = 3000;           // 3 seconds

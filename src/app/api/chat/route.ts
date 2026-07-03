@@ -21,7 +21,7 @@ import { generateInsight } from "@/lib/insight-generator";
 import { validatePortfolioChanges } from "@/lib/validations";
 import { geocodeAddress, compareEnteredAddress } from "@/lib/geocode";
 import { venueChipsFor } from "@/lib/venues";
-import { CHAT_DAILY_LIMIT } from "@/lib/constants";
+import { CHAT_DAILY_LIMIT, CHAT_MAX_IMAGES } from "@/lib/constants";
 import {
   ALLOWED_IMAGE_TYPES, CONFIRMATION_CHIPS,
   sanitizeChips, stripTags, extractTag, timestampedPair,
@@ -546,6 +546,15 @@ export async function POST(req: NextRequest) {
 
     if (message && message.length > 500) {
       return NextResponse.json({ message: "Message is too long — keep it under 500 characters." }, { status: 400 });
+    }
+
+    // Cap screenshots per turn — each image is up to ~5 MB of vision input, so an
+    // uncapped array is both a memory and an Anthropic-cost amplifier.
+    if (images.length > CHAT_MAX_IMAGES) {
+      return NextResponse.json(
+        { message: `Please attach at most ${CHAT_MAX_IMAGES} screenshots at a time.` },
+        { status: 400 },
+      );
     }
 
     for (const img of images) {

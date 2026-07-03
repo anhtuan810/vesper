@@ -49,6 +49,13 @@ const nextConfig = {
                 { key: "X-Frame-Options", value: "DENY" },
                 { key: "X-Content-Type-Options", value: "nosniff" },
                 { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+                // Force HTTPS for two years incl. subdomains (preload-eligible) —
+                // a financial app should never be reachable over plaintext, even
+                // once. Vercel serves HTTPS but does not send HSTS unless asked.
+                { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+                // Deny powerful features the app never uses, so a future injected
+                // script can't reach for them either.
+                { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
               ],
             },
           ];
