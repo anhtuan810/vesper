@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabase } from "@/lib/supabase";
 import { seedDemoUser } from "@/lib/demo-seed";
-import { DEMO_SESSION_TTL_MS } from "@/lib/demo-session";
+import { DEMO_SESSION_TTL_MS, demoNoLimit } from "@/lib/demo-session";
 
 // Native-app counterpart of /demo (App Review / public demo entry). The web route
 // signs the demo user in via cookies, which can't cross into the bundled app's
@@ -47,12 +47,17 @@ export async function POST() {
         return NextResponse.json({ error: "Demo unavailable" }, { status: 503 });
       }
 
+      // Omit expires_at when the limit is lifted (preview testing) — the native
+      // client only arms its wall when it receives a deadline, so a session with
+      // no expires_at runs unlimited.
       const createdMs = Date.parse(demoRow.created_at as string);
-      const expiresAt = new Date(createdMs + DEMO_SESSION_TTL_MS).toISOString();
+      const expiresAt = demoNoLimit()
+        ? undefined
+        : new Date(createdMs + DEMO_SESSION_TTL_MS).toISOString();
       return NextResponse.json({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
-        expires_at: expiresAt,
+        ...(expiresAt ? { expires_at: expiresAt } : {}),
       });
     } catch {
       return NextResponse.json({ error: "Demo unavailable" }, { status: 503 });

@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { seedDemoUser } from "@/lib/demo-seed";
-import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS, DEMO_VISITOR_COOKIE_TTL_MS } from "@/lib/demo-session";
+import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS, DEMO_VISITOR_COOKIE_TTL_MS, demoNoLimit } from "@/lib/demo-session";
 
 // Resolve the browser's trial start from the persistent `demo_visitor` cookie:
 // reuse the recorded first_seen, or record it now on the first entry. Returns the
@@ -106,8 +106,10 @@ export async function GET(request: NextRequest) {
 
       // Trial already used up on this browser → don't mint a throwaway demo user.
       // The param lets /login say WHY the visitor is back (button → message)
-      // instead of silently bouncing them into a dead loop.
-      if (trial.deadlineMs != null && Date.now() >= trial.deadlineMs) {
+      // instead of silently bouncing them into a dead loop. Skipped when the
+      // limit is lifted (preview testing) so re-entry always works.
+      const noLimit = demoNoLimit();
+      if (!noLimit && trial.deadlineMs != null && Date.now() >= trial.deadlineMs) {
         return redirectTo("/login?demo=expired");
       }
       if (trial.tracked && trial.visitorId) {
@@ -142,14 +144,18 @@ export async function GET(request: NextRequest) {
 
       // Deadline: the browser's shared deadline when tracked, else the legacy
       // per-entry clock. Readable (non-HttpOnly) so the client wall can read it.
-      const createdMs = Date.parse(demoRow.created_at as string);
-      const expiresAtMs = trial.deadlineMs ?? createdMs + DEMO_SESSION_TTL_MS;
-      response.cookies.set("demo_expires_at", new Date(expiresAtMs).toISOString(), {
-        httpOnly: false,
-        sameSite: "lax",
-        path: "/",
-        maxAge: Math.floor((DEMO_SESSION_TTL_MS + DEMO_SESSION_GRACE_MS) / 1000),
-      });
+      // Skipped entirely when the limit is lifted (preview testing) — with no
+      // deadline cookie the client wall never arms and the session is unlimited.
+      if (!noLimit) {
+        const createdMs = Date.parse(demoRow.created_at as string);
+        const expiresAtMs = trial.deadlineMs ?? createdMs + DEMO_SESSION_TTL_MS;
+        response.cookies.set("demo_expires_at", new Date(expiresAtMs).toISOString(), {
+          httpOnly: false,
+          sameSite: "lax",
+          path: "/",
+          maxAge: Math.floor((DEMO_SESSION_TTL_MS + DEMO_SESSION_GRACE_MS) / 1000),
+        });
+      }
       return response;
     } catch {
       return redirectTo("/login");

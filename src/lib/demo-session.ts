@@ -30,6 +30,20 @@ export const DEMO_VISITOR_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 
 type ServiceClient = ReturnType<typeof createServerSupabase>;
 
+// Preview escape hatch: lift the demo's one-hour wall end to end so a Vercel
+// Preview can be used for unlimited full-access testing. When this is true the
+// server gate below no-ops and the demo entry routes skip writing the expiry
+// deadline, so the client wall never arms. It is NEVER true in production —
+// gated on VERCEL_ENV, which Vercel sets to "production" only on production
+// deployments — so even if this preview branch were merged the shipped build
+// keeps the wall intact. DEMO_NO_LIMIT is an explicit manual override for the
+// same effect (e.g. local runs, where VERCEL_ENV is unset).
+export function demoNoLimit(): boolean {
+  if (process.env.DEMO_NO_LIMIT === "true") return true;
+  const env = process.env.VERCEL_ENV;
+  return env != null && env !== "production";
+}
+
 // Returns a 403 { demoExpired: true } response when `userId` belongs to a demo
 // account whose hour has elapsed, or null when the request may proceed — i.e. the
 // user is not a demo account, or is still inside its hour. Fails open: a lookup
@@ -39,6 +53,8 @@ export async function demoExpiredGate(
   userId: string,
   now: number = Date.now(),
 ): Promise<NextResponse | null> {
+  // No-limit preview: never wall, so the whole app is testable indefinitely.
+  if (demoNoLimit()) return null;
   // Read created_at + visitor_id, but if the visitor_id column doesn't exist yet
   // (DEMO_ENABLED flipped on before the migration ran) the combined select errors —
   // retry on created_at alone so the gate degrades to the legacy per-user clock
