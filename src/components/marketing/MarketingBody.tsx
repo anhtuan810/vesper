@@ -194,7 +194,11 @@ export function MarketingBody() {
 
       {/* ── Why a journal ── */}
       <section className="band-soft">
-        <div className="wrap sec" style={{ padding: "56px 0" }}>
+        {/* "wrap" only, vertical padding inline. The old "wrap sec" combo let
+            .sec's `padding:72px 0` shorthand (declared after .wrap) zero out
+            .wrap's 28px horizontal padding — this one section then sat flush
+            against the screen edge on phones. */}
+        <div className="wrap" style={{ paddingTop: "clamp(40px, 8vw, 56px)", paddingBottom: "clamp(40px, 8vw, 56px)" }}>
           <span className="eyebrow reveal">{m.band.eyebrow}</span>
           <h2 className="disp reveal" style={{ transitionDelay: ".05s" }}>
             <Heading lines={m.band.h2} />

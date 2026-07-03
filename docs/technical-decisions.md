@@ -813,6 +813,15 @@ Owner-driven session; every item has a full section above. The audit trail for
   headers stay toggles — now `role="button"` divs so the icon link can nest —
   with the icon linking out via stopPropagation, and their keydown ignores
   events from the nested link. Removed assets keep a plain icon.
+- **Marketing mobile alignment pass** (≤560px): hero CTAs share one line (demo
+  flexes, ghost "How it works" compact beside it — the stacked full-width pair
+  is gone); the why-a-journal section got back its 28px side padding (the
+  `wrap sec` class combo let `.sec`'s `padding:72px 0` shorthand zero out
+  `.wrap`'s horizontal padding — don't put both classes on one element);
+  sections tighten to 44px bands on phones; the ledger keeps its chevron in a
+  third grid column (the 2-column collapse auto-placed it on its own row) and
+  the title line runs date + tag first with the title after (flex `order`), so
+  a long title wraps to a clean line instead of stranding the YOU/AUTO tag.
 - Process note: this session ran on a remote branch first
   (`claude/demo-account-startup-delays-k2kt99`, merged fast-forward), then
   committed straight to `main` per the working agreement.

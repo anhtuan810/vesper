@@ -439,14 +439,36 @@
   .tw .nav .inner{padding:13px 18px;gap:10px}
 }
 @media(max-width:560px){
-  /* Match the mockup: the ledger collapses to a 2-column track on narrow screens
-     and the expanded copy wraps. */
-  .tw .led{grid-template-columns:9px 1fr}
+  /* Tighter section rhythm on phones — the desktop 72px bands read as dead
+     space between blocks on a 390px screen. */
+  .tw .sec{padding:44px 0}
+  /* Why-a-journal: tighter cards, less air between header and cards. */
+  .tw .mem{margin-top:22px;gap:12px}
+  .tw .mem-card{padding:18px}
+  .tw .mem-h{margin-bottom:10px}
+  /* Ledger: keep the chevron in its own right-hand column — the earlier
+     2-column collapse auto-placed it on a NEW GRID ROW under every entry
+     (misaligned arrows + a wasted line per row). Tighter padding, and the
+     expanded copy wraps. */
+  .tw .ledger{margin-top:18px}
+  .tw .led{grid-template-columns:9px 1fr 14px;gap:11px;padding:11px 14px}
+  /* Meta first on phones: date + YOU/AUTO tag lead the line and the title
+     follows (flex `order`). A long title then wraps to its own clean line —
+     instead of stranding the tag alone under the row. */
+  .tw .led-l1{gap:6px 8px}
+  .tw .led-l1 .led-date{order:-2;min-width:0}
+  .tw .led-tag{order:-1}
+  .tw .led-title{font-size:14px}
+  .tw .led.open .led-exp{max-height:150px}
   .tw .led-exp .led-why{white-space:normal}
 }
 @media(max-width:480px){
-  .tw .cta{flex-direction:column;align-items:stretch}
-  .tw .cta .btn{width:100%;justify-content:center}
+  /* CTAs share one line: the demo button leads and flexes, the ghost "How it
+     works" rides beside it at a smaller size (it wraps underneath — auto
+     width, not stretched — only when a locale's copy genuinely can't fit). */
+  .tw .cta{flex-wrap:wrap;gap:10px}
+  .tw .cta .btn.lg{font-size:15px;padding:13px 16px}
+  .tw .cta .btn.lg:not(.ghost){flex:1 1 auto;justify-content:center}
   .tw .nav .inner{padding:12px 15px}
   .tw .stp-lbl{display:none}
   .tw .store{padding:7px 11px}
