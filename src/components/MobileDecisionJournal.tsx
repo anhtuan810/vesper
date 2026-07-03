@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { track } from "@vercel/analytics";
+import { AssetMentionLink, linkifyAssetMention } from "@/components/AssetMention";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { displayName, unitNoun, STARTING_POSITION_CTX } from "@/lib/diary-utils";
 import { apiFetch } from "@/lib/api";
@@ -62,6 +62,20 @@ export function decisionTitle(m: Mutation): string {
   if (m.action === "add") return `Added ${name}`;
   if (m.action === "remove") return `Removed ${name}`;
   return `Adjusted ${name}`;
+}
+
+// The title as rendered in the entry header: the holding's name is an inline
+// hyperlink to its detail page (news-site convention). Exited positions have
+// no page, so the title stays plain text — same rule the Journal rows use.
+function decisionTitleNode(m: Mutation): ReactNode {
+  const name = displayName(m);
+  if (!name || !m.asset_id) return decisionTitle(m);
+  const verb = m.action === "add" ? "Added" : m.action === "remove" ? "Removed" : "Adjusted";
+  return (
+    <>
+      {verb} <AssetMentionLink assetId={m.asset_id} style={{ fontWeight: "inherit" }}>{name}</AssetMentionLink>
+    </>
+  );
 }
 function hasOwnNote(m: Mutation): boolean {
   return !!m.personal_context && m.personal_context !== STARTING_POSITION_CTX;
@@ -272,7 +286,7 @@ export function MobileDecisionJournal({
         <path d="M26,196.83V65.91a2,2,0,0,1,2-2h76a32,32,0,0,1,24,24V228a32,32,0,0,0-32-32H32A6,6,0,0,1,26,196.83Z" />
       </svg>
       <span className="font-display" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--fs-subhead)", fontWeight: 600, letterSpacing: "var(--tracking-title)", color: "var(--hero)", lineHeight: "var(--lh-snug)" }}>
-        {decisionTitle(m)}
+        {decisionTitleNode(m)}
       </span>
       <span style={{ flex: "none", fontFamily: "var(--font-numeric)", fontSize: "var(--fs-caption)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-faint)" }}>
         {shortDate(mDate(m))}
@@ -293,67 +307,60 @@ export function MobileDecisionJournal({
           (chevron) that drops the verdict down below; otherwise it's a plain
           header. The book glyph marks it as a journal entry without a text label. */}
       {hasVerdict ? (
-        <button
-          type="button"
+        // A div with button semantics, not a <button>: the title now carries an
+        // inline link to the asset (nested interactive content is invalid inside
+        // a real button). The link stops propagation, so tapping the name
+        // navigates without also toggling the look-back.
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setOpen((v) => !v)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setOpen((v) => !v);
+            }
+          }}
           aria-expanded={open}
           aria-label={open ? "Hide the look-back" : "Show the look-back"}
           className="focus-ring"
-          style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+          style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", cursor: "pointer", textAlign: "left" }}
         >
           {header}
-        </button>
+        </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
           {header}
         </div>
       )}
 
-      {/* The reflection — always shown in full (this is the "top part"). */}
+      {/* The reflection — always shown in full (this is the "top part"). A
+          mention of the holding inside the writer's own words becomes an
+          inline link to its detail page. */}
       <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-body)", color: "var(--text)", lineHeight: "var(--lh-read)", margin: "var(--space-2) 0 0" }}>
-        {note}
+        {linkifyAssetMention(note, displayName(m), m.asset_id)}
       </p>
 
-      {/* Action row —
-          · Rewind: stand the whole page (hero + holdings) at this entry's day.
-            Hidden while already standing there (the dated hero speaks for
-            itself) and on today-dated entries (the live page IS that day).
-          · Asset link: the entry names a holding, so the mention opens its
-            detail page — the same /asset route the holdings rows use. Exited
-            positions (asset_id ON DELETE SET NULL) have no page to open, so
-            they offer no link — the same rule the Journal rows follow. */}
-      {(() => {
-        const canRewind = !!onViewDay && rewindId !== m.id && mDate(m).slice(0, 10) < new Date().toISOString().slice(0, 10);
-        const actionStyle = { display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--fs-caption)", fontWeight: 500, color: "var(--accent-text)" } as const;
-        const arrow = (
-          <svg width="11" height="11" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="40" y1="128" x2="216" y2="128" />
-            <polyline points="144 56 216 128 144 200" />
-          </svg>
-        );
-        if (!canRewind && !m.asset_id) return null;
-        return (
-          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: "var(--space-5)", rowGap: "var(--space-2)", marginTop: "var(--space-2)" }}>
-            {canRewind && (
-              <button
-                type="button"
-                onClick={() => onViewDay!(m.id)}
-                className="font-ui"
-                style={{ ...actionStyle, background: "none", border: "none", padding: 0, cursor: "pointer" }}
-              >
-                Portfolio on this day
-                {arrow}
-              </button>
-            )}
-            {m.asset_id && (
-              <Link href={`/asset?id=${m.asset_id}`} className="font-ui" style={{ ...actionStyle, textDecoration: "none" }}>
-                Open {displayName(m)}
-                {arrow}
-              </Link>
-            )}
-          </div>
-        );
-      })()}
+      {/* Rewind — tap to stand the whole page (hero + holdings) at this
+          entry's day. While already standing there the action disappears (the
+          dated hero and holdings speak for themselves). Today-dated entries
+          have nothing to rewind (the live page IS that day), so they offer
+          nothing. The path to the asset itself is the inline mention above,
+          not an action here. */}
+      {onViewDay && rewindId !== m.id && mDate(m).slice(0, 10) < new Date().toISOString().slice(0, 10) && (
+          <button
+            type="button"
+            onClick={() => onViewDay(m.id)}
+            className="font-ui"
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, marginTop: "var(--space-2)", cursor: "pointer", fontSize: "var(--fs-caption)", fontWeight: 500, color: "var(--accent-text)" }}
+          >
+            Portfolio on this day
+            <svg width="11" height="11" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="40" y1="128" x2="216" y2="128" />
+              <polyline points="144 56 216 128 144 200" />
+            </svg>
+          </button>
+      )}
 
       {/* Dropped down — the full look-back verdict (chevron reveals it). */}
       {hasVerdict && open && <VerdictBody key={m.id} verdict={verdict} unitLabel={unitLabel} />}

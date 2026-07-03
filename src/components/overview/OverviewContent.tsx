@@ -12,6 +12,7 @@ import {
   type Range,
 } from "@/components/NetWorthChart";
 import { AssetLogo } from "@/components/AssetLogo";
+import { AssetMentionLink, linkifyAssetMention } from "@/components/AssetMention";
 import { MiniSparkline } from "@/components/MiniSparkline";
 import { useDisplayCurrency, useSparklines, useVitals } from "@/lib/hooks";
 import { toDisplay, formatMoney, type DisplayCurrency } from "@/lib/money";
@@ -847,10 +848,25 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                 <div className="ep-top">
                   <span className="ep-date">{shortDate(mDate(m))}</span>
                 </div>
-                <h3 className="ep-title">{decisionTitle(m)}</h3>
-                {m.market_context && <p className="ep-ctx">{m.market_context}</p>}
+                {/* Mentions of the holding — in the title and in the entry's own
+                    prose — are inline hyperlinks to its detail page (news-site
+                    convention; same /asset route the holdings rows use). Exited
+                    positions have no page, so their mentions stay plain text. */}
+                <h3 className="ep-title">
+                  {(() => {
+                    const name = displayName(m);
+                    if (!name || !m.asset_id) return decisionTitle(m);
+                    const verb = m.action === "add" ? "Added" : m.action === "remove" ? "Removed" : "Adjusted";
+                    return (
+                      <>
+                        {verb} <AssetMentionLink assetId={m.asset_id} style={{ fontWeight: "inherit" }}>{name}</AssetMentionLink>
+                      </>
+                    );
+                  })()}
+                </h3>
+                {m.market_context && <p className="ep-ctx">{linkifyAssetMention(m.market_context, displayName(m), m.asset_id)}</p>}
                 <p className="ep-why">
-                  {own ? m.personal_context
+                  {own ? linkifyAssetMention(m.personal_context as string, displayName(m), m.asset_id)
                     : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here."
                     : "Recorded automatically — no note attached."}
                 </p>
@@ -858,15 +874,6 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                   <ul className="ep-points">
                     {points.map((p, i) => <li key={i}>{p}</li>)}
                   </ul>
-                )}
-                {/* The entry names a holding → the mention opens its detail page
-                    (same /asset route the holdings rows and Journal rows use).
-                    Exited positions (asset_id ON DELETE SET NULL) have no page
-                    to open, so they offer no link. */}
-                {m.asset_id && (
-                  <Link className="lk" href={`/asset?id=${m.asset_id}`} style={{ display: "inline-block", margin: "0 0 15px" }}>
-                    Open {displayName(m)} →
-                  </Link>
                 )}
                 {verdict && <VerdictStamp verdict={verdict} unitLabel={m.asset_type ? unitNoun(m.asset_type) : "units"} />}
               </>
