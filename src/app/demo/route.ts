@@ -122,15 +122,18 @@ export async function GET(request: NextRequest) {
         return redirectTo("/login");
       }
       const uid = data.user.id;
-      await seedDemoUser(uid);
 
+      // The user was created a moment ago, so the seed skips its wipe phase
+      // (freshUser) and the demo_users tracking row goes in concurrently with
+      // the seed inserts — neither depends on the other, and the visitor is
+      // staring at a blank screen for every round trip spent here.
       const demoInsert: Record<string, unknown> = { user_id: uid };
       if (trial.tracked && trial.visitorId) demoInsert.visitor_id = trial.visitorId;
-      const { data: demoRow, error: demoError } = await service
-        .from("demo_users")
-        .insert(demoInsert)
-        .select("created_at")
-        .single();
+      const [, demoRowRes] = await Promise.all([
+        seedDemoUser(uid, { freshUser: true }),
+        service.from("demo_users").insert(demoInsert).select("created_at").single(),
+      ]);
+      const { data: demoRow, error: demoError } = demoRowRes;
       if (demoError || !demoRow) {
         return redirectTo("/login");
       }
@@ -158,15 +161,23 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Not found", { status: 404 });
   }
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // When DEMO_USER_ID pins the demo account, the reseed already knows its
+    // target and doesn't need to wait for sign-in to learn the user id — run
+    // both concurrently and shave the whole sign-in round trip off the
+    // visitor's wait. A reseed raced against a failed sign-in is harmless: it
+    // only ever resets the demo account to its canonical state.
+    const expectedId = process.env.DEMO_USER_ID;
+    const [{ data, error }] = await Promise.all([
+      supabase.auth.signInWithPassword({ email, password }),
+      expectedId ? seedDemoUser(expectedId) : Promise.resolve(),
+    ]);
     if (error || !data.user) {
       return redirectTo("/login");
     }
-    const expectedId = process.env.DEMO_USER_ID;
     if (expectedId && data.user.id !== expectedId) {
       return redirectTo("/login");
     }
-    await seedDemoUser(data.user.id);
+    if (!expectedId) await seedDemoUser(data.user.id);
     return response;
   } catch {
     return redirectTo("/login");

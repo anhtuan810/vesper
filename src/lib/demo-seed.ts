@@ -39,11 +39,11 @@ const daysAgo = (n: number): string =>
   new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
 // Every per-user table a demo visitor can write to. seedDemoUser wipes these on
-// entry (a no-op on a fresh anonymous user) so nothing carries across sessions,
-// and the reap-demo cron deletes the same set when an expired demo account is
-// wiped. mutations precede assets because mutations reference assets. entitlements
-// and the users/auth row are not listed here — the reaper removes the auth user
-// (which cascades them); the seed re-grants the entitlement below.
+// entry so nothing carries across sessions, and the reap-demo cron deletes the
+// same set when an expired demo account is wiped. assets is listed last because
+// mutations reference assets, so its delete must not run before theirs.
+// entitlements and the users/auth row are not listed here — the reaper removes
+// the auth user (which cascades them); the seed re-grants the entitlement below.
 export const DEMO_USER_TABLES = [
   "mutations", "snapshots", "highlights", "messages",
   "goals", "diary_summaries", "vital_snapshots", "scenarios", "assets",
@@ -310,24 +310,35 @@ function snapshotRows(userId: string): Array<Record<string, unknown>> {
 }
 
 // Reseeds the demo user's portfolio to the fixed dataset above. Deletes existing
-// assets, mutations, and snapshots (mutations first — they reference assets),
-// then inserts the seed set. Throws on a critical insert failure so the caller
-// can fall back to /login.
-export async function seedDemoUser(userId: string): Promise<void> {
+// rows (assets last — mutations reference them), then inserts the seed set.
+// Throws on a critical insert failure so the caller can fall back to /login.
+// The writes are batched into as few sequential waves as the data dependencies
+// allow — /demo entry latency is dominated by these Supabase round trips, and a
+// visitor is staring at a blank screen for all of them.
+//
+// opts.freshUser: the caller just created this user (per-visitor anonymous
+// demo), so no table can contain rows for it — skip the wipe entirely.
+export async function seedDemoUser(userId: string, opts?: { freshUser?: boolean }): Promise<void> {
   const supabase = createServerSupabase();
 
   // Wipe every per-user table a reviewer can write to, so each /demo entry is a
   // truly fresh account and nothing from a previous reviewer's session (chat,
   // goals, saved scenarios, diary) carries over — matching the "edits never
-  // persist across entries" guarantee above. mutations are deleted before assets
-  // (they reference assets). A silently failed delete leaves stale rows (e.g. old
-  // cron-written snapshots) under the fresh seed — the chart then renders the
-  // leftover history with today's live tip as a bogus cliff — so fail the whole
-  // seed instead, letting /demo fall back to /login rather than present a
-  // half-reset account.
-  for (const table of DEMO_USER_TABLES) {
-    const { error } = await supabase.from(table).delete().eq("user_id", userId);
-    if (error) throw error;
+  // persist across entries" guarantee above. All deletes run in one parallel
+  // wave except assets, which waits for the rest (mutations reference assets).
+  // A silently failed delete leaves stale rows (e.g. old cron-written snapshots)
+  // under the fresh seed — the chart then renders the leftover history with
+  // today's live tip as a bogus cliff — so fail the whole seed instead, letting
+  // /demo fall back to /login rather than present a half-reset account.
+  if (!opts?.freshUser) {
+    const wipes = await Promise.all(
+      DEMO_USER_TABLES.filter((t) => t !== "assets").map((table) =>
+        supabase.from(table).delete().eq("user_id", userId),
+      ),
+    );
+    for (const { error } of wipes) if (error) throw error;
+    const { error: assetWipeError } = await supabase.from("assets").delete().eq("user_id", userId);
+    if (assetWipeError) throw assetWipeError;
   }
 
   const { data: createdAssets, error: assetError } = await supabase
@@ -840,12 +851,6 @@ export async function seedDemoUser(userId: string): Promise<void> {
     }),
   ];
 
-  const { error: mutationError } = await supabase.from("mutations").insert(mutationRows);
-  if (mutationError) throw mutationError;
-
-  const { error: snapshotError } = await supabase.from("snapshots").insert(snapshotRows(userId));
-  if (snapshotError) throw snapshotError;
-
   // Market highlights are normally written by the daily 07:00 cron, so a
   // freshly reseeded demo account would show an empty market section until the
   // next run — bad for App Review. Seed deterministic, evergreen items tied to
@@ -880,17 +885,14 @@ export async function seedDemoUser(userId: string): Promise<void> {
       }),
     },
   ];
-  const { error: highlightError } = await supabase.from("highlights").insert(
-    marketSeeds.map((h) => ({
-      user_id: userId,
-      type: "market",
-      title: h.title,
-      detail: h.detail,
-      expires_at: marketExpiry,
-      seen: false,
-    }))
-  );
-  if (highlightError) throw highlightError;
+  const highlightRows = marketSeeds.map((h) => ({
+    user_id: userId,
+    type: "market",
+    title: h.title,
+    detail: h.detail,
+    expires_at: marketExpiry,
+    seen: false,
+  }));
 
   // Grant the demo account full access. The paywall-first gate (src/components/
   // Paywall.tsx) covers every signed-in user who isn't trialing/active, so without
@@ -901,9 +903,20 @@ export async function seedDemoUser(userId: string): Promise<void> {
   // consistent; not real billing — purely to unlock the demo. product_id "demo"
   // is the signal the UI uses to hide real billing surfaces (SubscriptionView.isDemo).
   const demoPeriodEnd = new Date(Date.now() + 365 * 86_400_000).toISOString();
-  const { error: entitlementError } = await supabase
-    .from("entitlements")
-    .upsert(
+
+  // Everything left is independent of everything else (only the mutations rows
+  // needed the created asset ids, resolved above), so the remaining writes go
+  // out as one parallel wave instead of five sequential round trips. The users
+  // update makes the account self-consistent for the chart (EUR display), skips
+  // the one-time AI disclosure gate so the reviewer isn't interrupted, and gives
+  // the persona a strong, coherent profile — it shows on Profile and feeds Chat
+  // and Insights, so the whole app reads as if it already knows this investor.
+  // Its error is intentionally not checked (as before this ran last, unchecked).
+  const [mutationRes, snapshotRes, highlightRes, entitlementRes] = await Promise.all([
+    supabase.from("mutations").insert(mutationRows),
+    supabase.from("snapshots").insert(snapshotRows(userId)),
+    supabase.from("highlights").insert(highlightRows),
+    supabase.from("entitlements").upsert(
       {
         user_id: userId,
         status: "active",
@@ -916,30 +929,29 @@ export async function seedDemoUser(userId: string): Promise<void> {
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },
-    );
-  if (entitlementError) throw entitlementError;
-
-  // Make the account self-consistent for the chart (EUR display), skip the
-  // one-time AI disclosure gate so the reviewer isn't interrupted, and give the
-  // persona a strong, coherent profile — it shows on Profile and feeds Chat and
-  // Insights, so the whole app reads as if it already knows this investor.
-  await supabase
-    .from("users")
-    .update({
-      name: "Alex Demo",
-      display_currency: "EUR",
-      ai_consent_at: new Date().toISOString(),
-      fingerprint: "Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.",
-      profile: {
-        life_and_direction:
-          "Early forties in Amsterdam, owns the family apartment and a small Rotterdam rental, and wants the next decade to compound quietly.",
-        approach:
-          "Index-first: a global MSCI World core, a high-conviction tech sleeve, and a small crypto position, with property held long-term and conservatively levered.",
-        currently_exploring:
-          "Whether to keep overpaying the 1.9% home mortgage after last year's lump sum, or route the spare cash into the index instead.",
-        worth_raising:
-          "The Rotterdam mortgage is interest-only and still needs a repayment plan, and the tech sleeve has grown larger than originally intended.",
-      },
-    })
-    .eq("id", userId);
+    ),
+    supabase
+      .from("users")
+      .update({
+        name: "Alex Demo",
+        display_currency: "EUR",
+        ai_consent_at: new Date().toISOString(),
+        fingerprint: "Amsterdam homeowner with a Rotterdam rental, a global-index core, and a sleeve of high-conviction tech and crypto bets.",
+        profile: {
+          life_and_direction:
+            "Early forties in Amsterdam, owns the family apartment and a small Rotterdam rental, and wants the next decade to compound quietly.",
+          approach:
+            "Index-first: a global MSCI World core, a high-conviction tech sleeve, and a small crypto position, with property held long-term and conservatively levered.",
+          currently_exploring:
+            "Whether to keep overpaying the 1.9% home mortgage after last year's lump sum, or route the spare cash into the index instead.",
+          worth_raising:
+            "The Rotterdam mortgage is interest-only and still needs a repayment plan, and the tech sleeve has grown larger than originally intended.",
+        },
+      })
+      .eq("id", userId),
+  ]);
+  if (mutationRes.error) throw mutationRes.error;
+  if (snapshotRes.error) throw snapshotRes.error;
+  if (highlightRes.error) throw highlightRes.error;
+  if (entitlementRes.error) throw entitlementRes.error;
 }

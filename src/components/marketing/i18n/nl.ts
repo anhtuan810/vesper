@@ -7,6 +7,8 @@ export const nl = {
     getStarted: "Aan de slag",
   },
 
+  demoPreparing: "Je live demo wordt voorbereid…",
+
   hero: {
     pill: "Privé · EU-gehost · geen bankkoppeling",
     h1: [["Volg wat je bezit."], ["Onthoud ", { acc: "waarom je het bezit" }, "."]],

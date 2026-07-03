@@ -7,6 +7,8 @@ export const fr = {
     getStarted: "Commencer",
   },
 
+  demoPreparing: "Préparation de votre démo en direct…",
+
   hero: {
     pill: "Privé · hébergé dans l’UE · sans synchro bancaire",
     h1: [["Suivez ce que vous possédez."], ["Souvenez-vous ", { acc: "pourquoi vous le possédez" }, "."]],

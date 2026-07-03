@@ -33,14 +33,16 @@ export async function POST() {
         return NextResponse.json({ error: "Demo unavailable" }, { status: 503 });
       }
       const uid = data.user.id;
-      await seedDemoUser(uid);
 
+      // The user was created a moment ago, so the seed skips its wipe phase
+      // (freshUser) and the demo_users tracking row goes in concurrently with
+      // the seed inserts — neither depends on the other.
       const service = createServerSupabase();
-      const { data: demoRow, error: demoError } = await service
-        .from("demo_users")
-        .insert({ user_id: uid })
-        .select("created_at")
-        .single();
+      const [, demoRowRes] = await Promise.all([
+        seedDemoUser(uid, { freshUser: true }),
+        service.from("demo_users").insert({ user_id: uid }).select("created_at").single(),
+      ]);
+      const { data: demoRow, error: demoError } = demoRowRes;
       if (demoError || !demoRow) {
         return NextResponse.json({ error: "Demo unavailable" }, { status: 503 });
       }
@@ -64,15 +66,22 @@ export async function POST() {
     return new NextResponse("Not found", { status: 404 });
   }
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // When DEMO_USER_ID pins the demo account, the reseed already knows its
+    // target — run it concurrently with the sign-in instead of after it (same
+    // optimization as /demo). A reseed raced against a failed sign-in is
+    // harmless: it only ever resets the demo account to its canonical state.
+    const expectedId = process.env.DEMO_USER_ID;
+    const [{ data, error }] = await Promise.all([
+      supabase.auth.signInWithPassword({ email, password }),
+      expectedId ? seedDemoUser(expectedId) : Promise.resolve(),
+    ]);
     if (error || !data.user || !data.session) {
       return NextResponse.json({ error: "Demo unavailable" }, { status: 503 });
     }
-    const expectedId = process.env.DEMO_USER_ID;
     if (expectedId && data.user.id !== expectedId) {
       return NextResponse.json({ error: "Demo unavailable" }, { status: 503 });
     }
-    await seedDemoUser(data.user.id);
+    if (!expectedId) await seedDemoUser(data.user.id);
     return NextResponse.json({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,

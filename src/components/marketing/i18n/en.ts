@@ -22,6 +22,10 @@ export const en = {
     getStarted: "Get started",
   },
 
+  // Full-screen cover shown the instant a demo CTA is clicked — the server
+  // prepares a fresh demo account before the app appears, which takes a moment.
+  demoPreparing: "Preparing your live demo…",
+
   hero: {
     pill: "Private · EU-hosted · no bank sync",
     h1: [["Track what you own."], ["Remember ", { acc: "why you own it" }, "."]],

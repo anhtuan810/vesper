@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { ThemeToggle } from "./ThemeToggle";
@@ -78,8 +78,37 @@ const VITAL_SVGS: ReactNode[] = [
 export function MarketingBody() {
   const { m } = useI18n();
 
+  // Entering the demo is a full navigation to app.volnar.nl/demo, where the
+  // server signs in and reseeds a whole demo account before anything renders —
+  // several seconds during which a plain link would leave this page frozen.
+  // Paint a "preparing" veil the instant any demo CTA is clicked; it stays up
+  // until the browser swaps documents.
+  const [launchingDemo, setLaunchingDemo] = useState(false);
+  useEffect(() => {
+    // Coming BACK from the demo restores this page from the back/forward cache
+    // exactly as it was left — veil up — so drop it on bfcache restores.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setLaunchingDemo(false);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+  // Spread onto every demo CTA. No preventDefault — the navigation proceeds;
+  // the veil only covers the wait.
+  const demoCta = { href: DEMO_URL, onClick: () => setLaunchingDemo(true) };
+
   return (
     <>
+      {launchingDemo && (
+        <div className="demo-veil" role="status" aria-live="polite">
+          <VolnarLogo size={48} />
+          <div className="demo-veil-msg">{m.demoPreparing}</div>
+          <div className="demo-veil-dots" aria-hidden="true">
+            <span /><span /><span />
+          </div>
+        </div>
+      )}
+
       {/* ── Nav ── */}
       <nav className="nav">
         <div className="inner">
@@ -94,7 +123,7 @@ export function MarketingBody() {
             <ThemeToggle />
             <LanguagePicker />
             <a className="nav-signin" href={LOGIN_URL}>{m.nav.signIn}</a>
-            <a className="btn demo" href={DEMO_URL}>{m.nav.getStarted}</a>
+            <a className="btn demo" {...demoCta}>{m.nav.getStarted}</a>
           </span>
         </div>
       </nav>
@@ -114,7 +143,7 @@ export function MarketingBody() {
               <Line line={m.hero.lead} />
             </p>
             <div className="cta fu" style={{ animationDelay: ".3s" }}>
-              <a className="btn lg" href={DEMO_URL}>
+              <a className="btn lg" {...demoCta}>
                 {m.hero.seeDemo} <Ic id="i-arrow" />
               </a>
               <a className="btn lg ghost" href="#how">
@@ -386,7 +415,7 @@ export function MarketingBody() {
                   <li key={i}><Ic id="i-check" />{f}</li>
                 ))}
               </ul>
-              <a className="btn" href={DEMO_URL} style={{ width: "100%", justifyContent: "center" }}>
+              <a className="btn" {...demoCta} style={{ width: "100%", justifyContent: "center" }}>
                 {m.pricing.cta}
               </a>
             </div>
@@ -399,7 +428,7 @@ export function MarketingBody() {
                   <li key={i}><Ic id="i-check" />{f}</li>
                 ))}
               </ul>
-              <a className="btn" href={DEMO_URL} style={{ width: "100%", justifyContent: "center" }}>
+              <a className="btn" {...demoCta} style={{ width: "100%", justifyContent: "center" }}>
                 {m.pricing.cta}
               </a>
             </div>
@@ -415,7 +444,7 @@ export function MarketingBody() {
             <Heading lines={m.close.h2} />
           </h2>
           <div className="cta reveal" style={{ transitionDelay: ".08s" }}>
-            <a className="btn lg" href={DEMO_URL}>
+            <a className="btn lg" {...demoCta}>
               {m.close.cta} <Ic id="i-arrow" />
             </a>
           </div>
@@ -435,7 +464,7 @@ export function MarketingBody() {
             </div>
             <div className="col">
               <h5>{m.footer.productHead}</h5>
-              <a href={DEMO_URL}>{m.footer.product.liveDemo}</a>
+              <a {...demoCta}>{m.footer.product.liveDemo}</a>
               <a href="#how">{m.footer.product.how}</a>
               <a href="#pricing">{m.footer.product.pricing}</a>
             </div>
