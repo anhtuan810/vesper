@@ -858,9 +858,11 @@ export function VitalsContent({
   const [showProperty, setShowProperty] = useState<boolean>(true);
 
   // ── Fold state (mobile stack) ─────────────────────────────────────────────
-  // Per-device open/closed overrides. A vital with no override defaults from
-  // its band: amber/red arrive unfolded, green rests folded — so an all-folded
-  // page literally means all is well. Loaded after mount (SSR-safe).
+  // Per-device open/closed overrides. Every vital rests folded by default —
+  // the page arrives as a calm, scannable index (grade chip + figure + status
+  // word per row carry the attention read); anything worth a look announces
+  // itself through its grade, not by arriving pre-expanded. Loaded after
+  // mount (SSR-safe).
   const FOLDS_KEY = "volnar:vitals-open";
   const [foldOverrides, setFoldOverrides] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -1184,9 +1186,8 @@ export function VitalsContent({
   // explanation and an "Ask about this" chat hook. The bench line is dropped
   // here — each chart already carries its own benchmark.
   function effectiveOpen(key: string): boolean {
-    const vital = vitalMap[key];
-    const dflt = vital ? foldStatus(key, vital, showProperty).tone !== "ok" : false;
-    return foldOverrides[key] ?? dflt;
+    // Folded unless this device explicitly opened it (or tapped "Unfold all").
+    return foldOverrides[key] ?? false;
   }
 
   function renderVitalFold(key: string, first: boolean): React.ReactNode {
@@ -1257,8 +1258,7 @@ export function VitalsContent({
     }));
 
   // Cards in their fixed order. "grid" (desktop) keeps the existing card grid;
-  // "stack" (mobile) renders the foldable rows — green vitals rest folded,
-  // amber/red arrive open.
+  // "stack" (mobile) renders the foldable rows — all resting folded.
   const activeKeys = VITAL_ORDER.filter((k) => {
     const v = vitalMap[k];
     return !!v && v.applies && scopeVisible(v.scope, showProperty);

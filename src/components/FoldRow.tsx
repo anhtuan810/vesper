@@ -28,10 +28,15 @@ export interface FoldRowProps {
   children: ReactNode;
 }
 
-const GRADE_COLORS: Record<"good" | "warn" | "bad", { bg: string; fg: string }> = {
-  good: { bg: "var(--positive-soft)", fg: "var(--positive-text)" },
-  warn: { bg: "var(--amber-soft)", fg: "var(--amber-deep)" },
-  bad: { bg: "var(--negative-soft)", fg: "var(--negative-text)" },
+// Solid tone fill with a soft halo ring in the same tone — the grade is the
+// at-a-glance read of the whole row, so it gets real ink instead of a washed
+// soft-on-soft chip. --on-accent flips with the theme (near-white on light,
+// near-black on dark, where the tone colours themselves are light), so the
+// letter stays high-contrast in both themes.
+const GRADE_COLORS: Record<"good" | "warn" | "bad", { fill: string; halo: string }> = {
+  good: { fill: "var(--positive)", halo: "var(--positive-soft)" },
+  warn: { fill: "var(--amber)", halo: "var(--amber-soft)" },
+  bad: { fill: "var(--negative)", halo: "var(--negative-soft)" },
 };
 
 export function FoldRow({
@@ -73,17 +78,19 @@ export function FoldRow({
             aria-label={`Grade ${grade.letter}`}
             style={{
               flex: "none",
-              width: 22,
-              height: 22,
-              borderRadius: 7,
-              background: GRADE_COLORS[grade.tone].bg,
-              color: GRADE_COLORS[grade.tone].fg,
+              width: 26,
+              height: 26,
+              borderRadius: 9,
+              background: GRADE_COLORS[grade.tone].fill,
+              color: "var(--on-accent)",
+              boxShadow: `0 0 0 3px ${GRADE_COLORS[grade.tone].halo}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-caption)",
+              fontSize: "var(--fs-body)",
               fontWeight: 700,
+              lineHeight: 1,
             }}
           >
             {grade.letter}
