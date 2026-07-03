@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { track } from "@vercel/analytics";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { displayName, unitNoun, STARTING_POSITION_CTX } from "@/lib/diary-utils";
@@ -313,25 +314,46 @@ export function MobileDecisionJournal({
         {note}
       </p>
 
-      {/* Rewind — tap to stand the whole page (hero + holdings) at this
-          entry's day. While already standing there the action disappears (the
-          dated hero and holdings speak for themselves). Today-dated entries
-          have nothing to rewind (the live page IS that day), so they offer
-          nothing. */}
-      {onViewDay && rewindId !== m.id && mDate(m).slice(0, 10) < new Date().toISOString().slice(0, 10) && (
-          <button
-            type="button"
-            onClick={() => onViewDay(m.id)}
-            className="font-ui"
-            style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, marginTop: "var(--space-2)", cursor: "pointer", fontSize: "var(--fs-caption)", fontWeight: 500, color: "var(--accent-text)" }}
-          >
-            Portfolio on this day
-            <svg width="11" height="11" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="40" y1="128" x2="216" y2="128" />
-              <polyline points="144 56 216 128 144 200" />
-            </svg>
-          </button>
-      )}
+      {/* Action row —
+          · Rewind: stand the whole page (hero + holdings) at this entry's day.
+            Hidden while already standing there (the dated hero speaks for
+            itself) and on today-dated entries (the live page IS that day).
+          · Asset link: the entry names a holding, so the mention opens its
+            detail page — the same /asset route the holdings rows use. Exited
+            positions (asset_id ON DELETE SET NULL) have no page to open, so
+            they offer no link — the same rule the Journal rows follow. */}
+      {(() => {
+        const canRewind = !!onViewDay && rewindId !== m.id && mDate(m).slice(0, 10) < new Date().toISOString().slice(0, 10);
+        const actionStyle = { display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--fs-caption)", fontWeight: 500, color: "var(--accent-text)" } as const;
+        const arrow = (
+          <svg width="11" height="11" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="40" y1="128" x2="216" y2="128" />
+            <polyline points="144 56 216 128 144 200" />
+          </svg>
+        );
+        if (!canRewind && !m.asset_id) return null;
+        return (
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: "var(--space-5)", rowGap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+            {canRewind && (
+              <button
+                type="button"
+                onClick={() => onViewDay!(m.id)}
+                className="font-ui"
+                style={{ ...actionStyle, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+              >
+                Portfolio on this day
+                {arrow}
+              </button>
+            )}
+            {m.asset_id && (
+              <Link href={`/asset?id=${m.asset_id}`} className="font-ui" style={{ ...actionStyle, textDecoration: "none" }}>
+                Open {displayName(m)}
+                {arrow}
+              </Link>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Dropped down — the full look-back verdict (chevron reveals it). */}
       {hasVerdict && open && <VerdictBody key={m.id} verdict={verdict} unitLabel={unitLabel} />}

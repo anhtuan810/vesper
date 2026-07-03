@@ -859,6 +859,15 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                     {points.map((p, i) => <li key={i}>{p}</li>)}
                   </ul>
                 )}
+                {/* The entry names a holding → the mention opens its detail page
+                    (same /asset route the holdings rows and Journal rows use).
+                    Exited positions (asset_id ON DELETE SET NULL) have no page
+                    to open, so they offer no link. */}
+                {m.asset_id && (
+                  <Link className="lk" href={`/asset?id=${m.asset_id}`} style={{ display: "inline-block", margin: "0 0 15px" }}>
+                    Open {displayName(m)} →
+                  </Link>
+                )}
                 {verdict && <VerdictStamp verdict={verdict} unitLabel={m.asset_type ? unitNoun(m.asset_type) : "units"} />}
               </>
             );
