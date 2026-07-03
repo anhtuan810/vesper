@@ -198,7 +198,13 @@ export function SubscriptionSection({ embedded = false }: { embedded?: boolean }
               fontFamily: "var(--font-ui)",
             }}
           >
-            {busy ? "Opening…" : "Manage subscription"}
+            {busy
+              ? "Opening…"
+              : data.source === "app_store"
+                ? "Manage in the App Store"
+                : data.source === "play_store"
+                  ? "Manage in Google Play"
+                  : "Manage subscription"}
           </button>
         </div>
       ) : activating ? (

@@ -203,7 +203,15 @@ export function Paywall() {
   // "manage existing" affordance alongside the buy buttons. past_due gets the most
   // direct copy because the fix is to update the card, not to buy again.
   const lapsed = !!data?.status && data.status !== "trialing" && data.status !== "active";
-  const manageLabel = data?.status === "past_due" ? "Update payment method" : "Manage existing subscription";
+  // A store-billed subscription can only be managed by that store — Stripe's
+  // portal can't see it. Say so on the button (and, on web, under it), so the
+  // hand-off to Apple's/Google's sign-in is expected rather than looking like a
+  // web/iOS mix-up.
+  const storeSource = data?.source === "app_store" || data?.source === "play_store";
+  const storeName = data?.source === "play_store" ? "Google Play" : "the App Store";
+  const manageLabel = storeSource
+    ? `Manage in ${storeName}`
+    : data?.status === "past_due" ? "Update payment method" : "Manage existing subscription";
 
   const renewLocation = native ? "the App Store" : "your account";
 
@@ -335,24 +343,41 @@ export function Paywall() {
         )}
 
         {lapsed && (
-          <button
-            onClick={manageExisting}
-            disabled={busy}
-            style={{
-              width: "100%",
-              marginTop: 10,
-              padding: "12px 18px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--border-strong)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontSize: "var(--fs-body)",
-              fontWeight: 500,
-              cursor: busy ? "default" : "pointer",
-            }}
-          >
-            {manageLabel}
-          </button>
+          <>
+            <button
+              onClick={manageExisting}
+              disabled={busy}
+              style={{
+                width: "100%",
+                marginTop: 10,
+                padding: "12px 18px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--border-strong)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                fontSize: "var(--fs-body)",
+                fontWeight: 500,
+                cursor: busy ? "default" : "pointer",
+              }}
+            >
+              {manageLabel}
+            </button>
+            {storeSource && !native && (
+              <p
+                style={{
+                  fontSize: "var(--fs-caption)",
+                  color: "var(--text-faint)",
+                  lineHeight: "var(--lh-body)",
+                  textAlign: "center",
+                  marginTop: 8,
+                }}
+              >
+                {data?.source === "app_store"
+                  ? "That subscription is billed through Apple — easiest on your iPhone under Settings → Subscriptions. The button opens Apple's sign-in."
+                  : "That subscription is billed through Google Play — the button opens Google's sign-in."}
+              </p>
+            )}
+          </>
         )}
 
         {/* Apple-required auto-renew disclosure + legal links, near the buy button */}
