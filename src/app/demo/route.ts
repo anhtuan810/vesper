@@ -105,8 +105,10 @@ export async function GET(request: NextRequest) {
       const trial = await resolveVisitorTrial(service, cookieVisitorId);
 
       // Trial already used up on this browser → don't mint a throwaway demo user.
+      // The param lets /login say WHY the visitor is back (button → message)
+      // instead of silently bouncing them into a dead loop.
       if (trial.deadlineMs != null && Date.now() >= trial.deadlineMs) {
-        return redirectTo("/login");
+        return redirectTo("/login?demo=expired");
       }
       if (trial.tracked && trial.visitorId) {
         response.cookies.set("demo_visitor", trial.visitorId, {

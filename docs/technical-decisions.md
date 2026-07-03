@@ -924,6 +924,14 @@ honestly so the post-demo ask is expected. Researched (external CRO/PLG evidence
   concurrent visitors wipe each other — needs a rate limit or the per-visitor
   demo before driving real traffic; locale auto-detect from `navigator.language`
   (page always opens in English on a .nl domain).
+- **Spent-trial dead loop fixed (owner-reported)**: with DEMO_ENABLED, a
+  visitor whose hour was used up clicked /login's "Explore a live demo
+  account" and was silently bounced straight back to /login. The /demo route
+  now redirects with `?demo=expired`, and /login (on that param, or on a past
+  `demo_expires_at` cookie — web only: native re-entry still legitimately
+  mints a fresh session) replaces the demo button with a message: session
+  ended, one hour per visitor, create an account — 7 days free. Dormant in
+  production until DEMO_ENABLED flips, like the rest of the per-visitor demo.
 - Process note: developed on `claude/marketing-page-conversion-mwymg8` per the
   session's branch designation.
 

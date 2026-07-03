@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/api";
 import { purgeClientCaches } from "@/lib/client-cache";
 import { signInWithGoogleNative, signInWithAppleNative } from "@/lib/native/auth-native";
 import { VolnarLogo } from "@/components/VolnarLogo";
+import { readDemoExpiry } from "@/components/DemoExpiryWall";
 
 const TERMS_URL = "https://volnar.nl/terms";
 const PRIVACY_URL = "https://volnar.nl/privacy";
@@ -44,8 +45,20 @@ function LoginInner() {
   // Capacitor bridge, which doesn't exist during SSR, and a direct call in
   // render would mismatch hydration.
   const [native, setNative] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setNative(isNative()); }, []);
+  // The per-visitor demo trial is spent for this browser: either the /demo
+  // route just said so (?demo=expired), or the readable demo_expires_at
+  // cookie shows a past deadline (a walled visitor who signed out lands here
+  // without the param). Web only — on native, re-entry mints a fresh session
+  // today, so a stale localStorage deadline must not hide the button there.
+  const [cookieSpent, setCookieSpent] = useState(false);
+  useEffect(() => {
+    const n = isNative();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNative(n);
+    const deadline = readDemoExpiry();
+    if (!n && deadline != null && Date.now() >= deadline) setCookieSpent(true);
+  }, []);
+  const demoSpent = params.get("demo") === "expired" || cookieSpent;
 
   const callbackUrl = (typeof window !== "undefined")
     ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
@@ -258,6 +271,28 @@ function LoginInner() {
           .demo-cta:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
         `}</style>
 
+        {demoSpent ? (
+          // The trial is once per browser — offering the button again would be
+          // a dead loop (the /demo route just bounces back here). Say what
+          // happened and point at the real next step instead.
+          <div
+            style={{
+              marginTop: 20,
+              padding: "16px 18px",
+              borderRadius: "var(--radius-lg)",
+              background: "var(--accent-soft)",
+              border: "1px solid var(--accent)",
+              color: "var(--accent-text)",
+              fontSize: "var(--fs-caption)",
+              lineHeight: "var(--lh-body)",
+              textAlign: "center",
+            }}
+          >
+            Your demo session has ended — the demo gives each visitor one hour.
+            To keep going, create an account above: the first 7 days are free.
+          </div>
+        ) : (
+        <>
         <div className="flex items-center" style={{ gap: 12, margin: "20px 0 14px" }}>
           <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
           <span className="eyebrow">or</span>
@@ -313,6 +348,8 @@ function LoginInner() {
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
         </a>
+        </>
+        )}
 
         <p
           className="text-center font-numeric text-faint mt-10"
