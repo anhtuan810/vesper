@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import { useI18n } from "./i18n";
+import type { DemoCta } from "./MarketingBody";
 
-export function WhatIf() {
+// The mock's input can't be typed in — clicking it opens the live demo, where
+// the real composer is. The spread (veil + navigation + tracking) comes from
+// MarketingBody, and the placeholder copy announces the jump before the click.
+export function WhatIf({ demoCta }: { demoCta: DemoCta }) {
   const { m } = useI18n();
   const W = m.whatif;
   const [active, setActive] = useState<"a" | "b">("a");
@@ -11,14 +15,14 @@ export function WhatIf() {
 
   return (
     <div className="visual card wif reveal" style={{ transitionDelay: ".12s" }}>
-      <div className="wif-input">
+      <a className="wif-input" {...demoCta}>
         <span className="ph">{W.placeholder}</span>
         <span className="snd">
           <svg className="ic">
             <use href="#i-arrow" />
           </svg>
         </span>
-      </div>
+      </a>
       <div className="wif-chips">
         {(["a", "b"] as const).map((k) => (
           <button

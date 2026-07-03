@@ -106,13 +106,18 @@
 .tw .lead{font-size:18px;line-height:1.6;color:var(--bodytext);max-width:640px;margin:22px 0 0}
 .tw .lead b{color:var(--ink);font-weight:600}
 .tw .cta{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px}
+/* Friction microcopy under a demo CTA — the demo's honest promises in one
+   line. One shared recipe with .pmicro (pricing) and .mcta-micro (sticky bar);
+   the size/margin variants live on the individual classes. */
+.tw .cta-micro,.tw .pmicro,.tw .mcta-micro{font-size:12.5px;color:var(--muted);font-family:var(--mkt-sans),'Inter',system-ui,sans-serif}
+.tw .cta-micro{margin:12px 0 0}
+.tw .dark .cta-micro{color:var(--darkmuted)}
 
 /* ---- store badges ---- */
 .tw .stores{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .tw .hero-stores{margin-top:24px}
 .tw .store{display:inline-flex;align-items:center;gap:9px;background:#101014;border:1px solid rgba(255,255,255,.18);border-radius:11px;padding:8px 14px;text-decoration:none;color:#fff;transition:.15s}
 .tw .store:hover{background:#1b1b22}
-.tw .store.soon{opacity:.6;cursor:default}
 .tw .store-ic{width:22px;height:22px;flex:0 0 auto;fill:#fff}
 .tw .store-t{display:flex;flex-direction:column;line-height:1.12}
 .tw .store-t small{font-size:9.5px;opacity:.82}
@@ -172,6 +177,8 @@
 .tw .cr-ask{display:inline-flex;align-items:center;gap:7px;margin-top:11px;font-size:12px;font-weight:600;color:var(--green);border:1px dashed var(--green);border-radius:999px;padding:6px 11px;text-decoration:none;transition:.15s}
 .tw .cr-ask:hover{background:var(--mint)}
 .tw .cr-ask .ic{width:13px;height:13px}
+/* "· in the live demo" — the chip is a demo launcher and says so up front. */
+.tw .cr-ask-sfx{color:var(--muted);font-weight:500;white-space:nowrap}
 
 /* ---- chart click popover ---- */
 .tw .gpop{position:absolute;z-index:25;min-width:152px;max-width:212px;background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:10px 12px;box-shadow:0 16px 40px -18px rgba(0,0,0,.55);opacity:0;visibility:hidden;transition:opacity .14s}
@@ -245,7 +252,10 @@
 
 /* ---- what-if ---- */
 .tw .wif{padding:20px}
-.tw .wif-input{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--soft);margin-bottom:11px}
+/* The mock input is an anchor into the live demo — keep the input look, add
+   the affordances a link needs. */
+.tw .wif-input{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--soft);margin-bottom:11px;text-decoration:none;cursor:pointer;transition:border-color .15s}
+.tw a.wif-input:hover{border-color:var(--green)}
 .tw .wif-input .ph{flex:1;color:var(--muted);font-size:13px}
 .tw .wif-input .snd{width:27px;height:27px;flex:0 0 auto;border-radius:7px;background:var(--green);color:var(--btnfg);display:flex;align-items:center;justify-content:center}
 .tw .wif-input .snd .ic{width:14px;height:14px}
@@ -351,10 +361,28 @@
 .tw .pname{font-size:14.5px;font-weight:600;color:var(--muted);font-family:var(--mkt-sans),'Inter',system-ui,sans-serif}
 .tw .pamt{font-size:36px;font-weight:700;letter-spacing:-0.03em;margin:7px 0 1px}
 .tw .pamt span{font-size:15px;font-weight:600;color:var(--muted)}
+/* Annual card's per-month equivalent — the honest anchor under the year price. */
+.tw .pequiv{font-size:12px;color:var(--muted);font-family:var(--mkt-sans),'Inter',system-ui,sans-serif}
 .tw .flist{list-style:none;margin:18px 0 20px}
 .tw .flist li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--bodytext);padding:6px 0}
 .tw .flist .ic{color:var(--green);font-size:17px;margin-top:1px}
-.tw .pmicro{font-size:12.5px;color:var(--muted);margin-top:16px;font-family:var(--mkt-sans),'Inter',system-ui,sans-serif}
+.tw .pmicro{margin-top:16px}
+
+/* ---- mid-page demo band ---- */
+.tw .demo-band{text-align:center}
+.tw .demo-band .body{max-width:600px;margin-left:auto;margin-right:auto}
+.tw .demo-band .cta{justify-content:center}
+
+/* ---- mobile sticky demo bar ----
+   Fixed to the bottom edge on phones only, shown between the hero scrolling
+   out and the closing section scrolling in (MarketingBody's observers drive
+   .show). Sits under the demo veil (z 200), above everything else. */
+.tw .mcta{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;justify-content:center;gap:6px 12px;flex-wrap:wrap;padding:10px 16px calc(10px + env(safe-area-inset-bottom, 0px));background:var(--navbg);backdrop-filter:saturate(1.4) blur(8px);border-top:1px solid var(--line);transform:translateY(110%);transition:transform .3s ease;pointer-events:none}
+.tw .mcta.show{transform:none;pointer-events:auto}
+/* The button never breaks mid-label; when a long locale doesn't fit beside it,
+   the microcopy wraps to its own centered row instead. */
+.tw .mcta .btn{white-space:nowrap}
+.tw .mcta-micro{font-size:11.5px;white-space:nowrap}
 
 /* ---- close + footer ---- */
 .tw .close{text-align:center;padding:84px 0}
@@ -393,6 +421,8 @@
 .tw .led.open .led-chev{transform:rotate(180deg);stroke:var(--green)}
 .tw .led:hover .led-chev{stroke:var(--green)}
 .tw .led-cap{margin-top:14px;font-family:var(--mkt-sans),'Inter',system-ui,sans-serif;font-size:11px;color:var(--muted);letter-spacing:.03em}
+.tw .led-cap-cta{color:var(--green);font-weight:600;text-decoration:none}
+.tw .led-cap-cta:hover{text-decoration:underline}
 
 /* ---- theme toggle ---- */
 .tw .themesw{display:inline-flex;align-items:center;gap:2px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px;margin-right:2px}
@@ -443,6 +473,7 @@
   .tw .nlinks .demo{display:inline-flex}
   .tw .themesw{display:none}
   .tw .nav .inner{padding:13px 18px;gap:10px}
+  .tw .mcta{display:flex}
 }
 @media(max-width:560px){
   /* Tighter section rhythm on phones — the desktop 72px bands read as dead
@@ -520,8 +551,12 @@
   .tw .acc svg path{stroke-dashoffset:0!important}
   .tw .st-chart .stack{clip-path:none!important}
   .tw .st-chart .mk{opacity:1!important}
-  .tw .forgetting{opacity:1!important;filter:none!important}
-  .tw .mem-q{display:none!important}
+  /* The memory card without motion: the reason rests statically FORGOTTEN
+     (mid-animation blur) so the "…why did I sell again?" punchline (visible at
+     its base opacity now that animation:none applies) still makes sense. The
+     old rules pinned the reason readable and hid the punchline — coherent too,
+     but it cost reduced-motion users the section's whole argument. */
+  .tw .forgetting{opacity:.12!important;filter:blur(4.5px)!important}
 }
 
 /* ---- demo-launch veil ----

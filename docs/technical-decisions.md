@@ -843,6 +843,90 @@ Owner-driven session; every item has a full section above. The audit trail for
   (`claude/demo-account-startup-delays-k2kt99`, merged fast-forward), then
   committed straight to `main` per the working agreement.
 
+## Session log — 2026-07-03 (marketing conversion pass)
+
+One goal on the landing page: the demo click — with the subscription pre-framed
+honestly so the post-demo ask is expected. Researched (external CRO/PLG evidence
++ full funnel/code audit), then shipped in all four locales:
+
+- **One demo-CTA scent + tracking.** The page had five labels for the same
+  action ("Get started", "See the live demo", "Start the demo", "Start your
+  journal", "Live demo"); it now speaks one family ("See the live demo" / the
+  short "Live demo" in the nav). `demoCta` became a factory
+  (`MarketingBody.tsx`) that fires the marketing page's FIRST analytics event —
+  `demo_cta_click` with a `placement` prop (nav / hero / chart_ask / ledger_cap
+  / whatif_input / midband / pricing_monthly / pricing_annual / close / sticky
+  / footer) — through the already-mounted `@vercel/analytics`. Demo CTR is
+  measurable for the first time. Review of this pass found analytics had never
+  actually worked on volnar.nl: the marketing-domain rewrite folded the
+  platform's own `/_vercel/insights/*` routes (the analytics script + event
+  endpoint) into `/marketing/_vercel/*`, a 404 — `/_vercel` now joins the
+  middleware skip-list (`src/middleware.ts`), which should also revive plain
+  pageview counting on the marketing domain. Known, accepted undercount: a
+  click in the first seconds after landing (before the insights script loads)
+  queues the event in-memory and the same click's navigation discards it.
+- **Friction microcopy** under the hero and closing CTAs (`demoMicro`): no
+  signup, no card, full sample portfolio, "ready in a few seconds". Wording
+  rules: never a demo duration (must survive the DEMO_ENABLED flip), never
+  "instant" (the veil covers real seconds), never data carry-over claims (demo
+  data does NOT carry into a subscription).
+- **Pricing truth pass.** "Indicative pricing · 14-day demo, no card required"
+  matched nothing real (trial is 7 days with card-on-file on web; today's demo
+  is unlimited) — replaced with verified terms and a plain-path lead: demo
+  first, subscribe in the app or on the web, 7 days free, then €9,99/€99,99,
+  cancel anytime. H2 "One product. One price." (above two prices) → "One
+  subscription. Two ways to pay." Annual badge "Save 17%" → **"2 months free"**
+  to match the in-app Paywall; "≈ €8,33 / mo" equivalent under the year price.
+  Feature lists are now identical on both cards — "Journal kept for good" as an
+  annual-only feature implied Monthly deletes your journal.
+- **Number consistency.** "Seven Vitals" above six cards → six, names aligned
+  to the cards; what-if scenario rows recomputed from the page's own book
+  (equities 611.505/1.290.083 ≈ 47% → 81% if the flat is sold into an index;
+  €431.323·1,06¹⁰ ≈ €772.000 vs kept-at-4% ≈ €638.000; −1,3% real on €181.110
+  ≈ −€2.400/yr); ledger caption "Twelve entries" above eight rows → "Eight of
+  the twelve…".
+- **High-intent moments now open the demo**: the chart readout's "Ask:" chip
+  (was a scroll to #whatif) with a muted "· in the live demo" suffix, and the
+  What-if mock's dead input (placeholder now says where the click goes). First
+  ledger row rests open (the why + impact were hidden behind an unexplained
+  chevron); the ledger caption gained an inline "Read the rest in the live
+  demo" link.
+- **Mid-page demo band** after Vitals (the only CTA between hero and pricing
+  was six sections away): "Everything on this page is the demo's portfolio…"
+  plus the price pre-frame, on a `band-soft` strip.
+- **Sticky mobile demo bar** (`.mcta`, ≤760px): appears once the hero scrolls
+  out, hides at the closing section and past it (two IntersectionObservers);
+  safe-area padded; the button never breaks mid-label — long locales wrap the
+  microcopy to its own centered row instead.
+- **Veil as pitch**: while the demo prepares, the message walks
+  "Preparing your live demo…" → "Seeding five years of real market history…" →
+  "Writing the journal's twelve entries…" (1,7s steps, holds on the last).
+- **Privacy section**: body now answers the manual-entry objection ("updating
+  takes a sentence, and the market's entries write themselves"); the confusing
+  "EU-hosted & read-only" chip is just "EU-hosted" (read-only of what?).
+  Compare section gained the real incumbent — the spreadsheet row — and its
+  abstract H2 ("A different axis entirely") became "What the others don't
+  keep."
+- **Small fixes**: Google Play "coming soon" badge deleted from the hero
+  (non-clickable anti-proof under the primary CTA; keys removed ×4); chart
+  autoplay 3200→5500ms + pause on hover (the readout swapped faster than it
+  could be read); chart caption now opens with "Sample portfolio, real market
+  history"; reduced-motion users keep the "…why did I sell again?" punchline
+  (was display:none).
+- **Cost**: page height 8.604 → 9.318px at 390w (+8%, all conversion substance,
+  no air). Verified with a production build + Playwright shots (light/dark ×
+  desktop/mobile × 4 locales for the sticky bar).
+- **Known follow-ups (app-side, deliberately not in this pass)**: the demo
+  banner's Subscribe drops all intent at /login (no pricing context, and the
+  login page's demo button loops the visitor straight back); no
+  `demo_entered`/`paywall_viewed`/`checkout_started` events yet, so the funnel
+  below the click is still dark; the shared demo reseeds on EVERY entry, so two
+  concurrent visitors wipe each other — needs a rate limit or the per-visitor
+  demo before driving real traffic; locale auto-detect from `navigator.language`
+  (page always opens in English on a .nl domain).
+- Process note: developed on `claude/marketing-page-conversion-mwymg8` per the
+  session's branch designation.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).

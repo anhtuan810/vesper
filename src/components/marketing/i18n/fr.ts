@@ -1,13 +1,19 @@
+// Les deux formules sont le même abonnement — une seule liste pour les deux cartes.
+const pricingFeatures = ["Journal de décisions complet", "Journalisation automatique du marché", "Simulations de scénarios", "iPhone et web"];
+
 export const fr = {
   nav: {
     how: "Comment ça marche",
     why: "Pourquoi Volnar",
     pricing: "Tarifs",
     signIn: "Se connecter",
-    getStarted: "Commencer",
+    getStarted: "Démo en direct",
   },
 
   demoPreparing: "Préparation de votre démo en direct…",
+  demoVeilMore: ["Mise en place de cinq ans d’historique de marché réel…", "Écriture des douze entrées du journal…"],
+  demoMicro: "Sans compte, sans carte — un portefeuille d’exemple complet, prêt en quelques secondes.",
+  demoMicroShort: "Sans compte · sans carte",
 
   hero: {
     pill: "Privé · hébergé dans l’UE · sans synchro bancaire",
@@ -19,18 +25,19 @@ export const fr = {
     ],
     seeDemo: "Voir la démo en direct",
     howItWorks: "Comment ça marche",
-    store: { download: "Télécharger sur l’", appStore: "App Store", soon: "Bientôt sur", googlePlay: "Google Play" },
+    store: { download: "Télécharger sur l’", appStore: "App Store" },
   },
 
   mech: {
     eyebrow: "Deux façons d’écrire une entrée",
     sub: "Vous parlez — ou le marché parle.",
-    cap: ["Des prix réels. Chaque repère est une entrée. ", { b: "Rien d’autre n’écrit pour vous les entrées du marché." }],
+    cap: ["Portefeuille d’exemple, historique de marché réel. Chaque repère est une entrée — ", { b: "les automatiques se sont écrites toutes seules." }],
     netWorthAsOf: "Patrimoine net · au",
     badge: "▲ +71% depuis 2021",
     legend: { property: "Immobilier", reserves: "Réserves", crypto: "Crypto", publicMarkets: "Marchés cotés" },
     axisNow: "auj.",
     replay: "Rejouer",
+    askDemoSuffix: "· dans la démo en direct",
     tag: { decision: "Décision", autoMilestone: "Automatique · Jalon", autoMarket: "Automatique · Mouvement de marché" },
     askFallback: "Posez à Volnar un scénario sur ce jour-là",
     chat: {
@@ -170,7 +177,8 @@ export const fr = {
     body: ["Chaque repère sur le graphique est une entrée — votre raison et le chiffre, côte à côte. Les ", { auto: "automatiques" }, " se sont écrites toutes seules."],
     tagYou: "Vous",
     tagAuto: "Auto",
-    cap: "Douze entrées et ça continue — chaque repère sur le graphique en a une.",
+    cap: "Huit des douze entrées — chaque repère sur le graphique en a une.",
+    capCta: "Lisez le reste dans la démo en direct",
     entries: [
       { date: "oct. 2022", title: "Achat au plus bas", tag: "user", why: "Acheter quand ça fait mal — le creux de 2022.", impact: "+€120.000", dir: "up" },
       { date: "janv. 2025", title: "A franchi €1.000.000", tag: "auto", why: "Un jalon dans la flambée NVIDIA.", impact: "+€245.000", dir: "up" },
@@ -203,15 +211,15 @@ export const fr = {
   privacy: {
     eyebrow: "Privé par conception",
     h2: [["Pas de synchro bancaire. Pas de conseils. ", { g: "Volontairement." }]],
-    body: "Vous lui dites ce qui s’est passé. Il ne vous vend jamais de conseils. Il ne répond qu’à vous.",
-    chips: ["Aucune connexion à un courtier", "Aucune recommandation", "Hébergé dans l’UE et en lecture seule"],
+    body: "Vous lui dites ce qui s’est passé — une phrase suffit, et les entrées du marché s’écrivent toutes seules. Il ne vous vend jamais de conseils. Il ne répond qu’à vous.",
+    chips: ["Aucune connexion à un courtier", "Aucune recommandation", "Hébergé dans l’UE"],
   },
 
   whatif: {
     eyebrow: "Scénario · dans le chat",
     h2: [["Voyez-le ", { g: "avant" }, " de vous engager."]],
     body: "Demandez en langage clair. Volnar fait les calculs — de façon déterministe — et montre l’impact. Rien ne change tant que vous n’avez pas décidé.",
-    placeholder: "Posez un scénario…",
+    placeholder: "Posez votre propre scénario — dans la démo en direct",
     foot: "Simulé dans le chat · calculs déterministes · rien ne bouge tant que vous n’avez pas décidé",
     scenarios: {
       a: {
@@ -220,8 +228,8 @@ export const fr = {
         rows: [
           ["Patrimoine net aujourd’hui", "Inchangé", ""],
           ["Revenu locatif perdu", "−€1.500 / mois", "dn"],
-          ["Concentration actions", "32% → 71%", ""],
-          ["Projection à 10 ans · 6%/yr*", "≈ €734.000", "up"],
+          ["Part en actions", "47% → 81%", ""],
+          ["Vendu & indexé · 10 ans à 6%*", "≈ €772.000", "up"],
         ],
       },
       b: {
@@ -229,9 +237,9 @@ export const fr = {
         q: "Et si je conservais simplement tout tel quel ?",
         rows: [
           ["Patrimoine net aujourd’hui", "Inchangé", ""],
-          ["Liquidités ne rapportant rien", "−€2.100 / an", "dn"],
-          ["Concentration actions", "32% · inchangée", ""],
-          ["Projection à 10 ans · 6%/yr*", "≈ €690.000", "up"],
+          ["Liquidités perdant face à l’inflation", "−€2.400 / an", "dn"],
+          ["Part en actions", "47% · inchangée", ""],
+          ["Appartement gardé · 10 ans à 4%*", "≈ €638.000", "up"],
         ],
       },
     },
@@ -240,7 +248,7 @@ export const fr = {
   vitals: {
     eyebrow: "Tableau de bord · Indicateurs",
     h2: [["Pas seulement ce que vous possédez — ", { g: "sa solidité." }]],
-    body: "Un tableau de bord en direct de chaque actif, et sept indicateurs qui notent la qualité de votre patrimoine — concentration, liquidité, levier, risque de baisse, rendement réel, croissance. Chacun porte une note de A à D — un coup d’œil suffit dès que quelque chose glisse.",
+    body: "Un tableau de bord en direct de chaque actif, et six indicateurs qui notent la qualité de votre patrimoine — concentration, liquidité, levier, risque de baisse, rendement des liquidités, croissance réelle. Chacun porte une note de A à D — un coup d’œil suffit dès que quelque chose glisse.",
     dashLabel: "Portefeuille · aujourd’hui",
     dashBadge: "▲ +71% depuis 2021",
     dashRows: [
@@ -270,10 +278,15 @@ export const fr = {
     ],
   },
 
+  midband: {
+    line: "Tout ce que montre cette page est le portefeuille de la démo — ouvrez-la et cliquez partout. Si ça vous convient, c’est €9,99 par mois, avec les 7 premiers jours offerts.",
+  },
+
   compare: {
     eyebrow: "Pourquoi Volnar, pas les autres",
-    h2: [["Un ", { g: "axe" }, " entièrement différent."]],
+    h2: [["Ce que les autres ", { g: "ne gardent pas" }, "."]],
     rows: [
+      { l: "Les tableurs gardent les chiffres", r: ["Volnar ", { g: "garde le pourquoi" }, " juste à côté"] },
       { l: "Les agrégateurs synchronisent votre banque", r: ["Volnar ", { g: "ne le fait pas" }, " — pour que chaque changement garde votre raison"] },
       { l: "Les conseillers IA vous disent quoi faire", r: ["Volnar ", { g: "ne conseille jamais" }, " — il consigne ce que vous avez choisi"] },
       { l: "Les alertes vibrent une fois et disparaissent", r: ["Volnar ", { g: "garde les entrées du marché" }] },
@@ -282,16 +295,17 @@ export const fr = {
 
   pricing: {
     eyebrow: "Tarifs",
-    h2: [["Un produit. Un prix."]],
-    monthly: { name: "Mensuel", amount: "€9,99", per: " / mois", features: ["Journal de décisions complet", "Journalisation automatique du marché", "Simulations de scénarios"] },
-    annual: { name: "Annuel", amount: "€99,99", per: " / an", badge: "Économisez 17%", features: ["Tout ce qu’il y a dans Mensuel", "Journal conservé à vie", "iPhone et web"] },
-    cta: "Démarrer la démo",
-    micro: "Tarifs indicatifs · démo de 14 jours, sans carte requise.",
+    h2: [["Un abonnement. ", { g: "Deux façons de payer." }]],
+    lead: "Essayez d’abord la démo — sans compte, sans carte. Si Volnar vous convient, abonnez-vous dans l’app ou sur le web : 7 jours offerts, puis €9,99 par mois ou €99,99 par an. Résiliable à tout moment.",
+    monthly: { name: "Mensuel", amount: "€9,99", per: " / mois", features: pricingFeatures },
+    annual: { name: "Annuel", amount: "€99,99", per: " / an", badge: "2 mois offerts", equiv: "≈ €8,33 / mois", features: pricingFeatures },
+    cta: "Voir la démo en direct",
+    micro: "7 jours offerts, résiliable à tout moment — sur le web, l’essai démarre avec une carte enregistrée. La démo, elle, ne demande ni compte ni carte.",
   },
 
   close: {
     h2: [["Le ", { g: "quoi" }, " est facile."], ["Le ", { g: "pourquoi" }, " est ce qui vaut la peine d’être gardé."]],
-    cta: "Démarrez votre journal",
+    cta: "Voir la démo en direct",
   },
 
   footer: {

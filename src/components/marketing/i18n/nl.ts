@@ -1,13 +1,19 @@
+// Beide abonnementen zijn hetzelfde product — één lijst voor beide prijskaarten.
+const pricingFeatures = ["Volledig beslissingsdagboek", "Automatisch marktdagboek", "Wat-als-simulaties", "iPhone & web"];
+
 export const nl = {
   nav: {
     how: "Hoe het werkt",
     why: "Waarom Volnar",
     pricing: "Prijzen",
     signIn: "Inloggen",
-    getStarted: "Aan de slag",
+    getStarted: "Live demo",
   },
 
   demoPreparing: "Je live demo wordt voorbereid…",
+  demoVeilMore: ["Vijf jaar echte marktgeschiedenis wordt klaargezet…", "De twaalf dagboeknotities worden geschreven…"],
+  demoMicro: "Geen account, geen kaart — een volledige voorbeeldportefeuille, klaar in een paar seconden.",
+  demoMicroShort: "Geen account · geen kaart",
 
   hero: {
     pill: "Privé · EU-gehost · geen bankkoppeling",
@@ -19,18 +25,19 @@ export const nl = {
     ],
     seeDemo: "Bekijk de live demo",
     howItWorks: "Hoe het werkt",
-    store: { download: "Download in de", appStore: "App Store", soon: "Binnenkort in", googlePlay: "Google Play" },
+    store: { download: "Download in de", appStore: "App Store" },
   },
 
   mech: {
     eyebrow: "Twee manieren waarop een notitie ontstaat",
     sub: "Jij spreekt — of de markt doet het.",
-    cap: ["Echte koersen. Elke markering is een notitie. ", { b: "Niets anders schrijft de notities van de markt voor je." }],
+    cap: ["Voorbeeldportefeuille, echte marktgeschiedenis. Elke markering is een notitie — ", { b: "de automatische schreven zichzelf." }],
     netWorthAsOf: "Vermogen · per",
     badge: "▲ +71% sinds 2021",
     legend: { property: "Vastgoed", reserves: "Reserves", crypto: "Crypto", publicMarkets: "Beursmarkten" },
     axisNow: "nu",
     replay: "Opnieuw afspelen",
+    askDemoSuffix: "· in de live demo",
     tag: { decision: "Beslissing", autoMilestone: "Automatisch · Mijlpaal", autoMarket: "Automatisch · Marktbeweging" },
     askFallback: "Stel Volnar een wat-als over deze dag",
     chat: {
@@ -170,7 +177,8 @@ export const nl = {
     body: ["Elke markering op de grafiek is een notitie — je reden en het getal, naast elkaar. De ", { auto: "automatische" }, " schreven zichzelf."],
     tagYou: "Jij",
     tagAuto: "Auto",
-    cap: "Twaalf notities en het lopen er meer — elke markering op de grafiek heeft er een.",
+    cap: "Acht van de twaalf notities — elke markering op de grafiek heeft er een.",
+    capCta: "Lees de rest in de live demo",
     entries: [
       { date: "okt 2022", title: "De bodem gekocht", tag: "user", why: "Kopen toen het pijn deed — de bodem van 2022.", impact: "+€120.000", dir: "up" },
       { date: "jan 2025", title: "€1.000.000 gepasseerd", tag: "auto", why: "Een mijlpaal in de NVIDIA-rally.", impact: "+€245.000", dir: "up" },
@@ -203,15 +211,15 @@ export const nl = {
   privacy: {
     eyebrow: "Privé van opzet",
     h2: [["Geen bankkoppeling. Geen advies. ", { g: "Met opzet." }]],
-    body: "Jij vertelt het wat er gebeurd is. Het verkoopt je nooit advies. Het verantwoordt zich alleen aan jou.",
-    chips: ["Geen brokerkoppelingen", "Geen aanbevelingen", "EU-gehost & alleen-lezen"],
+    body: "Jij vertelt het wat er gebeurd is — bijwerken kost één zin, en de notities van de markt schrijven zichzelf. Het verkoopt je nooit advies. Het verantwoordt zich alleen aan jou.",
+    chips: ["Geen brokerkoppelingen", "Geen aanbevelingen", "EU-gehost"],
   },
 
   whatif: {
     eyebrow: "Wat-als · in chat",
     h2: [["Zie het ", { g: "voordat" }, " je beslist."]],
     body: "Vraag het in gewone taal. Volnar rekent het door — deterministisch — en toont het effect. Er verandert niets totdat jij beslist.",
-    placeholder: "Stel een wat-als…",
+    placeholder: "Stel je eigen vraag — in de live demo",
     foot: "Gesimuleerd in chat · deterministische rekenkunde · niets beweegt totdat jij beslist",
     scenarios: {
       a: {
@@ -220,8 +228,8 @@ export const nl = {
         rows: [
           ["Vermogen vandaag", "Ongewijzigd", ""],
           ["Verloren huurinkomsten", "−€1.500 / mnd", "dn"],
-          ["Aandelenconcentratie", "32% → 71%", ""],
-          ["Verwacht 10-jr · 6%/jr*", "≈ €734.000", "up"],
+          ["Aandelenaandeel", "47% → 81%", ""],
+          ["Verkocht & geïndexeerd · 10 jr à 6%*", "≈ €772.000", "up"],
         ],
       },
       b: {
@@ -229,9 +237,9 @@ export const nl = {
         q: "Wat als ik gewoon alles houd zoals het is?",
         rows: [
           ["Vermogen vandaag", "Ongewijzigd", ""],
-          ["Cash dat niets opbrengt", "−€2.100 / jr", "dn"],
-          ["Aandelenconcentratie", "32% · ongewijzigd", ""],
-          ["Verwacht 10-jr · 6%/jr*", "≈ €690.000", "up"],
+          ["Cash verliest aan inflatie", "−€2.400 / jr", "dn"],
+          ["Aandelenaandeel", "47% · ongewijzigd", ""],
+          ["Appartement gehouden · 10 jr à 4%*", "≈ €638.000", "up"],
         ],
       },
     },
@@ -240,7 +248,7 @@ export const nl = {
   vitals: {
     eyebrow: "Dashboard · Vitals",
     h2: [["Niet alleen wat je bezit — ", { g: "hoe goed het gebouwd is." }]],
-    body: "Een live dashboard van elk bezit, en zeven Vitals die de kwaliteit van je vermogen beoordelen — concentratie, liquiditeit, hefboom, drawdownrisico, reëel rendement, groei. Elk krijgt een cijfer van A tot D, dus één blik toont het moment dat er iets verschuift.",
+    body: "Een live dashboard van elk bezit, en zes Vitals die de kwaliteit van je vermogen beoordelen — concentratie, liquiditeit, hefboom, drawdown, cashrendement, reële groei. Elk krijgt een cijfer van A tot D, dus één blik toont het moment dat er iets verschuift.",
     dashLabel: "Portefeuille · vandaag",
     dashBadge: "▲ +71% sinds 2021",
     dashRows: [
@@ -270,10 +278,15 @@ export const nl = {
     ],
   },
 
+  midband: {
+    line: "Alles op deze pagina is de portefeuille van de demo — open hem en klik rond. Past het, dan is het €9,99 per maand, met de eerste 7 dagen gratis.",
+  },
+
   compare: {
     eyebrow: "Waarom Volnar, en niet de rest",
-    h2: [["Een compleet andere ", { g: "as" }, "."]],
+    h2: [["Wat de rest ", { g: "niet bewaart" }, "."]],
     rows: [
+      { l: "Spreadsheets bewaren de getallen", r: ["Volnar ", { g: "bewaart het waarom" }, " ernaast"] },
       { l: "Aggregators koppelen je bank", r: ["Volnar ", { g: "niet" }, " — zodat elke verandering je reden behoudt"] },
       { l: "AI-adviseurs vertellen je wat te doen", r: ["Volnar ", { g: "adviseert nooit" }, " — het legt vast wat jij koos"] },
       { l: "Meldingen piepen één keer en verdwijnen", r: ["Volnar ", { g: "bewaart de notities van de markt" }] },
@@ -282,16 +295,17 @@ export const nl = {
 
   pricing: {
     eyebrow: "Prijzen",
-    h2: [["Eén product. Eén prijs."]],
-    monthly: { name: "Maandelijks", amount: "€9,99", per: " / mnd", features: ["Volledig beslissingsdagboek", "Automatisch marktdagboek", "Wat-als-simulaties"] },
-    annual: { name: "Jaarlijks", amount: "€99,99", per: " / jr", badge: "Bespaar 17%", features: ["Alles uit Maandelijks", "Dagboek voorgoed bewaard", "iPhone & web"] },
-    cta: "Start de demo",
-    micro: "Indicatieve prijzen · demo van 14 dagen, geen kaart nodig.",
+    h2: [["Eén abonnement. ", { g: "Twee manieren om te betalen." }]],
+    lead: "Probeer eerst de demo — geen account, geen kaart. Past Volnar, abonneer dan in de app of op het web: 7 dagen gratis, daarna €9,99 per maand of €99,99 per jaar. Altijd opzegbaar.",
+    monthly: { name: "Maandelijks", amount: "€9,99", per: " / mnd", features: pricingFeatures },
+    annual: { name: "Jaarlijks", amount: "€99,99", per: " / jr", badge: "2 maanden gratis", equiv: "≈ €8,33 / mnd", features: pricingFeatures },
+    cta: "Bekijk de live demo",
+    micro: "7 dagen gratis, altijd opzegbaar — op het web start de proefperiode met een kaart. De demo zelf vraagt geen account en geen kaart.",
   },
 
   close: {
     h2: [["Het ", { g: "wat" }, " is makkelijk."], ["Het ", { g: "waarom" }, " is het deel dat het bewaren waard is."]],
-    cta: "Begin je dagboek",
+    cta: "Bekijk de live demo",
   },
 
   footer: {

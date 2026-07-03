@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { track } from "@vercel/analytics";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { LanguagePicker } from "./LanguagePicker";
@@ -15,6 +16,26 @@ import { Heading, Line, useI18n } from "./i18n";
 const LOGIN_URL = "https://app.volnar.nl/login";
 const DEMO_URL = "https://app.volnar.nl/demo";
 const APP_STORE_URL = "https://apps.apple.com/nl/app/volnar/id6779533642?l=en-GB";
+
+// Every place on the page a demo click can come from — the analytics
+// dimension. A union so a typo'd placement fails the build, not the funnel.
+type DemoPlacement =
+  | "nav"
+  | "hero"
+  | "chart_ask"
+  | "ledger_cap"
+  | "whatif_input"
+  | "midband"
+  | "pricing_monthly"
+  | "pricing_annual"
+  | "close"
+  | "sticky"
+  | "footer";
+
+// The spread a demo CTA carries (href + tracked veil-raising onClick) —
+// produced by MarketingBody's demoCta factory, consumed by NetWorthChart and
+// WhatIf for their in-mock launchers.
+export type DemoCta = { href: string; onClick: (e: React.MouseEvent) => void };
 
 function Ic({ id }: { id: string }) {
   return (
@@ -98,28 +119,107 @@ export function MarketingBody() {
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
-  // Spread onto every demo CTA. No preventDefault — the navigation proceeds;
-  // the veil only covers the wait. Modified clicks (new tab/window) leave this
-  // page in place with no navigation to swap it out, so they get no veil.
-  const demoCta = {
+  // Factory spread onto every demo CTA, tagged with where on the page the click
+  // came from — the page's one KPI. track() fires for every demo click
+  // (modified ones included: a cmd+click is still demo intent); the veil only
+  // rises for plain clicks, where this document is about to be swapped out.
+  // No preventDefault — the navigation proceeds; the veil only covers the wait.
+  // Known undercount: a click in the first seconds, before the insights script
+  // has loaded, queues the event in-memory and the queue dies with the page.
+  const demoCta = (placement: DemoPlacement): DemoCta => ({
     href: DEMO_URL,
     onClick: (e: React.MouseEvent) => {
+      if (launchingDemo) {
+        // A second activation while the veil is already up (double-tap, Enter
+        // twice): no second event, no second navigation, no rhythm reset.
+        e.preventDefault();
+        return;
+      }
+      track("demo_cta_click", { placement });
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      setVeilStep(0);
       setLaunchingDemo(true);
     },
-  };
+  });
+
+  // While the veil is up, walk it through the substance lines (what the server
+  // is genuinely doing) — played once, holding on the last. veilStep resets in
+  // the click handler, so a second entry after a bfcache restore replays cleanly.
+  // Reduced-motion users keep the static first line — the rest of the page
+  // disables all motion under that preference, and this walk is motion too.
+  const veilMsgs = [m.demoPreparing, ...m.demoVeilMore];
+  const veilCount = veilMsgs.length;
+  const [veilStep, setVeilStep] = useState(0);
+  useEffect(() => {
+    if (!launchingDemo) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timers = Array.from({ length: veilCount - 1 }, (_, i) =>
+      setTimeout(() => setVeilStep(i + 1), 1700 * (i + 1))
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [launchingDemo, veilCount]);
+
+  // Mobile sticky demo bar: visible only between the hero scrolling out and the
+  // closing section scrolling in (each has its own observer), so it never
+  // doubles the hero CTA or covers the closing one.
+  const heroRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const [heroPast, setHeroPast] = useState(false);
+  const [closeNear, setCloseNear] = useState(false);
+  useEffect(() => {
+    const hero = heroRef.current;
+    const close = closeRef.current;
+    if (!hero || !close) return;
+    // Coalesced deliveries put the CURRENT state in the last entry — the first
+    // can be stale after a fast flick-scroll crosses a boundary twice.
+    const heroObs = new IntersectionObserver((es) => {
+      const e = es[es.length - 1];
+      setHeroPast(!e.isIntersecting && e.boundingClientRect.top < 0);
+    });
+    // "Near" covers both the close section on screen AND everything past it
+    // (the footer) — the bar must not float over either.
+    const closeObs = new IntersectionObserver((es) => {
+      const e = es[es.length - 1];
+      setCloseNear(e.isIntersecting || e.boundingClientRect.top < 0);
+    });
+    heroObs.observe(hero);
+    closeObs.observe(close);
+    return () => {
+      heroObs.disconnect();
+      closeObs.disconnect();
+    };
+  }, []);
+  const showSticky = heroPast && !closeNear && !launchingDemo;
+  // If the bar hides while its link holds keyboard focus, focus would sit on
+  // an aria-hidden, off-screen control — release it.
+  useEffect(() => {
+    if (showSticky) return;
+    const bar = stickyRef.current;
+    if (bar && bar.contains(document.activeElement)) {
+      (document.activeElement as HTMLElement).blur();
+    }
+  }, [showSticky]);
 
   return (
     <>
       {launchingDemo && (
         <div className="demo-veil" role="status" aria-live="polite">
           <VolnarLogo size={48} />
-          <div className="demo-veil-msg">{m.demoPreparing}</div>
+          <div className="demo-veil-msg">{veilMsgs[veilStep]}</div>
           <div className="demo-veil-dots" aria-hidden="true">
             <span /><span /><span />
           </div>
         </div>
       )}
+
+      {/* ── Mobile sticky demo bar ── */}
+      <div ref={stickyRef} className={`mcta${showSticky ? " show" : ""}`} aria-hidden={!showSticky}>
+        <a className="btn" {...demoCta("sticky")} tabIndex={showSticky ? 0 : -1}>
+          {m.hero.seeDemo} <Ic id="i-arrow" />
+        </a>
+        <span className="mcta-micro">{m.demoMicroShort}</span>
+      </div>
 
       {/* ── Nav ── */}
       <nav className="nav">
@@ -135,13 +235,13 @@ export function MarketingBody() {
             <ThemeToggle />
             <LanguagePicker />
             <a className="nav-signin" href={LOGIN_URL}>{m.nav.signIn}</a>
-            <a className="btn demo" {...demoCta}>{m.nav.getStarted}</a>
+            <a className="btn demo" {...demoCta("nav")}>{m.nav.getStarted}</a>
           </span>
         </div>
       </nav>
 
       {/* ── Hero ── */}
-      <header className="hero">
+      <header className="hero" ref={heroRef}>
         <div className="wrap">
           <div className="hcopy">
             <span className="pill fu" style={{ animationDelay: ".05s" }}>
@@ -155,13 +255,14 @@ export function MarketingBody() {
               <Line line={m.hero.lead} />
             </p>
             <div className="cta fu" style={{ animationDelay: ".3s" }}>
-              <a className="btn lg" {...demoCta}>
+              <a className="btn lg" {...demoCta("hero")}>
                 {m.hero.seeDemo} <Ic id="i-arrow" />
               </a>
               <a className="btn lg ghost" href="#how">
                 {m.hero.howItWorks}
               </a>
             </div>
+            <p className="cta-micro fu" style={{ animationDelay: ".34s" }}>{m.demoMicro}</p>
             <div className="stores fu hero-stores" style={{ animationDelay: ".37s" }}>
               <a className="store" href={APP_STORE_URL} target="_blank" rel="noopener">
                 <svg className="store-ic" viewBox="0 0 24 24" aria-hidden="true">
@@ -172,15 +273,6 @@ export function MarketingBody() {
                   <b>{m.hero.store.appStore}</b>
                 </span>
               </a>
-              <span className="store soon">
-                <svg className="store-ic" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3.6 2.1c-.3.16-.5.46-.5.86v18.08c0 .4.2.7.5.86l10.2-9.9zm12.2 7.78l2.86-2.78-9.9-5.6c-.3-.17-.62-.16-.86-.02zm0 4.24l-7.9 8.4c.24.14.56.15.86-.02l9.9-5.6zm5.06-2.66l-2.5-1.42-3.06 2.97 3.06 2.97 2.5-1.42c.6-.34.6-1.34 0-1.68z" />
-                </svg>
-                <span className="store-t">
-                  <small>{m.hero.store.soon}</small>
-                  <b>{m.hero.store.googlePlay}</b>
-                </span>
-              </span>
             </div>
           </div>
 
@@ -189,7 +281,7 @@ export function MarketingBody() {
               <span className="mech-eyebrow">{m.mech.eyebrow}</span>
               <span className="mech-sub">{m.mech.sub}</span>
             </div>
-            <NetWorthChart />
+            <NetWorthChart demoCta={demoCta("chart_ask")} />
             <p className="mech-cap fu" style={{ animationDelay: ".72s" }}>
               <Line line={m.mech.cap} />
             </p>
@@ -247,10 +339,12 @@ export function MarketingBody() {
           </p>
           <div className="ledger reveal" style={{ transitionDelay: ".1s" }}>
             {m.how.entries.map((entry, i) => (
-              <LedgerRow key={i} entry={entry} tagLabel={entry.tag === "user" ? m.how.tagYou : m.how.tagAuto} />
+              <LedgerRow key={i} entry={entry} tagLabel={entry.tag === "user" ? m.how.tagYou : m.how.tagAuto} defaultOpen={i === 0} />
             ))}
           </div>
-          <div className="led-cap reveal">{m.how.cap}</div>
+          <div className="led-cap reveal">
+            {m.how.cap} <a className="led-cap-cta" {...demoCta("ledger_cap")}>{m.how.capCta}</a>
+          </div>
         </div>
       </section>
 
@@ -318,7 +412,7 @@ export function MarketingBody() {
               {m.whatif.body}
             </p>
           </div>
-          <WhatIf />
+          <WhatIf demoCta={demoCta("whatif_input")} />
         </div>
       </section>
 
@@ -395,6 +489,18 @@ export function MarketingBody() {
         </div>
       </section>
 
+      {/* ── Demo band — the one CTA between the hero and pricing ── */}
+      <section className="band-soft">
+        <div className="wrap demo-band" style={{ paddingTop: "clamp(36px, 7vw, 48px)", paddingBottom: "clamp(36px, 7vw, 48px)" }}>
+          <p className="body reveal">{m.midband.line}</p>
+          <div className="cta reveal" style={{ transitionDelay: ".06s" }}>
+            <a className="btn lg" {...demoCta("midband")}>
+              {m.hero.seeDemo} <Ic id="i-arrow" />
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── Why Volnar, not the rest ── */}
       <section className="sec">
         <div className="wrap">
@@ -423,6 +529,9 @@ export function MarketingBody() {
           <h2 className="disp reveal" style={{ transitionDelay: ".05s" }}>
             <Heading lines={m.pricing.h2} />
           </h2>
+          <p className="body reveal" style={{ transitionDelay: ".08s", marginLeft: "auto", marginRight: "auto" }}>
+            {m.pricing.lead}
+          </p>
           <div className="prices">
             <div className="price reveal" style={{ transitionDelay: ".05s" }}>
               <div className="pname">{m.pricing.monthly.name}</div>
@@ -432,7 +541,7 @@ export function MarketingBody() {
                   <li key={i}><Ic id="i-check" />{f}</li>
                 ))}
               </ul>
-              <a className="btn" {...demoCta} style={{ width: "100%", justifyContent: "center" }}>
+              <a className="btn" {...demoCta("pricing_monthly")} style={{ width: "100%", justifyContent: "center" }}>
                 {m.pricing.cta}
               </a>
             </div>
@@ -440,12 +549,13 @@ export function MarketingBody() {
               <span className="badge">{m.pricing.annual.badge}</span>
               <div className="pname">{m.pricing.annual.name}</div>
               <div className="pamt disp">{m.pricing.annual.amount}<span>{m.pricing.annual.per}</span></div>
+              <div className="pequiv">{m.pricing.annual.equiv}</div>
               <ul className="flist">
                 {m.pricing.annual.features.map((f, i) => (
                   <li key={i}><Ic id="i-check" />{f}</li>
                 ))}
               </ul>
-              <a className="btn" {...demoCta} style={{ width: "100%", justifyContent: "center" }}>
+              <a className="btn" {...demoCta("pricing_annual")} style={{ width: "100%", justifyContent: "center" }}>
                 {m.pricing.cta}
               </a>
             </div>
@@ -455,16 +565,17 @@ export function MarketingBody() {
       </section>
 
       {/* ── Closing ── */}
-      <section className="dark">
+      <section className="dark" ref={closeRef}>
         <div className="wrap close">
           <h2 className="disp reveal">
             <Heading lines={m.close.h2} />
           </h2>
           <div className="cta reveal" style={{ transitionDelay: ".08s" }}>
-            <a className="btn lg" {...demoCta}>
+            <a className="btn lg" {...demoCta("close")}>
               {m.close.cta} <Ic id="i-arrow" />
             </a>
           </div>
+          <p className="cta-micro reveal" style={{ transitionDelay: ".12s" }}>{m.demoMicro}</p>
         </div>
       </section>
 
@@ -481,7 +592,7 @@ export function MarketingBody() {
             </div>
             <div className="col">
               <h5>{m.footer.productHead}</h5>
-              <a {...demoCta}>{m.footer.product.liveDemo}</a>
+              <a {...demoCta("footer")}>{m.footer.product.liveDemo}</a>
               <a href="#how">{m.footer.product.how}</a>
               <a href="#pricing">{m.footer.product.pricing}</a>
             </div>

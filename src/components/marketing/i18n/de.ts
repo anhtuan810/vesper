@@ -1,13 +1,19 @@
+// Beide Pläne sind dasselbe Abo — eine Liste für beide Preiskarten.
+const pricingFeatures = ["Vollständiges Entscheidungsjournal", "Automatisches Markt-Journaling", "Was-wäre-wenn-Simulationen", "iPhone & Web"];
+
 export const de = {
   nav: {
     how: "So funktioniert's",
     why: "Warum Volnar",
     pricing: "Preise",
     signIn: "Anmelden",
-    getStarted: "Loslegen",
+    getStarted: "Live-Demo",
   },
 
   demoPreparing: "Deine Live-Demo wird vorbereitet…",
+  demoVeilMore: ["Fünf Jahre echte Marktgeschichte werden angelegt…", "Die zwölf Journal-Einträge werden geschrieben…"],
+  demoMicro: "Kein Konto, keine Karte — ein vollständiges Beispielportfolio, bereit in wenigen Sekunden.",
+  demoMicroShort: "Kein Konto · keine Karte",
 
   hero: {
     pill: "Privat · EU-gehostet · keine Bankanbindung",
@@ -19,18 +25,19 @@ export const de = {
     ],
     seeDemo: "Live-Demo ansehen",
     howItWorks: "So funktioniert's",
-    store: { download: "Laden im", appStore: "App Store", soon: "Demnächst bei", googlePlay: "Google Play" },
+    store: { download: "Laden im", appStore: "App Store" },
   },
 
   mech: {
     eyebrow: "Zwei Wege, wie ein Eintrag entsteht",
     sub: "Du sprichst — oder der Markt tut es.",
-    cap: ["Echte Preise. Jeder Marker ist ein Eintrag. ", { b: "Sonst schreibt nichts die Einträge des Marktes für dich." }],
+    cap: ["Beispielportfolio, echte Marktgeschichte. Jeder Marker ist ein Eintrag — ", { b: "die automatischen schrieben sich selbst." }],
     netWorthAsOf: "Nettovermögen · Stand",
     badge: "▲ +71% seit 2021",
     legend: { property: "Immobilien", reserves: "Reserven", crypto: "Krypto", publicMarkets: "Börsenmärkte" },
     axisNow: "jetzt",
     replay: "Wiederholen",
+    askDemoSuffix: "· in der Live-Demo",
     tag: { decision: "Entscheidung", autoMilestone: "Automatisch · Meilenstein", autoMarket: "Automatisch · Marktbewegung" },
     askFallback: "Frag Volnar ein Was-wäre-wenn zu diesem Tag",
     chat: {
@@ -170,7 +177,8 @@ export const de = {
     body: ["Jeder Marker im Chart ist ein Eintrag — dein Grund und die Zahl, nebeneinander. Die ", { auto: "automatischen" }, " haben sich selbst geschrieben."],
     tagYou: "Du",
     tagAuto: "Auto",
-    cap: "Zwölf Einträge und es werden mehr — jeder Marker im Chart hat einen.",
+    cap: "Acht der zwölf Einträge — jeder Marker im Chart hat einen.",
+    capCta: "Lies den Rest in der Live-Demo",
     entries: [
       { date: "Okt 2022", title: "Am Tief gekauft", tag: "user", why: "Kaufen, wenn es wehtut — das Tief 2022.", impact: "+€120.000", dir: "up" },
       { date: "Jan 2025", title: "€1.000.000 überschritten", tag: "auto", why: "Ein Meilenstein in der NVIDIA-Rallye.", impact: "+€245.000", dir: "up" },
@@ -203,15 +211,15 @@ export const de = {
   privacy: {
     eyebrow: "Privat by Design",
     h2: [["Keine Bankanbindung. Keine Ratschläge. ", { g: "Mit Absicht." }]],
-    body: "Du sagst ihm, was passiert ist. Es verkauft dir nie Ratschläge. Es ist nur dir verpflichtet.",
-    chips: ["Keine Broker-Verbindungen", "Keine Empfehlungen", "EU-gehostet & nur lesend"],
+    body: "Du sagst ihm, was passiert ist — ein Satz genügt, und die Einträge des Marktes schreiben sich selbst. Es verkauft dir nie Ratschläge. Es ist nur dir verpflichtet.",
+    chips: ["Keine Broker-Verbindungen", "Keine Empfehlungen", "EU-gehostet"],
   },
 
   whatif: {
     eyebrow: "Was-wäre-wenn · im Chat",
     h2: [["Sieh es, ", { g: "bevor" }, " du dich festlegst."]],
     body: "Frag in klarer Sprache. Volnar rechnet die Zahlen durch — deterministisch — und zeigt den Effekt. Nichts ändert sich, bis du entscheidest.",
-    placeholder: "Stell ein Was-wäre-wenn…",
+    placeholder: "Stell deine eigene Frage — in der Live-Demo",
     foot: "Im Chat simuliert · deterministische Mathematik · nichts bewegt sich, bis du entscheidest",
     scenarios: {
       a: {
@@ -220,8 +228,8 @@ export const de = {
         rows: [
           ["Nettovermögen heute", "Unverändert", ""],
           ["Mieteinnahmen verloren", "−€1.500 / Mon", "dn"],
-          ["Aktienkonzentration", "32% → 71%", ""],
-          ["Prognose 10 J. · 6%/Jahr*", "≈ €734.000", "up"],
+          ["Aktienanteil", "47% → 81%", ""],
+          ["Verkauft & indexiert · 10 J. à 6%*", "≈ €772.000", "up"],
         ],
       },
       b: {
@@ -229,9 +237,9 @@ export const de = {
         q: "Was wäre, wenn ich einfach alles so halte, wie es ist?",
         rows: [
           ["Nettovermögen heute", "Unverändert", ""],
-          ["Cash bringt nichts", "−€2.100 / Jahr", "dn"],
-          ["Aktienkonzentration", "32% · unverändert", ""],
-          ["Prognose 10 J. · 6%/Jahr*", "≈ €690.000", "up"],
+          ["Cash verliert gegen die Inflation", "−€2.400 / Jahr", "dn"],
+          ["Aktienanteil", "47% · unverändert", ""],
+          ["Wohnung behalten · 10 J. à 4%*", "≈ €638.000", "up"],
         ],
       },
     },
@@ -240,7 +248,7 @@ export const de = {
   vitals: {
     eyebrow: "Dashboard · Vitalwerte",
     h2: [["Nicht nur, was du besitzt — ", { g: "wie solide es gebaut ist." }]],
-    body: "Ein Live-Dashboard jedes Vermögenswerts und sieben Vitalwerte, die die Qualität deines Vermögens bewerten — Konzentration, Liquidität, Verschuldung, Drawdown-Risiko, reale Rendite, Wachstum. Jeder trägt eine Note von A bis D — ein Blick zeigt, sobald etwas ins Rutschen gerät.",
+    body: "Ein Live-Dashboard jedes Vermögenswerts und sechs Vitalwerte, die die Qualität deines Vermögens bewerten — Konzentration, Liquidität, Verschuldung, Drawdown, Cash-Rendite, reales Wachstum. Jeder trägt eine Note von A bis D — ein Blick zeigt, sobald etwas ins Rutschen gerät.",
     dashLabel: "Portfolio · heute",
     dashBadge: "▲ +71% seit 2021",
     dashRows: [
@@ -270,10 +278,15 @@ export const de = {
     ],
   },
 
+  midband: {
+    line: "Alles auf dieser Seite ist das Portfolio der Demo — öffne sie und klick dich durch. Wenn es passt: €9,99 im Monat, die ersten 7 Tage gratis.",
+  },
+
   compare: {
     eyebrow: "Warum Volnar, nicht der Rest",
-    h2: [["Eine ganz andere ", { g: "Achse" }, "."]],
+    h2: [["Was die anderen ", { g: "nicht behalten" }, "."]],
     rows: [
+      { l: "Tabellen halten die Zahlen fest", r: ["Volnar ", { g: "behält das Warum" }, " gleich daneben"] },
       { l: "Aggregatoren synchronisieren deine Bank", r: ["Volnar ", { g: "tut das nicht" }, " — so behält jede Änderung deinen Grund"] },
       { l: "KI-Berater sagen dir, was du tun sollst", r: ["Volnar ", { g: "berät nie" }, " — es hält fest, was du gewählt hast"] },
       { l: "Alarme summen einmal und verschwinden", r: ["Volnar ", { g: "behält die Einträge des Marktes" }] },
@@ -282,16 +295,17 @@ export const de = {
 
   pricing: {
     eyebrow: "Preise",
-    h2: [["Ein Produkt. Ein Preis."]],
-    monthly: { name: "Monatlich", amount: "€9,99", per: " / Mon", features: ["Vollständiges Entscheidungsjournal", "Automatisches Markt-Journaling", "Was-wäre-wenn-Simulationen"] },
-    annual: { name: "Jährlich", amount: "€99,99", per: " / Jahr", badge: "17% sparen", features: ["Alles aus Monatlich", "Journal dauerhaft gespeichert", "iPhone & Web"] },
-    cta: "Demo starten",
-    micro: "Richtpreise · 14-Tage-Demo, keine Karte nötig.",
+    h2: [["Ein Abo. ", { g: "Zwei Wege zu zahlen." }]],
+    lead: "Probier zuerst die Demo — kein Konto, keine Karte. Wenn Volnar passt, abonniere in der App oder im Web: 7 Tage gratis, danach €9,99 im Monat oder €99,99 im Jahr. Jederzeit kündbar.",
+    monthly: { name: "Monatlich", amount: "€9,99", per: " / Mon", features: pricingFeatures },
+    annual: { name: "Jährlich", amount: "€99,99", per: " / Jahr", badge: "2 Monate gratis", equiv: "≈ €8,33 / Mon", features: pricingFeatures },
+    cta: "Live-Demo ansehen",
+    micro: "7 Tage gratis, jederzeit kündbar — im Web startet die Probezeit mit hinterlegter Karte. Die Demo selbst braucht weder Konto noch Karte.",
   },
 
   close: {
     h2: [["Das ", { g: "Was" }, " ist einfach."], ["Das ", { g: "Warum" }, " ist der Teil, der es wert ist, zu bleiben."]],
-    cta: "Starte dein Journal",
+    cta: "Live-Demo ansehen",
   },
 
   footer: {

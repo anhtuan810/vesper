@@ -12,9 +12,10 @@ export type LedgerEntry = {
 };
 
 // A single journal row: collapsed to its title line, expands on click / Enter /
-// Space with the chevron rotating.
-export function LedgerRow({ entry, tagLabel }: { entry: LedgerEntry; tagLabel: string }) {
-  const [open, setOpen] = useState(false);
+// Space with the chevron rotating. The first row of the section rests open so
+// the why + impact — the point of the product — are visible without a click.
+export function LedgerRow({ entry, tagLabel, defaultOpen }: { entry: LedgerEntry; tagLabel: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
 
   return (
     <div

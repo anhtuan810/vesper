@@ -13,18 +13,32 @@
 // entries carry every field (empty string where a field doesn't apply) so all
 // 12 share one shape.
 
+// Both plans are the same subscription — one list, referenced by both pricing
+// cards, so the features can never drift apart again (an annual-only "Journal
+// kept for good" once implied Monthly deletes your journal).
+const pricingFeatures = ["Full decision journal", "Automatic market journaling", "What-if simulations", "iPhone & web"];
+
 export const en = {
   nav: {
     how: "How it works",
     why: "Why Volnar",
     pricing: "Pricing",
     signIn: "Sign in",
-    getStarted: "Get started",
+    getStarted: "Live demo",
   },
 
   // Full-screen cover shown the instant a demo CTA is clicked — the server
   // prepares a fresh demo account before the app appears, which takes a moment.
   demoPreparing: "Preparing your live demo…",
+  // Substance lines the veil rotates through after demoPreparing (played once,
+  // holding on the last) — the wait doubles as a pitch. Both are product facts.
+  demoVeilMore: ["Seeding five years of real market history…", "Writing the journal’s twelve entries…"],
+  // The one friction-killer line under the hero and closing CTAs: every honest
+  // promise of the demo in one breath. No durations (the demo must outlive the
+  // DEMO_ENABLED flip), no "instant" (the veil covers a few real seconds).
+  demoMicro: "No signup, no card — a full sample portfolio, ready in a few seconds.",
+  // Compact variant for the mobile sticky bar.
+  demoMicroShort: "No signup · no card",
 
   hero: {
     pill: "Private · EU-hosted · no bank sync",
@@ -36,18 +50,21 @@ export const en = {
     ],
     seeDemo: "See the live demo",
     howItWorks: "How it works",
-    store: { download: "Download on the", appStore: "App Store", soon: "Coming soon to", googlePlay: "Google Play" },
+    store: { download: "Download on the", appStore: "App Store" },
   },
 
   mech: {
     eyebrow: "Two ways an entry gets written",
     sub: "You speak — or the market does.",
-    cap: ["Real prices. Every marker is an entry. ", { b: "Nothing else writes the market’s entries for you." }],
+    cap: ["Sample portfolio, real market history. Every marker is an entry — ", { b: "the automatic ones wrote themselves." }],
     netWorthAsOf: "Net worth · as of",
     badge: "▲ +71% since 2021",
     legend: { property: "Property", reserves: "Reserves", crypto: "Crypto", publicMarkets: "Public markets" },
     axisNow: "now",
     replay: "Replay",
+    // Muted suffix on the readout's "Ask:" chip — the chip now launches the
+    // demo, and the suffix says so before the click.
+    askDemoSuffix: "· in the live demo",
     tag: { decision: "Decision", autoMilestone: "Automatic · Milestone", autoMarket: "Automatic · Market move" },
     askFallback: "Ask Volnar a what-if about this day",
     chat: {
@@ -187,7 +204,8 @@ export const en = {
     body: ["Every marker on the chart is an entry — your reason and the number, side by side. The ", { auto: "automatic" }, " ones wrote themselves."],
     tagYou: "You",
     tagAuto: "Auto",
-    cap: "Twelve entries and counting — every marker on the chart has one.",
+    cap: "Eight of the twelve entries — every marker on the chart has one.",
+    capCta: "Read the rest in the live demo",
     entries: [
       { date: "Oct 2022", title: "Bought the bottom", tag: "user", why: "Buying when it hurt — the 2022 low.", impact: "+€120.000", dir: "up" },
       { date: "Jan 2025", title: "Crossed €1.000.000", tag: "auto", why: "A milestone on the NVIDIA run.", impact: "+€245.000", dir: "up" },
@@ -220,16 +238,21 @@ export const en = {
   privacy: {
     eyebrow: "Private by design",
     h2: [["No bank sync. No advice. ", { g: "On purpose." }]],
-    body: "You tell it what happened. It never sells you advice. It answers to you alone.",
-    chips: ["No broker connections", "No recommendations", "EU-hosted & read-only"],
+    body: "You tell it what happened — updating takes a sentence, and the market’s entries write themselves. It never sells you advice. It answers to you alone.",
+    chips: ["No broker connections", "No recommendations", "EU-hosted"],
   },
 
   whatif: {
     eyebrow: "What-if · in chat",
     h2: [["See it ", { g: "before" }, " you commit."]],
     body: "Ask in plain language. Volnar runs the numbers — deterministically — and shows the impact. Nothing changes until you decide.",
-    placeholder: "Ask a what-if…",
+    placeholder: "Ask your own — in the live demo",
     foot: "Simulated in chat · deterministic math · nothing moves until you decide",
+    // Rows derive from the same sample book as the rest of the page
+    // (€1.290.083 total, €611.505 equities, €431.323 property, €181.110
+    // reserves): equity share 611.505/1.290.083 ≈ 47%; selling the flat into an
+    // index → (611.505+431.323)/1.290.083 ≈ 81%; €431.323·1,06¹⁰ ≈ €772.000 vs
+    // kept at 4% ≈ €638.000; the −1,3% real cash yield on €181.110 ≈ −€2.400/yr.
     scenarios: {
       a: {
         label: "Sell flat → world index",
@@ -237,8 +260,8 @@ export const en = {
         rows: [
           ["Net worth today", "Unchanged", ""],
           ["Rental income lost", "−€1.500 / mo", "dn"],
-          ["Equity concentration", "32% → 71%", ""],
-          ["Projected 10-yr · 6%/yr*", "≈ €734.000", "up"],
+          ["Equity share", "47% → 81%", ""],
+          ["Sold & indexed · 10 yrs at 6%*", "≈ €772.000", "up"],
         ],
       },
       b: {
@@ -246,9 +269,9 @@ export const en = {
         q: "What if I just hold everything as it is?",
         rows: [
           ["Net worth today", "Unchanged", ""],
-          ["Cash earning nothing", "−€2.100 / yr", "dn"],
-          ["Equity concentration", "32% · unchanged", ""],
-          ["Projected 10-yr · 6%/yr*", "≈ €690.000", "up"],
+          ["Cash losing to inflation", "−€2.400 / yr", "dn"],
+          ["Equity share", "47% · unchanged", ""],
+          ["Flat kept · 10 yrs at 4%*", "≈ €638.000", "up"],
         ],
       },
     },
@@ -257,7 +280,7 @@ export const en = {
   vitals: {
     eyebrow: "Dashboard · Vitals",
     h2: [["Not just what you own — ", { g: "how well it’s built." }]],
-    body: "A live dashboard of every asset, and seven Vitals that grade the quality of your wealth — concentration, liquidity, leverage, drawdown risk, real yield, growth. Each carries a grade from A to D, so one glance shows the moment something slips.",
+    body: "A live dashboard of every asset, and six Vitals that grade the quality of your wealth — concentration, liquidity, leverage, drawdown, cash yield, real growth. Each carries a grade from A to D, so one glance shows the moment something slips.",
     dashLabel: "Portfolio · today",
     dashBadge: "▲ +71% since 2021",
     dashRows: [
@@ -287,10 +310,17 @@ export const en = {
     ],
   },
 
+  // Slim band between Vitals and Compare: breaks the long CTA-less middle of
+  // the page and pre-frames the price before the demo click.
+  midband: {
+    line: "Everything on this page is the demo’s portfolio — open it and click around. If it fits, it’s €9,99 a month, with the first 7 days free.",
+  },
+
   compare: {
     eyebrow: "Why Volnar, not the rest",
-    h2: [["A different ", { g: "axis" }, " entirely."]],
+    h2: [["What the others ", { g: "don’t keep" }, "."]],
     rows: [
+      { l: "Spreadsheets hold the numbers", r: ["Volnar ", { g: "keeps the why" }, " next to them"] },
       { l: "Aggregators sync your bank", r: ["Volnar ", { g: "won’t" }, " — so every change keeps your reason"] },
       { l: "AI advisors tell you what to do", r: ["Volnar ", { g: "never advises" }, " — it records what you chose"] },
       { l: "Alerts buzz once and vanish", r: ["Volnar ", { g: "keeps the market’s entries" }] },
@@ -299,16 +329,22 @@ export const en = {
 
   pricing: {
     eyebrow: "Pricing",
-    h2: [["One product. One price."]],
-    monthly: { name: "Monthly", amount: "€9,99", per: " / mo", features: ["Full decision journal", "Automatic market journaling", "What-if simulations"] },
-    annual: { name: "Annual", amount: "€99,99", per: " / yr", badge: "Save 17%", features: ["Everything in Monthly", "Journal kept for good", "iPhone & web"] },
-    cta: "Start the demo",
-    micro: "Indicative pricing · 14-day demo, no card required.",
+    h2: [["One subscription. ", { g: "Two ways to pay." }]],
+    // The plain path from demo to subscriber, said once in full: demo costs
+    // nothing, subscribing happens in the app (App Store) or on the web
+    // (Stripe), 7 days free. The old micro claimed a "14-day demo, no card
+    // required" — no 14-day anything exists (trial is 7 days, with a card on
+    // file on web), so every line here sticks to verified terms.
+    lead: "Try the demo first — no signup, no card. If Volnar fits, subscribe in the app or on the web: 7 days free, then €9,99 a month or €99,99 a year. Cancel anytime.",
+    monthly: { name: "Monthly", amount: "€9,99", per: " / mo", features: pricingFeatures },
+    annual: { name: "Annual", amount: "€99,99", per: " / yr", badge: "2 months free", equiv: "≈ €8,33 / mo", features: pricingFeatures },
+    cta: "See the live demo",
+    micro: "7 days free, cancel anytime — on the web the trial starts with a card on file. The demo itself needs no account and no card.",
   },
 
   close: {
     h2: [["The ", { g: "what" }, " is easy."], ["The ", { g: "why" }, " is the part worth keeping."]],
-    cta: "Start your journal",
+    cta: "See the live demo",
   },
 
   footer: {

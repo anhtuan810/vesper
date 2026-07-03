@@ -4,18 +4,22 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { CHART_AREAS, CHART_LINE, MARKERS } from "./_chart-geometry";
 import { ENTRY_META, SYMBOL_COLORS, GENERIC_CHAT_SYM } from "./_chart-data";
 import { useI18n } from "./i18n";
+import type { DemoCta } from "./MarketingBody";
 
 const LAST = ENTRY_META.length - 1;
-const AUTOPLAY_MS = 3200;
+const AUTOPLAY_MS = 5500;
 
 type PopPos = { left: number; top: number; dir: "up" | "down"; arrow: number };
 
-export function NetWorthChart() {
+// The "Ask:" chip in the readout launches the live demo (veil + navigation +
+// tracking all live in the spread MarketingBody passes down).
+export function NetWorthChart({ demoCta }: { demoCta: DemoCta }) {
   const { m } = useI18n();
   const M = m.mech;
 
   const [cur, setCur] = useState(LAST);
   const [touched, setTouched] = useState(false);
+  const [hovering, setHovering] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [popIndex, setPopIndex] = useState<number | null>(null);
   const [popPos, setPopPos] = useState<PopPos | null>(null);
@@ -31,10 +35,10 @@ export function NetWorthChart() {
   }, []);
 
   useEffect(() => {
-    if (touched || reduced) return;
+    if (touched || reduced || hovering) return;
     const id = setInterval(() => setCur((c) => (c + 1) % ENTRY_META.length), AUTOPLAY_MS);
     return () => clearInterval(id);
-  }, [touched, reduced]);
+  }, [touched, reduced, hovering]);
 
   const reposition = useCallback(() => {
     if (popIndex == null) return;
@@ -112,7 +116,17 @@ export function NetWorthChart() {
   return (
     <div className="mech-grid">
       {/* ── Net-worth chart ── */}
-      <div className="card chart-card fu" style={{ animationDelay: ".5s" }}>
+      <div
+        className="card chart-card fu"
+        style={{ animationDelay: ".5s" }}
+        // Pause only on devices with real hover: touch browsers synthesize a
+        // mouseenter on tap with no mouseleave until the next tap elsewhere,
+        // which would latch the pause on and freeze the replay for the visit.
+        onMouseEnter={() => {
+          if (window.matchMedia("(hover: hover)").matches) setHovering(true);
+        }}
+        onMouseLeave={() => setHovering(false)}
+      >
         <div className="st-head">
           <div>
             <div className="st-l">
@@ -240,11 +254,12 @@ export function NetWorthChart() {
           <div className="cr-ctx">{e.ctx}</div>
           <div className="cr-text">{e.why}</div>
           <div className={`cr-imp${meta.impc === "dn" ? " dn" : ""}`}>{e.imp}</div>
-          <a className="cr-ask" href="#whatif">
+          <a className="cr-ask" {...demoCta}>
             <svg className="ic">
               <use href="#i-msg" />
             </svg>
             <span className="cr-ask-t">{e.ask || M.askFallback}</span>
+            <span className="cr-ask-sfx">{M.askDemoSuffix}</span>
           </a>
         </div>
       </div>
