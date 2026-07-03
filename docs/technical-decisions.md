@@ -932,6 +932,11 @@ honestly so the post-demo ask is expected. Researched (external CRO/PLG evidence
   mints a fresh session) replaces the demo button with a message: session
   ended, one hour per visitor, create an account — 7 days free. Dormant in
   production until DEMO_ENABLED flips, like the rest of the per-visitor demo.
+- **Paywall no longer offers the demo (owner call)**: "Explore the demo account
+  first" is gone from the Paywall. By that point the visitor has an account and
+  is at the decision — the demo lives on the marketing page and the login
+  screen; re-offering it at the paywall leaked intent, and for a spent
+  per-visitor trial it was the same dead loop. The one big ask stands alone.
 - Process note: developed on `claude/marketing-page-conversion-mwymg8` per the
   session's branch designation.
 
