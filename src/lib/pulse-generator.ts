@@ -28,7 +28,11 @@ const ABSENT_PRIORITY_LIQUID: Array<{ key: string; label: string }> = [
   { key: "liquidityPosture", label: "liquidity data" },
 ];
 
-function buildThinPulse(
+// Deterministic, LLM-free Pulse sentence. Used both when a portfolio is too thin
+// to be worth a Haiku call (≤3 vitals) and, from the route, as the last-resort
+// fallback so the Pulse row is never left blank when generation fails and no
+// prior sentence is cached.
+export function buildThinPulse(
   activeVitals: ActiveVital[],
   lens: "all" | "liquid",
 ): string {

@@ -212,7 +212,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             fontVariationSettings: "'opsz' 48",
           }}
         >
-          Diary
+          Journal
         </h1>
       </div>
 

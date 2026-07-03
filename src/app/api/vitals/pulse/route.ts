@@ -6,7 +6,7 @@ import { validateEnv } from "@/lib/env";
 import { isSupportedCurrency } from "@/lib/money";
 import { computeAllVitals } from "@/lib/vitals/index";
 import type { VitalResult } from "@/lib/vitals/index";
-import { generatePulse } from "@/lib/pulse-generator";
+import { generatePulse, buildThinPulse } from "@/lib/pulse-generator";
 import { buildVitalsInputs } from "@/lib/vitals/build-inputs";
 
 validateEnv();
@@ -110,6 +110,10 @@ export async function GET(request: NextRequest) {
             ? rawDetail.slice(PULSE_VER.length)
             : rawDetail
           : null;
+        // Still nothing (first visit while Haiku is down): a deterministic
+        // sentence beats a blank row. Not cached, so a later successful
+        // generation replaces it.
+        if (!pulse) pulse = buildThinPulse(activeVitals, "all");
       }
     }
 
@@ -167,6 +171,7 @@ export async function GET(request: NextRequest) {
               ? rawDetail.slice(PULSE_LIQUID_VER.length)
               : rawDetail
             : null;
+          if (!pulseLiquid) pulseLiquid = buildThinPulse(liquidActiveVitals, "liquid");
         }
       }
     }
