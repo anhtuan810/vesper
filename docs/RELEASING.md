@@ -23,6 +23,15 @@ updater rolls back if the new bundle doesn't boot cleanly.
 Needs `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` in the
 environment or `.env.local`.
 
+OTA is **on by default in every native build** — `build-native.mjs` bakes
+`NEXT_PUBLIC_ENABLE_OTA=true` into both the App Store binary and each OTA
+bundle (export `NEXT_PUBLIC_ENABLE_OTA=false` to build an opt-out binary).
+The manifest carries the release's git sha; installs already running that
+commit skip the download, so opening a channel right after a binary ships
+(rule 2 below) costs users nothing. Binaries built before 2026-07-03 shipped
+with the updater off and ignore channels entirely — OTA reaches users from
+the first binary built after that.
+
 **Bundles are channeled per binary version** (`MARKETING_VERSION` in the Xcode
 project): a bundle is only offered to binaries with the same plugin set it was
 built against.

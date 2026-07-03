@@ -84,7 +84,10 @@ if (zipErr) {
 }
 
 const bundleUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${zipName}`;
-const manifest = JSON.stringify({ version, url: bundleUrl }, null, 2);
+// `sha` lets installs skip the download when their running code (binary or
+// applied bundle — each has NEXT_PUBLIC_BUILD_SHA inlined by build-native.mjs
+// from the same `git rev-parse` this script uses) is already this commit.
+const manifest = JSON.stringify({ version, url: bundleUrl, sha }, null, 2);
 const { error: manErr } = await supabase.storage
   .from(BUCKET)
   .upload(`latest-${binaryVersion}.json`, Buffer.from(manifest), {

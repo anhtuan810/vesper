@@ -33,6 +33,14 @@ const EXCLUDED = [
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://app.volnar.nl";
 
+// Native builds ship with the OTA updater on (src/lib/native/ota.ts). The
+// default lives HERE so both consumers of this script agree: the App Store
+// binary (mobile:sync) can receive bundles, and every OTA bundle
+// (ota:release) keeps the updater on — a bundle built with it off would
+// reset itself back to the binary's assets on first boot, undoing its own
+// update. Export NEXT_PUBLIC_ENABLE_OTA=false to build an opt-out binary.
+const ENABLE_OTA = process.env.NEXT_PUBLIC_ENABLE_OTA ?? "true";
+
 function park() {
   fs.rmSync(PARK, { recursive: true, force: true });
   for (const rel of EXCLUDED) {
@@ -75,6 +83,7 @@ try {
       BUILD_TARGET: "native",
       NEXT_PUBLIC_BUILD_TARGET: "native",
       NEXT_PUBLIC_API_ORIGIN: API_ORIGIN,
+      NEXT_PUBLIC_ENABLE_OTA: ENABLE_OTA,
     },
   });
 } finally {

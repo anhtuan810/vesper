@@ -13,22 +13,34 @@ import { isNative } from "@/lib/platform";
 //
 // Published by scripts/ota-release.mjs to the public ota-bundles bucket:
 //   {SUPABASE_URL}/storage/v1/object/public/ota-bundles/latest-<binary>.json
-//   → { "version": "<id>", "url": "<zip url>" }
+//   → { "version": "<stamp>-<sha>", "url": "<zip url>", "sha": "<git sha>" }
+//
+// "Already current" is decided without trusting the plugin's version label for
+// the builtin bundle (a constant "1.0" that never matches a release label):
+//   1. manifest.sha === NEXT_PUBLIC_BUILD_SHA — the running code (binary or
+//      applied bundle, each with its build's git sha inlined) was built from
+//      the same commit as the manifest's bundle; nothing to fetch. This is the
+//      steady state right after a binary ships and its channel is opened from
+//      the same commit.
+//   2. manifest.version === the version this install last staged (persisted
+//      via Preferences) — this release was already downloaded. Covers the
+//      staged-but-not-yet-applied window, and keeps a bundle that failed to
+//      boot (and was rolled back) from being re-downloaded in a loop.
 //
 // Safety: CapacitorUpdater auto-rolls-back to the previous bundle if
 // notifyAppReady() isn't called after an update boots — a broken OTA push
 // self-heals on the next launch.
 
+// Release label (manifest.version) of the bundle this install most recently
+// downloaded and handed to CapacitorUpdater.next().
+const STAGED_VERSION_KEY = "ota-staged-version";
+
 export async function installOtaUpdater(): Promise<void> {
   if (!isNative()) return;
 
-  // OTA is OPT-IN and ships disabled by default, so the app runs the binary's
-  // bundled (cap sync) assets. The self-managed updater is not production-ready
-  // yet: the builtin version is always "1.0" and never equals the manifest's
-  // "<stamp>-<sha>", so the "already current" short-circuit (below) never fires
-  // and it re-downloads on every launch. Enable it with NEXT_PUBLIC_ENABLE_OTA=
-  // "true" only once that's fixed (compare against the last-applied bundle, not
-  // builtin).
+  // Native builds ship with OTA on: scripts/build-native.mjs defaults
+  // NEXT_PUBLIC_ENABLE_OTA to "true" for both the binary and OTA-bundle
+  // builds. Export NEXT_PUBLIC_ENABLE_OTA=false there to build an opt-out.
   const otaEnabled =
     process.env.NEXT_PUBLIC_ENABLE_OTA === "1" ||
     process.env.NEXT_PUBLIC_ENABLE_OTA === "true";
@@ -49,6 +61,10 @@ export async function installOtaUpdater(): Promise<void> {
         if (bundle.id !== "builtin") {
           await CapacitorUpdater.reset();
         }
+        // Forget the staged-version bookkeeping so a later OTA-on build starts
+        // clean instead of skipping the manifest it once staged.
+        const { Preferences } = await import("@capacitor/preferences");
+        await Preferences.remove({ key: STAGED_VERSION_KEY });
       } catch {
         // Best-effort: the built-in bundle always works without the plugin.
       }
@@ -73,19 +89,37 @@ export async function installOtaUpdater(): Promise<void> {
       { cache: "no-store" },
     );
     if (!res.ok) return; // no OTA channel for this binary (yet)
-    const manifest = (await res.json()) as { version?: string; url?: string };
+    const manifest = (await res.json()) as {
+      version?: string;
+      url?: string;
+      sha?: string;
+    };
     if (!manifest.version || !manifest.url) return;
 
+    // Already running code built from the manifest's commit (see header).
+    if (manifest.sha && manifest.sha === process.env.NEXT_PUBLIC_BUILD_SHA) {
+      return;
+    }
+    // An applied OTA bundle does carry its release label — covers manifests
+    // published before the sha field existed.
     const { bundle } = await CapacitorUpdater.current();
-    if (bundle.version === manifest.version) return; // already current
+    if (bundle.version === manifest.version) return;
 
-    const staged = await CapacitorUpdater.download({
+    // This release was already staged by a previous launch (or rolled back —
+    // don't re-download a bundle that failed to boot; the next release,
+    // under a fresh label, unblocks).
+    const { Preferences } = await import("@capacitor/preferences");
+    const staged = await Preferences.get({ key: STAGED_VERSION_KEY });
+    if (staged.value === manifest.version) return;
+
+    const stagedBundle = await CapacitorUpdater.download({
       url: manifest.url,
       version: manifest.version,
     });
     // Activates when the app next goes to background / cold starts — never
     // yanks the UI out from under the user mid-session.
-    await CapacitorUpdater.next({ id: staged.id });
+    await CapacitorUpdater.next({ id: stagedBundle.id });
+    await Preferences.set({ key: STAGED_VERSION_KEY, value: manifest.version });
   } catch {
     // OTA is strictly best-effort; the bundled UI always works without it.
   }
