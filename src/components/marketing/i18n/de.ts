@@ -240,7 +240,7 @@ export const de = {
   vitals: {
     eyebrow: "Dashboard · Vitalwerte",
     h2: [["Nicht nur, was du besitzt — ", { g: "wie solide es gebaut ist." }]],
-    body: "Ein Live-Dashboard jedes Vermögenswerts und sieben Vitalwerte, die die Qualität deines Vermögens bewerten — Konzentration, Liquidität, Verschuldung, Drawdown-Risiko, reale Rendite, Wachstum. Jeder zeigt grün, gelb oder rot, sobald etwas ins Rutschen gerät.",
+    body: "Ein Live-Dashboard jedes Vermögenswerts und sieben Vitalwerte, die die Qualität deines Vermögens bewerten — Konzentration, Liquidität, Verschuldung, Drawdown-Risiko, reale Rendite, Wachstum. Jeder trägt eine Note von A bis D — ein Blick zeigt, sobald etwas ins Rutschen gerät.",
     dashLabel: "Portfolio · heute",
     dashBadge: "▲ +71% seit 2021",
     dashRows: [

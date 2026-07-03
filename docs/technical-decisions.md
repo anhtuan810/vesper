@@ -474,12 +474,19 @@ full chart/detail. Rules that make it work:
   functions' own thresholds. Concentration self-derives from the
   investable-first pct so both property lenses agree. Liquidity's
   "insufficient" state gets no grade. Covered by
-  `scripts/verify-vital-grade.ts`. Mobile-only for now (desktop cards
-  unchanged). Since 2026-07-03 the chip is the row's FIRST element — a straight
-  left rail, report-card style — rendered as a solid tone fill with a soft halo
-  ring and the letter in `--on-accent` (high-contrast in both themes). It was
-  moved off the mid-row position (it floated wherever the figure's width put
-  it) and off the washed soft-on-soft fill.
+  `scripts/verify-vital-grade.ts`. Since 2026-07-03 the chip is the row's FIRST
+  element — a straight left rail, report-card style — rendered as a solid tone
+  fill with a soft halo ring and the letter in `--on-accent` (high-contrast in
+  both themes). It was moved off the mid-row position (it floated wherever the
+  figure's width put it) and off the washed soft-on-soft fill. The chip is one
+  shared component (`src/components/GradeChip.tsx`) and, as of the same day,
+  stamps EVERY vitals surface: the mobile fold rail (26px), the desktop Vitals
+  page cards (24px, top-right of `vitals/VitalCard`), the desktop Overview's
+  vitals row (20px, leading the name — `vitalKey` prop feeds grade.ts), and
+  the marketing page's mock cards (`.vgrade`, hardcoded C/A/A/B/C/A matching
+  what grade.ts returns for the mock's exact values — the mock must never show
+  a grade the app wouldn't; marketing copy in all four locales names the A–D
+  grades).
 - **One Pulse family**: the Pulse sentence and every row under it (projection,
   Worth knowing, Markets) share `SIGNAL_TEXT_STYLE` from
   `SwipeExpandCarousel.tsx` — one text spec, one source. New signal-like rows
@@ -813,6 +820,10 @@ Owner-driven session; every item has a full section above. The audit trail for
   headers stay toggles — now `role="button"` divs so the icon link can nest —
   with the icon linking out via stopPropagation, and their keydown ignores
   events from the nested link. Removed assets keep a plain icon.
+- **A–D grades rolled out to every vitals surface** via the new shared
+  `GradeChip`: desktop Vitals cards, desktop Overview vitals row, and the
+  marketing mock cards + copy (all four locales). See the foldable-Vitals
+  section's letter-grades entry.
 - **Marketing mobile alignment pass** (≤560px): hero CTAs share one line (demo
   flexes, ghost "How it works" compact beside it — the stacked full-width pair
   is gone); the why-a-journal section got back its 28px side padding (the

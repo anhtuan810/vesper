@@ -13,6 +13,8 @@ import {
 } from "@/components/NetWorthChart";
 import { AssetLogo } from "@/components/AssetLogo";
 import { AssetMentionLink, linkifyAssetMention } from "@/components/AssetMention";
+import { GradeChip } from "@/components/GradeChip";
+import { vitalGrade } from "@/lib/vitals/grade";
 import { MiniSparkline } from "@/components/MiniSparkline";
 import { useDisplayCurrency, useSparklines, useVitals } from "@/lib/hooks";
 import { toDisplay, formatMoney, type DisplayCurrency } from "@/lib/money";
@@ -922,7 +924,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           <Link className="lk" href="/vitals">See all Vitals →</Link>
         </div>
         <div className="vrow">
-          <VitalCard name="Concentration" v={vitalsByKey.get("concentration")} render={(val: ConcentrationValue, b) => {
+          <VitalCard name="Concentration" vitalKey="concentration" v={vitalsByKey.get("concentration")} render={(val: ConcentrationValue, b) => {
             // Lens-aware: show the investable top position when property is excluded.
             const pct = effectiveInclude ? val.topPositionPct : (val.investableTopPositionPct ?? val.topPositionPct);
             const name = effectiveInclude ? val.topPositionName : (val.investableTopPositionName ?? val.topPositionName);
@@ -932,25 +934,25 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               bar: clamp(pct), thr: 35, band: b,
             };
           }} />
-          <VitalCard name="Liquidity" v={vitalsByKey.get("liquidityPosture")} render={(val: LiquidityPostureValue, b) => ({
+          <VitalCard name="Liquidity" vitalKey="liquidityPosture" v={vitalsByKey.get("liquidityPosture")} render={(val: LiquidityPostureValue, b) => ({
             value: `${fmtPct(val.deployable1wPct)}%`, unit: " in a week",
             read: "Share of wealth reachable within seven days.", bar: clamp(val.deployable1wPct), thr: 15, band: b,
           })} />
           {effectiveInclude && (
-          <VitalCard name="Leverage" v={vitalsByKey.get("leverage")} render={(val: LeverageValue, b) => ({
+          <VitalCard name="Leverage" vitalKey="leverage" v={vitalsByKey.get("leverage")} render={(val: LeverageValue, b) => ({
             value: `${fmtPct(val.ltvPct)}%`, unit: " LTV",
             read: "Loan-to-value across your property.", bar: clamp(val.ltvPct), thr: 50, thr2: 75, band: b,
           })} />
           )}
-          <VitalCard name="Drawdown" v={vitalsByKey.get("drawdown")} render={(val: DrawdownValue, b) => ({
+          <VitalCard name="Drawdown" vitalKey="drawdown" v={vitalsByKey.get("drawdown")} render={(val: DrawdownValue, b) => ({
             value: `−${fmtPct(Math.abs(val.shockPctOfNw))}%`, unit: " 2008-style",
             read: "Modelled hit from a simultaneous market crash.", bar: clamp(100 - Math.abs(val.shockPctOfNw)), badTail: clamp(Math.abs(val.shockPctOfNw)), band: b,
           })} />
-          <VitalCard name="Cash yield" v={vitalsByKey.get("cashRealYield")} render={(val: CashRealYieldValue, b) => ({
+          <VitalCard name="Cash yield" vitalKey="cashRealYield" v={vitalsByKey.get("cashRealYield")} render={(val: CashRealYieldValue, b) => ({
             value: `${val.realYieldPct >= 0 ? "+" : "−"}${fmtPct(Math.abs(val.realYieldPct), 1)}%`, unit: " real",
             read: "Cash yield after inflation and tax.", bar: clamp(((val.realYieldPct + 5) / 10) * 100), band: b,
           })} />
-          <VitalCard name="Real growth" v={vitalsByKey.get("realGrowth")} render={(val: RealGrowthValue, b) => ({
+          <VitalCard name="Real growth" vitalKey="realGrowth" v={vitalsByKey.get("realGrowth")} render={(val: RealGrowthValue, b) => ({
             value: `${val.real12moPct >= 0 ? "+" : "−"}${fmtPct(Math.abs(val.real12moPct), 1)}%`, unit: " past year",
             read: "Net-worth growth ahead of inflation.", bar: clamp(((val.real12moPct + 10) / 30) * 100), band: b,
           })} />
@@ -1037,8 +1039,10 @@ function clamp(n: number): number {
 
 // ── Vital card ───────────────────────────────────────────────────────────────
 type Spec = { value: string; unit: string; read: string; bar: number; thr?: number; thr2?: number; badTail?: number; band: string };
-function VitalCard<T>({ name, v, render }: {
+function VitalCard<T>({ name, vitalKey, v, render }: {
   name: string;
+  /** grade.ts key — the A–D chip is derived from it, same as the Vitals page. */
+  vitalKey: string;
   v?: { band: string; value: unknown; applies: boolean };
   render: (value: T, band: string) => Spec;
 }) {
@@ -1055,10 +1059,14 @@ function VitalCard<T>({ name, v, render }: {
   const cls = v.band === "amber" ? "warn" : v.band === "red" ? "bad" : "";
   const bandLabel = v.band === "green" ? "Healthy" : v.band === "red" ? "Alert" : "Watch";
   const fill = cls === "warn" ? "vc-warn" : cls === "bad" ? "vc-bad" : "vc-ok";
+  const grade = vitalGrade(vitalKey, v.band, v.value);
   return (
     <div className={`vital ${cls}`}>
       <div className="vt-top">
-        <span className="vt-name">{name}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          {grade && <GradeChip letter={grade.letter} tone={grade.tone} size={20} />}
+          <span className="vt-name">{name}</span>
+        </span>
         <span className="vt-band">{bandLabel}</span>
       </div>
       <div className="vt-val">{spec.value}<span>{spec.unit}</span></div>

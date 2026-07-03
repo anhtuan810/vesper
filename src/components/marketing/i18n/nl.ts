@@ -240,7 +240,7 @@ export const nl = {
   vitals: {
     eyebrow: "Dashboard · Vitals",
     h2: [["Niet alleen wat je bezit — ", { g: "hoe goed het gebouwd is." }]],
-    body: "Een live dashboard van elk bezit, en zeven Vitals die de kwaliteit van je vermogen beoordelen — concentratie, liquiditeit, hefboom, drawdownrisico, reëel rendement, groei. Elk staat groen, oranje of rood, op het moment dat er iets verschuift.",
+    body: "Een live dashboard van elk bezit, en zeven Vitals die de kwaliteit van je vermogen beoordelen — concentratie, liquiditeit, hefboom, drawdownrisico, reëel rendement, groei. Elk krijgt een cijfer van A tot D, dus één blik toont het moment dat er iets verschuift.",
     dashLabel: "Portefeuille · vandaag",
     dashBadge: "▲ +71% sinds 2021",
     dashRows: [

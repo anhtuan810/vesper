@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { GradeChip } from "@/components/GradeChip";
 
 // The ONE foldable row shared by Vitals and Profile — the same fold gesture the
 // journal entry, holdings groups and library already speak. Rests as two lines:
@@ -27,17 +28,6 @@ export interface FoldRowProps {
   first?: boolean;
   children: ReactNode;
 }
-
-// Solid tone fill with a soft halo ring in the same tone — the grade is the
-// at-a-glance read of the whole row, so it gets real ink instead of a washed
-// soft-on-soft chip. --on-accent flips with the theme (near-white on light,
-// near-black on dark, where the tone colours themselves are light), so the
-// letter stays high-contrast in both themes.
-const GRADE_COLORS: Record<"good" | "warn" | "bad", { fill: string; halo: string }> = {
-  good: { fill: "var(--positive)", halo: "var(--positive-soft)" },
-  warn: { fill: "var(--amber)", halo: "var(--amber-soft)" },
-  bad: { fill: "var(--negative)", halo: "var(--negative-soft)" },
-};
 
 export function FoldRow({
   title, question, value, valueTone = "default", sub, subTone = "neutral", grade,
@@ -69,27 +59,7 @@ export function FoldRow({
           // Leading grade column — every chip sits on the same left edge, so
           // the letters read as one straight, scannable report-card rail
           // instead of floating mid-row wherever the figure's width puts them.
-          <span
-            aria-label={`Grade ${grade.letter}`}
-            style={{
-              flex: "none",
-              width: 26,
-              height: 26,
-              borderRadius: 9,
-              background: GRADE_COLORS[grade.tone].fill,
-              color: "var(--on-accent)",
-              boxShadow: `0 0 0 3px ${GRADE_COLORS[grade.tone].halo}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-body)",
-              fontWeight: 700,
-              lineHeight: 1,
-            }}
-          >
-            {grade.letter}
-          </span>
+          <GradeChip letter={grade.letter} tone={grade.tone} size={26} />
         )}
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--text)", lineHeight: "var(--lh-snug)", fontFamily: "var(--font-ui)" }}>

@@ -257,7 +257,7 @@ export const en = {
   vitals: {
     eyebrow: "Dashboard · Vitals",
     h2: [["Not just what you own — ", { g: "how well it’s built." }]],
-    body: "A live dashboard of every asset, and seven Vitals that grade the quality of your wealth — concentration, liquidity, leverage, drawdown risk, real yield, growth. Each reads green, amber or red, the moment something slips.",
+    body: "A live dashboard of every asset, and seven Vitals that grade the quality of your wealth — concentration, liquidity, leverage, drawdown risk, real yield, growth. Each carries a grade from A to D, so one glance shows the moment something slips.",
     dashLabel: "Portfolio · today",
     dashBadge: "▲ +71% since 2021",
     dashRows: [

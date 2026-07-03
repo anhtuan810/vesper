@@ -300,8 +300,14 @@
 .tw .vital.ok{border-left-color:var(--sig-ok)}
 .tw .vital.warn{border-left-color:var(--sig-warn)}
 .tw .vital.bad{border-left-color:var(--sig-bad)}
-.tw .vital-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;gap:8px}
-.tw .vital-name{font-size:13px;font-weight:600;color:var(--ink)}
+.tw .vital-top{display:flex;align-items:center;flex-wrap:wrap;margin-bottom:9px;gap:5px 8px}
+.tw .vital-name{font-size:13px;font-weight:600;color:var(--ink);flex:1 0 auto}
+/* A–D grade chip — the same solid-fill + halo mark the app's Vitals carry
+   (GradeChip.tsx); tones ride the card's band class. */
+.tw .vgrade{width:20px;height:20px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--btnfg);flex:0 0 auto}
+.tw .vital.ok .vgrade{background:var(--sig-ok);box-shadow:0 0 0 2.5px var(--sig-ok-bg)}
+.tw .vital.warn .vgrade{background:var(--sig-warn);box-shadow:0 0 0 2.5px var(--sig-warn-bg)}
+.tw .vital.bad .vgrade{background:var(--sig-bad);box-shadow:0 0 0 2.5px var(--sig-bad-bg)}
 .tw .vital-band{font-family:var(--mkt-sans),'Inter',system-ui,sans-serif;font-size:8.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding:2px 7px;border-radius:5px;flex:0 0 auto}
 .tw .vital.ok .vital-band{background:var(--sig-ok-bg);color:var(--sig-ok)}
 .tw .vital.warn .vital-band{background:var(--sig-warn-bg);color:var(--sig-warn)}

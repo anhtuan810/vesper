@@ -1174,8 +1174,11 @@ export function VitalsContent({
   function renderVitalCard(key: string): React.ReactNode {
     const built = buildConfig(key);
     if (!built) return null;
+    // Same derived A–D grade the mobile fold rows carry (grade.ts) — stamped
+    // on the desktop card so both layouts read identically at a glance.
+    const grade = vitalGrade(key, built.vital.band, built.vital.value);
     return (
-      <VitalCard key={key} {...built.cfg.props} fillHeight={layout === "grid"}>
+      <VitalCard key={key} {...built.cfg.props} grade={grade} fillHeight={layout === "grid"}>
         {built.cfg.chart}
       </VitalCard>
     );

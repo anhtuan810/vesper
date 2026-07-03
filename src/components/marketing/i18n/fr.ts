@@ -240,7 +240,7 @@ export const fr = {
   vitals: {
     eyebrow: "Tableau de bord · Indicateurs",
     h2: [["Pas seulement ce que vous possédez — ", { g: "sa solidité." }]],
-    body: "Un tableau de bord en direct de chaque actif, et sept indicateurs qui notent la qualité de votre patrimoine — concentration, liquidité, levier, risque de baisse, rendement réel, croissance. Chacun s’affiche en vert, orange ou rouge, dès que quelque chose glisse.",
+    body: "Un tableau de bord en direct de chaque actif, et sept indicateurs qui notent la qualité de votre patrimoine — concentration, liquidité, levier, risque de baisse, rendement réel, croissance. Chacun porte une note de A à D — un coup d’œil suffit dès que quelque chose glisse.",
     dashLabel: "Portefeuille · aujourd’hui",
     dashBadge: "▲ +71% depuis 2021",
     dashRows: [

@@ -33,6 +33,11 @@ const DASH_BARS = [
   { w: "5%", c: "var(--cat-crypto)" },
 ];
 const VITAL_VALUES = ["38%", "54%", "28%", "−23%", "−1,3%", "+8,3%"];
+// A–D letter per mock card, matching what src/lib/vitals/grade.ts would return
+// for these exact values (concentration 38% → C, liquidity 54% vs 15% buffer →
+// A, leverage 28% LTV → A, drawdown −23% → B, cash yield negative → C, real
+// growth +8,3% → A) — the mock must never show a grade the app wouldn't.
+const VITAL_GRADES = ["C", "A", "A", "B", "C", "A"];
 const VITAL_SVGS: ReactNode[] = [
   <svg className="vc" viewBox="0 0 100 24" key="0">
     <rect className="vc-sec" x="0" y="9" width="100" height="7" rx="2.5" />
@@ -362,6 +367,7 @@ export function MarketingBody() {
               {m.vitals.cards.map((card, i) => (
                 <div className={`vital ${card.band}`} key={i}>
                   <div className="vital-top">
+                    <span className="vgrade">{VITAL_GRADES[i]}</span>
                     <span className="vital-name">{card.name}</span>
                     <span className="vital-band">{card.band === "warn" ? m.vitals.bandWatch : m.vitals.bandHealthy}</span>
                   </div>

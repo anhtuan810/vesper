@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { SuggestionStrip } from "./SuggestionStrip";
 import type { SuggestionStripProps } from "./SuggestionStrip";
+import { GradeChip } from "@/components/GradeChip";
+import type { VitalGrade } from "@/lib/vitals/grade";
 
 type HeroClass = "positive" | "negative" | "default";
 
@@ -12,6 +14,9 @@ export interface VitalCardProps {
   rightStat?: { label: string; value: string };
   benchLine?: string;
   suggestion?: Pick<SuggestionStripProps, "variant" | "label" | "body">;
+  /** A–D letter grade stamped top-right — the same at-a-glance read the mobile
+   *  fold rows carry on their left rail. */
+  grade?: VitalGrade | null;
   /** Desktop grid only: fill the row height and pin the suggestion strip to the
    *  bottom so strips align across cards with differing chart heights. */
   fillHeight?: boolean;
@@ -35,6 +40,7 @@ export function VitalCard({
   rightStat,
   benchLine,
   suggestion,
+  grade,
   fillHeight = false,
   children,
 }: VitalCardProps) {
@@ -127,6 +133,9 @@ export function VitalCard({
             </span>
           </div>
         )}
+
+        {/* Grade — the rightmost stamp in the header */}
+        {grade && <GradeChip letter={grade.letter} tone={grade.tone} size={24} style={{ marginTop: 2 }} />}
       </div>
 
       {/* Chart slot */}
