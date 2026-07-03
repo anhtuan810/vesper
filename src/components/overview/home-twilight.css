@@ -266,6 +266,11 @@
 .vhome .dmonth .cnt{font-family:var(--font-numeric);font-size:var(--fs-meta);color:var(--faint)}
 .vhome .drow{display:grid;grid-template-columns:30px 1fr auto;gap:14px;align-items:start;padding:11px 18px;border-top:1px solid var(--line2);text-decoration:none;color:inherit;transition:background .15s;width:100%;text-align:left;background:transparent;border-left:0;border-right:0;border-bottom:0;cursor:pointer;font-family:inherit}
 .vhome .drow:hover{background:var(--surface2)}
+/* Static journal rows (2026-07-03): only the asset icon navigates, so the row
+   itself must not advertise clickability — no pointer, no hover wash (market
+   rows keep their own gradient). */
+.vhome .drow.drow-static{cursor:default}
+.vhome .drow.drow-static:not(.drow-market):hover{background:transparent}
 .vhome .drow-m{min-width:0}
 .vhome .drow-n{font-size:var(--fs-subhead);font-weight:600;color:var(--ink)}
 .vhome .drow-n.gone{color:var(--muted)}

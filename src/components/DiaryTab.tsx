@@ -494,40 +494,39 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                   const rowStyle = {
                     ...(highlightedId === m.id ? { animation: "diaryHighlight 1.5s ease-out forwards" } : {}),
                   };
-                  const rowContent = (
-                    <DiaryRowContent
-                      logo={<div style={{ opacity: isRemovedAsset ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={26} /></div>}
-                      name={name}
-                      nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
-                      valueNode={valueNode}
-                      date={date}
-                      personalContext={m.personal_context ?? null}
-                      marketContext={m.market_context ?? null}
-                    />
-                  );
-                  // Removed assets (asset_id ON DELETE SET NULL) have no detail
-                  // screen to open — render the row non-interactive. Otherwise the
-                  // whole row links to the asset detail, the same route the holdings
-                  // rows use (tradeable → tradeable detail, real_estate → property).
-                  return isRemovedAsset ? (
+                  // Only the asset ICON navigates to the detail screen (2026-07-03,
+                  // owner call — the earlier whole-row link made every stray tap
+                  // on the journal a navigation). Padded hit area so the 26px
+                  // logo is a comfortable touch target. Removed assets (asset_id
+                  // ON DELETE SET NULL) have no detail screen — icon stays plain.
+                  return (
                     <div
                       key={m.id}
                       id={`diary-entry-${m.id}`}
                       className="diary-row-divider"
                       style={rowStyle}
                     >
-                      {rowContent}
+                      <DiaryRowContent
+                        logo={isRemovedAsset ? (
+                          <div style={{ opacity: 0.7, flexShrink: 0 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={26} /></div>
+                        ) : (
+                          <Link
+                            href={`/asset?id=${m.asset_id}`}
+                            aria-label={`Open ${name}`}
+                            className="focus-ring"
+                            style={{ display: "block", flexShrink: 0, padding: 8, margin: -8 }}
+                          >
+                            <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={26} />
+                          </Link>
+                        )}
+                        name={name}
+                        nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
+                        valueNode={valueNode}
+                        date={date}
+                        personalContext={m.personal_context ?? null}
+                        marketContext={m.market_context ?? null}
+                      />
                     </div>
-                  ) : (
-                    <Link
-                      key={m.id}
-                      id={`diary-entry-${m.id}`}
-                      href={`/asset?id=${m.asset_id}`}
-                      className="block diary-row-divider"
-                      style={rowStyle}
-                    >
-                      {rowContent}
-                    </Link>
                   );
                 }
 
@@ -554,6 +553,9 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         return next;
                       })}
                       onKeyDown={(e) => {
+                        // Only when the row itself is focused — Enter on the
+                        // icon's asset link must navigate, not toggle.
+                        if (e.target !== e.currentTarget) return;
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           setExpandedGroups((prev) => {
@@ -571,7 +573,22 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                       }}
                     >
                       <DiaryRowContent
-                        logo={<div style={{ opacity: isRemovedGroup ? 0.7 : 1, flexShrink: 0 }}><AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={26} /></div>}
+                        logo={isRemovedGroup ? (
+                          <div style={{ opacity: 0.7, flexShrink: 0 }}><AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={26} /></div>
+                        ) : (
+                          // Icon → asset detail; the rest of the row keeps
+                          // toggling the group. stopPropagation so following the
+                          // link doesn't also expand/collapse underneath it.
+                          <Link
+                            href={`/asset?id=${anchor.asset_id}`}
+                            aria-label={`Open ${displayName(anchor)}`}
+                            className="focus-ring"
+                            style={{ display: "block", flexShrink: 0, padding: 8, margin: -8 }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={26} />
+                          </Link>
+                        )}
                         name={groupName}
                         nameColor={isRemovedGroup ? "var(--text-dim)" : "var(--text)"}
                         valueNode={groupAggNode}

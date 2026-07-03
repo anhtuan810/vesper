@@ -223,21 +223,27 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
                 // Auto entry: a market-driven revaluation Volnar logged itself
                 // (market context, no personal note) — given a distinct look.
                 const isAuto = !!m.market_context && !m.personal_context;
-                const inner = (
-                  <>
-                    <div style={{ opacity: gone ? 0.7 : 1 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={30} /></div>
+                // Only the asset ICON navigates (2026-07-03, owner call — the
+                // whole-row link is gone); the row itself is static. Removed
+                // assets have no detail screen, so their icon stays plain.
+                const cls = `drow drow-static${isAuto ? " drow-market" : ""}${highlightedId === m.id ? " dfocus" : ""}`;
+                return (
+                  <div className={cls} key={m.id} id={`diary-entry-${m.id}`}>
+                    {gone ? (
+                      <div style={{ opacity: 0.7 }}><AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={30} /></div>
+                    ) : (
+                      <Link href={`/asset?id=${m.asset_id}`} aria-label={`Open ${name}`} title={`Open ${name}`} style={{ display: "block" }}>
+                        <AssetLogo type={m.asset_type} symbol={m.symbol} name={name} size={30} />
+                      </Link>
+                    )}
                     <div className="drow-m">
                       <div className={`drow-n${gone ? " gone" : ""}`}>{name}{isAuto && <span className="drow-auto">Auto</span>}</div>
                       {m.personal_context && <div className="drow-why">{m.personal_context}</div>}
                       {m.market_context && <div className="drow-why"><span className="drow-ctx">Markets</span>{m.market_context}</div>}
                     </div>
                     <ValueRight v={v} date={m.occurred_at || m.recorded_at} />
-                  </>
+                  </div>
                 );
-                const cls = `drow${isAuto ? " drow-market" : ""}${highlightedId === m.id ? " dfocus" : ""}`;
-                return gone
-                  ? <div className={cls} key={m.id} id={`diary-entry-${m.id}`}>{inner}</div>
-                  : <Link className={cls} key={m.id} id={`diary-entry-${m.id}`} href={`/asset?id=${m.asset_id}`}>{inner}</Link>;
               }
               const { id: gid, anchor, members, groupName } = item;
               // Auto-open the group that holds the deep-linked entry so it can scroll to it.
@@ -247,8 +253,37 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
               const gv = groupValue(members, displayCurrency);
               return (
                 <Fragment key={gid}>
-                  <button className="drow" type="button" onClick={() => toggle(gid)} aria-expanded={open}>
-                    <div style={{ opacity: gone ? 0.7 : 1 }}><AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={30} /></div>
+                  {/* A div with button semantics, not a <button>: the icon now
+                      carries a link to the asset (nested interactive content is
+                      invalid inside a real button). The link stops propagation
+                      so following it doesn't also toggle the group. */}
+                  <div
+                    className="drow"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggle(gid)}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggle(gid);
+                      }
+                    }}
+                    aria-expanded={open}
+                  >
+                    {gone ? (
+                      <div style={{ opacity: 0.7 }}><AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={30} /></div>
+                    ) : (
+                      <Link
+                        href={`/asset?id=${anchor.asset_id}`}
+                        aria-label={`Open ${displayName(anchor)}`}
+                        title={`Open ${displayName(anchor)}`}
+                        style={{ display: "block" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <AssetLogo type={anchor.asset_type} symbol={anchor.symbol} name={displayName(anchor)} size={30} />
+                      </Link>
+                    )}
                     <div className="drow-m">
                       <div className={`drow-n${gone ? " gone" : ""}`}>{groupName}</div>
                       <div className="drow-sub">· {members.length} {actionVerb(anchor.action)}</div>
@@ -256,7 +291,7 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
                       <div className="drow-more">{open ? "↑ Hide" : `↓ Show all ${members.length} entries`}</div>
                     </div>
                     <ValueRight v={gv} date={anchor.occurred_at || anchor.recorded_at} />
-                  </button>
+                  </div>
                   {open && members.map((m) => {
                     const v = diaryValue(m, displayCurrency);
                     return (

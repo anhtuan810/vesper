@@ -806,6 +806,13 @@ Owner-driven session; every item has a full section above. The audit trail for
   style; an "Open X →" action line was tried first and explicitly rejected.
   See "Named Rewind → Inline asset mentions" and
   `src/components/AssetMention.tsx`.
+- **Journal rows: only the asset ICON navigates** (owner call) — the
+  whole-row link to `/asset?id=` is gone on both `DiaryTab` (mobile) and
+  `DesktopDiary`. The logo is the link (padded hit area on mobile;
+  `drow-static` strips the desktop row's pointer/hover affordance). Group
+  headers stay toggles — now `role="button"` divs so the icon link can nest —
+  with the icon linking out via stopPropagation, and their keydown ignores
+  events from the nested link. Removed assets keep a plain icon.
 - Process note: this session ran on a remote branch first
   (`claude/demo-account-startup-delays-k2kt99`, merged fast-forward), then
   committed straight to `main` per the working agreement.
