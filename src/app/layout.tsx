@@ -11,7 +11,6 @@ import { UserProvider } from "@/components/UserProvider";
 import { SubscriptionProvider } from "@/components/SubscriptionProvider";
 import { Paywall } from "@/components/Paywall";
 import { AppGate } from "@/components/AppGate";
-import { DemoBanner } from "@/components/DemoBanner";
 import { DemoExpiryWall } from "@/components/DemoExpiryWall";
 import { AiConsentGate } from "@/components/AiConsentGate";
 import { NativeBootstrap } from "@/components/NativeBootstrap";
@@ -154,9 +153,8 @@ export default async function RootLayout({
               {/* Paywall-first access gate. Inert on marketing/login, while
                   loading, signed out, or entitled. */}
               {!isMarketing && <Paywall />}
-              {/* Quiet demo-account notice (web: + Subscribe link). Inert unless
-                  the entitlement is the seeded demo (SubscriptionView.isDemo). */}
-              {!isMarketing && <DemoBanner />}
+              {/* Demo-account notice pill hidden on this full-access preview
+                  branch so the app can be tested unobstructed. */}
               {/* Walls an ended demo session and routes to account creation +
                   the 7-day-trial paywall. Inert unless isDemo and expired. */}
               {!isMarketing && <DemoExpiryWall />}
