@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/terms" },
 };
 
-const LAST_UPDATED = "12 June 2026";
+const LAST_UPDATED = "3 July 2026";
 
 export default function TermsPage() {
   return (
@@ -68,7 +68,36 @@ export default function TermsPage() {
         values are correct.
       </p>
 
-      <h2>4. Acceptable use</h2>
+      <h2>4. Subscriptions and payments</h2>
+      <p>
+        Volnar offers paid subscription plans. When you subscribe, you authorise
+        a recurring charge for the plan you choose, which renews automatically
+        each billing period until you cancel.
+      </p>
+      <ul>
+        <li>
+          <strong>On the web</strong>, payments are processed by{" "}
+          <strong>Stripe</strong>. You can view, manage, or cancel your
+          subscription at any time from the billing portal linked in the app.
+        </li>
+        <li>
+          <strong>On iOS</strong>, payments are processed by{" "}
+          <strong>Apple</strong> through the App Store and are also governed by
+          Apple&apos;s terms. The subscription auto-renews unless you turn off
+          renewal at least 24 hours before the period ends, and it is managed in
+          your Apple ID settings — we cannot cancel or refund an App Store
+          purchase on your behalf.
+        </li>
+      </ul>
+      <p>
+        Prices are shown before you subscribe and may change on renewal with
+        advance notice. Except where required by law (including any EU consumer
+        right of withdrawal) or by the applicable app store&apos;s policy,
+        payments are non-refundable. If you cancel, you keep access until the end
+        of the period you have already paid for.
+      </p>
+
+      <h2>5. Acceptable use</h2>
       <p>When using Volnar, you agree not to:</p>
       <ul>
         <li>use the service for any unlawful purpose, or to break any applicable law or regulation;</li>
@@ -78,7 +107,7 @@ export default function TermsPage() {
         <li>upload anything that infringes the rights of others or that you do not have the right to share.</li>
       </ul>
 
-      <h2>5. Third-party data</h2>
+      <h2>6. Third-party data</h2>
       <p>
         Volnar shows market prices, foreign-exchange rates, and other information
         sourced from third parties (for example market data and FX providers).
@@ -88,7 +117,7 @@ export default function TermsPage() {
         decisions you make based on it.
       </p>
 
-      <h2>6. No warranty</h2>
+      <h2>7. No warranty</h2>
       <p>
         Volnar is provided on an &ldquo;as is&rdquo; and &ldquo;as
         available&rdquo; basis. To the fullest extent permitted by law, we make
@@ -97,7 +126,7 @@ export default function TermsPage() {
         will be uninterrupted, error-free, or secure.
       </p>
 
-      <h2>7. Limitation of liability</h2>
+      <h2>8. Limitation of liability</h2>
       <p>
         To the fullest extent permitted by law, NovaHub B.V. and its team will not
         be liable for any indirect, incidental, special, consequential, or
@@ -107,7 +136,7 @@ export default function TermsPage() {
         under applicable law.
       </p>
 
-      <h2>8. Availability and changes to the service</h2>
+      <h2>9. Availability and changes to the service</h2>
       <p>
         We may change, suspend, or discontinue parts of the service, and we may
         update features over time. We will try to give reasonable notice of
@@ -115,7 +144,7 @@ export default function TermsPage() {
         your account at any time.
       </p>
 
-      <h2>9. Changes to these terms</h2>
+      <h2>10. Changes to these terms</h2>
       <p>
         We may update these terms from time to time. When we make material
         changes, we will update the &ldquo;last updated&rdquo; date above and,
@@ -123,7 +152,7 @@ export default function TermsPage() {
         changes take effect means you accept the updated terms.
       </p>
 
-      <h2>10. Governing law</h2>
+      <h2>11. Governing law</h2>
       <p>
         These terms are governed by the laws of <strong>the Netherlands</strong>,
         without regard to its conflict-of-law rules. Any disputes will be subject

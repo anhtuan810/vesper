@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
 };
 
-const LAST_UPDATED = "12 June 2026";
+const LAST_UPDATED = "3 July 2026";
 
 export default function PrivacyPage() {
   return (
@@ -63,6 +63,13 @@ export default function PrivacyPage() {
           portfolio data over time, such as historical net-worth snapshots and
           category breakdowns, so we can show you trends.
         </li>
+        <li>
+          <strong>Subscription and billing data</strong> — if you take a paid
+          plan, our payment processors handle the payment itself. We receive
+          only the limited billing details we need to manage your subscription
+          (such as your plan, its status, and a processor customer reference).
+          We never see or store your full card number.
+        </li>
       </ul>
       <p>
         We do not ask for, and do not want, any data we do not need to run the
@@ -114,8 +121,9 @@ export default function PrivacyPage() {
         <dl className="legal-row">
           <dt>Supabase</dt>
           <dd>
-            Authentication and database. Stores your account and portfolio data.
-            Hosted in the EU.
+            Authentication, database, and file storage (including the property
+            map thumbnails generated for addresses you add). Stores your account
+            and portfolio data. Hosted in the EU.
           </dd>
         </dl>
         <dl className="legal-row">
@@ -123,6 +131,28 @@ export default function PrivacyPage() {
           <dd>
             Application hosting and cookieless, privacy-friendly analytics. No
             personal data is sold or used for advertising.
+          </dd>
+        </dl>
+        <dl className="legal-row">
+          <dt>Stripe</dt>
+          <dd>
+            Payment processing for subscriptions taken on the web. Receives the
+            billing details needed to charge you; Volnar never sees your full
+            card number.
+          </dd>
+        </dl>
+        <dl className="legal-row">
+          <dt>Apple</dt>
+          <dd>
+            Payment processing for subscriptions purchased on iOS through the
+            App Store, and delivery of push notifications to your device (APNs).
+          </dd>
+        </dl>
+        <dl className="legal-row">
+          <dt>RevenueCat</dt>
+          <dd>
+            Manages and validates App Store subscriptions, keyed to your account
+            identifier so a purchase unlocks the right access on your account.
           </dd>
         </dl>
         <dl className="legal-row">
