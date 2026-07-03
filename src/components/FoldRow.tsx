@@ -18,7 +18,7 @@ export interface FoldRowProps {
   /** Small line under the figure: a status word (ok/warn) or a quiet sub-label. */
   sub?: ReactNode;
   subTone?: "ok" | "warn" | "neutral";
-  /** Optional letter grade (A–D) rendered as a small chip before the figure —
+  /** Optional letter grade (A–D) rendered as a leading chip before the title —
    *  the at-a-glance read for someone who can't yet interpret the number. */
   grade?: { letter: string; tone: "good" | "warn" | "bad" } | null;
   open: boolean;
@@ -65,15 +65,10 @@ export function FoldRow({
           WebkitTapHighlightColor: "transparent",
         }}
       >
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--text)", lineHeight: "var(--lh-snug)", fontFamily: "var(--font-ui)" }}>
-            {title}
-          </span>
-          <span style={{ display: "block", fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginTop: 2, lineHeight: "var(--lh-snug)", fontFamily: "var(--font-ui)" }}>
-            {question}
-          </span>
-        </span>
         {grade && (
+          // Leading grade column — every chip sits on the same left edge, so
+          // the letters read as one straight, scannable report-card rail
+          // instead of floating mid-row wherever the figure's width puts them.
           <span
             aria-label={`Grade ${grade.letter}`}
             style={{
@@ -96,6 +91,14 @@ export function FoldRow({
             {grade.letter}
           </span>
         )}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: "var(--fs-body)", fontWeight: 500, color: "var(--text)", lineHeight: "var(--lh-snug)", fontFamily: "var(--font-ui)" }}>
+            {title}
+          </span>
+          <span style={{ display: "block", fontSize: "var(--fs-caption)", color: "var(--text-faint)", marginTop: 2, lineHeight: "var(--lh-snug)", fontFamily: "var(--font-ui)" }}>
+            {question}
+          </span>
+        </span>
         <span style={{ flex: "none", textAlign: "right" }}>
           <span
             className="tnum"
