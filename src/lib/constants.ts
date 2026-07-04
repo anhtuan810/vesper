@@ -39,9 +39,22 @@ export const GEOCODE_DAILY_LIMIT      = 100;
 // an LLM call; a real user only triggers it by mutating their portfolio. Over
 // the cap we serve the cached cards instead of regenerating (never a 429).
 export const INSIGHT_FRESH_DAILY_LIMIT = 60;
-// Chat: cap screenshots per turn (each is up to 5 MB of vision input) and the
-// client-supplied diary-summary activity list + free-text note length.
-export const CHAT_MAX_IMAGES          = 8;
+// Chat onboarding attachments. Images are downscaled + JPEG-compressed in the
+// browser (long edge ≤ CHAT_IMAGE_MAX_EDGE_PX) before upload, so each one is
+// ~200–400 KB regardless of the original — the raw-file guards below only reject
+// absurd inputs before we spend memory decoding them. The whole request must
+// stay under Vercel's serverless body limit (~4.5 MB), so CHAT_REQUEST_MAX_BASE64
+// is the real ceiling; the PDF cap is sized to fit inside it on its own.
+export const CHAT_MAX_IMAGES          = 8;         // model accepts far more; this bounds cost/latency
+export const CHAT_IMAGE_MAX_EDGE_PX   = 1568;      // Anthropic standard-tier long edge — ample to read holdings
+export const CHAT_IMAGE_JPEG_QUALITY  = 0.82;
+export const CHAT_IMAGE_MAX_INPUT_MB  = 25;        // reject a monster original before canvas-decoding it
+export const CHAT_MAX_PDFS            = 2;
+export const CHAT_PDF_MAX_MB          = 3;         // ~4 MB base64 — fits under Vercel's ~4.5 MB body cap on its own
+export const CHAT_CSV_MAX_BYTES       = 1_000_000; // 1 MB raw
+export const CHAT_CSV_MAX_ROWS        = 500;       // far more rows than any real portfolio
+export const CHAT_CSV_MAX_TEXT_LEN    = 60_000;    // cap the extracted text handed to the model
+export const CHAT_REQUEST_MAX_BASE64  = 4_200_000; // total base64 across all attachments (Vercel body ceiling)
 export const DIARY_MAX_MUTATIONS      = 400;
 export const DIARY_MAX_CONTEXT_LEN    = 500;
 

@@ -49,7 +49,7 @@ AFTER commit_mutation returns, narrate from ITS result — never re-read the por
 
 BUYING MORE of a position the user ALREADY holds is an EDIT, never an add and never a no-op: commit an edit for that position with the NEW TOTAL units (their current units from get_holdings PLUS the amount bought), carrying buy_date if a date is given. Never just acknowledge — record it.
 
-SCREENSHOT IMPORT — when the message includes broker screenshot(s): extract every real holding row and commit them in ONE commit_mutation call (one "add" per position). Multiple screenshots are usually the SAME portfolio scrolled — a ticker appearing in more than one image is ONE holding; de-duplicate by ticker and emit each unique position exactly once (prefer the row with the clearest quantity). SKIP options/derivatives (rows with Put, Call, or an expiry like "JUL 24 '26") and account-total/summary rows. A position already in the portfolio is a units update (edit), not a re-add. After committing, ask ONCE for the batch's acquisition date ("A rough month or year is fine, or 'just track from now'"); on the reply, edit every held position that has no acquisition date yet to that date.
+FILE IMPORT — when the turn includes broker screenshot(s), a PDF statement, or an imported CSV/table: extract every real holding row and commit them in ONE commit_mutation call (one "add" per position). Multiple screenshots (or a multi-page statement) are usually the SAME portfolio scrolled — a ticker appearing more than once is ONE holding; de-duplicate by ticker and emit each unique position exactly once (prefer the row with the clearest quantity). SKIP options/derivatives (rows with Put, Call, or an expiry like "JUL 24 '26"), cash-sweep/settlement rows, and account-total/summary rows. A position already in the portfolio is a units update (edit), not a re-add. After committing, ask ONCE for the batch's acquisition date ("A rough month or year is fine, or 'just track from now'"); on the reply, edit every held position that has no acquisition date yet to that date.
 
 If a tool returns needsClarification, ask the user its question naturally and stop — do not guess. Keep answers to a few sentences.`;
 
@@ -57,6 +57,10 @@ export interface AgentChatInput {
   userId: string;
   message: string;
   images: Array<{ base64: string; mediaType: string }>;
+  /** PDF broker statements, sent to the model as document blocks. */
+  pdfs?: Array<{ base64: string }>;
+  /** CSV export(s) already parsed to text on the client, appended to the turn. */
+  csvText?: string;
   recentMessages: Array<{ role: string; content: string }>;
   currentAssets: Array<Record<string, unknown>>;
   displayCurrency: DisplayCurrency;
@@ -101,7 +105,15 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   for (const img of input.images) {
     userContent.push({ type: "image", source: { type: "base64", media_type: img.mediaType as "image/png", data: img.base64 } });
   }
-  userContent.push({ type: "text", text: input.message || "Extract all positions from this screenshot and add them to my portfolio." });
+  // PDF broker statements → document blocks (the model extracts the text/tables).
+  for (const pdf of input.pdfs ?? []) {
+    userContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf.base64 } });
+  }
+  const csvText = input.csvText ?? "";
+  const hasImportFile = input.images.length > 0 || (input.pdfs?.length ?? 0) > 0 || csvText.length > 0;
+  const baseText = input.message
+    || (hasImportFile ? "Extract all positions from the attached file(s) and add them to my portfolio." : "");
+  userContent.push({ type: "text", text: csvText ? `${baseText}\n\nImported table(s):\n${csvText}` : baseText });
 
   const messages: Anthropic.Messages.MessageParam[] = [...history, { role: "user", content: userContent }];
 
@@ -214,7 +226,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   // Persist the turn. tool_result stores the card so it rehydrates on reload.
   await supabase.from("messages").insert(
     timestampedPair(
-      { user_id: input.userId, role: "user", content: input.message || "[screenshot uploaded]" },
+      { user_id: input.userId, role: "user", content: input.message || (hasImportFile ? "[file uploaded]" : "[screenshot uploaded]") },
       { user_id: input.userId, role: "assistant", content: finalText, suggested_replies: chips, tool_result: card ?? null },
     ),
   );

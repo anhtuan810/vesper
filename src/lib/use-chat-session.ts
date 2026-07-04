@@ -5,7 +5,11 @@ import { track } from "@vercel/analytics";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { invalidateAssetsCache, invalidateInsightCache, invalidateVitalsCache } from "@/lib/hooks";
 import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
-import { CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX } from "@/lib/constants";
+import {
+  CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX,
+  CHAT_IMAGE_MAX_EDGE_PX, CHAT_IMAGE_JPEG_QUALITY, CHAT_IMAGE_MAX_INPUT_MB,
+  CHAT_PDF_MAX_MB, CHAT_CSV_MAX_BYTES, CHAT_CSV_MAX_ROWS, CHAT_CSV_MAX_TEXT_LEN,
+} from "@/lib/constants";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import type { ScenarioResult } from "@/lib/scenario/result";
 import { apiFetch } from "@/lib/api";
@@ -99,6 +103,92 @@ export function getChatSuggestions(
 
 // Shared across ChatPopup and /chat so history persists between surfaces
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const CSV_TYPES = new Set(["text/csv", "application/csv", "application/vnd.ms-excel"]);
+const isCsvFile = (f: File) => CSV_TYPES.has(f.type) || /\.csv$/i.test(f.name);
+const isPdfFile = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+
+const readDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error("read failed"));
+    r.readAsDataURL(file);
+  });
+
+// Downscale + re-encode an image entirely in the browser BEFORE upload. A phone
+// screenshot (2–4 MB PNG) becomes a ~250 KB JPEG: it keeps the whole request under
+// the serverless body limit, stays inside Anthropic's per-image bounds, and cuts
+// vision-token cost ~3×, with no visible loss for reading holdings. Returns null
+// on an unreadable/oversized original so the caller can surface a message.
+async function compressImageFile(
+  file: File,
+): Promise<{ base64: string; mediaType: string; previewUrl: string } | null> {
+  // Reject a monster original before decoding it — a huge bitmap can OOM the
+  // mobile webview's canvas.
+  if (file.size > CHAT_IMAGE_MAX_INPUT_MB * 1024 * 1024) return null;
+  try {
+    const srcUrl = await readDataUrl(file);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("decode failed"));
+      i.src = srcUrl;
+    });
+    let { width, height } = img;
+    if (!width || !height) return null;
+    const longEdge = Math.max(width, height);
+    if (longEdge > CHAT_IMAGE_MAX_EDGE_PX) {
+      const scale = CHAT_IMAGE_MAX_EDGE_PX / longEdge;
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    // White backdrop so a transparent PNG doesn't flatten to black under JPEG.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    const outUrl = canvas.toDataURL("image/jpeg", CHAT_IMAGE_JPEG_QUALITY);
+    const base64 = outUrl.split(",")[1] ?? "";
+    if (!base64) return null;
+    return { base64, mediaType: "image/jpeg", previewUrl: outUrl };
+  } catch {
+    return null;
+  }
+}
+
+// PDF: passed to the model as a document block (it extracts the text/tables). No
+// compression is possible, so this is the one attachment bounded purely by size.
+async function readPdfFile(file: File): Promise<{ name: string; base64: string } | null> {
+  if (file.size > CHAT_PDF_MAX_MB * 1024 * 1024) return null;
+  try {
+    const base64 = (await readDataUrl(file)).split(",")[1] ?? "";
+    return base64 ? { name: file.name, base64 } : null;
+  } catch {
+    return null;
+  }
+}
+
+// CSV: parsed to plain text and sent as a normal text turn (a model can't "see" a
+// CSV as an image). Capped by both raw bytes and row count so a transaction-heavy
+// export can't blow the context budget.
+async function readCsvFile(file: File): Promise<{ name: string; text: string } | null> {
+  if (file.size > CHAT_CSV_MAX_BYTES) return null;
+  try {
+    const raw = await file.text();
+    const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    const kept = lines.slice(0, CHAT_CSV_MAX_ROWS + 1); // +1 for a header row
+    let text = kept.join("\n");
+    if (lines.length > kept.length) text += `\n… (${lines.length - kept.length} more rows not shown)`;
+    if (text.length > CHAT_CSV_MAX_TEXT_LEN) text = text.slice(0, CHAT_CSV_MAX_TEXT_LEN) + "\n… (truncated)";
+    return { name: file.name, text };
+  } catch {
+    return null;
+  }
+}
 
 interface Options {
   userId: string | undefined;
@@ -114,6 +204,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const [remaining, setRemaining] = useState<number | null>(null);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageData, setImageData] = useState<Array<{ base64: string; mediaType: string }>>([]);
+  const [pdfData, setPdfData] = useState<Array<{ name: string; base64: string }>>([]);
+  const [csvData, setCsvData] = useState<Array<{ name: string; text: string }>>([]);
+  // Transient "that file didn't work" message, shown under the composer and
+  // cleared the moment the user tries another attachment or sends.
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreInFlight = useRef(false);
@@ -271,6 +366,9 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const clearImage = useCallback(() => {
     setImagePreviews([]);
     setImageData([]);
+    setPdfData([]);
+    setCsvData([]);
+    setAttachmentError(null);
   }, []);
 
   const removeImage = useCallback((index: number) => {
@@ -278,16 +376,40 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setImageData((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const handleFile = useCallback((file: File) => {
-    if (!ALLOWED_IMAGE_TYPES.has(file.type)) return;
-    if (file.size > 5 * 1024 * 1024) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setImageData((prev) => prev.length < MAX_IMAGES ? [...prev, { base64: result.split(",")[1], mediaType: file.type }] : prev);
-      setImagePreviews((prev) => prev.length < MAX_IMAGES ? [...prev, result] : prev);
-    };
-    reader.readAsDataURL(file);
+  const removePdf = useCallback((index: number) => {
+    setPdfData((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const removeCsv = useCallback((index: number) => {
+    setCsvData((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Single entry point for the picker, drag-drop, and the empty-state hand-off.
+  // Routes by file kind, does all validation + compression up front, and — unlike
+  // before — tells the user when something is rejected instead of silently
+  // dropping it. Async because image compression and file reads are async.
+  const handleFile = useCallback(async (file: File) => {
+    setAttachmentError(null);
+    if (isPdfFile(file)) {
+      const pdf = await readPdfFile(file);
+      if (!pdf) { setAttachmentError(`That PDF is over ${CHAT_PDF_MAX_MB} MB — send the holdings page as a screenshot, or a smaller PDF.`); return; }
+      setPdfData((prev) => (prev.length < 2 ? [...prev, pdf] : prev));
+      return;
+    }
+    if (isCsvFile(file)) {
+      const csv = await readCsvFile(file);
+      if (!csv) { setAttachmentError("That CSV is too large — export just your holdings, or send a screenshot."); return; }
+      setCsvData((prev) => (prev.length < 2 ? [...prev, csv] : prev));
+      return;
+    }
+    if (ALLOWED_IMAGE_TYPES.has(file.type) || /\.(jpe?g|png|gif|webp)$/i.test(file.name)) {
+      const compressed = await compressImageFile(file);
+      if (!compressed) { setAttachmentError("Couldn't read that image — it may be too large or corrupted."); return; }
+      setImageData((prev) => (prev.length < MAX_IMAGES ? [...prev, { base64: compressed.base64, mediaType: compressed.mediaType }] : prev));
+      setImagePreviews((prev) => (prev.length < MAX_IMAGES ? [...prev, compressed.previewUrl] : prev));
+      return;
+    }
+    setAttachmentError("Unsupported file. Attach an image, a PDF statement, or a CSV export.");
   }, []);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -297,18 +419,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       if (ALLOWED_IMAGE_TYPES.has(item.type)) {
         e.preventDefault();
         const file = item.getAsFile();
-        if (!file || file.size > 5 * 1024 * 1024) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          setImageData((prev) => prev.length < MAX_IMAGES ? [...prev, { base64: result.split(",")[1], mediaType: item.type }] : prev);
-          setImagePreviews((prev) => prev.length < MAX_IMAGES ? [...prev, result] : prev);
-        };
-        reader.readAsDataURL(file);
+        if (file) void handleFile(file);
         break;
       }
     }
-  }, []);
+  }, [handleFile]);
 
   // Map a chat API response into assistant messages, attaching any inline
   // scenario card to the final part and capturing a pending free-typed intent.
@@ -328,12 +443,18 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
 
   const send = useCallback(async () => {
     const text = input.trim();
-    if ((!text && !imageData.length) || loading || !userId) return;
+    const hasAttachment = imageData.length > 0 || pdfData.length > 0 || csvData.length > 0;
+    if ((!text && !hasAttachment) || loading || !userId) return;
     // Synchronous double-send guard (see sendInFlightRef).
     if (sendInFlightRef.current) return;
     sendInFlightRef.current = true;
 
-    const displayText = text || (imageData.length > 1 ? "Screenshots uploaded" : "Screenshot uploaded");
+    const attachmentCount = imageData.length + pdfData.length + csvData.length;
+    const displayText = text || (
+      imageData.length > 0 && pdfData.length === 0 && csvData.length === 0
+        ? (imageData.length > 1 ? "Screenshots uploaded" : "Screenshot uploaded")
+        : attachmentCount > 1 ? "Files uploaded" : "File uploaded"
+    );
     const userMsg: ChatMessage = { localId: nextLocalId(), from: "user", text: displayText };
     if (imagePreviews.length > 0) userMsg.imagePreviews = imagePreviews;
 
@@ -342,8 +463,17 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setThinking(true);
     setMessages((prev) => [...prev, userMsg]);
 
-    const payload: { message: string; images?: Array<{ base64: string; mediaType: string }> } = { message: text };
+    const payload: {
+      message: string;
+      images?: Array<{ base64: string; mediaType: string }>;
+      pdfs?: Array<{ base64: string }>;
+      csvText?: string;
+    } = { message: text };
     if (imageData.length > 0) payload.images = imageData;
+    if (pdfData.length > 0) payload.pdfs = pdfData.map((p) => ({ base64: p.base64 }));
+    if (csvData.length > 0) {
+      payload.csvText = csvData.map((c) => `--- ${c.name} ---\n${c.text}`).join("\n\n");
+    }
     clearImage();
 
     // Only fetch + parse + non-ok handling live in the try/catch. A throw from a
@@ -402,7 +532,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       onPortfolioUpdateRef.current?.();
     }
     onNewMessageRef.current?.();
-  }, [input, imageData, imagePreviews, loading, userId, clearImage, applyAssistantResponse]);
+  }, [input, imageData, imagePreviews, pdfData, csvData, loading, userId, clearImage, applyAssistantResponse]);
 
   // Confirm a free-typed scenario ([Show me]): echo the pending intent back so the
   // route computes and renders the card directly, skipping Claude classification.
@@ -587,12 +717,17 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     remaining,
     imagePreviews,
     imageData,
-    canSend: !loading && !!(input.trim() || imageData.length) && (remaining === null || remaining > 0),
+    pdfData,
+    csvData,
+    attachmentError,
+    canSend: !loading && !!(input.trim() || imageData.length || pdfData.length || csvData.length) && (remaining === null || remaining > 0),
     send,
     sendText,
     sendScenario,
     clearImage,
     removeImage,
+    removePdf,
+    removeCsv,
     handlePaste,
     handleFile,
     loadMore,

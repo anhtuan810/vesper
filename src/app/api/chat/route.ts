@@ -21,7 +21,7 @@ import { generateInsight } from "@/lib/insight-generator";
 import { validatePortfolioChanges } from "@/lib/validations";
 import { geocodeAddress, compareEnteredAddress } from "@/lib/geocode";
 import { venueChipsFor } from "@/lib/venues";
-import { CHAT_DAILY_LIMIT, CHAT_MAX_IMAGES } from "@/lib/constants";
+import { CHAT_DAILY_LIMIT, CHAT_MAX_IMAGES, CHAT_MAX_PDFS, CHAT_PDF_MAX_MB, CHAT_REQUEST_MAX_BASE64, CHAT_CSV_MAX_TEXT_LEN } from "@/lib/constants";
 import {
   ALLOWED_IMAGE_TYPES, CONFIRMATION_CHIPS,
   sanitizeChips, stripTags, extractTag, timestampedPair,
@@ -528,7 +528,7 @@ export async function POST(req: NextRequest) {
     const demoGate = await demoExpiredGate(createServerSupabase(), userId);
     if (demoGate) return demoGate;
 
-    const { message, images: rawImages, scenarioHandoff, scenarioConfirm, fromChip } = await req.json();
+    const { message, images: rawImages, pdfs: rawPdfs, csvText: rawCsvText, scenarioHandoff, scenarioConfirm, fromChip } = await req.json();
 
     // Scenario-narration handoff — handled before the message/mutation flow.
     if (scenarioHandoff) {
@@ -539,8 +539,15 @@ export async function POST(req: NextRequest) {
     const images: Array<{ base64: string; mediaType: string }> = Array.isArray(rawImages)
       ? rawImages
       : rawImages ? [rawImages] : [];
+    const pdfs: Array<{ base64: string }> = Array.isArray(rawPdfs)
+      ? rawPdfs.filter((p): p is { base64: string } => !!p && typeof p.base64 === "string")
+      : [];
+    // CSV arrives already parsed to text (a model can't read a CSV as an image),
+    // so it rides the normal text path; only cap its length. Kept OUT of `message`
+    // so the 500-char user-text limit below still applies to what the user typed.
+    const csvText = typeof rawCsvText === "string" ? rawCsvText.slice(0, CHAT_CSV_MAX_TEXT_LEN) : "";
 
-    if (!message && images.length === 0) {
+    if (!message && images.length === 0 && pdfs.length === 0 && !csvText) {
       return NextResponse.json({ message: "No message provided" }, { status: 400 });
     }
 
@@ -548,8 +555,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Message is too long — keep it under 500 characters." }, { status: 400 });
     }
 
-    // Cap screenshots per turn — each image is up to ~5 MB of vision input, so an
-    // uncapped array is both a memory and an Anthropic-cost amplifier.
+    // Cap screenshots per turn — each image is vision input, so an uncapped array
+    // is both a memory and an Anthropic-cost amplifier.
     if (images.length > CHAT_MAX_IMAGES) {
       return NextResponse.json(
         { message: `Please attach at most ${CHAT_MAX_IMAGES} screenshots at a time.` },
@@ -558,13 +565,33 @@ export async function POST(req: NextRequest) {
     }
 
     for (const img of images) {
-      // ~7 MB base64 ≈ 5 MB binary — matches the client-side paste limit
+      // ~7 MB base64 ≈ 5 MB binary. The client downscales before upload, so a
+      // legitimate image is far smaller; this only rejects a bypassed/oversized one.
       if (img.base64.length > 7_000_000) {
-        return NextResponse.json({ message: "One of the screenshots is too large — keep each under 5 MB." }, { status: 400 });
+        return NextResponse.json({ message: "One of the screenshots is too large — try again." }, { status: 400 });
       }
       if (!ALLOWED_IMAGE_TYPES.has(img.mediaType)) {
         return NextResponse.json({ message: "That image format isn't supported. Try PNG, JPG, GIF, or WebP." }, { status: 400 });
       }
+    }
+
+    if (pdfs.length > CHAT_MAX_PDFS) {
+      return NextResponse.json({ message: `Please attach at most ${CHAT_MAX_PDFS} PDF${CHAT_MAX_PDFS > 1 ? "s" : ""} at a time.` }, { status: 400 });
+    }
+    for (const pdf of pdfs) {
+      // base64 is ~1.37× the raw bytes; guard a touch above the raw MB cap.
+      if (pdf.base64.length > CHAT_PDF_MAX_MB * 1.4 * 1024 * 1024) {
+        return NextResponse.json({ message: `That PDF is too large — keep each under ${CHAT_PDF_MAX_MB} MB, or send the holdings page as a screenshot.` }, { status: 400 });
+      }
+    }
+
+    // Total-payload guard: the whole request (all base64 attachments) must stay
+    // under the serverless body ceiling, or the platform rejects it opaquely
+    // before this handler ever runs. Enforce it here so the failure is a clear
+    // message, not a mystery 413.
+    const totalBase64 = images.reduce((n, i) => n + i.base64.length, 0) + pdfs.reduce((n, p) => n + p.base64.length, 0);
+    if (totalBase64 > CHAT_REQUEST_MAX_BASE64) {
+      return NextResponse.json({ message: "That's a lot to upload at once — send fewer or smaller files (a couple of screenshots, or one PDF)." }, { status: 400 });
     }
 
     const supabase = createServerSupabase();
@@ -634,6 +661,8 @@ export async function POST(req: NextRequest) {
         userId,
         message: message ?? "",
         images,
+        pdfs,
+        csvText,
         recentMessages: (recentMessages ?? [])
           .map((mm) => ({ role: mm.role as "user" | "assistant", content: stripTags(mm.content) }))
           .filter((mm) => mm.content.length > 0)
@@ -705,9 +734,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // PDF broker statements ride as document blocks — the model extracts the
+    // text/tables itself (base64 PDF needs no beta header).
+    for (const pdf of pdfs) {
+      userContent.push({
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: pdf.base64 },
+      });
+    }
+
+    const hasImportFile = images.length > 0 || pdfs.length > 0 || csvText.length > 0;
+    const baseText = message
+      || (hasImportFile ? "Extract all positions from the attached file(s) and add them to my portfolio." : "");
     userContent.push({
       type: "text",
-      text: message || "Extract all positions from this screenshot and add them to my portfolio.",
+      text: csvText ? `${baseText}\n\nImported table(s):\n${csvText}` : baseText,
     });
 
     // --- Call Claude (with retry) ---
@@ -720,7 +761,7 @@ export async function POST(req: NextRequest) {
           // A multi-row screenshot import can produce a large <changes> JSON
           // (a 20+ row batch can exceed 3000 tokens and truncate mid-array, which
           // discards the whole commit). Give image turns more headroom.
-          max_tokens: images.length > 0 ? 5000 : 2000,
+          max_tokens: hasImportFile ? 5000 : 2000,
           system: systemBlocks,
           messages: [
             ...history,

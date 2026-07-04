@@ -67,6 +67,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     const {
       messages, input, setInput, loading, thinking, remaining,
       imagePreviews, imageData, canSend, send, sendText, sendScenario, removeImage, handlePaste, handleFile,
+      pdfData, csvData, attachmentError, removePdf, removeCsv,
       isLoadingMore,
     } = session;
 
@@ -277,6 +278,47 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         {DISCLAIMER_TEXT}
       </div>
     );
+
+    // Non-image attachments (PDF statements, CSV exports) show as removable chips —
+    // they can't render as a thumbnail like an image. A rejected file surfaces its
+    // reason here too, so nothing is ever silently dropped.
+    const fileChip = (label: string, onRemove: () => void, key: string) => (
+      <div
+        key={key}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          maxWidth: "100%", padding: "5px 8px 5px 10px",
+          background: "var(--surface)", border: "0.5px solid var(--border)",
+          borderRadius: "var(--radius-md)", fontSize: "var(--fs-caption)", color: "var(--text-dim)",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        <button
+          onClick={onRemove}
+          aria-label={`Remove ${label}`}
+          style={{
+            flexShrink: 0, width: 16, height: 16, borderRadius: "50%",
+            background: "var(--text-faint)", color: "var(--bg)", border: "none",
+            cursor: "pointer", fontSize: "var(--fs-micro)", lineHeight: "16px", textAlign: "center", padding: 0,
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    );
+    const fileAttachments = (pdfData.length > 0 || csvData.length > 0 || attachmentError) ? (
+      <div className="pb-2 flex flex-col gap-1.5">
+        {(pdfData.length > 0 || csvData.length > 0) && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {pdfData.map((p, i) => fileChip(p.name, () => removePdf(i), `pdf-${i}`))}
+            {csvData.map((c, i) => fileChip(c.name, () => removeCsv(i), `csv-${i}`))}
+          </div>
+        )}
+        {attachmentError && (
+          <div style={{ fontSize: "var(--fs-caption)", color: "var(--negative)" }}>{attachmentError}</div>
+        )}
+      </div>
+    ) : null;
 
     // ── Scrollable message list (shared, presentationally parametrized) ───────
     const messageList = (
@@ -541,6 +583,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               </div>
             )}
 
+            {fileAttachments}
+
             {counters}
 
             {/* Input pill */}
@@ -560,7 +604,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 key={fileInputKey}
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf,application/pdf,.csv,text/csv"
                 tabIndex={-1}
                 style={{ display: "none" }}
                 onChange={(e) => {
@@ -698,6 +742,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           </div>
         )}
 
+        {fileAttachments && <div className="px-4 shrink-0">{fileAttachments}</div>}
+
         {/* Input bar */}
         <div
           className="px-4 py-3 shrink-0"
@@ -722,7 +768,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               key={fileInputKey}
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.pdf,application/pdf,.csv,text/csv"
               style={{ display: "none" }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
