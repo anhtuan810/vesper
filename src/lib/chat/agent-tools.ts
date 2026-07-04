@@ -582,7 +582,15 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
     proposalTimestamp: null,
   });
 
-  const notes = [...duplicateWarnings, ...fxWarnings, ...failures.map((f) => `Couldn't record ${f.name}.`)];
+  // Surface the actual reason (price/symbol lookup failed, etc.) so the model can
+  // tell the user WHY rather than an opaque "try those again" — and so the same
+  // detail reaches the logs. f.reason is already a user-facing sentence for the
+  // common ValueMode cases; keep it terse for anything else.
+  const notes = [
+    ...duplicateWarnings,
+    ...fxWarnings,
+    ...failures.map((f) => (f.reason ? `Couldn't record ${f.name} — ${f.reason}` : `Couldn't record ${f.name}.`)),
+  ];
 
   return {
     forModel: { committed: changed, ...(notes.length ? { notes } : {}) },

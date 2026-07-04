@@ -192,6 +192,14 @@ export async function applyPortfolioChanges({
   // Per-row failures collected so one bad row in a multi-row batch (e.g. a
   // screenshot import) reports and skips rather than aborting every other row.
   const failures: { name: string; reason: string }[] = [];
+  // Symbols/names already added EARLIER in this same batch. The duplicate check
+  // below only knows the pre-batch portfolio, so a broker screenshot that lists
+  // the same position twice (e.g. two overlapping scrolled panels) would add the
+  // first and then collide on the second — surfacing as "Couldn't record". Track
+  // within-batch adds so the repeat is treated as a duplicate (a warning), not a
+  // failure.
+  const addedSymbolsThisBatch = new Set<string>();
+  const addedNamesThisBatch = new Set<string>();
   let changed = false;
 
   // Earliest date from which historical snapshot rows must be rebuilt (not
@@ -302,9 +310,11 @@ export async function applyPortfolioChanges({
           : name;
       const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol ?? null;
 
-      const isDuplicate = effectiveSymbol
-        ? currentAssets.some((a) => a.symbol && a.symbol.toLowerCase() === effectiveSymbol.toLowerCase())
-        : currentAssets.some((a) => a.name.trim().toLowerCase() === resolvedAssetName.trim().toLowerCase());
+      const dupSymKey = effectiveSymbol?.toLowerCase() ?? null;
+      const dupNameKey = resolvedAssetName.trim().toLowerCase();
+      const isDuplicate = dupSymKey
+        ? currentAssets.some((a) => a.symbol && a.symbol.toLowerCase() === dupSymKey) || addedSymbolsThisBatch.has(dupSymKey)
+        : currentAssets.some((a) => a.name.trim().toLowerCase() === dupNameKey) || addedNamesThisBatch.has(dupNameKey);
 
       if (isDuplicate) {
         const id = effectiveSymbol ? effectiveSymbol.toUpperCase() : `"${resolvedAssetName}"`;
@@ -313,6 +323,10 @@ export async function applyPortfolioChanges({
         );
         continue;
       }
+      // Mark it as taken for the rest of THIS batch so a repeated screenshot row
+      // is caught above rather than colliding on insert.
+      if (dupSymKey) addedSymbolsThisBatch.add(dupSymKey);
+      else addedNamesThisBatch.add(dupNameKey);
 
       let resolvedValue = change.value || 0;
       let resolvedBuyPrice: number | null = change.buy_price || null;
