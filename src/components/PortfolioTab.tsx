@@ -16,6 +16,9 @@ import {
   buildLiveRates,
 } from "@/components/NetWorthChart";
 import { MobileDecisionJournal, notableDecisions, decisionTitle, mDate, shortDate } from "@/components/MobileDecisionJournal";
+import { MobileMarketEntry } from "@/components/MobileMarketEntry";
+import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
+import type { DiaryMarketMove } from "@/lib/diary-market-moves";
 import { PositionRow } from "@/components/PositionRow";
 import { AssetLogo } from "@/components/AssetLogo";
 import { HoldingsGroup } from "@/components/HoldingsGroup";
@@ -404,16 +407,44 @@ export function PortfolioTab({
     const start = series[0]?.date ?? rangeStartDate(range);
     return start ? journalDecisions.filter((d) => mDate(d).slice(0, 10) >= start) : journalDecisions;
   }, [journalDecisions, series, range]);
+  // Market-swing entries in the visible window — auto-logged when a big index
+  // day moved the user's money. Plotted on the line as muted "market" dots
+  // alongside the user's own decision dots, mirroring the desktop Overview
+  // (which already merges these). Impact-bearing only, matching the Journal.
+  const { moves: marketMoves } = useDiaryMarketMoves();
+  const marketMarkerId = (mv: DiaryMarketMove) => `mv-${mv.index_symbol}-${mv.date}`;
+  const navMarketMoves = useMemo(() => {
+    const start = series[0]?.date ?? rangeStartDate(range);
+    return marketMoves.filter((mv) => mv.impact && (!start || mv.date >= start));
+  }, [marketMoves, series, range]);
+
   const markers = useMemo(
-    () => navDecisions.map((d) => ({ id: d.id, date: mDate(d).slice(0, 10), kind: "you" as const, title: decisionTitle(d), sub: shortDate(mDate(d)) })),
-    [navDecisions],
+    () => [
+      ...navDecisions.map((d) => ({ id: d.id, date: mDate(d).slice(0, 10), kind: "you" as const, title: decisionTitle(d), sub: shortDate(mDate(d)) })),
+      ...navMarketMoves.map((mv) => ({
+        id: `mv-${mv.index_symbol}-${mv.date}`,
+        date: mv.date,
+        kind: "market" as const,
+        title: `${mv.index_label} ${mv.pct_change >= 0 ? "+" : "−"}${Math.abs(mv.pct_change).toFixed(1).replace(".", ",")}%`,
+        sub: shortDate(mv.date),
+        value: mv.impact ? `${mv.impact.total >= 0 ? "▲" : "▼"} ${formatMoney(Math.abs(mv.impact.total), displayCurrency, displayCurrency)}` : undefined,
+      })),
+    ],
+    [navDecisions, navMarketMoves, displayCurrency],
   );
   // Nothing is selected until the user taps a dot (or "Portfolio on this
   // day") — Now is the resting face. A selected id that drops out of the
   // current set (range narrowed, or `mutations` revalidated out from under
   // it) deselects rather than silently jumping to a different entry.
+  const selectedMove = useMemo(
+    () => navMarketMoves.find((mv) => marketMarkerId(mv) === selectedDecisionId) ?? null,
+    // marketMarkerId is a pure helper; navMarketMoves + selection are the real deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navMarketMoves, selectedDecisionId],
+  );
   const activeMarkerId =
-    selectedDecisionId && navDecisions.some((d) => d.id === selectedDecisionId)
+    selectedDecisionId &&
+    (navDecisions.some((d) => d.id === selectedDecisionId) || navMarketMoves.some((mv) => marketMarkerId(mv) === selectedDecisionId))
       ? selectedDecisionId
       : null;
 
@@ -425,8 +456,9 @@ export function PortfolioTab({
   const onMarkerClick = (id: string) => {
     setSelectedDecisionId(id);
     const d = navDecisions.find((x) => x.id === id);
-    if (!d || liquidOnly) return;
-    const day = mDate(d).slice(0, 10);
+    const mv = navMarketMoves.find((x) => marketMarkerId(x) === id);
+    if ((!d && !mv) || liquidOnly) return;
+    const day = d ? mDate(d).slice(0, 10) : mv!.date;
     // Keep the state's identity when re-committing the same entry (mobile taps
     // replay as a synthetic click; users re-tap) — a fresh object would re-run
     // the fetch effect and abort/restart the reconstruction mid-flight.
@@ -642,7 +674,12 @@ export function PortfolioTab({
         className={reveal ? "nw-reveal-late" : undefined}
         style={{ maxWidth: 660, marginTop: "var(--space-5)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--border)" }}
       >
-        {navDecisions.length > 0 && activeMarkerId === null && !isIntraday ? (
+        {selectedMove ? (
+          // A market-swing dot is selected — show its auto-logged entry (index
+          // move + this portfolio's impact that day), the phone counterpart to
+          // the desktop Overview's selected market entry.
+          <MobileMarketEntry move={selectedMove} />
+        ) : navDecisions.length > 0 && activeMarkerId === null && !isIntraday ? (
           // At today with nothing selected — the DEFAULT face, including on a
           // fresh load. Today has no entry, so no entry's details belong here.
           // A quiet invitation keeps the zone a journal and teaches the way in.
