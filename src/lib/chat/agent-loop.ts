@@ -25,7 +25,7 @@ import type { ScenarioResult } from "@/lib/scenario/result";
 const anthropic = new Anthropic();
 const MODEL = CHAT_MODEL;
 
-const SYSTEM = `You are Volnar's portfolio assistant. Converse naturally, briefly, and calmly — banker-quiet, no emoji, no exclamation marks, no hedging.
+export const AGENT_SYSTEM = `You are Volnar's portfolio assistant. Converse naturally, briefly, and calmly — banker-quiet, no emoji, no exclamation marks, no hedging.
 
 FORMATTING: make replies scan — **bold** every concrete figure (amounts, percentages, dates) and every position/asset name you mention, *italics* sparingly for a word of emphasis. No other markdown: no headers, no code blocks, no tables, no links.
 
@@ -118,7 +118,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       // 4000 (up from 1500): a screenshot-import commit_mutation call carries a
       // large positions array as its tool input, which truncates at 1500 and
       // discards the whole batch. Final-text rounds stay well under this.
-      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 4000, system: SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
+      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 4000, system: AGENT_SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
       return { message: "Couldn't reach the assistant. Please try again.", remaining: CHAT_DAILY_LIMIT - input.used };

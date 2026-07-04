@@ -12,8 +12,8 @@ export const AGENT_MAX_TOOL_ROUNDTRIPS = 5;
 
 // The single source of truth for the chat model (tag flow, agent loop, and the
 // scenario narration on chat replies), so it can't drift between paths and is a
-// one-line change to revert. Sonnet 5 replaces Sonnet 4.6 — a stronger model
-// follows the rulebook and emits cleaner tool calls/JSON, which is the fastest
-// reliability win while the agent-loop migration is validated. Change here to try
-// Opus (claude-opus-4-8) for maximum reasoning at higher latency/cost.
-export const CHAT_MODEL = "claude-sonnet-5";
+// one-line change to revert. Opus 4.8 — maximum reasoning, which is the point:
+// chat must handle whatever a real user types. It's slower and costlier per turn
+// than Sonnet; if interactive latency ever bites, switch this to "claude-sonnet-5"
+// (strong and faster) — nothing else changes.
+export const CHAT_MODEL = "claude-opus-4-8";

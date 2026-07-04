@@ -27,7 +27,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run chat behaviour eval
+      - name: Run chat behaviour eval (tag flow)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: npm run eval:chat
+
+      # The agent loop's counterpart: same scenarios, scored on the tool calls it
+      # makes. Runs even if the tag eval above fails so both engines report in one
+      # dispatch. This is the measurement that justifies flipping CHAT_AGENT_LOOP=on.
+      - name: Run agent-loop behaviour eval
+        if: always()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run eval:agent
