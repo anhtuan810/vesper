@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { fetchPriceWithFallback, fetchYahooPrice, fetchYahooQuote } from "./prices-server";
 import { resolveSymbol, normalizeCryptoSymbol } from "./symbol-aliases";
+import { mapWithConcurrency } from "./concurrency";
 import { computeNetWorth } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
@@ -217,31 +218,55 @@ export async function applyPortfolioChanges({
     if (rebuildFrom === null || day < rebuildFrom) rebuildFrom = day;
   };
 
+  // Collapse duplicate ADD rows up front, before any network resolution: a broker
+  // screenshot uploaded as two overlapping scrolled panels emits the same holding
+  // once per panel, ~doubling the batch. De-duplicate by the model's emitted
+  // symbol (alias-resolved, no network), else name, keeping the first — this
+  // halves the Yahoo fan-out below and removes the duplicate-warning noise. Non-
+  // add actions are never collapsed.
+  const seenAddKeys = new Set<string>();
+  changes = changes.filter((c) => {
+    if (c.action !== "add") return true;
+    const key = ((c.symbol ? resolveSymbol(c.symbol) : "") || c.symbol || c.name || "").trim().toLowerCase();
+    if (!key) return true;
+    if (seenAddKeys.has(key)) return false;
+    seenAddKeys.add(key);
+    return true;
+  });
+
   // Alias-resolve symbols synchronously before any I/O (e.g. TL0.DE → TSLA)
   const aliasedSymbols = changes.map((change) =>
     change.action === "add" && change.symbol ? resolveSymbol(change.symbol) : null
   );
 
-  // Pre-resolve venue-qualified symbols for add ops, in parallel
-  const resolvedSymbols = await Promise.all(
-    changes.map(async (change, i) => {
+  // Bound the outbound Yahoo fan-out. A large screenshot import used to fire ~4
+  // lookups PER ROW across three UNBOUNDED Promise.all blocks (100+ concurrent
+  // for a 32-row batch), which Yahoo 429-throttles — surfacing as "Couldn't
+  // record N positions". Cap in-flight requests so a bulk import can't storm the
+  // upstream. Each row's resolver catches its own errors and returns null, so one
+  // failed lookup degrades that row instead of aborting the whole batch.
+  const YAHOO_CONCURRENCY = 5;
+
+  // Pre-resolve venue-qualified symbols for add ops, bounded-concurrent.
+  const resolvedSymbols = await mapWithConcurrency(changes, YAHOO_CONCURRENCY, async (change, i) => {
+    try {
       const sym = aliasedSymbols[i];
       if (change.action === "add" && sym) {
         const normalizedSym = normalizeCryptoSymbol(sym, change.type);
         const result = await fetchPriceWithFallback(normalizedSym, change.country);
         if (!result.error) return { symbol: result.symbol, nativeCurrency: result.nativeCurrency };
       }
-      return null;
-    })
-  );
+    } catch { /* transient lookup failure — degrade this row, not the batch */ }
+    return null;
+  });
 
-  // Pre-resolve prices for add ops that need auto-fill, in parallel. `value`
+  // Pre-resolve prices for add ops that need auto-fill, bounded-concurrent. `value`
   // (current market value) and `buy_price` (cost basis) come from separate
   // lookups: buy_price is the price AT buy_date (or "now" if unstated), while
   // value is units x the LATEST market price — never the buy_date price, which
   // would set value to cost basis instead of market.
-  const resolvedPrices = await Promise.all(
-    changes.map(async (change, i) => {
+  const resolvedPrices = await mapWithConcurrency(changes, YAHOO_CONCURRENCY, async (change, i) => {
+    try {
       if (change.action === "add" && (change.value || 0) === 0 && change.symbol && change.units) {
         const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol;
         const [histData, live] = await Promise.all([
@@ -263,22 +288,22 @@ export async function applyPortfolioChanges({
           yahooCurrency: valueCurrency,
         };
       }
-      return null;
-    })
-  );
+    } catch { /* transient lookup failure — degrade this row, not the batch */ }
+    return null;
+  });
 
-  // Fetch canonical names from Yahoo for tradeable adds, in parallel
-  const resolvedNames = await Promise.all(
-    changes.map(async (change, i) => {
+  // Fetch canonical names from Yahoo for tradeable adds, bounded-concurrent.
+  const resolvedNames = await mapWithConcurrency(changes, YAHOO_CONCURRENCY, async (change, i) => {
+    try {
       if (change.action === "add" && change.symbol && TRADEABLE_TYPES.has(change.type ?? "")) {
         const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol;
         const quote = await fetchYahooQuote(effectiveSymbol);
         const resolved = (quote.longName ?? quote.shortName ?? "").trim();
         return resolved || null;
       }
-      return null;
-    })
-  );
+    } catch { /* transient lookup failure — degrade this row, not the batch */ }
+    return null;
+  });
 
   for (let i = 0; i < changes.length; i++) {
     const change = changes[i];

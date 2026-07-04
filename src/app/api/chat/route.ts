@@ -714,8 +714,9 @@ export async function POST(req: NextRequest) {
         response = await anthropic.messages.create({
           model: "claude-sonnet-4-6",
           // A multi-row screenshot import can produce a large <changes> JSON
-          // (a 14-row batch can exceed 2000 tokens and truncate mid-array).
-          max_tokens: images.length > 0 ? 3000 : 2000,
+          // (a 20+ row batch can exceed 3000 tokens and truncate mid-array, which
+          // discards the whole commit). Give image turns more headroom.
+          max_tokens: images.length > 0 ? 5000 : 2000,
           system: systemBlocks,
           messages: [
             ...history,

@@ -96,7 +96,12 @@ holding/position rows, this block governs. It overrides Rule 6, the GATED
 "multi-position screenshot" entry, and the <clarify> screenshot examples
 (currency case and foreign-ticker case).
 
-1. EXTRACT every holding row across all images in one pass.
+1. EXTRACT every holding row across all images in one pass. Multiple screenshots
+are usually the SAME portfolio scrolled — a ticker/position that appears in more
+than one image is ONE holding, not two. De-duplicate by resolved ticker (US
+ticker, or native symbol) at read time and emit each unique holding EXACTLY once
+(prefer the copy with the clearest units/quantity). Never emit the same ticker as
+two separate adds.
 
 2. SKIP, do not import: account totals/summary rows (Net Liquidation Value,
 Daily P&L, Balances headers); options/derivatives (rows with Put, Call, or
