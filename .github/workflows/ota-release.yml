@@ -1,0 +1,80 @@
+name: OTA release (native UI)
+
+# Publishes an over-the-air UI bundle to installed native apps — the "deploy"
+# for client changes in src/ that don't touch the Capacitor plugin set. It runs
+# `npm run ota:release`: a static native build (scripts/build-native.mjs), zipped
+# and uploaded with a manifest to the public `ota-bundles` Supabase bucket.
+# Running apps stage it on the next launch and apply on the cold start after.
+#
+# MANUAL ONLY (Actions → this workflow → Run workflow). It reaches every running
+# app, so it must be a deliberate act, never per-commit. It builds on ubuntu and
+# reads MARKETING_VERSION from the checked-in Xcode project — no macOS/Xcode
+# needed (ota:release does not run cap sync).
+#
+# Required repository secrets (Settings → Secrets and variables → Actions).
+# The OTA bundle is a FULL production build, so these must match production —
+# a missing one would ship broken auth or purchases to all users, which is why
+# the preflight step below hard-fails when any is absent:
+#   SUPABASE_SERVICE_ROLE_KEY      — uploads the bundle (server secret, never inlined)
+#   NEXT_PUBLIC_SUPABASE_URL       — Supabase project URL (client + upload target)
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY  — Supabase anon key (client auth)
+#   NEXT_PUBLIC_REVENUECAT_IOS_KEY — RevenueCat iOS SDK key (in-app purchases; the
+#                                    app THROWS on launch without it)
+# Optional (inlined only if set; safe to omit — code defaults apply):
+#   NEXT_PUBLIC_SENTRY_DSN                  — client error reporting (off if unset)
+#   NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID   — defaults to "premium"
+# API origin, build target and the OTA flag are set by build-native.mjs itself.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  ota-release:
+    name: build + publish OTA bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # ota-release.mjs stamps the bundle + manifest with the commit SHA, and
+          # installs skip the download when their running SHA already matches.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Fail BEFORE building if a critical secret is missing — a partial build
+      # would silently produce a bundle that breaks sign-in or purchases for
+      # everyone. GitHub renders an absent secret as an empty string, so test for
+      # emptiness, not for the variable being unset.
+      - name: Preflight — required secrets present
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_REVENUECAT_IOS_KEY: ${{ secrets.NEXT_PUBLIC_REVENUECAT_IOS_KEY }}
+        run: |
+          missing=""
+          for v in SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_REVENUECAT_IOS_KEY; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required secret(s):$missing — add them under Settings → Secrets and variables → Actions, then re-run. Shipping a bundle without these would break auth or purchases for all users."
+            exit 1
+          fi
+          echo "All required secrets present."
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build + publish OTA bundle
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_REVENUECAT_IOS_KEY: ${{ secrets.NEXT_PUBLIC_REVENUECAT_IOS_KEY }}
+          # Optional — inlined if set, safe defaults in code otherwise.
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID: ${{ secrets.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID }}
+        run: npm run ota:release
