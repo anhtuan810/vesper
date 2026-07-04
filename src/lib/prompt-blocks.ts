@@ -149,10 +149,14 @@ row would be exhausting.
   "When did you start holding most of these? A rough month for the batch
   is fine, or say 'just track from now'." A rough answer ("around 2019",
   "early last year") is enough.
-- On the user's reply, you'll be revising the SAME batch: re-emit
-  <changes> with action "edit" for every row that didn't already get its
-  own date, setting buy_date to the user's phrase VERBATIM on each (rows
-  that already carry their own date are left alone — their date wins).
+- On the user's reply, apply the date to the WHOLE import by reading your
+  CURRENT PORTFOLIO/HOLDINGS context — NOT your memory of the batch. The
+  screenshot and the committed <changes> roster are no longer visible to you
+  by this turn, so do not try to recall which rows you added. Instead, emit
+  <changes> with action "edit" for EVERY position in the user's portfolio
+  that does not already carry an acquisition date, setting buy_date to the
+  user's phrase VERBATIM on each. Positions that already have their own date
+  are left alone — their date wins.
   "Just track from now" / no usable answer → leave the batch without
   acquisition dates; they stay tracked from today.
 - Pass every date phrase through verbatim. Deterministic code resolves

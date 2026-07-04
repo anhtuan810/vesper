@@ -742,6 +742,12 @@ export function buildDynamicContext(
     if (a.country) parts.push(`country:${a.country}`);
     const currentMortgage = computeCurrentBalance(a);
     if (a.type === "real_estate" && currentMortgage > 0) parts.push(`mortgage:${cur}${Math.round(currentMortgage).toLocaleString()}`);
+    // Acquisition-date status per holding, so the model can act on "date the
+    // positions that don't have one yet" (e.g. the batch-date follow-up after a
+    // screenshot import) from the portfolio, not from its erased memory of the
+    // import batch.
+    const acq = (a as { buy_date?: string | null }).buy_date;
+    parts.push(acq ? `held-since:${acq.slice(0, 7)}` : "no-acquisition-date");
     return `- ${parts.join(", ")}`;
   }).join("\n");
 
