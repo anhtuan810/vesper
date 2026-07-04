@@ -629,7 +629,11 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
 // Both modes abort BEFORE any write if a currently-held tradeable's price
 // history failed to load, so a transient market-data outage can never replace
 // good rows with collapsed ones.
-export async function backfillSnapshots(userId: string, rebuildFrom?: string | null): Promise<void> {
+// Returns a short status string describing what happened — "ok:standard:120",
+// "ok:rebuild:40", or a "skip:…"/"error:…" reason. Callers that just want the
+// side effect can ignore it; the /api/debug/snapshot-status route surfaces it so
+// a stuck (single-dot) chart can be diagnosed without server-log access.
+export async function backfillSnapshots(userId: string, rebuildFrom?: string | null): Promise<string> {
   try {
     const supabase = createServerSupabase();
 
@@ -644,7 +648,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // and outage-proof); (2) the entitlement check FAILS SAFE — an errored read
     // aborts the pass (a skipped backfill for a real user just retries on the
     // next trigger; a wrongly-run pass on the demo shreds the authored curve).
-    if (process.env.DEMO_USER_ID && userId === process.env.DEMO_USER_ID) return;
+    if (process.env.DEMO_USER_ID && userId === process.env.DEMO_USER_ID) return "skip:demo-user-id";
     const { data: demoEnt, error: demoErr } = await supabase
       .from("entitlements")
       .select("id")
@@ -652,7 +656,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       .eq("product_id", "demo")
       .limit(1)
       .maybeSingle();
-    if (demoErr || demoEnt) return;
+    if (demoErr) return "skip:entitlement-read-error:" + demoErr.message;
+    if (demoEnt) return "skip:demo-entitlement";
 
     // Load all assets — INCLUDING soft-deleted (removed_at set) ones, so a sold
     // position is still reconstructed as held up to its sale date. (Current-
@@ -662,7 +667,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       .select("id, type, value, currency, symbol, units, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
       .eq("user_id", userId);
     if (aErr) throw aErr;
-    if (!assets || assets.length === 0) return;
+    if (!assets || assets.length === 0) return "skip:no-assets";
 
     // Load all mutations (asset_id stays set for soft-deletes; a hard-deleted
     // "mistake" asset's mutations are deleted with it, so it's invisible here —
@@ -699,11 +704,11 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       .map((m) => (m.occurred_at as string).slice(0, 10));
     const assetDates = assets.map((a) => (a.created_at as string).slice(0, 10));
     const allDates = [...datedDates, ...assetDates].filter(Boolean);
-    if (allDates.length === 0) return;
+    if (allDates.length === 0) return "skip:no-dated-history";
     const earliest = allDates.sort()[0];
 
     const todayStr = new Date().toISOString().slice(0, 10);
-    if (earliest >= todayStr) return;
+    if (earliest >= todayStr) return "skip:earliest-not-before-today:" + earliest;
 
     // Per-asset acquisition date — the "add" mutation's occurred_at (= buy_date
     // when stated). This is the basis non-tradeable types backfill flat from;
@@ -783,7 +788,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     const fx = await getUsdRates();
     const hasTradeables = assets.some((a) => TRADEABLE.has(a.type as string));
     const dates = targetSnapshotDates(earliest, todayStr, hasTradeables);
-    if (dates.length === 0) return;
+    if (dates.length === 0) return "skip:no-target-dates:earliest=" + earliest;
 
     // Real per-date USD rates for the whole backfill span — every contribution
     // (tradeable, real estate, flat-held alike) converts at the REAL historical
@@ -995,10 +1000,10 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         const { error: insError } = await supabase.from("snapshots").insert(rebuildRows);
         if (insError) throw insError;
       }
-      return;
+      return "ok:rebuild:" + rebuildRows.length + ":from=" + rebuildStart;
     }
 
-    if (rows.length === 0) return;
+    if (rows.length === 0) return "skip:no-rows-computed:earliest=" + earliest;
 
     // Overwrite on conflict (not ignoreDuplicates): every row is recomputed
     // from the current asset set, so re-running this pass HEALS a stale vintage
@@ -1009,10 +1014,12 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       onConflict: "user_id,date",
     });
     if (upsertError) throw upsertError;
+    return "ok:standard:" + rows.length;
   } catch (err) {
     Sentry.captureException(err, {
       tags: { fn: "backfillSnapshots" },
       extra: { user_id: userId },
     });
+    return "error:" + (err instanceof Error ? err.message : String(err));
   }
 }
