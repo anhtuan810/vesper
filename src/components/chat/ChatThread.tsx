@@ -15,6 +15,7 @@ import { Chip } from "@/components/chat/Chip";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { classifyChip, cheapHash } from "@/lib/chip-telemetry";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
+import { isNative } from "@/lib/platform";
 import type { useChatSession } from "@/lib/use-chat-session";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
@@ -126,6 +127,19 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       document.documentElement.style.setProperty("--kb-inset", "0px");
     }, []);
     const onComposerFocus = useCallback(() => {
+      // Native: the Capacitor Keyboard plugin resizes the whole webview, so the
+      // visual viewport never shrinks relative to the layout viewport and the
+      // web detector below can't see the keyboard (and some installed binaries
+      // predate the plugin, so the native keyboardWillShow event never arrives
+      // either). On a phone, focusing the composer ALWAYS raises the keyboard, so
+      // treat focus itself as the signal: hide the nav (data-kb=open) and drop the
+      // composer's reserved nav padding. No --kb-inset — the webview has already
+      // resized, so the fixed container is already measured above the keyboard.
+      if (isNative()) {
+        setKeyboardOpen(true);
+        document.documentElement.dataset.kb = "open";
+        return;
+      }
       const vv = window.visualViewport;
       if (vv && !vvHandlerRef.current) {
         const handler = () => syncKeyboard();
@@ -142,6 +156,18 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     }, [resetKeyboard]);
     // Tidy up if the route unmounts while the keyboard is open.
     useEffect(() => () => { resetKeyboard(); }, [resetKeyboard]);
+
+    // When the keyboard opens the composer moves up and the message viewport
+    // shrinks; re-pin to the latest message once the reflow settles so the newest
+    // reply is never left clipped behind the composer. bottomRef lives inside the
+    // scroll container (owned by the page), so this scrolls that list, not the page.
+    useEffect(() => {
+      if (!keyboardOpen) return;
+      const id = requestAnimationFrame(() =>
+        bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }),
+      );
+      return () => cancelAnimationFrame(id);
+    }, [keyboardOpen, bottomRef]);
 
     useImperativeHandle(
       ref,
