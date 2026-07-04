@@ -44,11 +44,12 @@ const HELD = [
   { name: "Rotterdam", type: "real_estate", value: "€245,000", units: null },
 ];
 
-// Symbols that are genuinely ambiguous to resolve (dual-listed / multi-venue).
-// resolve_symbol returns needsClarification for these, exactly as the real
-// resolver would — so the eval measures whether the model routes the clarification
-// back to the user instead of silently guessing a listing.
-const AMBIGUOUS = /^(asml|vwce|vusa|vwrl)$/i;
+// Genuinely ambiguous hints — share classes the real resolver flags (e.g. Google
+// → GOOGL/GOOG). Note the real resolver does NOT flag bare ETF/dual-listed tickers
+// like ASML or VWCE as ambiguous; it resolves them to a single symbol. So the
+// venue-discipline test (A2) deliberately relies on the model's OWN judgment from
+// the system prompt to ask which listing — not on a stubbed clarification signal.
+const AMBIGUOUS = /^(google|alphabet)$/i;
 
 interface ToolCall {
   name: string;
@@ -169,9 +170,10 @@ const cases: EvalCase[] = [
     name: "A2 mixed batch w/ ambiguous listings → asks, doesn't silently commit the ambiguous ones",
     held: false,
     message: "Add 10 NVDA, 5 ASML and 200 VWCE, just track from now",
-    // ASML + VWCE resolve ambiguous; the model should surface the listing choice,
-    // never commit a guessed venue. It may commit NVDA (unambiguous); the invariant
-    // is it does NOT commit ASML or VWCE without clarification.
+    // ASML (dual-listed) and VWCE (bare UCITS ETF ticker) have a venue the model
+    // must ELICIT, not guess — the system prompt's venue-discipline rule. It may
+    // commit NVDA (plainly US); the invariant is it does NOT commit ASML or VWCE
+    // without asking which exchange first.
     expect: (c) => !/asml|vwce/.test(commitText(c)),
   },
   {
