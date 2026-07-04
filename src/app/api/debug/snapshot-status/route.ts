@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     supabase.from("snapshots").select("date, total_value").eq("user_id", user.id).order("date", { ascending: true }),
     supabase.from("assets").select("id, type, symbol, buy_date, removed_at").eq("user_id", user.id),
     supabase.from("mutations").select("occurred_at").eq("user_id", user.id).not("asset_id", "is", null),
-    supabase.from("entitlements").select("id").eq("user_id", user.id).eq("product_id", "demo").limit(1).maybeSingle(),
+    supabase.from("entitlements").select("user_id").eq("user_id", user.id).eq("product_id", "demo").limit(1).maybeSingle(),
   ]);
 
   const snaps = snapsRes.data ?? [];

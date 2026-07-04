@@ -651,7 +651,11 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     if (process.env.DEMO_USER_ID && userId === process.env.DEMO_USER_ID) return "skip:demo-user-id";
     const { data: demoEnt, error: demoErr } = await supabase
       .from("entitlements")
-      .select("id")
+      // NB: `entitlements` is keyed on user_id and has NO `id` column — selecting
+      // "id" errored ("column entitlements.id does not exist") on EVERY user, so
+      // demoErr was always truthy and this guard silently aborted every backfill,
+      // leaving all net-worth charts a single dot. Select a column that exists.
+      .select("user_id")
       .eq("user_id", userId)
       .eq("product_id", "demo")
       .limit(1)
