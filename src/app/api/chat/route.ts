@@ -36,7 +36,7 @@ import { resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
 import { validateScenarioIntent } from "@/lib/scenario/validate-intent";
 import { computePortfolioChange } from "@/lib/scenario/portfolio-readout";
-import { isAgentChatEnabled } from "@/lib/chat/agent-config";
+import { isAgentChatEnabled, CHAT_MODEL } from "@/lib/chat/agent-config";
 import { runAgentChat } from "@/lib/chat/agent-loop";
 import type { Modification } from "@/lib/scenario/engine";
 import type { Asset } from "@/lib/supabase";
@@ -716,7 +716,7 @@ export async function POST(req: NextRequest) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         response = await anthropic.messages.create({
-          model: "claude-sonnet-4-6",
+          model: CHAT_MODEL,
           // A multi-row screenshot import can produce a large <changes> JSON
           // (a 20+ row batch can exceed 3000 tokens and truncate mid-array, which
           // discards the whole commit). Give image turns more headroom.

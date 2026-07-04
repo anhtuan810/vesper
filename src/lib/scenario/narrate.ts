@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { validateNarration } from "@/lib/narrate/guardrail";
+import { CHAT_MODEL } from "@/lib/chat/agent-config";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 
 const anthropic = new Anthropic();
@@ -35,7 +36,7 @@ export async function narrateScenario(
 
   try {
     const res = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: CHAT_MODEL,
       max_tokens: 320,
       system,
       messages: [{ role: "user", content: parts.join("\n\n") }],

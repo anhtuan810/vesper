@@ -1,6 +1,6 @@
 // LIVE chat-behaviour eval — the manual checklist, automated and broadened.
 //
-// Sends each scenario to the real model (claude-sonnet-4-6) with the PRODUCTION
+// Sends each scenario to the real chat model (CHAT_MODEL) with the PRODUCTION
 // system prompt and asserts the control tags it emits match the intended
 // behaviour. Checks the model's DECISION only (no DB, prices, or auth).
 //
@@ -17,6 +17,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildOnboardingPrompt, buildStaticSystem, buildDynamicContext } from "../src/lib/claude";
 import { extractTag } from "../src/lib/chat-helpers";
+import { CHAT_MODEL } from "../src/lib/chat/agent-config";
 import type { Asset, Mutation } from "../src/lib/supabase";
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -25,7 +26,7 @@ if (!process.env.ANTHROPIC_API_KEY) {
 }
 
 const anthropic = new Anthropic();
-const MODEL = "claude-sonnet-4-6";
+const MODEL = CHAT_MODEL;
 
 // An existing portfolio + a recent add, for edit/correction/remove/read/scenario
 // cases that need held positions and RECENT CHANGES context.
@@ -127,6 +128,12 @@ const cases: EvalCase[] = [
     expect: (r) => has(r, "changes") && !has(r, "clarify"),
   },
   {
+    name: "B7b RELATIVE date ('about 6 months ago') commits, no date re-ask",
+    system: ONBOARDING,
+    message: "I have 100 apple, bought about 6 months ago",
+    expect: (r) => has(r, "changes") && !has(r, "clarify"),
+  },
+  {
     name: "B8 missing size → clarifies (clarify fires when it should)",
     system: ONBOARDING,
     message: "Add Apple",
@@ -171,6 +178,20 @@ const cases: EvalCase[] = [
     system: EXISTING,
     message: "Sold $3000 of Apple",
     expect: (r) => !has(r, "changes"),
+  },
+  {
+    name: "C6 buy MORE units of a HELD position → records an edit, never a bare 'Done' (reported bug)",
+    system: EXISTING,
+    // Apple is already held (160 units). "Add 200 more" must become an edit, not a
+    // no-op and not a blocked re-add. The failure mode we hit: no tags at all.
+    message: "Add 200 more Apple stock, bought 11 May 2026 at that day's market price",
+    expect: (r) => (has(r, "changes") || has(r, "propose_change")) && /apple|aapl/i.test(r),
+  },
+  {
+    name: "C7 relative date on a buy-more → engages the date, doesn't ignore it",
+    system: EXISTING,
+    message: "I bought another 20 NVDA about 6 months ago",
+    expect: (r) => (has(r, "changes") || has(r, "propose_change")) && /nvda|nvidia/i.test(r),
   },
 
   // ── D. Remove ────────────────────────────────────────────────────────────────

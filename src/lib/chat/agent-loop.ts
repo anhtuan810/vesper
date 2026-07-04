@@ -19,11 +19,11 @@ import { generateMarketSwings } from "@/lib/diary-market-moves";
 import { generateInsight } from "@/lib/insight-generator";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { AGENT_TOOLS, executeAgentTool, type ToolContext, type CommitOutcome } from "@/lib/chat/agent-tools";
-import { AGENT_MAX_TOOL_ROUNDTRIPS } from "@/lib/chat/agent-config";
+import { AGENT_MAX_TOOL_ROUNDTRIPS, CHAT_MODEL } from "@/lib/chat/agent-config";
 import type { ScenarioResult } from "@/lib/scenario/result";
 
 const anthropic = new Anthropic();
-const MODEL = "claude-sonnet-4-6";
+const MODEL = CHAT_MODEL;
 
 const SYSTEM = `You are Volnar's portfolio assistant. Converse naturally, briefly, and calmly — banker-quiet, no emoji, no exclamation marks, no hedging.
 
@@ -43,6 +43,10 @@ TRADEABLE ADDS — commit directly, no proposal step: when the user states they 
   - Acquisition date, ONLY if none was given at all. Accept any form (a year, a year-month, a full date, or "track from now") and move on immediately — never ask for more precision.
 Never ask about cost basis or buy price in any form — the system fills it in silently from market data when a date is known, with no annotation. Once quantity and date are settled (or you're not asking about either), call commit_mutation THIS turn — never end a turn with only an acknowledgment and no tool call. After it succeeds, reply with one short confirmation line (e.g. "Logged Apple — 100 shares from Jan 2020.") and nothing else: no cost-basis mention, no "would you like to add another".
 Value-mode adds (a money amount, no units) and all edits/removes still go through propose_mutation → commit_mutation as before.
+
+BUYING MORE of a position the user ALREADY holds is an EDIT, never an add and never a no-op: commit an edit for that position with the NEW TOTAL units (their current units from get_holdings PLUS the amount bought), carrying buy_date if a date is given. Never just acknowledge — record it.
+
+SCREENSHOT IMPORT — when the message includes broker screenshot(s): extract every real holding row and commit them in ONE commit_mutation call (one "add" per position). Multiple screenshots are usually the SAME portfolio scrolled — a ticker appearing in more than one image is ONE holding; de-duplicate by ticker and emit each unique position exactly once (prefer the row with the clearest quantity). SKIP options/derivatives (rows with Put, Call, or an expiry like "JUL 24 '26") and account-total/summary rows. A position already in the portfolio is a units update (edit), not a re-add. After committing, ask ONCE for the batch's acquisition date ("A rough month or year is fine, or 'just track from now'"); on the reply, edit every held position that has no acquisition date yet to that date.
 
 If a tool returns needsClarification, ask the user its question naturally and stop — do not guess. Keep answers to a few sentences.`;
 
@@ -111,7 +115,10 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       // Top-level cache_control marks the last cacheable block, so each tool
       // round-trip (and each follow-up turn) reads the tools+system+history
       // prefix from cache instead of re-paying full input price for it.
-      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 1500, system: SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
+      // 4000 (up from 1500): a screenshot-import commit_mutation call carries a
+      // large positions array as its tool input, which truncates at 1500 and
+      // discards the whole batch. Final-text rounds stay well under this.
+      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 4000, system: SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
       return { message: "Couldn't reach the assistant. Please try again.", remaining: CHAT_DAILY_LIMIT - input.used };
