@@ -23,6 +23,17 @@ updater rolls back if the new bundle doesn't boot cleanly.
 Needs `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` in the
 environment or `.env.local`.
 
+**From CI (no local run):** `.github/workflows/ota-release.yml` runs `ota:release`
+on a manual dispatch (Actions → "OTA release (native UI)" → Run workflow). It
+builds on Linux (no Xcode — `ota:release` reads `MARKETING_VERSION` from the
+checked-in Xcode project and never runs `cap sync`). Because the bundle is a full
+production build, it needs the production public env as repo secrets
+(`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_REVENUECAT_IOS_KEY`; optional
+`NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID`) — a preflight
+step **hard-fails** if any required one is missing, so a partial build can never
+ship broken auth or purchases.
+
 OTA is **on by default in every native build** — `build-native.mjs` bakes
 `NEXT_PUBLIC_ENABLE_OTA=true` into both the App Store binary and each OTA
 bundle (export `NEXT_PUBLIC_ENABLE_OTA=false` to build an opt-out binary).

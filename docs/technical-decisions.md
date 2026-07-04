@@ -183,12 +183,12 @@ Configured in `vercel.json`:
 
 ## AI / Claude Integration Approach
 
-- **Models**: `claude-sonnet-4-6` for the main assistant; `claude-haiku-4-5-20251001` for diary summary, profile extraction, and the AI insight band
-- **Max tokens**: 2000 for main assistant, 160 for diary summary, 500 for profile extraction, ~80 for insight band
-- **System prompt** built fresh per request in `src/lib/claude.ts` from current portfolio state, profile, and recent mutations
-- **Two prompt variants**: `buildOnboardingPrompt` (zero assets) and `buildSystemPrompt` (existing portfolio)
-- **Conversation history**: last 6 messages from `messages` table, with `<changes>` / `<context>` / `<goal>` tags stripped before being passed to Claude
-- **Image input**: base64 passed through as a content block when user pastes a screenshot
+- **Models**: `claude-opus-4-8` for the main assistant (the single source of truth is `CHAT_MODEL` in `src/lib/chat/agent-config.ts` — read by both chat engines and the scenario narration, so it can't drift); `claude-haiku-4-5-20251001` for diary summary, profile extraction, and the AI insight band. (Was Sonnet 4.6 until the 2026-07 chat-reliability pass; see "Chat engine" below.)
+- **Max tokens**: agent loop 8000 (a screenshot-import `commit_mutation` carries a large positions array as tool input and must not truncate mid-JSON); tag flow 2000 (5000 on a file-import turn); 160 for diary summary, 500 for profile extraction, ~80 for insight band
+- **System prompt** built fresh per request — the tag flow assembles `src/lib/claude.ts` from current portfolio state, profile, and recent mutations; the agent loop uses the compact `AGENT_SYSTEM` in `src/lib/chat/agent-loop.ts`
+- **Two prompt variants** (tag flow): `buildOnboardingPrompt` (zero assets) and `buildSystemPrompt` (existing portfolio)
+- **Conversation history**: last 20 real messages from `messages` table, with `<changes>` / `<context>` / `<goal>` tags stripped before being passed to Claude
+- **Image input**: downscaled + JPEG-compressed in the browser to the model's native resolution, then passed as a content block; PDFs ride as document blocks and CSVs as text — see "Onboarding File Uploads" below
 - **Currency in prompt**: parameterized with `displayCurrency`. Prose totals render in display currency; `<changes>` JSON stays native. `<context>` banker's notes are written in display currency. Goal targets stated in display currency are converted to USD via FX rates before INSERT.
 - **`<context>` instruction**: bans scaffolding language ("auto-filled", "live data", "Yahoo Finance"). Frames the context as a private banker's ledger note.
 - **Renaming support**: edit action accepts a `new_name` field. Pure renames (when the only diff is the name) update the asset row but skip the `mutations` insert — see Mutation Logging Rules below.
@@ -205,6 +205,18 @@ Claude returns small `<changes>` blocks — only what changed, never the full po
 
 Server-side validation in `src/lib/validations.ts` runs before any DB write. All-or-nothing: any negative-unit or negative-value result rejects the full turn with a banker's-tone error saved as the assistant reply.
 
+### Chat engine: agent tool-loop (default) vs tag flow (fallback) — 2026-07
+There are **two** chat engines behind one endpoint (`/api/chat`), selected by `isAgentChatEnabled()` in `src/lib/chat/agent-config.ts`:
+
+- **Agent tool-loop (`src/lib/chat/agent-loop.ts`) — the default engine.** Claude reasons over the thread and calls **schema-validated tools** (`src/lib/chat/agent-tools.ts`: reads, scenarios, `propose_mutation`, `commit_mutation`) for every figure and every write, feeding results back over up to `AGENT_MAX_TOOL_ROUNDTRIPS` rounds. Writes reuse the exact same deterministic path as the tag flow (`applyPortfolioChanges`) and the same background jobs (snapshot, backfill, market-swings, insight, profile). This replaced the tag flow as the live engine because reliability was capped by the tag design (see below).
+- **Tag flow (`src/lib/claude.ts` + `src/lib/prompt-blocks.ts`) — the fallback.** The model emits `<changes>` / `<propose_change>` / `<clarify>` / `<scenario>` tags in prose, regex-extracted with no schema validation and no feedback loop. Proven and still fully wired; kept as an instant rollback.
+
+**The switch is one env var.** `CHAT_AGENT_LOOP` defaults **on** (returns true unless explicitly `off`/`0`/`false`/`no`); set it off to fall straight back to the tag flow with no deploy. Both engines are held to the same behaviour eval (see Automated Testing below).
+
+**Two agent-loop specifics worth knowing** (both fixes from the 2026-07 pass):
+- After a successful `commit_mutation` the tool **refreshes `ctx.currentAssets` from the DB**, so a follow-up read in the same turn (or the model verifying the write landed) sees the new state — without it the model read the pre-commit snapshot and wrongly reported "the commit isn't succeeding".
+- `commit_mutation` returns **distinct signals** — `committed`, `alreadyInPortfolio` (exist, not an error), `couldNotRecord` (with the specific reason) — so the model narrates truthfully instead of reading every non-success as a failure.
+
 ### Background profile extraction
 After every non-onboarding chat, a separate Haiku call analyzes the exchange and updates `users.profile` and `users.fingerprint`. Fire-and-forget — never blocks the user response. The extractor emits four context fields (`life_and_direction`, `approach`, `currently_exploring`, `worth_raising`) plus a single-sentence fingerprint. Costs ~$0.003 per conversation.
 
@@ -217,6 +229,15 @@ After portfolio events, `/api/insight` may regenerate a single italic-serif "WOR
 
 ### Strict topic boundary
 System prompt tells Claude to refuse off-topic requests with a fixed redirect message.
+
+### Onboarding file uploads — 2026-07
+Users onboard by attaching what they already have: broker screenshots, a CSV export, or a PDF statement. Limits are calibrated for those real files and enforced on **both** client and server. Constants live in `src/lib/constants.ts` (`CHAT_*`).
+
+- **Images** are downscaled + JPEG-re-encoded **in the browser before upload** (`compressImageFile` in `src/lib/use-chat-session.ts`): long edge ≤ `CHAT_IMAGE_MAX_EDGE_PX` (**2576 px**, matching Opus 4.8's high-resolution vision tier so packed holdings text stays legible), quality 0.85. A 2–4 MB screenshot becomes ~150–400 KB — measured, not assumed. Max 5 per turn; original > 25 MB is rejected before decode (mobile-canvas OOM guard).
+- **CSV** is parsed to text in-browser (≤ `CHAT_CSV_MAX_BYTES` 1 MB / `CHAT_CSV_MAX_ROWS` 500 / `CHAT_CSV_MAX_TEXT_LEN` 60 K chars) and sent as a normal **text** turn — a model can't read a CSV as an image. Kept out of the 500-char user-text limit.
+- **PDF** rides as an Anthropic **document block** (base64, no beta header). Capped at `CHAT_PDF_MAX_MB` (3 MB) and `CHAT_MAX_PDFS` (2). Both chat engines build the document/text/image blocks.
+- **The binding ceiling is Vercel's ~4.5 MB serverless request body**, not Anthropic's 10 MB/image or 32 MB/request. `CHAT_REQUEST_MAX_BASE64` (4.2 MB) bounds the total across all attachments. It is enforced **client-side in `send()`** — a combination the per-file caps allow (e.g. two 3 MB PDFs) would otherwise be dropped by the platform with an opaque 413 before the server guard could run — with a matching server-side check as defence-in-depth.
+- Every rejection (wrong type, too big, over the count cap, over the total budget) surfaces a one-line reason under the composer; nothing is ever silently dropped.
 
 ## Indicative Property Value — CBS PBK over WOZ (2026-06)
 
@@ -394,6 +415,7 @@ Assets are cached in `sessionStorage` under the key `volnar.assets.<userId>` for
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `ANTHROPIC_API_KEY`
+- `CHAT_AGENT_LOOP` (optional) — chat engine selector. **Defaults on** (agent tool-loop); set to `off`/`0`/`false`/`no` to fall back to the tag flow. See "Chat engine" above.
 - `CRON_SECRET`
 - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` (optional)
 - `NEXT_PUBLIC_API_ORIGIN` (native build only)
@@ -447,7 +469,10 @@ A full audit of the chat write/read path (the app's primary surface) and its UI.
 Three layers, mirroring how the chat works. Replaces the former "No tests" debt.
 
 - **Per-commit CI** (`.github/workflows/ci.yml`) — on every push to `main` and every PR: `npm run typecheck` (full `tsc --noEmit`) then `npm test`. `npm test` runs `scripts/run-tests.mjs`, which executes every `scripts/verify-*.ts` (pure, hermetic — no network / DB / LLM / secrets) and fails on any; new `verify-<name>.ts` files are picked up automatically. Covers acquisition-date parsing, chip sanitisation, tag extraction, the add/edit/remove + pension validators, net-worth-context presentation, plus the existing scenario / projection / cost-basis engines.
-- **Model eval** (`scripts/eval-chat.ts`, `.github/workflows/chat-eval.yml`) — **manual-trigger only** (Actions → Run workflow); no schedule, so it never spends tokens on its own. Sends ~37 scenarios to the real `claude-sonnet-4-6` with the production prompt and asserts the emitted control tags match intent — the model's **decision only** (no DB / prices / auth). Assertions test robust safety invariants ("never silently mutate", "commit when complete"), not brittle wording, since the model legitimately varies ordering/phrasing. Needs the `ANTHROPIC_API_KEY` repo secret; skips cleanly without it; kept off per-commit CI (token cost + non-determinism). Scenarios span batch list-adds, single-add corner cases, edits/corrections, removes, real estate, pension, cash/bonds, what-if scenarios, guardrails (advice boundary, no-live-prices, prompt injection, off-topic) and read-not-add traps.
+- **Model evals — both engines** (`.github/workflows/chat-eval.yml`, **manual-trigger only**; no schedule, so it never spends tokens on its own). Two scripts run against the real `CHAT_MODEL` (`claude-opus-4-8`) with the production prompts, asserting the model's **decision only** (no DB / prices / auth), on robust safety invariants ("never silently mutate", "commit when complete") rather than brittle wording:
+  - `scripts/eval-chat.ts` (40 cases) — the **tag flow**: asserts the emitted `<changes>`/`<clarify>`/etc. tags match intent.
+  - `scripts/eval-agent-chat.ts` (24 cases) — the **agent loop**: runs the real loop with a stubbed tool executor and scores the **tool calls** it makes (commit vs propose vs read vs scenario vs decline). This is the measurement that justified making the agent loop the default engine.
+  Both need the `ANTHROPIC_API_KEY` repo secret, skip cleanly without it, and stay off per-commit CI (token cost + non-determinism). Scenarios span batch list-adds, ambiguous listings/venues, single-add corner cases, edits/corrections/buy-more, removes, real estate, pension, cash/bonds, what-ifs, guardrails (advice boundary, no-live-prices, prompt injection, off-topic) and read-not-add traps.
 - **Demo read eval** (`scripts/eval-chat-demo.ts`, `.github/workflows/demo-eval.yml`) — **manual-trigger only**, **read-only**. Signs into the shared demo account (which reseeds the deterministic "Alex" portfolio), asks 8 questions through the real `/api/chat`, and asserts the answers contain the known seeded values (40 NVIDIA, 0.07 BTC, €26k cash, €34k pension, Amsterdam+Rotterdam, EUR, net worth ~€368k). Exercises the full path auth→DB→model→answer. Targets the **deployed** app (`APP_BASE_URL`, default `https://app.volnar.nl`; the server holds the demo creds + Anthropic key), so it **lags a fix until Vercel redeploys**. Uses ~8 of the demo account's 50 daily chat calls and **skips (never fails) on a 429**; only asks questions, never writes, so it cannot corrupt the shared account.
 
 ## Mobile Foldable Vitals & Profile (2026-07)
@@ -940,6 +965,37 @@ honestly so the post-demo ask is expected. Researched (external CRO/PLG evidence
 - Process note: developed on `claude/marketing-page-conversion-mwymg8` per the
   session's branch designation.
 
+## Session log — 2026-07-04 (chat reliability → agent loop → onboarding uploads)
+
+Owner-driven session; the through-line was "chat must be smart when a real user
+types (or uploads) anything." Full sections above; the audit trail:
+
+- **Chat runs on the agent tool-loop, on Opus 4.8, by default.** The tag-and-parse
+  engine's reliability was capped by design (regex-extracted tags, no schema
+  validation, no feedback loop). Flipped `CHAT_AGENT_LOOP` on (default-on, one-env
+  rollback) after a new eval (`scripts/eval-agent-chat.ts`, 24 cases) scored the
+  loop's tool decisions at 24/24 against the same wild scenarios. `CHAT_MODEL`
+  centralised in `agent-config.ts`. See "Chat engine".
+- **Two agent-loop bugs fixed.** (1) It reported successful commits as failures
+  because `ctx.currentAssets` was frozen at turn start — now refreshed after a
+  commit so the model's own verification sees the write. (2) Added venue
+  elicitation (dual-listed / UCITS ETF tickers) so it stops silently guessing a
+  listing. Both caught by the eval.
+- **iOS keyboard fix** (`ChatThread.tsx`): on native, composer focus is treated as
+  the keyboard signal directly — the Capacitor Keyboard plugin resizes the webview
+  so `visualViewport` never fires, and older binaries lack the native event, so the
+  nav wasn't hiding and the newest reply was clipped behind the composer.
+- **Onboarding uploads bounded + broadened** — image compression, CSV, PDF, and a
+  client + server limit set calibrated to real broker files. See "Onboarding File
+  Uploads". A multi-agent audit of the diff then confirmed two gaps (an unreachable
+  server total-guard behind Vercel's 413, and a silent drop at the attachment cap);
+  both fixed.
+- **OTA release workflow** (`.github/workflows/ota-release.yml`) so native-UI
+  changes ship without a local run; preflight hard-fails on a missing secret. See
+  `docs/RELEASING.md`.
+- Process note: per the owner's standing preference and CLAUDE.md, developed and
+  pushed directly on `main`.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).
@@ -954,3 +1010,5 @@ honestly so the post-demo ask is expected. Researched (external CRO/PLG evidence
 - **AAPL logo intermittently 404s from FMP**. Falls back to monogram. Display-only.
 - ~~**Compound index on `messages (user_id, created_at DESC)`**~~ — **shipped** in `supabase/migrations/20260520_perf_indices.sql`. Also adds `snapshots(user_id, date DESC)` in the same file.
 - **Safari OAuth on localhost** is broken (ITP). Production unaffected.
+- **PDF upload capped at ~3 MB inline** (`CHAT_PDF_MAX_MB`) by Vercel's ~4.5 MB serverless body limit — a full multi-page statement over that gets a "send the holdings page as a screenshot" message. Routing uploads through Supabase Storage (client uploads, server fetches by key) would lift the ceiling; deferred until users hit it.
+- **HEIC images fail to decode client-side**. `compressImageFile` uses a canvas, which can't decode HEIC in most webviews, so a raw HEIC lands on the "Couldn't read that image" path. iOS usually transcodes to JPEG for web pickers and broker *screenshots* are PNG, so this is an edge case — a graceful failure, not a crash. A HEIC→JPEG decode step would close it.
