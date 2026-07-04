@@ -1115,9 +1115,14 @@ export async function POST(req: NextRequest) {
           }
           if (failures.length > 0) {
             const names = failures.map((f) => f.name).join(", ");
+            // A partial failure is almost always a transient market-data hiccup.
+            // The uploaded screenshot isn't retained server-side, so guide the
+            // user to re-send it rather than say "try again" (which implies we
+            // still have it); the up-front de-dup means only the still-missing
+            // positions get added on the retry.
             const suffix = failures.length === 1
-              ? `Couldn't record ${names} — please try that one again.`
-              : `Couldn't record ${failures.length} positions (${names}) — please try those again.`;
+              ? `Couldn't record ${names} just now — a temporary market-data hiccup. Re-send the screenshot and I'll pick it up.`
+              : `Couldn't record ${failures.length} positions (${names}) — a temporary market-data hiccup. Re-send the screenshot and I'll add just the ones still missing.`;
             displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
           }
           if (resolvedCanonicalAddresses.length > 0 && portfolioChanged) {
