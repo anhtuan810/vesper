@@ -582,18 +582,31 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
     proposalTimestamp: null,
   });
 
-  // Surface the actual reason (price/symbol lookup failed, etc.) so the model can
-  // tell the user WHY rather than an opaque "try those again" — and so the same
-  // detail reaches the logs. f.reason is already a user-facing sentence for the
-  // common ValueMode cases; keep it terse for anything else.
-  const notes = [
-    ...duplicateWarnings,
-    ...fxWarnings,
-    ...failures.map((f) => (f.reason ? `Couldn't record ${f.name} — ${f.reason}` : `Couldn't record ${f.name}.`)),
-  ];
+  // A change landed → refresh the in-context portfolio so any follow-up read in
+  // THIS same turn (get_holdings / get_net_worth / get_vitals, or the model
+  // verifying the write took) sees the new state, not the pre-commit snapshot.
+  // Without this the model's own "did it save?" check reads stale assets and
+  // wrongly concludes the write failed — then a retry re-commits the same rows,
+  // which now collide as duplicates, cementing a false "commit isn't succeeding".
+  if (changed) {
+    const { data: refreshed } = await ctx.supabase
+      .from("assets").select("*").eq("user_id", ctx.userId).is("removed_at", null);
+    if (refreshed) ctx.currentAssets = refreshed;
+  }
 
+  // Distinct signals so the model narrates truthfully rather than reading every
+  // non-success the same way: `committed` is whether anything was written;
+  // `alreadyInPortfolio` are positions that EXIST (reassure — not an error, do
+  // not retry); `couldNotRecord` carries the specific reason per failed row so
+  // the model states WHY instead of an opaque "try again". f.reason is already a
+  // user-facing sentence for the common ValueMode cases.
   return {
-    forModel: { committed: changed, ...(notes.length ? { notes } : {}) },
+    forModel: {
+      committed: changed,
+      ...(duplicateWarnings.length ? { alreadyInPortfolio: duplicateWarnings } : {}),
+      ...(failures.length ? { couldNotRecord: failures.map((f) => (f.reason ? `${f.name} — ${f.reason}` : f.name)) } : {}),
+      ...(fxWarnings.length ? { notes: fxWarnings } : {}),
+    },
     commit: { changed, mutationMetas, analyticsEvent: hasAdds ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
   };
 }

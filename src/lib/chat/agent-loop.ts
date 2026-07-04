@@ -45,6 +45,8 @@ TRADEABLE ADDS — commit directly, no proposal step: when the user states they 
 Never ask about cost basis or buy price in any form — the system fills it in silently from market data when a date is known, with no annotation. Once quantity and date are settled (or you're not asking about either), call commit_mutation THIS turn — never end a turn with only an acknowledgment and no tool call. After it succeeds, reply with one short confirmation line (e.g. "Logged Apple — 100 shares from Jan 2020.") and nothing else: no cost-basis mention, no "would you like to add another".
 Value-mode adds (a money amount, no units) and all edits/removes still go through propose_mutation → commit_mutation as before.
 
+AFTER commit_mutation returns, narrate from ITS result — never re-read the portfolio to "check" the write; the result already carries the whole outcome, and the portfolio tools reflect the commit. If it reports \`couldNotRecord\`, name those positions and the exact reason given, and do NOT claim they were saved. If it reports \`alreadyInPortfolio\`, those are already tracked — reassure the user, treat it as success (not a failure), and never retry them. Report as saved only the positions actually committed.
+
 BUYING MORE of a position the user ALREADY holds is an EDIT, never an add and never a no-op: commit an edit for that position with the NEW TOTAL units (their current units from get_holdings PLUS the amount bought), carrying buy_date if a date is given. Never just acknowledge — record it.
 
 SCREENSHOT IMPORT — when the message includes broker screenshot(s): extract every real holding row and commit them in ONE commit_mutation call (one "add" per position). Multiple screenshots are usually the SAME portfolio scrolled — a ticker appearing in more than one image is ONE holding; de-duplicate by ticker and emit each unique position exactly once (prefer the row with the clearest quantity). SKIP options/derivatives (rows with Put, Call, or an expiry like "JUL 24 '26") and account-total/summary rows. A position already in the portfolio is a units update (edit), not a re-add. After committing, ask ONCE for the batch's acquisition date ("A rough month or year is fine, or 'just track from now'"); on the reply, edit every held position that has no acquisition date yet to that date.
@@ -116,16 +118,25 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       // Top-level cache_control marks the last cacheable block, so each tool
       // round-trip (and each follow-up turn) reads the tools+system+history
       // prefix from cache instead of re-paying full input price for it.
-      // 4000 (up from 1500): a screenshot-import commit_mutation call carries a
-      // large positions array as its tool input, which truncates at 1500 and
-      // discards the whole batch. Final-text rounds stay well under this.
-      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 4000, system: AGENT_SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
+      // 8000: a screenshot-import commit_mutation call carries a large positions
+      // array as its tool input; if the response hits the cap mid-JSON the tool
+      // input truncates and the whole batch is silently discarded (this bit us at
+      // 1500). A big import (20+ rows, all fields) can approach 4000, so give it
+      // headroom. Final-text rounds stay far under this — max_tokens is a ceiling,
+      // not a target, so quiet rounds cost nothing extra.
+      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 8000, system: AGENT_SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
       return { message: "Couldn't reach the assistant. Please try again.", remaining: CHAT_DAILY_LIMIT - input.used };
     }
 
     messages.push({ role: "assistant", content: resp.content });
+    // A truncated response can cut a tool_use's JSON input mid-stream, silently
+    // dropping (e.g.) a whole commit_mutation batch. Rare now the cap is 8000, but
+    // flag it so it's diagnosable rather than an invisible "nothing committed".
+    if (resp.stop_reason === "max_tokens") {
+      Sentry.captureMessage("agent response hit max_tokens — a tool call may be truncated", "warning");
+    }
     const toolUses = resp.content.filter((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (toolUses.length === 0) {
       finalText = textFrom(resp.content);
