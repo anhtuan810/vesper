@@ -55,7 +55,9 @@ export const CHAT_IMAGE_MAX_EDGE_PX   = 2576;
 export const CHAT_IMAGE_JPEG_QUALITY  = 0.85;      // a touch above 0.82 to keep small text crisp
 export const CHAT_IMAGE_MAX_INPUT_MB  = 25;        // reject a monster original before canvas-decoding it
 export const CHAT_MAX_PDFS            = 2;
-export const CHAT_PDF_MAX_MB          = 3;         // ~4 MB base64 — fits under Vercel's ~4.5 MB body cap on its own
+export const CHAT_PDF_MAX_MB          = 3;         // one PDF ≈ 4 MB base64 — fits Vercel's ~4.5 MB body cap; a 2-PDF
+                                                   // combo that would exceed it is caught by the CLIENT total guard
+                                                   // below (send()), before the body is ever posted
 export const CHAT_CSV_MAX_BYTES       = 1_000_000; // 1 MB raw
 export const CHAT_CSV_MAX_ROWS        = 500;       // far more rows than any real portfolio
 export const CHAT_CSV_MAX_TEXT_LEN    = 60_000;    // cap the extracted text handed to the model

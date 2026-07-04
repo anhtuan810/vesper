@@ -8,7 +8,8 @@ import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
 import {
   CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX,
   CHAT_IMAGE_MAX_EDGE_PX, CHAT_IMAGE_JPEG_QUALITY, CHAT_IMAGE_MAX_INPUT_MB,
-  CHAT_PDF_MAX_MB, CHAT_CSV_MAX_BYTES, CHAT_CSV_MAX_ROWS, CHAT_CSV_MAX_TEXT_LEN,
+  CHAT_MAX_PDFS, CHAT_PDF_MAX_MB, CHAT_CSV_MAX_BYTES, CHAT_CSV_MAX_ROWS,
+  CHAT_CSV_MAX_TEXT_LEN, CHAT_REQUEST_MAX_BASE64,
 } from "@/lib/constants";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import type { ScenarioResult } from "@/lib/scenario/result";
@@ -389,21 +390,27 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   // Routes by file kind, does all validation + compression up front, and — unlike
   // before — tells the user when something is rejected instead of silently
   // dropping it. Async because image compression and file reads are async.
+  const MAX_CSVS = 2;
   const handleFile = useCallback(async (file: File) => {
     setAttachmentError(null);
     if (isPdfFile(file)) {
+      // Cap-check BEFORE the read so a rejected file gets a message (never a silent
+      // drop) and we don't spend work reading a file we won't keep.
+      if (pdfData.length >= CHAT_MAX_PDFS) { setAttachmentError(`You can attach up to ${CHAT_MAX_PDFS} PDF${CHAT_MAX_PDFS > 1 ? "s" : ""} at a time.`); return; }
       const pdf = await readPdfFile(file);
       if (!pdf) { setAttachmentError(`That PDF is over ${CHAT_PDF_MAX_MB} MB — send the holdings page as a screenshot, or a smaller PDF.`); return; }
-      setPdfData((prev) => (prev.length < 2 ? [...prev, pdf] : prev));
+      setPdfData((prev) => (prev.length < CHAT_MAX_PDFS ? [...prev, pdf] : prev));
       return;
     }
     if (isCsvFile(file)) {
+      if (csvData.length >= MAX_CSVS) { setAttachmentError(`You can attach up to ${MAX_CSVS} CSV files at a time.`); return; }
       const csv = await readCsvFile(file);
       if (!csv) { setAttachmentError("That CSV is too large — export just your holdings, or send a screenshot."); return; }
-      setCsvData((prev) => (prev.length < 2 ? [...prev, csv] : prev));
+      setCsvData((prev) => (prev.length < MAX_CSVS ? [...prev, csv] : prev));
       return;
     }
     if (ALLOWED_IMAGE_TYPES.has(file.type) || /\.(jpe?g|png|gif|webp)$/i.test(file.name)) {
+      if (imageData.length >= MAX_IMAGES) { setAttachmentError(`You can attach up to ${MAX_IMAGES} images at a time.`); return; }
       const compressed = await compressImageFile(file);
       if (!compressed) { setAttachmentError("Couldn't read that image — it may be too large or corrupted."); return; }
       setImageData((prev) => (prev.length < MAX_IMAGES ? [...prev, { base64: compressed.base64, mediaType: compressed.mediaType }] : prev));
@@ -411,7 +418,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       return;
     }
     setAttachmentError("Unsupported file. Attach an image, a PDF statement, or a CSV export.");
-  }, []);
+  }, [imageData.length, pdfData.length, csvData.length]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
@@ -446,6 +453,22 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     const text = input.trim();
     const hasAttachment = imageData.length > 0 || pdfData.length > 0 || csvData.length > 0;
     if ((!text && !hasAttachment) || loading || !userId) return;
+
+    // Total-payload guard — MUST be client-side. The whole request body has to fit
+    // under the serverless body limit (~4.5 MB); a combination the per-file caps
+    // allow (e.g. two 3 MB PDFs ≈ 8.4 MB base64) would be dropped by the platform
+    // with an opaque 413 BEFORE the server's matching guard could run. Catch it here
+    // so the user gets a clear message and keeps their attachments to trim.
+    const csvBytes = csvData.reduce((n, c) => n + c.name.length + c.text.length + 8, 0);
+    const totalBytes =
+      imageData.reduce((n, i) => n + i.base64.length, 0) +
+      pdfData.reduce((n, p) => n + p.base64.length, 0) +
+      csvBytes;
+    if (totalBytes > CHAT_REQUEST_MAX_BASE64) {
+      setAttachmentError("That's a lot to upload at once — send fewer or smaller files (a couple of screenshots, or one PDF).");
+      return;
+    }
+
     // Synchronous double-send guard (see sendInFlightRef).
     if (sendInFlightRef.current) return;
     sendInFlightRef.current = true;
