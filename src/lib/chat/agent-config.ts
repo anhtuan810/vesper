@@ -1,10 +1,12 @@
-// Feature flag for the server-side tool-calling chat loop. OFF by default so the
-// proven tag-emission route stays live; flipping CHAT_AGENT_LOOP=on (or "1"/"true")
-// routes chat through the agent loop. Keep this the single source of truth so
-// rollback is one env change (main auto-deploys to prod).
+// Feature flag for the server-side tool-calling chat loop. Now ON by default: the
+// agent loop (schema-validated tool calls + a reasoning loop) is the production
+// chat engine, replacing the legacy tag-emission route. The kill switch is
+// preserved — set CHAT_AGENT_LOOP=off (or "0"/"false"/"no") to fall straight back
+// to the tag route with no deploy, or revert this default (main auto-deploys).
 export function isAgentChatEnabled(): boolean {
   const v = (process.env.CHAT_AGENT_LOOP ?? "").trim().toLowerCase();
-  return v === "1" || v === "true" || v === "on" || v === "yes";
+  if (v === "0" || v === "false" || v === "off" || v === "no") return false;
+  return true;
 }
 
 // Max Claude<->tool round-trips per user turn, to bound latency.
