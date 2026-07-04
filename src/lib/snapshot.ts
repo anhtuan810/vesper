@@ -471,7 +471,7 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
   const [assetsRes, mutationsRes] = await Promise.all([
     supabase
       .from("assets")
-      .select("id, name, type, value, currency, symbol, pension_kind, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
+      .select("id, name, type, value, currency, symbol, units, pension_kind, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
       .eq("user_id", userId),
     supabase
       .from("mutations")
@@ -560,7 +560,14 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
     const removed = removalDate != null && date >= removalDate;
 
     if (TRADEABLE.has(type) && a.symbol) {
-      const units = unitsAtDate(mutsByAsset.get(id) ?? [], date);
+      const tl = mutsByAsset.get(id) ?? [];
+      // Same fallback as computeRow / getDiaryMarketMoves.unitsOf: an empty
+      // timeline (add mutation with after_units=null) must not drop a genuinely
+      // held position from the rewound book — fall back to the current units
+      // gated by acquisition + sale dates.
+      const units = tl.length > 0
+        ? unitsAtDate(tl, date)
+        : (!removed && date >= inception ? ((a.units as number | null) ?? 0) : 0);
       if (units <= 0) continue;
       const p = priceBySymbol.get(a.symbol as string) ?? null;
       if (p) {
@@ -844,7 +851,16 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
 
         if (TRADEABLE.has(type) && asset.symbol) {
           const timeline = mutsByAsset.get(asset.id as string) ?? [];
-          const units = unitsAtDate(timeline, date);
+          // Units from the mutation timeline; fall back to the asset's current
+          // units (gated by acquisition + sale dates) when the timeline is EMPTY.
+          // An add mutation with after_units=null leaves no timeline entry, which
+          // would value a genuinely-held tradeable at 0 for every historical date
+          // and collapse the whole rebuild to zero rows (skip:no-rows-computed) —
+          // even though the journal date and market-swing impact are correct.
+          // Mirrors getDiaryMarketMoves.unitsOf so all three surfaces agree.
+          const units = timeline.length > 0
+            ? unitsAtDate(timeline, date)
+            : (!removed && date >= inception ? ((asset.units as number | null) ?? 0) : 0);
           if (units > 0) {
             const history = priceHistories.get(asset.symbol as string);
             if (history) {
@@ -992,6 +1008,12 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         if (error) throw error;
       }
 
+      // Never wipe good history to replace it with nothing: if the recompute
+      // produced zero rows for this range (a transient all-null valuation, or a
+      // data quirk), skip the destructive delete and leave existing rows intact
+      // for a later run to correct. The delete + insert only happen together.
+      if (rebuildRows.length === 0) return "skip:rebuild-empty:from=" + rebuildStart;
+
       const { error: delError } = await supabase
         .from("snapshots")
         .delete()
@@ -1000,10 +1022,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         .lt("date", todayStr);
       if (delError) throw delError;
 
-      if (rebuildRows.length > 0) {
-        const { error: insError } = await supabase.from("snapshots").insert(rebuildRows);
-        if (insError) throw insError;
-      }
+      const { error: insError } = await supabase.from("snapshots").insert(rebuildRows);
+      if (insError) throw insError;
       return "ok:rebuild:" + rebuildRows.length + ":from=" + rebuildStart;
     }
 

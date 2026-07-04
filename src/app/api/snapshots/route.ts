@@ -27,7 +27,13 @@ export async function GET(request: NextRequest) {
   const supabase = createServerSupabase();
   let query = supabase
     .from("snapshots")
-    .select("id, date, total_value, breakdown, native_breakdown")
+    // `snapshots` is keyed on (user_id, date) — there is no `id` column (every
+    // other read selects without it; writeSnapshot upserts onConflict
+    // "user_id,date"). Selecting a non-existent `id` here made this route 500
+    // (the same class of bug as entitlements.select("id")), which would leave
+    // the chart's range/All fetch empty — a single dot even when rows exist. The
+    // response mapping never used `id` anyway.
+    .select("date, total_value, breakdown, native_breakdown")
     .eq("user_id", user.id)
     .gt("total_value", 0)
     .order("date", { ascending: true });
