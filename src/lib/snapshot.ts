@@ -659,7 +659,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // holdings reads filter removed_at; historical reconstruction must not.)
     const { data: assets, error: aErr } = await supabase
       .from("assets")
-      .select("id, type, value, currency, symbol, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
+      .select("id, type, value, currency, symbol, units, created_at, removed_at, buy_date, buy_price, country, address, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date, mortgage_end_date")
       .eq("user_id", userId);
     if (aErr) throw aErr;
     if (!assets || assets.length === 0) return;
@@ -754,13 +754,18 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       }),
     );
 
-    // Non-destructive guard: if a CURRENTLY-HELD tradeable's price history failed
-    // to load (Yahoo down, rate-limited, transient), every row containing it
-    // would collapse to ~0. The rebuild path DELETEs before reinserting, so a bad
-    // pass would replace good rows with corrupt ones. Abort before touching the
-    // table and let a later run retry — a stale-but-correct chart beats a freshly
-    // corrupted one. (Sold/removed symbols are exempt: a delisted disposal may
-    // legitimately no longer fetch, and it only contributes pre-sale.)
+    // Held tradeables whose full price history couldn't be loaded — a delisted
+    // or obscure/illiquid ticker, or a transient Yahoo failure. This used to
+    // ABORT the entire rebuild (writing nothing), on the theory that a missing
+    // history would collapse that holding to ~0 and corrupt the curve. But with
+    // a multi-holding portfolio, one unpriceable ticker among many then left the
+    // WHOLE net-worth line stuck as a single dot forever. Instead, keep going and
+    // value just those positions flat at cost basis in computeRow's history-less
+    // branch below — non-zero and reasonable, so one bad ticker can't blank the
+    // chart. The rebuild is an idempotent full-replace of the range, so a later
+    // run swaps the flat estimate for the real curve once the history loads.
+    // (Sold/removed symbols are exempt: a delisted disposal may legitimately no
+    // longer fetch, and it only contributes pre-sale.)
     const heldSymbols = new Set(
       assets
         .filter((a) => TRADEABLE.has(a.type as string) && a.symbol && a.removed_at == null)
@@ -768,12 +773,11 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     );
     const missingHeld = [...heldSymbols].filter((s) => !priceHistories.has(s));
     if (missingHeld.length > 0) {
-      Sentry.captureMessage("backfillSnapshots: aborting — missing price history for held symbols", {
+      Sentry.captureMessage("backfillSnapshots: valuing held symbols at cost basis — price history unavailable", {
         level: "warning",
         tags: { fn: "backfillSnapshots" },
         extra: { user_id: userId, missingHeld, rebuildFrom: rebuildFrom ?? null },
       });
-      return;
     }
 
     const fx = await getUsdRates();
@@ -844,6 +848,29 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
                 const raw = normalizePrice(priceEntry.price, priceEntry.currency);
                 const cur = priceEntry.currency === "GBp" ? "GBP" : priceEntry.currency;
                 const native = raw * units;
+                const rate = rateAt(date, cur);
+                contribution = cur === "USD" ? native : (rate ? native / rate : 0);
+                nativeContribution = native;
+                nativeCurrency = cur;
+              }
+            } else {
+              // No price history for this held symbol (delisted / obscure / a
+              // transient fetch failure). Value it flat at cost basis rather than
+              // 0, so one unpriceable ticker doesn't collapse the whole line —
+              // buy_price per unit if we have it, else the current unit price
+              // (value ÷ current units). Both are stored in the asset's native
+              // currency, already normalized. Self-corrects on a later run once
+              // the real history loads.
+              const cur = (asset.currency as string | null) || "USD";
+              const buyPrice = asset.buy_price as number | null;
+              const curUnits = asset.units as number | null;
+              const perUnit = (buyPrice && buyPrice > 0)
+                ? buyPrice
+                : (typeof asset.value === "number" && asset.value > 0 && curUnits && curUnits > 0
+                    ? (asset.value as number) / curUnits
+                    : 0);
+              if (perUnit > 0) {
+                const native = perUnit * units;
                 const rate = rateAt(date, cur);
                 contribution = cur === "USD" ? native : (rate ? native / rate : 0);
                 nativeContribution = native;
