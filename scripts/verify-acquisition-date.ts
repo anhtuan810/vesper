@@ -29,6 +29,41 @@ console.log("A stated date resolves to a stored month (the reported bug):");
   check('ISO month "2021-03" → 2021-03-01', parseAcquisitionMonth("2021-03") === "2021-03-01");
 }
 
+console.log("Relative phrases resolve (the reported \"6 months ago\" bug):");
+{
+  // Month arithmetic is anchored to today, so compute the expected month the
+  // same way the parser does rather than hard-coding a date (keeps the test
+  // stable as the clock moves).
+  const now = new Date();
+  const nowY = now.getUTCFullYear();
+  const nowM = now.getUTCMonth(); // 0-based
+  const monthsAgo = (n: number) => {
+    const total = nowY * 12 + nowM - n;
+    const y = Math.floor(total / 12);
+    const m = ((total % 12) + 12) % 12;
+    return `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  };
+  const daysAgo = (n: number) => {
+    const d = new Date(Date.UTC(nowY, nowM, now.getUTCDate()));
+    d.setUTCDate(d.getUTCDate() - n);
+    return d.toISOString().slice(0, 10);
+  };
+  check(`"6 months ago" → ${monthsAgo(6)}`, parseAcquisitionMonth("6 months ago") === monthsAgo(6), String(parseAcquisitionMonth("6 months ago")));
+  check(`"about 6 months ago" → ${monthsAgo(6)}`, parseAcquisitionMonth("about 6 months ago") === monthsAgo(6), String(parseAcquisitionMonth("about 6 months ago")));
+  check(`"4 months ago" → ${monthsAgo(4)}`, parseAcquisitionMonth("4 months ago") === monthsAgo(4), String(parseAcquisitionMonth("4 months ago")));
+  check(`"a month ago" → ${monthsAgo(1)}`, parseAcquisitionMonth("a month ago") === monthsAgo(1), String(parseAcquisitionMonth("a month ago")));
+  check(`"a year ago" → ${monthsAgo(12)}`, parseAcquisitionMonth("a year ago") === monthsAgo(12), String(parseAcquisitionMonth("a year ago")));
+  check(`"2 years ago" → ${monthsAgo(24)}`, parseAcquisitionMonth("2 years ago") === monthsAgo(24), String(parseAcquisitionMonth("2 years ago")));
+  check(`"a couple of months ago" → ${monthsAgo(2)}`, parseAcquisitionMonth("a couple of months ago") === monthsAgo(2), String(parseAcquisitionMonth("a couple of months ago")));
+  check(`"a few months ago" → ${monthsAgo(3)}`, parseAcquisitionMonth("a few months ago") === monthsAgo(3), String(parseAcquisitionMonth("a few months ago")));
+  check(`"last month" → ${monthsAgo(1)}`, parseAcquisitionMonth("last month") === monthsAgo(1), String(parseAcquisitionMonth("last month")));
+  check(`"last year" → ${monthsAgo(12)}`, parseAcquisitionMonth("last year") === monthsAgo(12), String(parseAcquisitionMonth("last year")));
+  check(`"3 weeks ago" → ${daysAgo(21)}`, parseAcquisitionMonth("3 weeks ago") === daysAgo(21), String(parseAcquisitionMonth("3 weeks ago")));
+  check(`"yesterday" → ${daysAgo(1)}`, parseAcquisitionMonth("yesterday") === daysAgo(1), String(parseAcquisitionMonth("yesterday")));
+  // A relative phrase is always in the past — never a future date, never undefined.
+  check('"in 6 months" (future) does NOT resolve', parseAcquisitionMonth("in 6 months") === undefined, String(parseAcquisitionMonth("in 6 months")));
+}
+
 console.log("Track-from-now / no-date → null (omit the acquisition date):");
 {
   check('"just track from now" → null', parseAcquisitionMonth("just track from now") === null);

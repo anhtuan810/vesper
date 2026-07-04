@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse, after } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { demoExpiredGate } from "@/lib/demo-session";
-import { writeSnapshot } from "@/lib/snapshot";
+import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { generateMarketSwings } from "@/lib/diary-market-moves";
 import { computeNetWorth } from "@/lib/utils";
 import { getUsdRates } from "@/lib/fx";
@@ -75,6 +75,14 @@ export async function POST(req: NextRequest) {
     };
     const portfolioTotal = computeNetWorth(allAssets || [], toUsdSync);
 
+    // Anchor the restored "add" to the position's real acquisition date, not the
+    // restore moment — mirrors the chat add path (apply-changes.ts). Otherwise a
+    // position bought long ago comes back stamped "today", which lands the journal
+    // entry on today and (below) leaves the net-worth line without any history.
+    const todayStr = new Date().toISOString().split("T")[0];
+    const buyDate = typeof created.buy_date === "string" ? created.buy_date.slice(0, 10) : null;
+    const occurredAt = buyDate || todayStr;
+
     const { data: mutation } = await supabase
       .from("mutations")
       .insert({
@@ -91,12 +99,18 @@ export async function POST(req: NextRequest) {
         currency: created.currency || "EUR",
         personal_context: "Restored after delete",
         portfolio_total: portfolioTotal,
-        occurred_at: new Date().toISOString().split("T")[0],
+        occurred_at: occurredAt,
       })
       .select("id")
       .single();
 
     after(() => writeSnapshot(user.id));
+    // A past acquisition date means every snapshot row from that date forward must
+    // be (re)built to include this holding — the same rebuild the chat path runs.
+    // Without it, restoring a years-old position leaves the graph a single dot.
+    if (buyDate && buyDate < todayStr) {
+      after(() => backfillSnapshots(user.id, buyDate));
+    }
     // Logging an asset (esp. one bought long ago) can surface new historical
     // market swings — regenerate them in the background so the user never waits.
     after(() => generateMarketSwings(user.id));

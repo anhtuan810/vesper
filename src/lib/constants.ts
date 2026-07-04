@@ -91,6 +91,13 @@ export const CURRENCY_TOAST_KEY = "volnar.currency.toastSeen";
 export const MARKET_MOVE_THRESHOLD_PCT = 2.0;
 export const MARKET_MOVE_WINDOW_TRADING_DAYS = 2;
 export const MARKET_MOVE_LOOKBACK_DAYS = 365;
+// The swing-detection window widens back to the earliest holding's acquisition
+// date (so a position bought years ago surfaces market events across its whole
+// held period — matching the net-worth line, which backfills to the buy date),
+// but never further than this — bounding the index/price/FX history fetched per
+// regeneration. Beyond ~5y the per-month caps and stale price coverage make the
+// extra span low-value.
+export const MARKET_MOVE_MAX_LOOKBACK_DAYS = 1825; // ~5 years
 
 // A big swing becomes a FULL journal entry (with the per-holding impact) when it
 // is among the largest by |impact| in its calendar month AND the impact clears a

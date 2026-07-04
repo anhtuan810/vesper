@@ -6,6 +6,7 @@ import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import {
   DIARY_MARKET_INDICES,
   MARKET_MOVE_LOOKBACK_DAYS,
+  MARKET_MOVE_MAX_LOOKBACK_DAYS,
   MARKET_MOVE_THRESHOLD_PCT,
   MARKET_SWING_EXPAND_FLOOR_PCT,
   MARKET_SWING_MAX_EXPANDED_PER_MONTH,
@@ -200,6 +201,7 @@ interface AssetRow {
   name: string | null;
   currency: string | null;
   units: number | null;
+  buy_date: string | null;
   created_at: string;
   removed_at: string | null;
 }
@@ -210,7 +212,6 @@ interface AssetRow {
 // card); the rest stay compact rows.
 export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClient): Promise<DiaryMarketMove[]> {
   const today = toDateStr(new Date());
-  const lookbackCutoff = toDateStr(new Date(Date.now() - MARKET_MOVE_LOOKBACK_DAYS * DAY_MS));
 
   // Display currency drives every number shown.
   const { data: userRow } = await supabase
@@ -220,7 +221,7 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   // Holdings + their unit timelines (so we know units held on any past date).
   const { data: assetRows } = await supabase
     .from("assets")
-    .select("id, type, symbol, name, currency, units, created_at, removed_at")
+    .select("id, type, symbol, name, currency, units, buy_date, created_at, removed_at")
     .eq("user_id", userId);
   const assets = (assetRows ?? []) as AssetRow[];
   const tradeables = assets.filter((a) => TRADEABLE.has(a.type) && a.symbol);
@@ -231,6 +232,30 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     .select("asset_id, action, after_units, occurred_at, recorded_at")
     .eq("user_id", userId)
     .not("asset_id", "is", null);
+
+  // Widen the swing-detection window back to the earliest holding, so a position
+  // bought years ago surfaces market events across its whole held period —
+  // matching the net-worth line, which backfills to the buy date — instead of a
+  // fixed trailing year. The earliest hold date is each tradeable's own add
+  // mutation occurred_at (= its buy date), with buy_date/created_at as fallbacks.
+  // Clamped to MARKET_MOVE_MAX_LOOKBACK_DAYS to bound the index/price/FX history
+  // fetched below (the swing query, price fetch and FX series all key off this).
+  const tradeableIds = new Set(tradeables.map((a) => a.id));
+  let earliestHeld = today;
+  for (const a of tradeables) {
+    const anchor = (a.buy_date ?? a.created_at)?.slice(0, 10);
+    if (anchor && anchor < earliestHeld) earliestHeld = anchor;
+  }
+  for (const m of mutationRows ?? []) {
+    if (!tradeableIds.has(m.asset_id as string)) continue;
+    const d = (m.occurred_at as string | null)?.slice(0, 10);
+    if (d && d < earliestHeld) earliestHeld = d;
+  }
+  const fixedCutoff = toDateStr(new Date(Date.now() - MARKET_MOVE_LOOKBACK_DAYS * DAY_MS));
+  const maxCutoff = toDateStr(new Date(Date.now() - MARKET_MOVE_MAX_LOOKBACK_DAYS * DAY_MS));
+  const lookbackCutoff = earliestHeld < fixedCutoff
+    ? (earliestHeld < maxCutoff ? maxCutoff : earliestHeld)
+    : fixedCutoff;
 
   const timelineByAsset = new Map<string, Array<{ date: string; units: number; seq: string }>>();
   for (const m of mutationRows ?? []) {
@@ -252,7 +277,10 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     const timeline = timelineByAsset.get(asset.id);
     if (timeline && timeline.length > 0) return unitsAtDate(timeline, date);
     if (asset.removed_at && date >= asset.removed_at.slice(0, 10)) return 0;
-    if (date < asset.created_at.slice(0, 10)) return 0;
+    // Gate on the real acquisition date, not the row's insert time, so a holding
+    // logged long after purchase still counts as held back to its buy date.
+    const acquired = (asset.buy_date ?? asset.created_at).slice(0, 10);
+    if (date < acquired) return 0;
     return asset.units ?? 0;
   };
 

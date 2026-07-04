@@ -102,6 +102,66 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
     return notFuture(`${bareYear[0]}-01-01`);
   }
 
+  // Relative phrases — "6 months ago", "about 4 months ago", "a year ago",
+  // "last month", "3 weeks ago", "yesterday", "last March". The model passes the
+  // user's words through VERBATIM (see prompt-blocks: "Pass every date phrase
+  // through verbatim. Deterministic code resolves it"), so turning these into a
+  // stored date is THIS module's job. Without it, a natural answer like "about
+  // 6 months ago" resolved to undefined and the acquisition date was silently
+  // dropped — leaving the position tracked from today: no net-worth history
+  // backfill, no journal entry at the purchase date, no market-event context.
+  // Months/years keep month precision (YYYY-MM-01, this module's contract);
+  // weeks/days are day-specific, so the resolved day is kept.
+  const now = new Date();
+  const nowY = now.getUTCFullYear();
+  const nowM = now.getUTCMonth(); // 0-based
+
+  // Shift `n` whole months back from this month → YYYY-MM-01. Pure year-month
+  // arithmetic, so no Date rollover surprises around month ends (Jan 31 − 1mo).
+  const monthsAgo = (n: number): string => {
+    const total = nowY * 12 + nowM - n;
+    const y = Math.floor(total / 12);
+    const m = ((total % 12) + 12) % 12; // 0-based, always non-negative
+    return `${y}-${pad2(m + 1)}-01`;
+  };
+  // Shift `n` days back from today → exact YYYY-MM-DD.
+  const daysAgo = (n: number): string => {
+    const d = new Date(Date.UTC(nowY, nowM, now.getUTCDate()));
+    d.setUTCDate(d.getUTCDate() - n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  if (/\byesterday\b/.test(lower)) return notFuture(daysAgo(1));
+  if (/\blast\s+week\b/.test(lower)) return notFuture(daysAgo(7));
+  if (/\blast\s+month\b/.test(lower)) return notFuture(monthsAgo(1));
+  if (/\blast\s+year\b/.test(lower)) return notFuture(monthsAgo(12));
+
+  // "last March" — the most recent past occurrence of a named month.
+  const lastNamed = lower.match(
+    /\blast\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/,
+  );
+  if (lastNamed) {
+    const tm = MONTHS[lastNamed[1]] - 1; // 0-based target month
+    const year = tm < nowM ? nowY : nowY - 1; // this year if already past, else last
+    return notFuture(`${year}-${pad2(tm + 1)}-01`);
+  }
+
+  // "<n> <unit> ago" — n is a digit or a small word quantifier ("a", "couple",
+  // "few"); unit is day/week/month/year (also accepts "…back"/"…earlier").
+  const WORD_QTY: Record<string, number> = { a: 1, an: 1, one: 1, couple: 2, few: 3 };
+  const rel = lower.match(/\b(\d+|a|an|one|couple|few)\s+(?:of\s+)?(day|week|month|year)s?\s+(?:ago|back|earlier)\b/);
+  if (rel) {
+    const n = /^\d+$/.test(rel[1]) ? parseInt(rel[1], 10) : WORD_QTY[rel[1]];
+    if (n && n > 0) {
+      switch (rel[2]) {
+        case "day": return notFuture(daysAgo(n));
+        case "week": return notFuture(daysAgo(n * 7));
+        case "month": return notFuture(monthsAgo(n));
+        case "year": return notFuture(monthsAgo(n * 12));
+      }
+    }
+  }
+
   return undefined;
 }
 
