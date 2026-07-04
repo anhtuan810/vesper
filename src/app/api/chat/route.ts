@@ -604,7 +604,7 @@ export async function POST(req: NextRequest) {
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(10),
+        .limit(40),
       supabase.from("users").select("profile, name, display_currency, fingerprint").eq("id", userId).single(),
       // The full recent log (not just 10): the DECISION JOURNAL context block
       // needs the real decisions — including years-old exits — or the model
@@ -634,7 +634,7 @@ export async function POST(req: NextRequest) {
         userId,
         message: message ?? "",
         images,
-        recentMessages: (recentMessages ?? []).slice(0, 6).reverse().map((mm) => ({ role: mm.role, content: mm.content })),
+        recentMessages: (recentMessages ?? []).slice(0, 20).reverse().map((mm) => ({ role: mm.role, content: mm.content })),
         currentAssets: currentAssets as Array<Record<string, unknown>>,
         displayCurrency,
         used,
@@ -671,15 +671,21 @@ export async function POST(req: NextRequest) {
           { type: "text", text: buildDynamicContext(currentAssets, profile, recentMutations || [], displayCurrency, userName, usdRates, decisionVerdicts) },
         ];
 
-    // --- Build conversation history (last 6 messages) ---
+    // --- Build conversation history ---
+    // Filter out messages that are empty AFTER tag-stripping BEFORE taking the
+    // window — otherwise a turn that was purely a structured tag (e.g. a
+    // <changes> commit or a <clarify> question) collapses to "" and silently
+    // shrinks the effective history to a couple of messages, which is why a
+    // follow-up mid-onboarding lost prior context. `recentMessages` is newest-
+    // first, so slice the most recent N real messages, then reverse to chrono.
     const history = (recentMessages || [])
-      .slice(0, 6)
-      .reverse()
       .map((m) => ({
         role: m.role as "user" | "assistant",
         content: stripTags(m.content),
       }))
-      .filter((m) => m.content.length > 0);
+      .filter((m) => m.content.length > 0)
+      .slice(0, 20)
+      .reverse();
 
     // --- Build current message (with optional images) ---
     const userContent: Anthropic.Messages.ContentBlockParam[] = [];
