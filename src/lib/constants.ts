@@ -46,8 +46,13 @@ export const INSIGHT_FRESH_DAILY_LIMIT = 60;
 // stay under Vercel's serverless body limit (~4.5 MB), so CHAT_REQUEST_MAX_BASE64
 // is the real ceiling; the PDF cap is sized to fit inside it on its own.
 export const CHAT_MAX_IMAGES          = 8;         // model accepts far more; this bounds cost/latency
-export const CHAT_IMAGE_MAX_EDGE_PX   = 1568;      // Anthropic standard-tier long edge — ample to read holdings
-export const CHAT_IMAGE_JPEG_QUALITY  = 0.82;
+// Match Opus 4.8's HIGH-RESOLUTION vision tier (2576 px native long edge). A dense
+// broker screenshot downscaled to 2576 keeps small text (share counts, tickers)
+// legible for reliable extraction, and measures only ~180 KB base64 — five of them
+// stay well under CHAT_REQUEST_MAX_BASE64. (Downscaling to the 1568 standard tier
+// would discard resolution Opus can actually use, hurting OCR on packed tables.)
+export const CHAT_IMAGE_MAX_EDGE_PX   = 2576;
+export const CHAT_IMAGE_JPEG_QUALITY  = 0.85;      // a touch above 0.82 to keep small text crisp
 export const CHAT_IMAGE_MAX_INPUT_MB  = 25;        // reject a monster original before canvas-decoding it
 export const CHAT_MAX_PDFS            = 2;
 export const CHAT_PDF_MAX_MB          = 3;         // ~4 MB base64 — fits under Vercel's ~4.5 MB body cap on its own

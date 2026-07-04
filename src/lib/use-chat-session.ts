@@ -116,10 +116,11 @@ const readDataUrl = (file: File): Promise<string> =>
   });
 
 // Downscale + re-encode an image entirely in the browser BEFORE upload. A phone
-// screenshot (2–4 MB PNG) becomes a ~250 KB JPEG: it keeps the whole request under
-// the serverless body limit, stays inside Anthropic's per-image bounds, and cuts
-// vision-token cost ~3×, with no visible loss for reading holdings. Returns null
-// on an unreadable/oversized original so the caller can surface a message.
+// screenshot (2–4 MB PNG) becomes a ~150–400 KB JPEG at the model's native
+// resolution (long edge ≤ CHAT_IMAGE_MAX_EDGE_PX): small enough to keep the whole
+// request under the serverless body limit, large enough that packed holdings text
+// stays legible for extraction. Returns null on an unreadable/oversized original
+// so the caller can surface a message.
 async function compressImageFile(
   file: File,
 ): Promise<{ base64: string; mediaType: string; previewUrl: string } | null> {
