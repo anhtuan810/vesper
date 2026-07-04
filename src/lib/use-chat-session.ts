@@ -27,6 +27,27 @@ export interface ChatMessage {
 let localIdSeq = 0;
 const nextLocalId = () => `m${++localIdSeq}`;
 
+// Maps DB message rows into ChatMessages, splitting an assistant turn that was
+// stored as multiple parts ("\n---\n"). Shared by the initial load, the pending-
+// reply reconcile, and load-more so the three can't drift.
+function mapDbMessages(
+  rows: Array<{ id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null; tool_result?: ScenarioResult | null }>,
+): ChatMessage[] {
+  return rows.flatMap((m): ChatMessage[] => {
+    if (m.role === "assistant" && m.content.includes("\n---\n")) {
+      return m.content.split("\n---\n").map((part, i, arr) => ({
+        id: i === 0 ? m.id : undefined,
+        localId: nextLocalId(),
+        from: "assistant" as const,
+        text: part.trim(),
+        suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
+        scenarioResult: i === arr.length - 1 ? (m.tool_result ?? null) : null,
+      }));
+    }
+    return [{ id: m.id, localId: nextLocalId(), from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
+  });
+}
+
 interface ChatResponse {
   message?: string;
   error?: string;
@@ -116,9 +137,12 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     if (!userId) return;
 
     const key = chatHistoryCacheKey(userId);
-    let hasHistory = false;
     const controller = new AbortController();
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
 
+    // --- Load localStorage (instant display) ---
+    let cached: ChatMessage[] = [];
     try {
       // Sweep any keys belonging to other users (check both old and new prefix)
       for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -135,9 +159,8 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
             // Backfill stable keys for cache entries written before localId
             // existed, then advance the seq past restored ids so freshly-minted
             // keys can't collide with them.
-            const withKeys = stored.map((m) => (m.localId ? m : { ...m, localId: nextLocalId() }));
-            setMessages(withKeys);
-            hasHistory = true;
+            cached = stored.map((m) => (m.localId ? m : { ...m, localId: nextLocalId() }));
+            setMessages(cached);
           }
         } else {
           localStorage.removeItem(key);
@@ -145,37 +168,62 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       }
     } catch {}
 
-    // DB fallback: fires only when localStorage had no usable messages.
-    if (!hasHistory) {
-      apiFetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`, { signal: controller.signal })
-        .then((r) => r.json())
-        .then((data) => {
-          if (!Array.isArray(data?.messages) || data.messages.length === 0) {
-            setHasMore(false);
-            return;
-          }
-          const mapped: ChatMessage[] = data.messages.flatMap(
-            (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null; tool_result?: ScenarioResult | null }) => {
-              if (m.role === "assistant" && m.content.includes("\n---\n")) {
-                return m.content.split("\n---\n").map((part, i, arr) => ({
-                  id: i === 0 ? m.id : undefined,
-                  localId: nextLocalId(),
-                  from: "assistant" as const,
-                  text: part.trim(),
-                  suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
-                  scenarioResult: i === arr.length - 1 ? (m.tool_result ?? null) : null,
-                }));
-              }
-              return [{ id: m.id, localId: nextLocalId(), from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
-            }
-          );
-          setMessages(mapped);
-          if (data.messages.length < CHAT_LOAD_LIMIT) setHasMore(false);
-        })
+    const fetchDb = async (): Promise<ChatMessage[] | null> => {
+      const r = await apiFetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`, { signal: controller.signal });
+      const data = await r.json();
+      if (!Array.isArray(data?.messages)) return null;
+      if (data.messages.length === 0) { if (!cancelled) setHasMore(false); return []; }
+      const mapped = mapDbMessages(data.messages);
+      if (data.messages.length < CHAT_LOAD_LIMIT && !cancelled) setHasMore(false);
+      return mapped;
+    };
+
+    // A cached thread that ends with a USER turn means a send didn't get its
+    // answer persisted on THIS surface — i.e. the user switched tabs mid-request,
+    // unmounting the component so its setMessages/localStorage write were no-ops.
+    // The answer is saved server-side regardless, so re-show the waiting state
+    // and poll the DB until the pending turn commits (a message newer than the
+    // last one we already have), then adopt the reconciled thread.
+    const last = cached[cached.length - 1];
+    const awaitingReply = cached.length > 0 && last?.from === "user";
+    const lastCommittedId = [...cached].reverse().find((m) => m.id)?.id ?? null;
+
+    if (cached.length === 0) {
+      // No usable cache — plain DB load.
+      fetchDb()
+        .then((mapped) => { if (mapped && mapped.length > 0 && !cancelled) setMessages(mapped); })
         .catch((err) => { if (err?.name !== "AbortError") console.error("Chat history fetch failed:", err); });
+    } else if (awaitingReply) {
+      setLoading(true);
+      setThinking(true);
+      const startedAt = Date.now();
+      const poll = async () => {
+        if (cancelled) return;
+        let mapped: ChatMessage[] | null = null;
+        try { mapped = await fetchDb(); }
+        catch (err) { if ((err as { name?: string })?.name === "AbortError") return; }
+        if (cancelled) return;
+        const newestDbId = mapped ? ([...mapped].reverse().find((m) => m.id)?.id ?? null) : null;
+        const committed = !!mapped && mapped.length > 0 && newestDbId !== lastCommittedId;
+        if (committed) {
+          setMessages(mapped!);
+          setLoading(false);
+          setThinking(false);
+          return;
+        }
+        if (Date.now() - startedAt < 75_000) {
+          pollTimer = setTimeout(poll, 2500);
+        } else {
+          // Gave up — the request likely failed. Stop the spinner; the user's
+          // message stays in the thread so they can re-ask.
+          setLoading(false);
+          setThinking(false);
+        }
+      };
+      poll();
     }
 
-    return () => { controller.abort(); };
+    return () => { cancelled = true; controller.abort(); if (pollTimer) clearTimeout(pollTimer); };
   }, [userId]);
 
   // Write only the latest CHAT_LOAD_LIMIT messages to localStorage — older paginated history stays out of the cache.
@@ -206,21 +254,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
 
-      const older: ChatMessage[] = data.messages.flatMap(
-        (m: { id: string; role: "user" | "assistant"; content: string; suggested_replies?: string[] | null; tool_result?: ScenarioResult | null }) => {
-          if (m.role === "assistant" && m.content.includes("\n---\n")) {
-            return m.content.split("\n---\n").map((part: string, i: number, arr: string[]) => ({
-              id: i === 0 ? m.id : undefined,
-              localId: nextLocalId(),
-              from: "assistant" as const,
-              text: part.trim(),
-              suggestedReplies: i === arr.length - 1 ? (m.suggested_replies ?? null) : null,
-              scenarioResult: i === arr.length - 1 ? (m.tool_result ?? null) : null,
-            }));
-          }
-          return [{ id: m.id, localId: nextLocalId(), from: m.role, text: m.content, suggestedReplies: m.suggested_replies ?? null, scenarioResult: m.tool_result ?? null }];
-        }
-      );
+      const older = mapDbMessages(data.messages);
 
       setMessages((prev) => [...older, ...prev]);
       if (data.messages.length < CHAT_LOAD_LIMIT) setHasMore(false);
