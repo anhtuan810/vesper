@@ -833,7 +833,7 @@ export function NetWorthChart(props: Props) {
               {markerMode && markerDots.map((dot, i) => {
                 const sel = dot.id === props.selectedMarkerId;
                 const hov = dot.id === hoveredMarker;
-                const dotColor = dot.kind === "market" ? "var(--text-faint)" : "var(--accent)";
+                const dotColor = dot.kind === "market" ? "var(--text-dim)" : "var(--accent)";
                 // First-visit stagger: dots light up oldest→newest after the line
                 // settles. Step is clamped so a long line never crawls (~0.5s total).
                 const revealStep = Math.min(0.07, 0.5 / Math.max(1, markerDots.length - 1));
@@ -850,9 +850,11 @@ export function NetWorthChart(props: Props) {
                     ) : hov ? (
                       <circle cx={dot.x} cy={dot.y} r={4.5} fill={dotColor} stroke="var(--surface)" strokeWidth={1.5} />
                     ) : dot.kind === "market" ? (
-                      // Auto market-swing entries stay quiet — a small faint dot — so
-                      // the user's own decisions (accent rings) own the line.
-                      <circle cx={dot.x} cy={dot.y} r={1.7} fill="var(--text-faint)" opacity={0.55} />
+                      // Auto market-swing entries: a small SOLID dot with a surface
+                      // outline so it reads on the line at rest (against the filled
+                      // area), yet stays distinct from — and quieter than — the
+                      // user's own decisions, which are hollow accent rings.
+                      <circle cx={dot.x} cy={dot.y} r={2.6} fill="var(--text-dim)" stroke="var(--surface)" strokeWidth={1} />
                     ) : (
                       <circle cx={dot.x} cy={dot.y} r={2.8} fill="var(--surface)" stroke={dotColor} strokeWidth={1.5} strokeOpacity={0.85} />
                     )}
