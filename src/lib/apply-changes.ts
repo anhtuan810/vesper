@@ -348,10 +348,6 @@ export async function applyPortfolioChanges({
         );
         continue;
       }
-      // Mark it as taken for the rest of THIS batch so a repeated screenshot row
-      // is caught above rather than colliding on insert.
-      if (dupSymKey) addedSymbolsThisBatch.add(dupSymKey);
-      else addedNamesThisBatch.add(dupNameKey);
 
       let resolvedValue = change.value || 0;
       let resolvedBuyPrice: number | null = change.buy_price || null;
@@ -379,8 +375,23 @@ export async function applyPortfolioChanges({
       const hasUnits = typeof change.units === "number" && change.units > 0;
       const hasValue = typeof change.value === "number" && change.value > 0;
 
+      // A units-mode tradeable whose live price couldn't be resolved (a transient
+      // upstream miss during a bulk import) would land at value 0. Tradeables are
+      // live-priced from units on read, so this self-corrects — but seed a sensible
+      // initial value from the stated cost basis so the position never shows €0
+      // before the first live price lands.
+      if (isTradeable && hasUnits && resolvedValue === 0 && resolvedBuyPrice && resolvedBuyPrice > 0) {
+        resolvedValue = Math.round(resolvedBuyPrice * change.units!);
+      }
+
       if (isTradeable && effectiveSymbol && !hasUnits && hasValue) {
-        const priceResult = await fetchYahooPrice(effectiveSymbol);
+        // Retry a transient price miss a couple of times before giving up — a bulk
+        // import can still catch an occasional throttle even with the bounded fan-out.
+        let priceResult = await fetchYahooPrice(effectiveSymbol);
+        for (let attempt = 0; attempt < 2 && (priceResult.error || !priceResult.price || priceResult.price <= 0); attempt++) {
+          await new Promise((r) => setTimeout(r, 400));
+          priceResult = await fetchYahooPrice(effectiveSymbol);
+        }
 
         if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
           throw new ValueModeError(
@@ -599,6 +610,11 @@ export async function applyPortfolioChanges({
         } else {
           changed = true;
           runningTotal = newRunningTotal;
+          // Mark taken ONLY on success, so a later repeat of this ticker in the
+          // same batch is caught as a duplicate — but a row that FAILED above
+          // leaves its key free for a twin (from an overlapping panel) to record.
+          if (dupSymKey) addedSymbolsThisBatch.add(dupSymKey);
+          else addedNamesThisBatch.add(dupNameKey);
           if (addedMutation?.id) {
             mutationMetas.push({ id: addedMutation.id, symbol: effectiveSymbol, occurredAt: addOccurredAt, assetType: change.type || "other" });
           }

@@ -634,7 +634,11 @@ export async function POST(req: NextRequest) {
         userId,
         message: message ?? "",
         images,
-        recentMessages: (recentMessages ?? []).slice(0, 20).reverse().map((mm) => ({ role: mm.role, content: mm.content })),
+        recentMessages: (recentMessages ?? [])
+          .map((mm) => ({ role: mm.role as "user" | "assistant", content: stripTags(mm.content) }))
+          .filter((mm) => mm.content.length > 0)
+          .slice(0, 20)
+          .reverse(),
         currentAssets: currentAssets as Array<Record<string, unknown>>,
         displayCurrency,
         used,
