@@ -55,6 +55,20 @@ export function venuePriorityFor(country: string): string[] {
   return PRIORITY[country] ?? DEFAULT_PRIORITY;
 }
 
+// Map a display currency to a representative country for venue-priority
+// resolution, so a bare UCITS ETF ticker (e.g. "VWCE") auto-resolves to the
+// listing in the user's currency instead of asking which exchange. EUR → Xetra
+// (the deepest EUR ETF venue), GBP → London. USD → US: bare US tickers price
+// directly, so the venue fallback only fires for a European ETF, where the
+// Xetra-first DEFAULT_PRIORITY is a sensible guess.
+export function venueCountryForCurrency(currency: string | null | undefined): string {
+  switch (currency) {
+    case "GBP": return "GB";
+    case "USD": return "US";
+    default: return "DE"; // EUR (and any unmapped currency) → Xetra-first EUR priority
+  }
+}
+
 const CHIPS: Record<string, string[]> = {
   NL: ["Amsterdam", "Xetra", "London", "I don't know"],
   DE: ["Xetra", "Frankfurt", "Amsterdam", "I don't know"],

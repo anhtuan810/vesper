@@ -56,13 +56,7 @@ console.log("Real-estate gate — the mortgage decision must be explicit:");
     g.ok === false && g.question.toLowerCase().includes("mortgage"),
   );
 
-  // An explicit outstanding balance completes the add.
-  check(
-    "value + outstanding mortgage balance → ok",
-    validateRealEstateChange({ type: "real_estate", value: 770000, mortgage_balance: 250000 }).ok === true,
-  );
-
-  // 0 is a VALID explicit answer — "owned free and clear".
+  // 0 is a VALID explicit answer — "owned free and clear" — and needs nothing more.
   check(
     "value + mortgage_balance 0 (owned outright) → ok",
     validateRealEstateChange({ type: "real_estate", value: 770000, mortgage_balance: 0 }).ok === true,
@@ -73,11 +67,54 @@ console.log("Real-estate gate — the mortgage decision must be explicit:");
     "negative mortgage balance → not ok",
     validateRealEstateChange({ type: "real_estate", value: 770000, mortgage_balance: -1 }).ok === false,
   );
+}
 
-  // Complete via a purchase + an explicit balance.
+console.log("Real-estate gate — a mortgage needs rate + payment + type (payoff inputs):");
+{
+  const withBalance = (extra: Record<string, unknown>) =>
+    validateRealEstateChange({ type: "real_estate", value: 770000, mortgage_balance: 250000, ...extra });
+
+  // Balance alone no longer completes the add — the payoff fields are required.
+  const noRate = withBalance({});
+  check("mortgage balance but no rate → not ok", noRate.ok === false);
+  check("asks about the interest rate", noRate.ok === false && noRate.question.toLowerCase().includes("rate"));
+
+  const noPayment = withBalance({ mortgage_rate: 3.5 });
+  check("rate but no payment → not ok", noPayment.ok === false);
+  check("asks about the monthly payment", noPayment.ok === false && noPayment.question.toLowerCase().includes("payment"));
+
+  const noType = withBalance({ mortgage_rate: 3.5, monthly_payment: 1400 });
+  check("rate + payment but no type → not ok", noType.ok === false);
+
   check(
-    "purchase + mortgage balance → ok",
-    validateRealEstateChange({ type: "real_estate", buy_price: 300000, buy_date: "2015", mortgage_balance: 120000 }).ok === true,
+    "invalid mortgage_type → not ok",
+    withBalance({ mortgage_rate: 3.5, monthly_payment: 1400, mortgage_type: "balloon" }).ok === false,
+  );
+
+  check(
+    "balance + rate + payment + type → ok",
+    withBalance({ mortgage_rate: 3.5, monthly_payment: 1400, mortgage_type: "annuity" }).ok === true,
+  );
+
+  // 0% is a valid explicit rate (an interest-free loan), not a missing answer.
+  check(
+    "interest-free (rate 0) + payment + type → ok",
+    withBalance({ mortgage_rate: 0, monthly_payment: 1400, mortgage_type: "linear" }).ok === true,
+  );
+
+  // Owned outright (balance 0) needs none of the payoff fields.
+  check(
+    "owned outright needs no rate/payment/type",
+    validateRealEstateChange({ type: "real_estate", value: 770000, mortgage_balance: 0 }).ok === true,
+  );
+
+  // Full complete add via a purchase anchor + a mortgage.
+  check(
+    "purchase + full mortgage → ok",
+    validateRealEstateChange({
+      type: "real_estate", buy_price: 300000, buy_date: "2015",
+      mortgage_balance: 120000, mortgage_rate: 2.9, monthly_payment: 900, mortgage_type: "interest_only",
+    }).ok === true,
   );
 }
 

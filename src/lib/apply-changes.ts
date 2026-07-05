@@ -17,6 +17,7 @@ import {
   type PensionChangeInput,
 } from "./pension-intake";
 import { validateRealEstateChange } from "./real-estate-intake";
+import { venueCountryForCurrency } from "./venues";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 // Non-tradeable, non-priced classes whose worth is the stated value itself.
@@ -262,7 +263,13 @@ export async function applyPortfolioChanges({
       const sym = aliasedSymbols[i];
       if (change.action === "add" && sym) {
         const normalizedSym = normalizeCryptoSymbol(sym, change.type);
-        const result = await fetchPriceWithFallback(normalizedSym, change.country);
+        // Venue auto-resolution: a bare UCITS ETF ticker (no exchange suffix)
+        // can't price on Yahoo directly, so fetchPriceWithFallback fans out to a
+        // country's exchange-priority suffixes. Tradeables carry no country, so
+        // fall back to one derived from the user's display currency — this is how
+        // "VWCE" lands on the EUR/GBP listing without ever asking which exchange.
+        const venueCountry = change.country ?? venueCountryForCurrency(fallbackCurrency);
+        const result = await fetchPriceWithFallback(normalizedSym, venueCountry);
         if (!result.error) return { symbol: result.symbol, nativeCurrency: result.nativeCurrency };
       }
     } catch { /* transient lookup failure — degrade this row, not the batch */ }

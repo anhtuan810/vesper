@@ -6,8 +6,14 @@
 //     value (or a purchase price + date the estimate engine can index forward),
 //     and an EXPLICIT mortgage decision — the outstanding balance, or 0 when the
 //     user confirms it's owned free and clear.
-//   - OPTIONAL: mortgage_rate, monthly_payment, mortgage_type, mortgage_start_date,
-//     mortgage_end_date, property_type, size_sqm.
+//   - REQUIRED WHEN THERE IS A MORTGAGE (balance > 0): mortgage_rate (the annual
+//     interest rate; 0 is a valid answer for an interest-free loan), monthly_payment,
+//     and mortgage_type (annuity | linear | interest_only). These are what the
+//     payoff/"mortgage-free" projection (projectMortgage) and the live equity
+//     amortisation (computeCurrentBalance) actually consume — without them the
+//     balance sits frozen and no payoff date can be drawn.
+//   - OPTIONAL: mortgage_start_date, mortgage_end_date (the end date is what gives
+//     an interest-only mortgage a payoff date), property_type, size_sqm.
 //
 // The mortgage decision is the crux: the write path stores `mortgage_balance ?? null`,
 // and a null balance renders as "Owned outright" in the UI. So a property added
@@ -27,9 +33,15 @@ export interface RealEstateChangeInput {
   buy_price?: number | null;
   buy_date?: string | null;
   mortgage_balance?: number | null;
+  mortgage_rate?: number | null;
+  monthly_payment?: number | null;
+  mortgage_type?: string | null;
 }
 
 export type RealEstateGateResult = { ok: true } | { ok: false; question: string };
+
+// The repayment structures the payoff engine (projectMortgage) understands.
+const VALID_MORTGAGE_TYPES = new Set(["annuity", "linear", "interest_only"]);
 
 const isPositiveNumber = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v) && v > 0;
@@ -65,6 +77,23 @@ export function validateRealEstateChange(c: RealEstateChangeInput): RealEstateGa
       question:
         "Is there a mortgage on it? Tell me the outstanding balance — or say it's owned free and clear.",
     };
+  }
+
+  // When there IS a mortgage, the payoff/"mortgage-free" projection needs the
+  // rate, the monthly payment, and the repayment structure — collect all three.
+  // (Owned-outright properties, balance 0, need none of this.)
+  if (c.mortgage_balance > 0) {
+    // Rate: 0 is a valid explicit answer (an interest-free loan), so accept any
+    // non-negative number; only a missing rate is unresolved.
+    if (!isNonNegativeNumber(c.mortgage_rate)) {
+      return { ok: false, question: "What's the mortgage interest rate? (If it's interest-free, just say 0.)" };
+    }
+    if (!isPositiveNumber(c.monthly_payment)) {
+      return { ok: false, question: "What's the monthly mortgage payment?" };
+    }
+    if (typeof c.mortgage_type !== "string" || !VALID_MORTGAGE_TYPES.has(c.mortgage_type)) {
+      return { ok: false, question: "What kind of mortgage is it — annuity, linear, or interest-only?" };
+    }
   }
 
   return { ok: true };

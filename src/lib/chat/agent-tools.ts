@@ -100,11 +100,11 @@ const CHANGE_ITEM_SCHEMA = {
     country: { type: "string" },
     // ── Real-estate / mortgage ──
     mortgage_balance: { type: "number", description: "real_estate ONLY, REQUIRED on a property add: the outstanding mortgage balance, in the property's currency. Set 0 ONLY when the user confirms the property is owned free and clear. NEVER omit this on a property add — an omitted balance is silently recorded as \"owned outright\", which is the wrong default when there is a mortgage." },
-    mortgage_rate: { type: "number", description: "Annual mortgage interest rate as a percent (e.g. 3.5 for 3.5%). Also reused as a pension pot's annual growth assumption." },
-    monthly_payment: { type: "number", description: "Monthly mortgage payment, in the property's currency." },
-    mortgage_type: { type: "string", enum: ["annuity", "linear", "interest_only"], description: "Mortgage repayment structure." },
+    mortgage_rate: { type: "number", description: "Annual mortgage interest rate as a percent (e.g. 3.5 for 3.5%). REQUIRED on a property add whenever mortgage_balance > 0 (pass 0 for an interest-free loan). Also reused as a pension pot's annual growth assumption." },
+    monthly_payment: { type: "number", description: "Monthly mortgage payment, in the property's currency. REQUIRED on a property add whenever mortgage_balance > 0." },
+    mortgage_type: { type: "string", enum: ["annuity", "linear", "interest_only"], description: "Mortgage repayment structure. REQUIRED on a property add whenever mortgage_balance > 0." },
     mortgage_start_date: { type: "string", description: "When the mortgage started (year, year-month, or full date)." },
-    mortgage_end_date: { type: "string", description: "When the mortgage is due to be repaid (year, year-month, or full date)." },
+    mortgage_end_date: { type: "string", description: "When the mortgage is due to be repaid (year, year-month, or full date). For an interest_only mortgage this is what yields a payoff date, so capture it when known." },
     property_type: { type: "string", description: "e.g. apartment, house, land." },
     size_sqm: { type: "number", description: "Floor area in square metres." },
     // ── Pension ──
@@ -667,6 +667,9 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
       currentAssets: ctx.currentAssets as never,
       contextNote: str(input.contextNote),
       proposalTimestamp: null,
+      // Feeds the venue auto-resolution: a bare ETF ticker resolves to the
+      // listing matching the user's currency (EUR → Xetra, GBP → London).
+      displayCurrency: ctx.displayCurrency,
     });
   } catch (err) {
     if (err instanceof ValueModeError) {

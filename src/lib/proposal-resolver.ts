@@ -1,5 +1,6 @@
 import { ValueModeError } from "./apply-changes";
-import { fetchYahooPrice } from "./prices-server";
+import { fetchYahooPrice, fetchPriceWithFallback } from "./prices-server";
+import { venueCountryForCurrency } from "./venues";
 import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { normalizeCryptoSymbol } from "./symbol-aliases";
 import { getUsdRates } from "./fx";
@@ -258,7 +259,10 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
 
     if (isTradeable && proposal.symbol && !hasUnits && hasValue) {
       const lookupSymbol = normalizeCryptoSymbol(proposal.symbol, proposal.type);
-      const priceResult = await fetchYahooPrice(lookupSymbol);
+      // Venue-aware: a bare UCITS ETF ticker can't price directly, so fall back to
+      // the listing matching the stated currency (we no longer ask the exchange) —
+      // keeps a value-mode ETF add ("€5k of VWCE") working without a venue question.
+      const priceResult = await fetchPriceWithFallback(lookupSymbol, venueCountryForCurrency(proposal.currency));
       if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
         throw new ValueModeError(
           `Couldn't fetch a live price for ${proposal.symbol} right now — could you state the unit count instead?`
