@@ -144,6 +144,23 @@ function commitText(calls: ToolCall[]): string {
   }
   return parts.join(" ").toLowerCase();
 }
+// Every committed change must carry a non-empty `name`. The write path silently
+// skips a name-less change (it keys the asset row on it), so a model that emits
+// only `symbol` saves NOTHING — the exact "committed: false, payload valid" bug.
+// This guards the tool schema keeps forcing a name on every add.
+function everyCommitChangeNamed(calls: ToolCall[]): boolean {
+  let sawCommit = false;
+  for (const c of calls) {
+    if (c.name !== "commit_mutation") continue;
+    const changes = Array.isArray(c.input.changes) ? c.input.changes : [];
+    for (const ch of changes) {
+      sawCommit = true;
+      const nm = ch && typeof ch === "object" ? (ch as Record<string, unknown>).name : undefined;
+      if (typeof nm !== "string" || !nm.trim()) return false;
+    }
+  }
+  return sawCommit; // only meaningful when a commit happened
+}
 // Any read tool (portfolio inspection) — the right move for a "what do I have" turn.
 const readTool = (calls: ToolCall[]): boolean =>
   called(calls, "get_holdings") || called(calls, "get_net_worth") || called(calls, "get_vitals") || called(calls, "resolve_asset");
@@ -161,10 +178,10 @@ interface EvalCase {
 const cases: EvalCase[] = [
   // ── A. Onboarding: adding a LIST of stocks ──────────────────────────────────
   {
-    name: "A1 batch: 3 stocks with units → commits all three",
+    name: "A1 batch: 3 stocks with units → commits all three, each with a name",
     held: false,
     message: "I have 100 Apple, 50 Microsoft and 20 Tesla — just track from now",
-    expect: (c) => committed(c) && /apple|aapl/.test(commitText(c)) && /micro|msft/.test(commitText(c)) && /tesla|tsla/.test(commitText(c)),
+    expect: (c) => committed(c) && everyCommitChangeNamed(c) && /apple|aapl/.test(commitText(c)) && /micro|msft/.test(commitText(c)) && /tesla|tsla/.test(commitText(c)),
   },
   {
     name: "A2 mixed batch w/ ambiguous listings → asks, doesn't silently commit the ambiguous ones",
@@ -204,10 +221,10 @@ const cases: EvalCase[] = [
     expect: (c) => !committed(c) && called(c, "propose_mutation"),
   },
   {
-    name: "B5 full purchase (units+price+date) → commits directly",
+    name: "B5 full purchase (units+price+date) → commits directly, with a name",
     held: false,
     message: "I bought 10 NVDA at $400 on 2025-11-10",
-    expect: (c) => committed(c) && /nvda|nvidia/.test(commitText(c)),
+    expect: (c) => committed(c) && everyCommitChangeNamed(c) && /nvda|nvidia/.test(commitText(c)),
   },
   {
     name: "B7 stated date commits, no date re-ask (the reported bug)",

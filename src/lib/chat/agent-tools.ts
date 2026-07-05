@@ -4,6 +4,7 @@
 // return structured results the client renders as the existing cards; write tools
 // reuse resolveProposal (propose, no write) and applyPortfolioChanges (commit).
 
+import * as Sentry from "@sentry/nextjs";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { createServerSupabase } from "@/lib/supabase";
 import { formatMoney, setUsdRate, isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
@@ -69,6 +70,32 @@ export interface ToolOutcome {
 const SYMBOL: Record<DisplayCurrency, string> = { EUR: "€", USD: "$", GBP: "£" };
 const CATEGORY_LABEL: Record<string, string> = { property: "Property", markets: "Public markets", reserves: "Reserves", crypto: "Crypto" };
 
+// Structured shape for one add/edit/remove. `name` is REQUIRED — the write path
+// (applyPortfolioChanges) keys the asset row + dedup on it and SILENTLY SKIPS any
+// change with an empty name, so an unstructured schema that let the model omit
+// `name` (emitting only `symbol`) caused whole screenshot batches to land as
+// "committed: false, nothing saved". `additionalProperties` is left open so the
+// model can still pass the less-common fields (buy_price, mortgage_balance, …).
+const CHANGE_ITEM_SCHEMA = {
+  type: "object",
+  description: "One portfolio change. Always include `name` — for a listed security it may equal the ticker (e.g. \"AAPL\"), but it must never be empty.",
+  properties: {
+    action: { type: "string", enum: ["add", "edit", "remove"] },
+    name: { type: "string", description: "REQUIRED. The position's display name — a company/asset name or its ticker (e.g. \"Apple\", \"AAPL\", \"Bitcoin\"). Never empty." },
+    new_name: { type: "string", description: "For a rename edit only." },
+    type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bond", "pension", "real_estate", "other"], description: "Asset type; use \"stocks\" for a listed equity." },
+    symbol: { type: "string", description: "Market ticker for a tradeable (e.g. AAPL, BTC, VWCE.DE)." },
+    units: { type: "number", description: "Quantity held (shares / coins / oz)." },
+    value: { type: "number", description: "Monetary amount, for a value-mode add or a set." },
+    currency: { type: "string", enum: ["EUR", "USD", "GBP"] },
+    buy_date: { type: "string", description: "Acquisition date/month/year or a relative phrase; omit if unknown." },
+    removal_reason: { type: "string", enum: ["sold", "mistake"] },
+    address: { type: "string", description: "Street address for a real-estate add/edit." },
+    country: { type: "string" },
+  },
+  required: ["action", "name"],
+};
+
 // ── Tool schemas (given to Claude) ─────────────────────────────────────────────
 export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
   { name: "get_net_worth", description: "The user's current net worth and top-line vitals. Use before relating any figure to their net worth.", input_schema: { type: "object", properties: {} } },
@@ -130,12 +157,12 @@ export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
   {
     name: "propose_mutation",
     description: "Resolve a portfolio change (add/edit/remove) into a confirmable proposal. Does NOT write — surfaces confirm chips. Call this for any stated completed action before committing.",
-    input_schema: { type: "object", properties: { changes: { type: "array", items: { type: "object" } } }, required: ["changes"] },
+    input_schema: { type: "object", properties: { changes: { type: "array", items: CHANGE_ITEM_SCHEMA } }, required: ["changes"] },
   },
   {
     name: "commit_mutation",
-    description: "Apply a portfolio change to the database. ONLY call after the user has explicitly confirmed a prior propose_mutation.",
-    input_schema: { type: "object", properties: { changes: { type: "array", items: { type: "object" } }, contextNote: { type: "string" } }, required: ["changes"] },
+    description: "Apply a portfolio change to the database. Every change MUST carry a non-empty `name` (a rowless name is dropped). ONLY call after the user has explicitly confirmed a prior propose_mutation — except a direct tradeable add / screenshot import, which commits without a proposal.",
+    input_schema: { type: "object", properties: { changes: { type: "array", items: CHANGE_ITEM_SCHEMA }, contextNote: { type: "string" } }, required: ["changes"] },
   },
 ];
 
@@ -163,6 +190,21 @@ const num = (v: unknown): number | null => (typeof v === "number" && Number.isFi
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 const fmtUnits = (n: number) => (Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(8))));
 const pct = (n: number) => `${n.toFixed(1)}%`;
+
+// Defense-in-depth for the "name-less change silently skipped" failure mode.
+// applyPortfolioChanges drops any change whose `name` is empty (it keys the asset
+// row + dedup on it), so a model that emits only `symbol` would have every row
+// skipped and nothing saved. Backfill `name` from `symbol` here before any write;
+// the write path still resolves the canonical (Yahoo) name for the stored row.
+function backfillChangeNames(changes: unknown[]): void {
+  for (const raw of changes) {
+    if (!raw || typeof raw !== "object") continue;
+    const c = raw as Record<string, unknown>;
+    const name = typeof c.name === "string" ? c.name.trim() : "";
+    const sym = typeof c.symbol === "string" ? c.symbol.trim() : "";
+    if (!name && sym) c.name = sym;
+  }
+}
 
 // ── Executor ─────────────────────────────────────────────────────────────────
 export async function executeAgentTool(name: string, input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
@@ -489,6 +531,7 @@ async function resolveRealEstateGeo(
 async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
   const changes = Array.isArray(input.changes) ? input.changes : [];
   if (changes.length === 0) return { forModel: { error: "No changes to propose." } };
+  backfillChangeNames(changes);
 
   // Geocode real-estate addresses up front so the proposal surfaces the canonical
   // address for confirmation; ask naturally on an unresolvable address (no write).
@@ -516,6 +559,7 @@ async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolCont
 async function commitMutationTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
   const rawChanges = Array.isArray(input.changes) ? input.changes : [];
   if (rawChanges.length === 0) return { forModel: { error: "No changes to commit." } };
+  backfillChangeNames(rawChanges);
 
   // Re-run the geocode gate deterministically: a real-estate add/edit with an
   // address must resolve to a canonical address + coords before any write. If it
@@ -594,6 +638,17 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
     if (refreshed) ctx.currentAssets = refreshed;
   }
 
+  // Silent-skip backstop: nothing written, yet no failures AND no duplicates — the
+  // rows were structurally dropped by the write path (the classic cause: a change
+  // with an empty `name`, now backfilled above). This must never again surface to
+  // the model as a vague "write path failing, payload valid" with no signal.
+  // Capture it, and hand the model an explicit, actionable note instead of a bare
+  // committed:false it can only guess at.
+  const nothingLanded = !changed && duplicateWarnings.length === 0 && failures.length === 0;
+  if (nothingLanded && hasAdds) {
+    Sentry.captureMessage("agent commit wrote nothing with no failures or duplicates — rows skipped", "warning");
+  }
+
   // Distinct signals so the model narrates truthfully rather than reading every
   // non-success the same way: `committed` is whether anything was written;
   // `alreadyInPortfolio` are positions that EXIST (reassure — not an error, do
@@ -605,6 +660,7 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
       committed: changed,
       ...(duplicateWarnings.length ? { alreadyInPortfolio: duplicateWarnings } : {}),
       ...(failures.length ? { couldNotRecord: failures.map((f) => (f.reason ? `${f.name} — ${f.reason}` : f.name)) } : {}),
+      ...(nothingLanded && hasAdds ? { note: "Nothing was written and there were no per-row errors — the change rows were malformed (each add needs a non-empty name and a symbol). Rebuild the rows with an explicit name on each and commit once more." } : {}),
       ...(fxWarnings.length ? { notes: fxWarnings } : {}),
     },
     commit: { changed, mutationMetas, analyticsEvent: hasAdds ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
