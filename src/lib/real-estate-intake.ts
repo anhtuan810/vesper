@@ -29,6 +29,7 @@
 // the propose/commit changes and existing asset rows fit it.
 export interface RealEstateChangeInput {
   type?: string | null;
+  country?: string | null;
   value?: number | null;
   buy_price?: number | null;
   buy_date?: string | null;
@@ -36,6 +37,15 @@ export interface RealEstateChangeInput {
   mortgage_rate?: number | null;
   monthly_payment?: number | null;
   mortgage_type?: string | null;
+}
+
+// The indicative estimate engine (CBS PBK) can only value NL property, so a
+// purchase price + date is a resolvable value ONLY for a Netherlands property.
+// Mirrors isNL in property-estimate-resolve.ts, kept local so the gate has no
+// dependency on the estimate engine.
+function isNL(country: string | null | undefined): boolean {
+  const c = (country || "").trim().toUpperCase();
+  return c === "NL" || c === "NLD" || c === "NETHERLANDS" || c === "THE NETHERLANDS";
 }
 
 export type RealEstateGateResult = { ok: true } | { ok: false; question: string };
@@ -58,10 +68,15 @@ const isNonNegativeNumber = (v: unknown): v is number =>
 // property can never quietly land as "owned outright". Call on real-estate ADDS
 // only (edits apply partial updates and must not be forced to re-state everything).
 export function validateRealEstateChange(c: RealEstateChangeInput): RealEstateGateResult {
-  // Value must be resolvable: either a stated current value, or a purchase
-  // (price + date) the deterministic estimate engine can index forward to today.
+  // Value must be resolvable: either a stated current value, or — FOR A NL
+  // PROPERTY ONLY — a purchase (price + date) the deterministic CBS estimate
+  // engine can index forward to today. For a non-NL property the engine returns
+  // nothing, so a purchase price is NOT a resolvable value: require the current
+  // value here (at intake) rather than letting a complete-looking proposal pass
+  // and then bounce at commit when the estimate comes back unavailable.
   const hasValue = isPositiveNumber(c.value);
   const canEstimate =
+    isNL(c.country) &&
     isPositiveNumber(c.buy_price) && typeof c.buy_date === "string" && c.buy_date.trim().length > 0;
   if (!hasValue && !canEstimate) {
     return { ok: false, question: "What's the property worth today? A rough current value is fine." };

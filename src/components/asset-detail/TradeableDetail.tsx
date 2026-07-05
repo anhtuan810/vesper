@@ -205,7 +205,7 @@ export function TradeableDetail({ asset }: Props) {
         {/* Market price hero */}
         <div style={{ marginBottom: 20 }}>
           <div className="ad-eyebrow" style={{ marginBottom: 8 }}>
-            Market price
+            {asset.symbol ? "Market price" : "Current value"}
           </div>
           <div
             className="font-display leading-none"
@@ -221,7 +221,12 @@ export function TradeableDetail({ asset }: Props) {
             <span>{formatMoney(
               scrubInfo && livePrice != null
                 ? livePrice * scrubInfo.ratio
-                : livePrice != null ? livePrice : (asset.buy_price ?? 0),
+                : livePrice != null ? livePrice
+                // No live price: for a symbol-bearing holding fall back to the
+                // per-unit cost basis; for a symbol-less one (e.g. a value-mode
+                // gold add) there is no per-unit price to show, so show the
+                // stored position value instead of a misleading €0.
+                : asset.symbol ? (asset.buy_price ?? 0) : (asset.value ?? 0),
               assetCur,
               displayCurrency,
               2

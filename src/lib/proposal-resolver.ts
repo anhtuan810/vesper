@@ -222,13 +222,13 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
       return base;
     }
 
-    // Simple value-based classes (cash / savings, bonds, other): echo the amount
-    // plainly, and gate a value-less add — these are NOT live-priced, so units
-    // alone can't produce a value and a missing value would persist a 0-value
-    // ghost position. Mirrors the pension/real_estate confirm echoes so every
-    // class the assistant routes through propose_mutation gets a faithful echo
-    // (not the tradeable "Add ? X shares" fallthrough).
-    if (["cash", "bond", "bonds", "other"].includes(proposal.type ?? "")) {
+    // Simple value-based classes (cash / savings, bonds, other) — plus a typeless
+    // add, which is stored as "other" at commit — echo the amount plainly, and
+    // gate a value-less add: these are NOT live-priced, so units alone can't
+    // produce a value and a missing value would persist a 0-value ghost. Keying on
+    // "not tradeable" (rather than an explicit list) also gates the typeless case,
+    // mirroring the write-path gate. pension/real_estate returned above already.
+    if (!TRADEABLE_TYPES_SET.has(proposal.type ?? "")) {
       const value = typeof proposal.value === "number" && Number.isFinite(proposal.value) ? proposal.value : null;
       if (value == null || value <= 0) {
         throw new ValueModeError(`What's ${name} worth? I need a current value to record it.`);

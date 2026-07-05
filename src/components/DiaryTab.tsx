@@ -56,10 +56,18 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
   }
 
   const cur = m.currency || "USD";
+  // An income pension (db/state) stores value NULL and records annual income on
+  // the mutation's after_value; it must read as an annual flow, not a one-off
+  // lump ("+€30,000 / year", not "+€30,000"). The pension shape lives on the
+  // asset (mutations carry no pension_kind), so it comes in via the embedded
+  // asset relation the diary query selects.
+  const isIncomePension =
+    m.asset_type === "pension" && (m.asset?.pension_kind === "db" || m.asset?.pension_kind === "state");
+  const yr = isIncomePension ? " / year" : "";
   if (m.action === "add" && m.after_value != null) {
     return (
       <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
-        +{formatMoney(m.after_value, cur, displayCurrency)}
+        +{formatMoney(m.after_value, cur, displayCurrency)}{yr}
       </span>
     );
   }
@@ -67,12 +75,12 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
     const valDelta = m.before_value != null && m.after_value != null ? m.after_value - m.before_value : null;
     if (valDelta !== null && valDelta !== 0) return (
       <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: valDelta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
-        {valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, cur, displayCurrency)}
+        {valDelta >= 0 ? "+" : ""}{formatMoney(valDelta, cur, displayCurrency)}{yr}
       </span>
     );
     if (m.after_value != null) return (
       <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--text-dim)" }}>
-        {formatMoney(m.after_value, cur, displayCurrency)}
+        {formatMoney(m.after_value, cur, displayCurrency)}{yr}
       </span>
     );
   }

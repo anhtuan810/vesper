@@ -51,7 +51,7 @@ export default function DiaryPage() {
     if (!user?.id) return;
     const { data, count, error } = await supabase
       .from("mutations")
-      .select("*, asset:assets!asset_id (name)", { count: "exact" })
+      .select("*, asset:assets!asset_id (name, pension_kind)", { count: "exact" })
       .eq("user_id", user.id)
       .order("recorded_at", { ascending: false })
       .range(0, DIARY_PAGE_SIZE - 1);
@@ -79,7 +79,7 @@ export default function DiaryPage() {
     const offset = loadedRef.current;
     const { data, error } = await supabase
       .from("mutations")
-      .select("*, asset:assets!asset_id (name)")
+      .select("*, asset:assets!asset_id (name, pension_kind)")
       .eq("user_id", user.id)
       .order("recorded_at", { ascending: false })
       .range(offset, offset + DIARY_PAGE_SIZE - 1);

@@ -327,6 +327,13 @@ export async function applyPortfolioChanges({
 
     if (!name?.trim()) continue;
 
+    // Normalize the legacy singular "bond" to the canonical "bonds" the data model
+    // (BondsAsset.type) and every downstream surface (detail routing, category map,
+    // labels, logo, vitals) key on. The agent tool schema now emits "bonds", but a
+    // stale client — or the old singular anywhere — must never persist as "bond":
+    // it would 404 the detail page and mis-handle the position in vitals.
+    if (change.type === "bond") change.type = "bonds";
+
     // Normalize whatever date phrase the model passed through verbatim ("around
     // March 2021", "early 2015", "2021-03-15") into a stored ISO date up front,
     // so every downstream use (asset write, mutation, historical-price lookup,
@@ -349,7 +356,16 @@ export async function applyPortfolioChanges({
         TRADEABLE_TYPES.has(change.type ?? "") && resolvedNames[i]
           ? resolvedNames[i]!
           : name;
-      const effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol ?? null;
+      let effectiveSymbol = resolvedSymbols[i]?.symbol ?? aliasedSymbols[i] ?? change.symbol ?? null;
+      // Crypto tickers MUST be venue-normalized (BTC → BTC-USD) before any price
+      // lookup or storage: a bare "BTC" resolves on Yahoo to an unrelated equity
+      // (Bit Brother Ltd), so a value-mode add would derive units from the wrong
+      // instrument. The bounded pre-resolve already normalizes; this covers the
+      // fallback branch (aliased/raw) when that lookup transiently missed, so the
+      // value-mode price fetch below and the symbol we store both stay canonical.
+      if (effectiveSymbol && change.type === "crypto") {
+        effectiveSymbol = normalizeCryptoSymbol(effectiveSymbol, change.type);
+      }
 
       const dupSymKey = effectiveSymbol?.toLowerCase() ?? null;
       const dupNameKey = resolvedAssetName.trim().toLowerCase();
@@ -383,7 +399,11 @@ export async function applyPortfolioChanges({
       // positive value: they are NOT live-priced, so a value-less add would
       // persist a 0-value ghost. (real_estate has its own value path via the
       // estimate engine + gate above; pension carries value per its shape.)
-      if (SIMPLE_VALUE_TYPES.has(change.type ?? "") && !(typeof change.value === "number" && change.value > 0)) {
+      // Key the gate on the RESOLVED type (change.type || "other"), not the raw
+      // one: an add with the type omitted is stored as "other" below, so it must
+      // be gated as "other" here too — otherwise a typeless, value-less add slips
+      // through and lands as a €0 "other" ghost.
+      if (SIMPLE_VALUE_TYPES.has(change.type || "other") && !(typeof change.value === "number" && change.value > 0)) {
         throw new ValueModeError(`What's ${resolvedAssetName} worth? I need a current value to record it.`);
       }
 
@@ -463,6 +483,21 @@ export async function applyPortfolioChanges({
         resolvedValue = derivedValue;
         resolvedCurrency = priceResult.nativeCurrency;
         // buy_price intentionally omitted — this is "at market price", not a basis declaration.
+      }
+
+      // Ghost guard for live-priced classes. A tradeable is valued on read as
+      // units × live price (live-pricing.ts, snapshot.ts both require symbol AND
+      // units). So a tradeable that STILL has no resolvable value here AND lacks
+      // the symbol+units pair can never self-price — it would persist as a
+      // permanent €0 row (e.g. units-only gold with no ticker, or "I hold Apple"
+      // with no quantity). Every value-based class is gated above; gate tradeables
+      // too. A row that HAS symbol + units is left alone: even if this fetch
+      // missed, it self-heals from the live price on the next read.
+      const unitsPresent = typeof change.units === "number" && change.units > 0;
+      if (isTradeable && resolvedValue <= 0 && !(effectiveSymbol && unitsPresent)) {
+        throw new ValueModeError(
+          `How much ${resolvedAssetName} do you hold? Tell me a quantity or its current value and I'll record it.`
+        );
       }
 
       // Price-freshness check for Turn-2 commits (resolved units + value from a prior proposal).
@@ -833,6 +868,7 @@ export async function applyPortfolioChanges({
         if (change.type === "real_estate" && existing.type !== "real_estate") {
           const gate = validateRealEstateChange({
             type: "real_estate",
+            country: change.country ?? existing.country ?? null,
             value: change.value ?? existing.value ?? null,
             buy_price: change.buy_price ?? null,
             buy_date: change.buy_date ?? existing.buy_date ?? null,

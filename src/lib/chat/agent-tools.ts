@@ -88,7 +88,7 @@ const CHANGE_ITEM_SCHEMA = {
     action: { type: "string", enum: ["add", "edit", "remove"] },
     name: { type: "string", description: "REQUIRED. The position's display name — a company/asset name or its ticker (e.g. \"Apple\", \"AAPL\", \"Bitcoin\"). Never empty." },
     new_name: { type: "string", description: "For a rename edit only." },
-    type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bond", "pension", "real_estate", "other"], description: "Asset type; use \"stocks\" for a listed equity." },
+    type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bonds", "pension", "real_estate", "other"], description: "Asset type; use \"stocks\" for a listed equity, \"bonds\" for a bond." },
     symbol: { type: "string", description: "Market ticker for a tradeable (e.g. AAPL, BTC, VWCE.DE)." },
     units: { type: "number", description: "Quantity held (shares / coins / oz)." },
     value: { type: "number", description: "Monetary amount: the position's current value (a value-mode add or a set). For real_estate, the property's current market value." },
@@ -539,7 +539,17 @@ async function resolveRealEstateGeo(
       if (isRealEstate) {
         const countryHint = (ch.country as string | null) ?? (existingForEdit?.country as string | null) ?? null;
         const geo = await geocodeAddress(address, countryHint);
-        if (!geo || !geo.hasHouseNumber) {
+        // Parcels (land, plots, garages, parking, agricultural) geocode only to
+        // street/area level — they have no house number — so the house-number
+        // rule that keeps a normal home add honest would otherwise make a
+        // legitimate mortgaged plot impossible to save (the schema advertises
+        // property_type "land"). For those, accept a result that resolved to
+        // real coordinates even without a house number; still reject a total miss.
+        const propertyType = String(
+          (ch.property_type as string | null) ?? (existingForEdit?.property_type as string | null) ?? ""
+        ).toLowerCase();
+        const isParcel = /\b(land|plot|parcel|kavel|grond|garage|parking|allotment|agricultural)\b/.test(propertyType);
+        if (!geo || (!geo.hasHouseNumber && !isParcel)) {
           return { ok: false, message: `I couldn't find "${address}" — could you double-check the spelling or share a postcode?` };
         }
         ch.address = geo.canonicalAddress;

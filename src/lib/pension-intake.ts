@@ -84,6 +84,12 @@ const isPositiveNumber = (v: unknown): v is number =>
 const isPositiveInt = (v: unknown): v is number =>
   typeof v === "number" && Number.isInteger(v) && v > 0;
 
+// A value that was EXPLICITLY provided (any finite number, including 0 or a
+// negative). Used for the growth assumption, where 0% (or a negative real-terms
+// figure) is a legitimate answer — only a missing/NaN value should re-ask.
+const isProvidedNumber = (v: unknown): v is number =>
+  typeof v === "number" && Number.isFinite(v);
+
 // ── The gate ────────────────────────────────────────────────────────────────────
 // Returns { ok: true } only when EVERY required field for the shape is present
 // and valid. Otherwise returns the single next question to ask. No defaults —
@@ -103,8 +109,8 @@ export function validatePensionChange(c: PensionChangeInput): PensionGateResult 
     if (!isPositiveNumber(c.value)) {
       return { ok: false, question: "What's the current value of the pot?" };
     }
-    if (!isPositiveNumber(c.mortgage_rate)) {
-      return { ok: false, question: "What annual growth assumption should I use?" };
+    if (!isProvidedNumber(c.mortgage_rate)) {
+      return { ok: false, question: "What annual growth assumption should I use? (0% is fine.)" };
     }
     if (!isPositiveInt(c.access_age)) {
       return { ok: false, question: "At what age can you access it?" };

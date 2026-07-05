@@ -27,14 +27,33 @@ console.log("Real-estate gate — value must be resolvable:");
         .toLowerCase()
         .includes("worth"),
   );
-  // A purchase (price + date) lets the estimate engine derive a value, so the
-  // value requirement is satisfied even without a stated current value.
+  // A purchase (price + date) lets the CBS estimate engine derive a value — but
+  // ONLY for a NL property, which is the only country the engine can index. So a
+  // purchase anchor satisfies the value requirement when country is NL: the gate
+  // proceeds past the value check and stops at the mortgage question.
   check(
-    "purchase price + date (no value) satisfies the value requirement",
+    "NL purchase price + date (no value) satisfies the value requirement",
+    validateRealEstateChange({ type: "real_estate", country: "NL", buy_price: 300000, buy_date: "2015-06" }).ok === false &&
+      (validateRealEstateChange({ type: "real_estate", country: "NL", buy_price: 300000, buy_date: "2015-06" }) as { question: string })
+        .question.toLowerCase()
+        .includes("mortgage"),
+  );
+  // A non-NL property cannot be estimated, so a purchase anchor is NOT a
+  // resolvable value there — the gate must ask for the current value at intake
+  // (not pass here and then bounce at commit when the estimate comes back empty).
+  check(
+    "non-NL purchase price + date (no value) → asks for value",
+    validateRealEstateChange({ type: "real_estate", country: "US", buy_price: 300000, buy_date: "2015-06" }).ok === false &&
+      (validateRealEstateChange({ type: "real_estate", country: "US", buy_price: 300000, buy_date: "2015-06" }) as { question: string })
+        .question.toLowerCase()
+        .includes("worth"),
+  );
+  check(
+    "country-less purchase price + date (no value) → asks for value",
     validateRealEstateChange({ type: "real_estate", buy_price: 300000, buy_date: "2015-06" }).ok === false &&
       (validateRealEstateChange({ type: "real_estate", buy_price: 300000, buy_date: "2015-06" }) as { question: string })
         .question.toLowerCase()
-        .includes("mortgage"),
+        .includes("worth"),
   );
   check(
     "buy_price without a date does NOT satisfy value → asks for value",
@@ -108,11 +127,12 @@ console.log("Real-estate gate — a mortgage needs rate + payment + type (payoff
     validateRealEstateChange({ type: "real_estate", value: 770000, mortgage_balance: 0 }).ok === true,
   );
 
-  // Full complete add via a purchase anchor + a mortgage.
+  // Full complete add via a purchase anchor + a mortgage (NL, so the purchase
+  // anchor resolves a value via the estimate engine).
   check(
-    "purchase + full mortgage → ok",
+    "NL purchase + full mortgage → ok",
     validateRealEstateChange({
-      type: "real_estate", buy_price: 300000, buy_date: "2015",
+      type: "real_estate", country: "NL", buy_price: 300000, buy_date: "2015",
       mortgage_balance: 120000, mortgage_rate: 2.9, monthly_payment: 900, mortgage_type: "interest_only",
     }).ok === true,
   );
