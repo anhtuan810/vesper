@@ -102,6 +102,12 @@ interface Props {
   realPointCount?: number;
   // Earliest real snapshot date, for the "Tracking since {date}" caption.
   trackingSinceDate?: string | null;
+  // True while the historical net-worth rows are still being reconstructed in
+  // the background (the user holds something acquired before today, so history
+  // SHOULD exist but hasn't landed yet). Turns the single-dot cold-start card
+  // into a "Building your history…" state so the wait reads as work-in-progress
+  // rather than "this account has no past".
+  historyPending?: boolean;
   // "Liquid only" mode: render a single zoomed line (no stacked bands, no
   // category breakdown tooltip); the series total is the combined liquid value.
   lineOnly?: boolean;
@@ -726,9 +732,29 @@ export function NetWorthChart(props: Props) {
                   {fmtYLabel(currentValue, displayCurrency)}
                 </div>
               )}
-              <div style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>
-                Tracking since {formatDate(trackingSinceDate ?? new Date().toISOString().slice(0, 10))}
-              </div>
+              {props.historyPending ? (
+                // History is still being reconstructed in the background — say so,
+                // with the app's three-dot "working" idiom, so the lone dot reads
+                // as "your graph is on its way" instead of "no history exists".
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>
+                    Building your history
+                  </span>
+                  <span style={{ display: "inline-flex", gap: 3 }} aria-hidden>
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        className="loading-dot"
+                        style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--accent)", opacity: 0.5, animationDelay: `${i * 0.18}s` }}
+                      />
+                    ))}
+                  </span>
+                </div>
+              ) : (
+                <div style={{ fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)" }}>
+                  Tracking since {formatDate(trackingSinceDate ?? new Date().toISOString().slice(0, 10))}
+                </div>
+              )}
             </div>
           ) : loading ? (
             // Calm skeleton at the same geometry — a faint baseline and a quiet

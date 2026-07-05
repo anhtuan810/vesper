@@ -99,6 +99,11 @@ function impact(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurren
 // to the other across navigation.
 const PROPERTY_LENS_KEY = "volnar:vitals-show-property";
 
+// Re-poll cadence + cap for the "Building your history…" state — while a lone
+// "today" dot is waiting on a background history rebuild (see the fetch effect).
+const HISTORY_POLL_INTERVAL_MS = 3500;
+const MAX_HISTORY_POLLS = 12; // ~42s before falling back to the cold-start marker
+
 // A snapshot point's value in the display currency, optionally net of property.
 // Property's share is taken from the point's per-type breakdown (the real_estate
 // bucket) and applied to the converted total, so it works whether the stored
@@ -321,6 +326,9 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const [range, setRange] = useState<Range>("All");
   const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
+  // True while historical rows are still being reconstructed in the background —
+  // drives the chart's "Building your history…" card + the bounded re-poll below.
+  const [historyPending, setHistoryPending] = useState(false);
   // The decision panel is driven by CLICKING a marker (not hover) or the prev/next
   // controls; null = "Today" (the live position). A non-null id selects that entry.
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -355,14 +363,42 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     } catch { /* sessionStorage/matchMedia unavailable — no reveal, page is instant */ }
   }, []);
 
+  // Does the user hold anything acquired before today? If so, historical rows
+  // SHOULD exist — a lone "today" dot then means the background reconstruction
+  // (backfillSnapshots) hasn't finished, not that the account has no past.
+  const hasPastAcquisition = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return netWorthAssets.some((a) => a.buy_date != null && a.buy_date < today);
+  }, [netWorthAssets]);
+
+  // Fetch the full history once, then — only while it's a lone dot a pending
+  // backfill should soon fill — re-poll on a bounded schedule so the "Building
+  // your history…" card resolves into the real line without a reload. Stops the
+  // instant a second row lands (≥2 points draws a line) or after the cap.
   useEffect(() => {
     const controller = new AbortController();
-    apiFetch(`/api/snapshots?range=All`, { signal: controller.signal })
-      .then((r) => r.json())
-      .then((body) => { setFullSnapshots(body.data ?? []); setLoading(false); })
-      .catch((err) => { if (err.name !== "AbortError") setLoading(false); });
-    return () => controller.abort();
-  }, []);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+    const load = () => {
+      apiFetch(`/api/snapshots?range=All`, { signal: controller.signal })
+        .then((r) => r.json())
+        .then((body) => {
+          const rows: SnapshotPoint[] = body.data ?? [];
+          setFullSnapshots(rows);
+          setLoading(false);
+          if (rows.length < 2 && hasPastAcquisition && attempts < MAX_HISTORY_POLLS) {
+            setHistoryPending(true);
+            attempts += 1;
+            timer = setTimeout(load, HISTORY_POLL_INTERVAL_MS);
+          } else {
+            setHistoryPending(false);
+          }
+        })
+        .catch((err) => { if (err.name !== "AbortError") { setLoading(false); setHistoryPending(false); } });
+    };
+    load();
+    return () => { controller.abort(); if (timer) clearTimeout(timer); };
+  }, [hasPastAcquisition]);
 
   const todayBreakdown = useMemo(() => {
     const result: Record<string, number> = {};
@@ -774,6 +810,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             valuesSettled={valuesSettled}
             realPointCount={fullSnapshots.length}
             trackingSinceDate={trackingSinceDate}
+            historyPending={historyPending}
             markers={markers}
             selectedMarkerId={highlightMarkerId}
             onMarkerClick={setSelectedId}

@@ -57,6 +57,12 @@ function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
 const LIQUID_TYPES = ["stocks", "etf", "crypto"];
 const LIQUID_ONLY_KEY = "volnar:liquid-only";
 
+// While a lone "today" dot is waiting on a background history rebuild, re-poll
+// the full-history endpoint on this cadence until the rows land or the cap is
+// hit (~42s) — see the "Building your history…" fetch effect below.
+const HISTORY_POLL_INTERVAL_MS = 3500;
+const MAX_HISTORY_POLLS = 12;
+
 // Unit count for a rewound tradeable row — nl-NL grouping, up to 4 decimals
 // (crypto fractions stay readable, whole share counts stay clean).
 const fmtUnits = (u: number) => new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 4 }).format(u);
@@ -119,6 +125,12 @@ export function PortfolioTab({
   // mistaken for "this account has no real history before this point".
   const [fullSnapshots, setFullSnapshots] = useState<SnapshotPoint[]>(initialSnapshots ?? []);
   const [loading, setLoading] = useState(!initialSnapshots);
+  // True while historical rows are still being reconstructed: the user holds
+  // something acquired before today (so a graph SHOULD exist) but only the live
+  // "today" row has landed. Drives the chart's "Building your history…" card and
+  // the bounded re-poll below, so a background backfill resolves into the real
+  // line without a manual reload.
+  const [historyPending, setHistoryPending] = useState(false);
   // The decision selected on the chart / in the journal (shared between the two,
   // mirroring the desktop). null → NOTHING selected: the page rests at Now —
   // live hero, no highlighted dot, the journal zone showing its invitation.
@@ -163,21 +175,56 @@ export function PortfolioTab({
     setHoldingsByDate({});
   }
 
+  // Does the user hold anything acquired before today? If so, historical
+  // snapshots SHOULD exist — so a lone "today" dot means the background
+  // reconstruction (backfillSnapshots, kicked off by the chat/assets routes)
+  // hasn't finished yet, not that the account has no past. Static holdings
+  // without a buy date (e.g. cash) can't imply history, so they don't count.
+  const hasPastAcquisition = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return netWorthAssets.some((a) => a.buy_date != null && a.buy_date < today);
+  }, [netWorthAssets]);
+
+  // Fetch the full history once, then — only while it's a lone dot that a
+  // pending backfill should soon fill — keep re-polling on a bounded schedule so
+  // the "Building your history…" card resolves into the real line on its own.
+  // The poll stops the instant a second row lands (≥2 points draws a line) or
+  // after the cap, so a genuine cold start (or a backfill that legitimately
+  // produced nothing) falls back to the plain "Tracking since" marker.
   useEffect(() => {
     const controller = new AbortController();
-    apiFetch(`/api/snapshots?range=All`, { signal: controller.signal })
-      .then((r) => r.json())
-      .then((body) => {
-        setFullSnapshots(body.data ?? []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name === "AbortError") return;
-        console.error("Snapshots fetch failed:", err);
-        setLoading(false);
-      });
-    return () => controller.abort();
-  }, []);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+
+    const load = () => {
+      apiFetch(`/api/snapshots?range=All`, { signal: controller.signal })
+        .then((r) => r.json())
+        .then((body) => {
+          const rows: SnapshotPoint[] = body.data ?? [];
+          setFullSnapshots(rows);
+          setLoading(false);
+          const stillBuilding = rows.length < 2 && hasPastAcquisition;
+          if (stillBuilding && attempts < MAX_HISTORY_POLLS) {
+            setHistoryPending(true);
+            attempts += 1;
+            timer = setTimeout(load, HISTORY_POLL_INTERVAL_MS);
+          } else {
+            setHistoryPending(false);
+          }
+        })
+        .catch((err) => {
+          if (err.name === "AbortError") return;
+          console.error("Snapshots fetch failed:", err);
+          setLoading(false);
+          setHistoryPending(false);
+        });
+    };
+    load();
+    return () => {
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [hasPastAcquisition]);
 
   useEffect(() => {
     // A range switch is a fresh look at the window — return to the default
@@ -648,6 +695,7 @@ export function PortfolioTab({
               valuesSettled={valuesSettled}
               realPointCount={fullSnapshots.length}
               trackingSinceDate={trackingSinceDate}
+              historyPending={historyPending}
               lineOnly={liquidOnly}
               liquidOnly={liquidOnly}
               markers={isIntraday ? undefined : markers}
