@@ -195,6 +195,22 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       if (isPage) autoGrowComposer();
     }, [input, autoGrowComposer, isPage]);
 
+    // Send while keeping the soft keyboard up. On the phone composer, clearing
+    // the field and reflowing the message list after a send can make iOS
+    // WKWebView drop focus from the textarea — the keyboard collapses and the
+    // user has to tap the field again before they can keep typing (or press
+    // send a second time). Reassert focus within the same gesture, and once
+    // more after the post-send reflow settles, so focus never leaves and the
+    // keyboard stays open like every other chat app. Refocusing an
+    // already-focused field is a harmless no-op, so this is safe on every path.
+    const sendKeepingFocus = useCallback(() => {
+      send();
+      if (!isPage) return;
+      const el = textareaRef.current;
+      el?.focus();
+      requestAnimationFrame(() => el?.focus());
+    }, [send, isPage]);
+
     // ── Per-variant presentational config ────────────────────────────────────
     const msgFontSize = "var(--fs-body)";
     const userMaxWidth = isPage ? "78%" : "80%";
@@ -649,7 +665,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={onComposerFocus}
                 onBlur={onComposerBlur}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendKeepingFocus(); } }}
                 onPaste={handlePaste}
                 maxLength={500}
                 rows={1}
@@ -673,7 +689,12 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
 
               {/* Send button */}
               <button
-                onClick={send}
+                onClick={sendKeepingFocus}
+                // Don't let the tap move focus off the textarea — that blur is
+                // what collapses the soft keyboard. preventDefault on the press
+                // keeps the caret (and keyboard) in the composer; the click
+                // still fires.
+                onMouseDown={(e) => e.preventDefault()}
                 disabled={!canSend}
                 className="flex items-center justify-center"
                 style={{
