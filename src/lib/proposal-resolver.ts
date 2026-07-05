@@ -5,6 +5,7 @@ import { normalizeCryptoSymbol } from "./symbol-aliases";
 import { getUsdRates } from "./fx";
 import { estimatePropertyValue } from "./property-estimate-resolve";
 import { validatePensionChange, buildPensionEcho } from "./pension-intake";
+import { validateRealEstateChange } from "./real-estate-intake";
 import { parseAcquisitionMonth } from "./acquisition-date";
 
 export type ProposalChange = {
@@ -148,10 +149,17 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
       return buildPensionEcho(proposal, name);
     }
 
-    // Property: enumerate every financial field present in the proposal (plain
-    // language, no field names) so the user can catch an omission before commit —
-    // instead of the old fallthrough that described a property as "shares".
+    // Property: the deterministic gate runs first — if the value can't be
+    // resolved or the mortgage question is unanswered, refuse to produce a
+    // commit-able echo and surface the next question instead, so a property can
+    // never reach commit with a silent "owned outright" default.
     if (proposal.type === "real_estate") {
+      const gate = validateRealEstateChange(proposal);
+      if (!gate.ok) throw new ValueModeError(gate.question);
+
+      // Enumerate every financial field present in the proposal (plain language,
+      // no field names) so the user can catch an omission before commit —
+      // instead of the old fallthrough that described a property as "shares".
       const cur = (typeof proposal.currency === "string" ? proposal.currency : "") || "";
       const num = (v: unknown): number | null =>
         typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -211,6 +219,37 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
       }
 
       return base;
+    }
+
+    // Simple value-based classes (cash / savings, bonds, other): echo the amount
+    // plainly, and gate a value-less add — these are NOT live-priced, so units
+    // alone can't produce a value and a missing value would persist a 0-value
+    // ghost position. Mirrors the pension/real_estate confirm echoes so every
+    // class the assistant routes through propose_mutation gets a faithful echo
+    // (not the tradeable "Add ? X shares" fallthrough).
+    if (["cash", "bond", "bonds", "other"].includes(proposal.type ?? "")) {
+      const value = typeof proposal.value === "number" && Number.isFinite(proposal.value) ? proposal.value : null;
+      if (value == null || value <= 0) {
+        throw new ValueModeError(`What's ${name} worth? I need a current value to record it.`);
+      }
+      const cur = (typeof proposal.currency === "string" ? proposal.currency : "") || "";
+      const money = `${cur} ${Math.round(value).toLocaleString()}`.trim();
+      const parts = [`valued at ${money}`];
+
+      // Bond extras, when the user gave them.
+      if (proposal.type === "bond" || proposal.type === "bonds") {
+        const numOf = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+        const coupon = numOf(proposal.coupon_rate);
+        if (coupon != null) parts.push(`${coupon}% coupon`);
+        const maturity = typeof proposal.maturity_date === "string" ? proposal.maturity_date : null;
+        if (maturity) parts.push(`matures ${maturity}`);
+        const issuer = typeof proposal.issuer === "string" ? proposal.issuer : null;
+        if (issuer) parts.push(`issued by ${issuer}`);
+        const isin = typeof proposal.isin === "string" ? proposal.isin : null;
+        if (isin) parts.push(`ISIN ${isin}`);
+      }
+
+      return `Add ${name}\n${parts.map((p) => `- ${p}`).join("\n")}`;
     }
 
     const isTradeable = TRADEABLE_TYPES_SET.has(proposal.type ?? "");

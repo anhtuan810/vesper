@@ -16,8 +16,13 @@ import {
   type PensionKind,
   type PensionChangeInput,
 } from "./pension-intake";
+import { validateRealEstateChange } from "./real-estate-intake";
 
 const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
+// Non-tradeable, non-priced classes whose worth is the stated value itself.
+// They carry no live price and no estimate engine, so an add with no positive
+// value would persist a 0-value ghost — the write path requires a value for these.
+const SIMPLE_VALUE_TYPES = new Set(["cash", "bond", "bonds", "other"]);
 
 // Price-freshness check: if proposal → commit gap exceeds this window,
 // re-fetch the live price and reject if it moved more than the threshold.
@@ -177,7 +182,7 @@ export async function applyPortfolioChanges({
   // estate still derives from country. Defaults to USD when not provided (keeps
   // the agent-loop caller, which doesn't pass it, byte-identical to before).
   displayCurrency?: string;
-}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string }[]; rebuildFrom: string | null }> {
+}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string; clarification?: boolean }[]; rebuildFrom: string | null }> {
   const fallbackCurrency = displayCurrency ?? "USD";
   // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
   const usdRates = await getUsdRates();
@@ -192,7 +197,11 @@ export async function applyPortfolioChanges({
   const mutationMetas: MutationMeta[] = [];
   // Per-row failures collected so one bad row in a multi-row batch (e.g. a
   // screenshot import) reports and skips rather than aborting every other row.
-  const failures: { name: string; reason: string }[] = [];
+  // `clarification` marks a failure whose reason is a user-facing intake question
+  // (a ValueModeError — e.g. "Is there a mortgage on it?"), which is deterministic
+  // and NOT fixed by retrying; callers surface those verbatim instead of a generic
+  // "temporary hiccup, try again" line.
+  const failures: { name: string; reason: string; clarification?: boolean }[] = [];
   // Symbols/names already added EARLIER in this same batch. The duplicate check
   // below only knows the pre-batch portfolio, so a broker screenshot that lists
   // the same position twice (e.g. two overlapping scrolled panels) would add the
@@ -352,6 +361,24 @@ export async function applyPortfolioChanges({
       let resolvedValue = change.value || 0;
       let resolvedBuyPrice: number | null = change.buy_price || null;
       const isRealEstate = (change.type || "other") === "real_estate";
+
+      // Required-data gate for a property add: a resolvable value AND an explicit
+      // mortgage decision (balance, or 0 for owned outright). A single-row commit
+      // rethrows this so the assistant surfaces the exact question; in a batch it
+      // is collected as a per-row failure. This is what stops a property from
+      // silently landing as "Owned outright" when a mortgage was never captured.
+      if (isRealEstate) {
+        const gate = validateRealEstateChange(change);
+        if (!gate.ok) throw new ValueModeError(gate.question);
+      }
+
+      // Simple value-based classes (cash / savings, bonds, other) must carry a
+      // positive value: they are NOT live-priced, so a value-less add would
+      // persist a 0-value ghost. (real_estate has its own value path via the
+      // estimate engine + gate above; pension carries value per its shape.)
+      if (SIMPLE_VALUE_TYPES.has(change.type ?? "") && !(typeof change.value === "number" && change.value > 0)) {
+        throw new ValueModeError(`What's ${resolvedAssetName} worth? I need a current value to record it.`);
+      }
 
       // For real estate, derive native currency from country when Claude omits it.
       // For tradeables, Yahoo overrides this below. Other types (cash/bonds/
@@ -790,6 +817,23 @@ export async function applyPortfolioChanges({
 
         // Monetary fields stay in the asset's native currency — no conversion.
 
+        // Real-estate reclassification edit: an edit that turns a NON-property
+        // asset into real_estate is a fresh property that never passed the add
+        // gate, so re-validate the merged state here — otherwise it could land
+        // with mortgage_balance null and render "Owned outright" uncaptured, the
+        // very bug the add gate closes. Scoped to the transition, so ordinary
+        // edits of an already-real_estate row are not forced to re-state anything.
+        if (change.type === "real_estate" && existing.type !== "real_estate") {
+          const gate = validateRealEstateChange({
+            type: "real_estate",
+            value: change.value ?? existing.value ?? null,
+            buy_price: change.buy_price ?? null,
+            buy_date: change.buy_date ?? existing.buy_date ?? null,
+            mortgage_balance: change.mortgage_balance ?? existing.mortgage_balance ?? null,
+          });
+          if (!gate.ok) throw new ValueModeError(gate.question);
+        }
+
         // Pension edit: respect the shape, re-validate the gate over the MERGED
         // state (existing row + this change), and write shape-correct columns.
         // Income pensions keep value NULL (never NaN); switching pension_kind is
@@ -995,7 +1039,7 @@ export async function applyPortfolioChanges({
       // ValueModeError on a confirm turn). Multi-row batches collect the
       // failure and continue, so one bad row never blocks the others.
       if (changes.length === 1) throw err;
-      failures.push({ name, reason: err instanceof Error ? err.message : String(err) });
+      failures.push({ name, reason: err instanceof Error ? err.message : String(err), clarification: err instanceof ValueModeError });
     }
   }
 

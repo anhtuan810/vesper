@@ -226,7 +226,7 @@ Field names for add (include all that apply):
   - Value known, units unknown → set value (native currency),
     omit units.
 
-  mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only) — include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
+  mortgage_balance, mortgage_rate, monthly_payment, mortgage_type (annuity|linear|interest_only) — on a property ADD you MUST include mortgage_balance: the outstanding amount when there is a mortgage, or 0 when the property is owned free and clear. Never omit it and never assume owned outright. Include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
 
   For bonds, also capture (in the structured fields, not only the note) whatever the user states: issuer (e.g. "Bundesrepublik Deutschland"), coupon_rate (annual coupon as a number, e.g. 3.2), maturity_date (redemption date — prefer YYYY-MM-DD; a bare year like "2030" is acceptable), isin (the 12-character ISIN). Record ONLY values the user gives; never invent a coupon, maturity, or ISIN.
 
@@ -254,9 +254,10 @@ Step 2 — Propose the change (the only committable step, and the only step that
 - Purchase price + date but NO current value → OMIT value. In your prose, note the user did not give a current value and that Volnar will estimate it from regional price trends since the purchase year — invite them to accept it or set their own. NEVER state, guess, or estimate a value yourself; the app computes the indicative figure ("Current value: about …") and appends it for the user to accept or override.
 - The user gave their own current value → include value.
 - If the app cannot suggest a figure — notably any property outside the Netherlands, which cannot be estimated — ask the user for the current value before proposing. Never fabricate one, and never commit a property without a value.
+- Settle the mortgage before proposing: include mortgage_balance — the outstanding amount if there's a mortgage, or 0 when it's owned free and clear. If the user hasn't said, ask once. Never omit mortgage_balance on a property add.
 
 Step 3 — Commit. ONLY after the user confirms the <propose_change> via "Confirm and save", emit <changes>. If value was omitted at Step 2, emit <changes> OMITTING value — the system fills in the indicative figure; do not write a value. If the user gave their own current value, emit <changes> WITH that value. Do NOT emit <propose_address> or <propose_change> again on this turn. Use the canonical address from the "Resolved address:" line visible in your previous message; use the name you proposed (or the user's stated name if different). Example commit:
-<changes>[{"action":"add","name":"Hosingenhof 23","type":"real_estate","currency":"EUR","country":"NL","buy_price":300000,"buy_date":"2019-06-01","address":"Hosingenhof 23, 5625 NJ, Netherlands"}]</changes>
+<changes>[{"action":"add","name":"Hosingenhof 23","type":"real_estate","currency":"EUR","country":"NL","buy_price":300000,"buy_date":"2019-06-01","mortgage_balance":180000,"address":"Hosingenhof 23, 5625 NJ, Netherlands"}]</changes>
 
 NEVER commit a property from the address step, and never before <propose_change> has shown its value. <propose_address> is emitted ONCE per add; <propose_change> is emitted ONCE per add. On "No, let me correct it" at any step, ask what to fix — no tags.
 
@@ -603,7 +604,7 @@ Examples:
   {"action":"add","name":"Gold","type":"gold","units":1,"personal_context":"Added 1 oz gold at yesterday's market price."},
   {"action":"edit","name":"Apple","units":254,"personal_context":"Bought 12 Apple shares at market price, bringing total holding to 254 shares."}
 ]</changes>
-<changes>[{"action":"add","name":"Hosingenhof 19","type":"real_estate","value":340000,"currency":"EUR","personal_context":"Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage."}]</changes>
+<changes>[{"action":"add","name":"Hosingenhof 19","type":"real_estate","value":340000,"currency":"EUR","mortgage_balance":0,"personal_context":"Added Dutch residential property at Hosingenhof 19, valued at ${sym}340,000 with no mortgage."}]</changes>
 <changes>[{"action":"edit","name":"ASML","units":71,"buy_price":990,"personal_context":"Bought 5 ASML at ${sym}990 to bring total holding to 71 shares."}]</changes>
 
 ${OPTIONS_BLOCK}
@@ -1032,7 +1033,7 @@ Field names (include all that apply):
       For the "name" field, always use the canonical company name (e.g. "Tesla", "Apple"), never the ticker.
     • European-only ETFs (UCITS ETFs such as ZPRR, IWDA, VWCE, EUNL, SXR8): include the venue suffix matching where the user trades — .DE (Xetra), .F (Frankfurt), .AS (Amsterdam), .L (London), .MI (Milan), .PA (Paris), .SW (Swiss). If unsure, omit the suffix and the system will resolve one.),
   units, buy_price, buy_date,
-  mortgage_balance, mortgage_rate, monthly_payment, mortgage_type — include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
+  mortgage_balance, mortgage_rate, monthly_payment, mortgage_type — on a property ADD you MUST include mortgage_balance: the outstanding amount when there is a mortgage, or 0 when the property is owned free and clear. Never omit it and never assume owned outright. Include mortgage_rate, monthly_payment, and mortgage_type ONLY when the user explicitly states them; otherwise omit them. Never invent a payment, rate, or type.
   For property, also capture buy_date / buy_price when the user says when they bought it or what they paid, and mortgage_start_date when they give the mortgage's start. A stated purchase date or price goes into the structured field, never only the note. Ask once at most; never guess.
   For bonds, also capture (in the structured fields, not only the note) whatever the user states: issuer (e.g. "Bundesrepublik Deutschland"), coupon_rate (annual coupon as a number, e.g. 3.2), maturity_date (redemption date — prefer YYYY-MM-DD; a bare year like "2030" is acceptable), isin (the 12-character ISIN). Record ONLY values the user gives; never invent a coupon, maturity, or ISIN.
 
@@ -1050,9 +1051,10 @@ Step 2 — Propose the change (the only committable step, and the only step that
 - Purchase price + date but NO current value → OMIT value. In your prose, note the user did not give a current value and that Volnar will estimate it from regional price trends since the purchase year — invite them to accept it or set their own. NEVER state, guess, or estimate a value yourself; the app computes the indicative figure ("Current value: about …") and appends it for the user to accept or override.
 - The user gave their own current value → include value.
 - If the app cannot suggest a figure — notably any property outside the Netherlands, which cannot be estimated — ask the user for the current value before proposing. Never fabricate one, and never commit a property without a value.
+- Settle the mortgage before proposing: include mortgage_balance — the outstanding amount if there's a mortgage, or 0 when it's owned free and clear. If the user hasn't said, ask once. Never omit mortgage_balance on a property add.
 
 Step 3 — Commit. ONLY after the user confirms the <propose_change> via "Confirm and save", emit <changes>. If value was omitted at Step 2, emit <changes> OMITTING value — the system fills in the indicative figure; do not write a value. If the user gave their own current value, emit <changes> WITH that value. Do NOT emit <propose_address> or <propose_change> again on this turn. Use the canonical address from the "Resolved address:" line visible in your previous message; use the name you proposed (or the user's stated name if different). Example commit:
-<changes>[{"action":"add","name":"Hosingenhof 23","type":"real_estate","currency":"EUR","country":"NL","buy_price":300000,"buy_date":"2019-06-01","address":"Hosingenhof 23, 5625 NJ, Netherlands"}]</changes>
+<changes>[{"action":"add","name":"Hosingenhof 23","type":"real_estate","currency":"EUR","country":"NL","buy_price":300000,"buy_date":"2019-06-01","mortgage_balance":180000,"address":"Hosingenhof 23, 5625 NJ, Netherlands"}]</changes>
 
 NEVER commit a property from the address step, and never before <propose_change> has shown its value. <propose_address> is emitted ONCE per add; <propose_change> is emitted ONCE per add. On "No, let me correct it" at any step, ask what to fix — no tags.
 

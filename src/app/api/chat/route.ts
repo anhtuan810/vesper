@@ -1159,15 +1159,23 @@ export async function POST(req: NextRequest) {
             displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
           }
           if (failures.length > 0) {
-            const names = failures.map((f) => f.name).join(", ");
-            // A partial failure is almost always a transient market-data hiccup.
-            // The uploaded screenshot isn't retained server-side, so guide the
-            // user to re-send it rather than say "try again" (which implies we
-            // still have it); the up-front de-dup means only the still-missing
-            // positions get added on the retry.
-            const suffix = failures.length === 1
-              ? `Couldn't record ${names} just now — a temporary market-data hiccup. Re-send the screenshot and I'll pick it up.`
-              : `Couldn't record ${failures.length} positions (${names}) — a temporary market-data hiccup. Re-send the screenshot and I'll add just the ones still missing.`;
+            // Split intake-gate failures (a deterministic, user-facing question —
+            // e.g. "Is there a mortgage on it?") from transient ones. A gate
+            // question must be surfaced verbatim: re-sending won't fix it, the
+            // user just needs to answer it. Only the reasonless/transient failures
+            // get the "market-data hiccup, re-send" line (the screenshot isn't
+            // retained server-side, and up-front de-dup means only the still-
+            // missing positions get added on the retry).
+            const clarifications = failures.filter((f) => f.clarification && f.reason);
+            const transient = failures.filter((f) => !(f.clarification && f.reason));
+            const parts: string[] = clarifications.map((f) => `${f.name} — ${f.reason}`);
+            if (transient.length > 0) {
+              const names = transient.map((f) => f.name).join(", ");
+              parts.push(transient.length === 1
+                ? `Couldn't record ${names} just now — a temporary market-data hiccup. Re-send the screenshot and I'll pick it up.`
+                : `Couldn't record ${transient.length} positions (${names}) — a temporary market-data hiccup. Re-send the screenshot and I'll add just the ones still missing.`);
+            }
+            const suffix = parts.join("\n\n");
             displayText = displayText ? `${displayText}\n\n${suffix}` : suffix;
           }
           if (resolvedCanonicalAddresses.length > 0 && portfolioChanged) {

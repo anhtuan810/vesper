@@ -21,7 +21,7 @@ import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/sce
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
 import { validateScenarioIntent, resolveBuyDate } from "@/lib/scenario/validate-intent";
 import { resolveProposal, type ProposalChange, type CurrentAssetLight } from "@/lib/proposal-resolver";
-import { applyPortfolioChanges, type MutationMeta } from "@/lib/apply-changes";
+import { applyPortfolioChanges, ValueModeError, type MutationMeta } from "@/lib/apply-changes";
 import { validatePortfolioChanges } from "@/lib/validations";
 import { geocodeAddress } from "@/lib/geocode";
 import type { PricePoint } from "@/lib/scenario/counterfactual";
@@ -74,8 +74,13 @@ const CATEGORY_LABEL: Record<string, string> = { property: "Property", markets: 
 // (applyPortfolioChanges) keys the asset row + dedup on it and SILENTLY SKIPS any
 // change with an empty name, so an unstructured schema that let the model omit
 // `name` (emitting only `symbol`) caused whole screenshot batches to land as
-// "committed: false, nothing saved". `additionalProperties` is left open so the
-// model can still pass the less-common fields (buy_price, mortgage_balance, …).
+// "committed: false, nothing saved". The per-class fields below (mortgage_*,
+// pension_*, bond) are declared explicitly rather than relying on open
+// `additionalProperties` alone — an undeclared field is one the model doesn't
+// know to fill: a property add that omits `mortgage_balance` silently records as
+// "owned outright", so the details a class needs must be visible in the schema.
+// The schema stays open (additionalProperties is not closed) so the rarer write
+// fields it doesn't enumerate (value_delta, sell_date, …) still pass through.
 const CHANGE_ITEM_SCHEMA = {
   type: "object",
   description: "One portfolio change. Always include `name` — for a listed security it may equal the ticker (e.g. \"AAPL\"), but it must never be empty.",
@@ -86,12 +91,33 @@ const CHANGE_ITEM_SCHEMA = {
     type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bond", "pension", "real_estate", "other"], description: "Asset type; use \"stocks\" for a listed equity." },
     symbol: { type: "string", description: "Market ticker for a tradeable (e.g. AAPL, BTC, VWCE.DE)." },
     units: { type: "number", description: "Quantity held (shares / coins / oz)." },
-    value: { type: "number", description: "Monetary amount, for a value-mode add or a set." },
+    value: { type: "number", description: "Monetary amount: the position's current value (a value-mode add or a set). For real_estate, the property's current market value." },
     currency: { type: "string", enum: ["EUR", "USD", "GBP"] },
+    buy_price: { type: "number", description: "Purchase price. For real_estate, the price paid at acquisition (used to index an estimated current value when no value is given)." },
     buy_date: { type: "string", description: "Acquisition date/month/year or a relative phrase; omit if unknown." },
     removal_reason: { type: "string", enum: ["sold", "mistake"] },
     address: { type: "string", description: "Street address for a real-estate add/edit." },
     country: { type: "string" },
+    // ── Real-estate / mortgage ──
+    mortgage_balance: { type: "number", description: "real_estate ONLY, REQUIRED on a property add: the outstanding mortgage balance, in the property's currency. Set 0 ONLY when the user confirms the property is owned free and clear. NEVER omit this on a property add — an omitted balance is silently recorded as \"owned outright\", which is the wrong default when there is a mortgage." },
+    mortgage_rate: { type: "number", description: "Annual mortgage interest rate as a percent (e.g. 3.5 for 3.5%). Also reused as a pension pot's annual growth assumption." },
+    monthly_payment: { type: "number", description: "Monthly mortgage payment, in the property's currency." },
+    mortgage_type: { type: "string", enum: ["annuity", "linear", "interest_only"], description: "Mortgage repayment structure." },
+    mortgage_start_date: { type: "string", description: "When the mortgage started (year, year-month, or full date)." },
+    mortgage_end_date: { type: "string", description: "When the mortgage is due to be repaid (year, year-month, or full date)." },
+    property_type: { type: "string", description: "e.g. apartment, house, land." },
+    size_sqm: { type: "number", description: "Floor area in square metres." },
+    // ── Pension ──
+    pension_kind: { type: "string", enum: ["dc", "db", "state"], description: "Pension shape: dc = workplace/private pot (owned balance), db = company defined-benefit (income), state = State pension (income)." },
+    annual_income: { type: "number", description: "For a db/state pension: the annual income it will pay." },
+    monthly_contribution: { type: "number", description: "For a dc pension pot: monthly amount paid in." },
+    access_age: { type: "integer", description: "Age at which the pension can be accessed." },
+    pension_provider: { type: "string", description: "Pension provider or scheme name." },
+    // ── Bond ──
+    coupon_rate: { type: "number", description: "Bond annual coupon rate as a percent." },
+    maturity_date: { type: "string", description: "Bond maturity date (year, year-month, or full date)." },
+    issuer: { type: "string", description: "Bond issuer." },
+    isin: { type: "string", description: "Bond ISIN." },
   },
   required: ["action", "name"],
 };
@@ -543,8 +569,19 @@ async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolCont
     value: Number(a.value), currency: String(a.currency || "USD"), units: (a.units as number | null) ?? null,
   }));
   const lines: string[] = [];
-  for (const ch of geo.changes) {
-    lines.push(await resolveProposal(ch as ProposalChange, light));
+  try {
+    for (const ch of geo.changes) {
+      lines.push(await resolveProposal(ch as ProposalChange, light));
+    }
+  } catch (err) {
+    // An intake gate (pension / real-estate) or a value-mode resolution refused
+    // to produce a commit-able proposal because required data is missing. Surface
+    // its exact question so the model asks the user for precisely what's needed —
+    // never a generic "that failed", and never a write.
+    if (err instanceof ValueModeError) {
+      return { forModel: { needsClarification: true, message: err.message } };
+    }
+    throw err;
   }
   const addrLines = geo.resolved.map((a) => `Resolved address: ${a}`);
   const resolvedText = `Resolved:\n${[...lines, ...addrLines].join("\n")}`;
@@ -617,14 +654,27 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   // applyPortfolioChanges resolves every date and writes every mutation, so it
   // is the single source of truth for which historical rows changed. It returns
   // `rebuildFrom` (earliest affected date, or null) — no caller-side re-derivation.
-  const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, rebuildFrom } = await applyPortfolioChanges({
-    supabase: ctx.supabase,
-    userId: ctx.userId,
-    changes: changes as never,
-    currentAssets: ctx.currentAssets as never,
-    contextNote: str(input.contextNote),
-    proposalTimestamp: null,
-  });
+  // A single-row commit rethrows a ValueModeError (an unmet intake gate — e.g. a
+  // property add missing its mortgage decision, or a value-mode miss). Catch it
+  // and hand the model the exact question as needsClarification, so it asks the
+  // user for what's missing instead of reporting an opaque failure.
+  let commitResult;
+  try {
+    commitResult = await applyPortfolioChanges({
+      supabase: ctx.supabase,
+      userId: ctx.userId,
+      changes: changes as never,
+      currentAssets: ctx.currentAssets as never,
+      contextNote: str(input.contextNote),
+      proposalTimestamp: null,
+    });
+  } catch (err) {
+    if (err instanceof ValueModeError) {
+      return { forModel: { needsClarification: true, message: err.message } };
+    }
+    throw err;
+  }
+  const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, rebuildFrom } = commitResult;
 
   // A change landed → refresh the in-context portfolio so any follow-up read in
   // THIS same turn (get_holdings / get_net_worth / get_vitals, or the model
