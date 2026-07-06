@@ -6,7 +6,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { BondBlock } from "@/components/asset-detail/BondBlock";
 import { formatDate } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney, formatMoneyParts, type DisplayCurrency } from "@/lib/money";
+import { formatMoney, formatMoneyParts, isSupportedCurrency } from "@/lib/money";
 import type { StaticAsset, BondsAsset, Mutation } from "@/lib/supabase";
 
 interface Props {
@@ -24,6 +24,20 @@ function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; 
       <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
     </span>
   );
+}
+
+// formatMoney only knows the display currencies (EUR/USD/GBP) and throws on any
+// other. A holding's native currency can be any ISO code (e.g. a foreign-listed
+// bond priced in CHF/JPY/CAD), so format those via Intl — which supports every
+// ISO currency — to keep the native-currency subtitle from crashing the render.
+function formatNativeAmount(value: number, cur: string): string {
+  if (isSupportedCurrency(cur)) return formatMoney(value, cur, cur);
+  return new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: cur,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function AssetIcon({ asset }: { asset: StaticAsset | BondsAsset }) {
@@ -177,7 +191,7 @@ export function StaticDetail({ asset }: Props) {
               shows the original native amount. */}
           {asset.currency && asset.currency !== displayCurrency && (
             <div style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
-              Native currency: {asset.currency} · {formatMoney(asset.value, asset.currency, asset.currency as DisplayCurrency)}
+              Native currency: {asset.currency} · {formatNativeAmount(asset.value, asset.currency)}
             </div>
           )}
         </div>

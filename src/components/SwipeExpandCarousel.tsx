@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useLayoutEffect, useCallback, type ReactNode } from "react";
+import { useState, useRef, useLayoutEffect, useEffect, useCallback, type ReactNode } from "react";
 import { CarouselDots } from "@/components/SwipeCarousel";
 
 const CHEVRON_PROPS = {
@@ -145,6 +145,26 @@ export function SwipeExpandCarousel({ items, getKey }: SwipeExpandCarouselProps)
     if (!slide || !wrapper) return;
     wrapper.style.height = `${slide.offsetHeight}px`;
   });
+
+  // A pure viewport resize / device rotation triggers no React render, so the
+  // fixed-height wrapper (overflow:hidden) would keep its old height and clip a
+  // headline that now wraps to more lines, and the track's scroll would drift
+  // off the active snap point. Re-run the height sync and re-scroll on resize.
+  useEffect(() => {
+    const onResize = () => {
+      const slide = slideRefs.current[safeActiveIndex];
+      const wrapper = wrapperRef.current;
+      const track = trackRef.current;
+      if (slide && wrapper) wrapper.style.height = `${slide.offsetHeight}px`;
+      if (track) track.scrollLeft = safeActiveIndex * track.clientWidth;
+    };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, [safeActiveIndex]);
 
   const handleScroll = useCallback(() => {
     const el = trackRef.current;

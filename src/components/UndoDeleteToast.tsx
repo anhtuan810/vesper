@@ -92,7 +92,7 @@ export function UndoDeleteToast() {
         maxWidth: "calc(100vw - 32px)",
       }}
     >
-      <span className="font-ui text-dim" style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>
+      <span className="font-ui text-dim" style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap", flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
         {error ? error : `Deleted ${name}`}
       </span>
       <button
@@ -107,6 +107,7 @@ export function UndoDeleteToast() {
           borderRadius: "var(--radius-md)",
           cursor: restoring ? "default" : "pointer",
           opacity: restoring ? 0.5 : 1,
+          flexShrink: 0,
         }}
       >
         {restoring ? "Restoring…" : "Undo"}
@@ -122,6 +123,7 @@ export function UndoDeleteToast() {
           background: "none",
           border: "none",
           cursor: "pointer",
+          flexShrink: 0,
         }}
       >
         ×

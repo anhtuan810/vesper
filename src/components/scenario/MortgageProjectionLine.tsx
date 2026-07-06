@@ -8,6 +8,8 @@ import {
   monthsBetween,
 } from "@/lib/mortgage";
 import { ScenarioCueLine } from "@/components/scenario/ScenarioCueLine";
+import { useDisplayCurrency } from "@/lib/hooks";
+import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset } from "@/lib/supabase";
 
 // Tappable, deterministic mortgage projection line — the affordance that
@@ -76,6 +78,7 @@ export function MortgageProjectionLine({
   asset: RealEstateAsset;
   onExplore: () => void;
 }) {
+  const displayCurrency = useDisplayCurrency();
   const {
     mortgage_rate: rate,
     monthly_payment: payment,
@@ -153,11 +156,15 @@ export function MortgageProjectionLine({
   if (view.sooner) {
     const { newYear, yearsSooner } = view.sooner;
     const soonerLabel = `${yearsSooner} ${yearsSooner === 1 ? "year" : "years"} sooner`;
+    // 100 units of the user's DISPLAY currency — an illustrative nudge, so the
+    // number stays 100 (from === to, no FX conversion), just wearing $/£/€ like
+    // the Payment row (MortgageBlock) right below it.
+    const extraLabel = formatMoney(EXTRA_PER_MONTH, displayCurrency, displayCurrency);
     return (
       <ScenarioCueLine
-        statement={<>Add €{EXTRA_PER_MONTH} a month and you’re mortgage-free by {newYear}, {soonerLabel}.{" "}</>}
+        statement={<>Add {extraLabel} a month and you’re mortgage-free by {newYear}, {soonerLabel}.{" "}</>}
         clause="See what else shortens it"
-        ariaLabel={`Adding €${EXTRA_PER_MONTH} a month makes you mortgage-free by ${newYear}, ${soonerLabel}. Explore what else shortens your mortgage.`}
+        ariaLabel={`Adding ${extraLabel} a month makes you mortgage-free by ${newYear}, ${soonerLabel}. Explore what else shortens your mortgage.`}
         onActivate={onExplore}
         telemetryTemplate="mortgage_extra_payment"
         impressionKey={asset.id}

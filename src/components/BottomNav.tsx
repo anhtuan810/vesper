@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 // Icons are from docs/redesign_mockups/portfolio.html — 256-unit viewBox.
@@ -79,12 +80,20 @@ const STATIC_TABS = [
 export function BottomNav() {
   const pathname = usePathname();
 
+  // Asset detail lives at /asset?id=<id> (the id is a query param; /asset/[id]
+  // server-redirects here). Read it client-side from window.location.search to
+  // avoid the Suspense requirement useSearchParams would impose on this
+  // root-layout component; re-read whenever the path changes.
+  const [assetId, setAssetId] = useState<string | null>(null);
+  useEffect(() => {
+    setAssetId(pathname === "/asset" ? new URLSearchParams(window.location.search).get("id") : null);
+  }, [pathname]);
+
   // /overview is a self-contained full-screen port with its own top nav and its
   // own docked composer at the bottom — the app tab bar would double up with it.
   if (pathname === "/login" || pathname.startsWith("/marketing") || pathname.startsWith("/overview")) return null;
 
-  const assetIdMatch = pathname.match(/^\/asset\/([^/]+)$/);
-  const chatHref = assetIdMatch ? `/chat?seed=asset&key=${assetIdMatch[1]}` : "/chat";
+  const chatHref = assetId ? `/chat?seed=asset&key=${assetId}` : "/chat";
 
   return (
     <>

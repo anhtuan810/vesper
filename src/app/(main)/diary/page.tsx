@@ -46,6 +46,7 @@ export default function DiaryPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [backfillDone, setBackfillDone] = useState(false);
   const loadedRef = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   const fetchMutations = useCallback(async () => {
     if (!user?.id) return;
@@ -75,19 +76,26 @@ export default function DiaryPage() {
   }, [userId, fetchMutations]);
 
   const loadMore = useCallback(async () => {
-    if (!user?.id) return;
+    // In-flight guard: a second tap while a page fetch is pending would read the
+    // same offset (loadedRef updates post-await) and append the page twice.
+    if (!user?.id || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     const offset = loadedRef.current;
-    const { data, error } = await supabase
-      .from("mutations")
-      .select("*, asset:assets!asset_id (name, pension_kind)")
-      .eq("user_id", user.id)
-      .order("recorded_at", { ascending: false })
-      .range(offset, offset + DIARY_PAGE_SIZE - 1);
-    if (error) return;
-    const newData = data || [];
-    setMutations((prev) => [...prev, ...newData]);
-    loadedRef.current = offset + newData.length;
-    setHasMore(loadedRef.current < totalCount);
+    try {
+      const { data, error } = await supabase
+        .from("mutations")
+        .select("*, asset:assets!asset_id (name, pension_kind)")
+        .eq("user_id", user.id)
+        .order("recorded_at", { ascending: false })
+        .range(offset, offset + DIARY_PAGE_SIZE - 1);
+      if (error) return;
+      const newData = data || [];
+      setMutations((prev) => [...prev, ...newData]);
+      loadedRef.current = offset + newData.length;
+      setHasMore(loadedRef.current < totalCount);
+    } finally {
+      loadingMoreRef.current = false;
+    }
   }, [user?.id, totalCount]);
 
   // Instant paint on revisit: hydrate the first page from sessionStorage as soon

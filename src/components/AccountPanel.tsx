@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useUser, useProfile, useNetWorth, useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
+import { createBrowserSupabase } from "@/lib/supabase";
 import { SettingsContent } from "@/components/settings/SettingsContent";
+
+const supabase = createBrowserSupabase();
 
 // The account panel — a left drawer (IBKR-style) opened from the avatar in the
 // top bar. Header: avatar, name, email, net worth. Body: ALL settings
@@ -24,7 +27,46 @@ export function AccountPanel({
   const { user } = useUser();
   const profile = useProfile(user?.id);
   const { netWorthEur, loading: nwLoading } = useNetWorth();
-  const displayCurrency = useDisplayCurrency();
+  // The header formats net worth in the display currency. useDisplayCurrency reads
+  // it once (keyed on the user id) and never re-reads, but the embedded
+  // SettingsContent can change it — it PATCHes the users row and calls
+  // router.refresh(), which does NOT re-run this client hook. Track the currency
+  // locally so a re-read of the same source can update the header without a full
+  // reload: re-read when the panel (re)opens and when the tab regains focus.
+  // (A one-line onCurrencyChange callback threaded from SettingsContent would let
+  // the header update the instant the user changes it, but that file is out of
+  // scope for this fix.)
+  const hookCurrency = useDisplayCurrency();
+  const [currencyOverride, setCurrencyOverride] = useState<DisplayCurrency | null>(null);
+  const displayCurrency = currencyOverride ?? hookCurrency;
+
+  const refreshDisplayCurrency = useCallback(() => {
+    if (!user?.id) return;
+    supabase
+      .from("users")
+      .select("display_currency")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.display_currency && isSupportedCurrency(data.display_currency)) {
+          setCurrencyOverride(data.display_currency as DisplayCurrency);
+        }
+      });
+  }, [user?.id]);
+
+  // Re-read when the panel opens, so a currency changed in a prior open session is
+  // reflected without a full reload.
+  useEffect(() => {
+    if (open) refreshDisplayCurrency();
+  }, [open, refreshDisplayCurrency]);
+
+  // Re-read when the tab regains focus (mirrors useProfile) — catches a change
+  // made just before the app was backgrounded.
+  useEffect(() => {
+    const onFocus = () => { if (document.visibilityState === "visible") refreshDisplayCurrency(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshDisplayCurrency]);
 
   // Lazy-mount the settings body on first open, so every page load doesn't pay
   // the panel's data fetches.
@@ -76,6 +118,11 @@ export function AccountPanel({
         role="dialog"
         aria-modal="true"
         aria-label="Account"
+        // When closed the drawer is only slid off-screen (still mounted), so
+        // without this its focusable controls stay in the tab order — a keyboard
+        // user would hit ~6 invisible off-screen stops. `inert` removes the whole
+        // subtree from focus, pointer and the a11y tree in one go (React 19).
+        inert={!open}
         style={{
           position: "absolute",
           top: 0,

@@ -39,7 +39,18 @@ export function mDate(m: Mutation): string {
   return m.occurred_at || m.recorded_at;
 }
 export function shortDate(iso: string): string {
-  const d = new Date(iso);
+  // A date-only `occurred_at` ("YYYY-MM-DD") must be read as a LOCAL calendar
+  // date. `new Date(iso)` parses it as UTC midnight, and toLocaleDateString then
+  // shifts it back a day for anyone west of UTC (1 Jul → 30 Jun) — so we hand-
+  // parse Y/M/D like formatDate elsewhere. A full timestamp (with a "T") is a
+  // real instant, so parse it as-is.
+  let d: Date;
+  if (iso.includes("T")) {
+    d = new Date(iso);
+  } else {
+    const [y, m, day] = iso.split("-").map(Number);
+    d = new Date(y, (m || 1) - 1, day || 1);
+  }
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }

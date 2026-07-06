@@ -114,8 +114,16 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
+  // Set right before a loadMore() prepend so the scroll-to-bottom effect can skip
+  // that update — otherwise paginating older history yanks the rail back to the
+  // newest message, making history unreadable (matches ChatPage/ChatPopup).
+  const isLoadMoreUpdate = useRef(false);
 
   useEffect(() => {
+    if (isLoadMoreUpdate.current) {
+      isLoadMoreUpdate.current = false;
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinking]);
 
@@ -132,7 +140,7 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
     const sentinel = sentinelRef.current;
     if (!sentinel || !hasMore) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) loadMore(); },
+      ([entry]) => { if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) { isLoadMoreUpdate.current = true; loadMore(); } },
       { threshold: 0, rootMargin: "200px 0px 0px 0px" },
     );
     observer.observe(sentinel);

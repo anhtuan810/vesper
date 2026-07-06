@@ -57,17 +57,18 @@ export default function ChatPopup({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Context-aware seed: when opened on /asset/[id], show a seed message with chips.
+  // Context-aware seed: when opened on /asset?id=<id>, show a seed message with chips.
   useEffect(() => {
     if (!isOpen || assets.length === 0) return;
-    const match = pathname?.match(/^\/asset\/([^/]+)$/);
-    if (!match) return;
-    const found = assets.find((a) => a.id === match[1]);
+    // Asset detail lives at /asset?id=<id>; read the id from the query string.
+    if (pathname !== "/asset") return;
+    const assetId = new URLSearchParams(window.location.search).get("id");
+    if (!assetId) return;
+    const found = assets.find((a) => a.id === assetId);
     if (found) {
       const seed = getChatSeed("asset", found.id, `What would you like to know about ${found.name}?`);
       if (seed) setSeedMessage(seed);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, pathname, assets]);
 
   // Clear seed when the user sends their first message.

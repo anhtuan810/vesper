@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PensionActivityList } from "@/components/asset-detail/PensionActivity";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney, formatMoneyParts, type DisplayCurrency } from "@/lib/money";
+import { formatMoney, formatMoneyParts, isSupportedCurrency } from "@/lib/money";
 import { projectPension, yearsToAccess, PENSION_PROJECTION_DISCLAIMER } from "@/lib/pension";
 import type { StaticAsset, Mutation } from "@/lib/supabase";
 
@@ -45,6 +45,20 @@ function WalletIcon() {
 const nlPct = (rate: number) =>
   new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(rate) + "%";
 
+// formatMoney only knows the display currencies (EUR/USD/GBP) and throws on any
+// other. A holding's native currency can be any ISO code (e.g. a foreign-listed
+// bond priced in CHF/JPY/CAD), so format those via Intl — which supports every
+// ISO currency — to keep the native-currency subtitle from crashing the render.
+function formatNativeAmount(value: number, cur: string): string {
+  if (isSupportedCurrency(cur)) return formatMoney(value, cur, cur);
+  return new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: cur,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export function PensionCapitalDetail({ asset, birthYear }: Props) {
   const router = useRouter();
   const [mutations, setMutations] = useState<Mutation[]>([]);
@@ -67,7 +81,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
   // This-year delta pill — same logic as the static detail hero.
   const currentYear = new Date().getFullYear();
   const thisYearDelta = mutations.reduce((sum, m) => {
-    const year = m.occurred_at ? new Date(m.occurred_at).getFullYear() : null;
+    const year = m.occurred_at ? Number(m.occurred_at.slice(0, 4)) : null;
     if (year !== currentYear) return sum;
     if (m.action === "add" && m.after_value != null && m.before_value != null) return sum + m.after_value - m.before_value;
     if (m.action === "add" && m.after_value != null && m.before_value == null) return sum + m.after_value;
@@ -194,7 +208,7 @@ export function PensionCapitalDetail({ asset, birthYear }: Props) {
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
             <div style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
-              Native currency: {asset.currency} · {formatMoney(asset.value, asset.currency, asset.currency as DisplayCurrency)}
+              Native currency: {asset.currency} · {formatNativeAmount(asset.value, asset.currency)}
             </div>
           )}
         </div>

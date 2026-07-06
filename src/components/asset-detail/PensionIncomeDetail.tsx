@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PensionActivityList } from "@/components/asset-detail/PensionActivity";
 import { useDisplayCurrency } from "@/lib/hooks";
-import { formatMoney, formatMoneyParts, type DisplayCurrency } from "@/lib/money";
+import { formatMoney, formatMoneyParts, isSupportedCurrency } from "@/lib/money";
 import { yearsToAccess } from "@/lib/pension";
 import type { StaticAsset, Mutation } from "@/lib/supabase";
 
@@ -29,6 +29,20 @@ function HeroPrice({ amount, fromCurrency, displayCurrency }: { amount: number; 
       <span style={{ lineHeight: "inherit" }}>{parts.amount}</span>
     </span>
   );
+}
+
+// formatMoney only knows the display currencies (EUR/USD/GBP) and throws on any
+// other. A holding's native currency can be any ISO code (e.g. a foreign-listed
+// bond priced in CHF/JPY/CAD), so format those via Intl — which supports every
+// ISO currency — to keep the native-currency subtitle from crashing the render.
+function formatNativeAmount(value: number, cur: string): string {
+  if (isSupportedCurrency(cur)) return formatMoney(value, cur, cur);
+  return new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: cur,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 // Recurring-calendar tile icon, drawn in the repo's Phosphor stroke style — no
@@ -156,7 +170,7 @@ export function PensionIncomeDetail({ asset, birthYear }: Props) {
           </div>
           {asset.currency && asset.currency !== displayCurrency && (
             <div style={{ fontSize: "var(--fs-body)", color: "var(--text-faint)", marginTop: 8, letterSpacing: "0.04em", fontFamily: "var(--font-numeric)" }}>
-              Native currency: {asset.currency} · {formatMoney(annual, asset.currency, asset.currency as DisplayCurrency)} / year
+              Native currency: {asset.currency} · {formatNativeAmount(annual, asset.currency)} / year
             </div>
           )}
         </div>

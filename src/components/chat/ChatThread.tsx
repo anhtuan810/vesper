@@ -676,7 +676,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={onComposerFocus}
                 onBlur={onComposerBlur}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendKeepingFocus(); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); sendKeepingFocus(); } }}
                 onPaste={handlePaste}
                 maxLength={500}
                 rows={1}
@@ -846,7 +846,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); send(); }
+                if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); }
               }}
               onPaste={handlePaste}
               maxLength={500}

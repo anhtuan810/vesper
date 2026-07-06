@@ -464,7 +464,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const send = useCallback(async () => {
     const text = input.trim();
     const hasAttachment = imageData.length > 0 || pdfData.length > 0 || csvData.length > 0;
-    if ((!text && !hasAttachment) || loading || !userId) return;
+    if ((!text && !hasAttachment) || loading || !userId || remaining === 0) return;
 
     // Total-payload guard — MUST be client-side. The whole request body has to fit
     // under the serverless body limit (~4.5 MB); a combination the per-file caps
