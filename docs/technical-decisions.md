@@ -71,7 +71,7 @@ Core portfolio table. One row per position.
 - `name`, `type` (stocks | etf | crypto | bonds | gold | real_estate | cash | pension | other)
 - `value` (numeric) — stored in the asset's **native** currency. No conversion at write. USD is the bridge for aggregation only (in snapshots, mutations.portfolio_total, and net-worth math). EUR and GBP are display-only at render time.
 - `currency` (ISO code) — the asset's **native** currency (Yahoo-reported for tradeables; country-derived for real estate; user-stated for cash/pension/bonds/other).
-- `country` (ISO2), `symbol` (Yahoo Finance ticker), `units`, `buy_price`, `buy_date`, `buy_price_source`
+- `country` (ISO2), `symbol` (Yahoo Finance ticker), `units`, `buy_price`, `buy_date`, `buy_price_source`. For real estate the write path always populates `country` — the stated value, else recovered from the canonical address (`countryFromAddress`) — so the location sub-line, native currency, and the NL indicative-value gate never depend on it being manually supplied. Older rows with a null `country` are handled at read time by `effectivePropertyCountry(country, address)` (see "Indicative Property Value"), so no backfill is required.
 - Real estate fields: `mortgage_balance`, `mortgage_rate`, `monthly_payment`, `mortgage_type`, `mortgage_start_date`, `mortgage_end_date`, `mortgage_balance_recorded_at` (timestamptz — the anchor date for `mortgage_balance`, set on every write that touches mortgage_balance; used by `computeCurrentBalance()` to project the current balance forward; added in PR 8)
 - Property fields: `address`, `latitude`, `longitude`, `photo_url` (now only holds the cached map PNG URL; user photo upload was removed per Decision 9), `property_type`, `size_sqm`
 - Bond fields: `coupon_rate`, `maturity_date`, `issuer`, `isin`
@@ -249,6 +249,8 @@ Users onboard by attaching what they already have: broker screenshots, a CSV exp
 **Method (no LLM):** `currentValue = buy_price × (index_now / index_buyYear)`. The figure is computed server-side and is server-authoritative — the model never produces it. Purchases before 1995 clamp to the 1995 baseline (`clamped`). Output is always wrapped so it never throws — any miss returns `{ available: false }`.
 
 **Region:** address → gemeente + province via PDOK Locatieserver; index region is the province, or the city for the G4 (Amsterdam, Rotterdam, 's-Gravenhage, Utrecht). **NL-only.**
+
+**Country gate (2026-07-06):** the NL check keys on `effectivePropertyCountry(country, address)` (`src/lib/country-currency.ts`), not the stored `country` column alone — it falls back to the country named in the canonical address. A property whose `country` was never populated (e.g. added by address alone) still qualifies for the indicative value and the CBS snapshot reconstruction by its address, with no data backfill. Applied in `EstimatedValueChart` (client gate), `/api/property-estimate` (server gate), `estimatePropertyValue` (add-flow), and `snapshot.ts` (history reconstruction).
 
 **The single live-verify point (`src/lib/cbs-pbk.ts`):**
 - Source = legacy OData base `https://opendata.cbs.nl/ODataApi/odata/85792NED` (the v4 `datasets.cbs.nl` base 404s for this table; kept only as an inert fallback).
@@ -997,6 +999,61 @@ types (or uploads) anything." Full sections above; the audit trail:
 - Process note: per the owner's standing preference and CLAUDE.md, developed and
   pushed directly on `main`.
 
+## Session log — 2026-07-06 (data-completeness polish → chat resilience)
+
+Owner-driven review session working from mobile screenshots; the through-line was
+"the app should never look half-built to a user." Each fix shipped directly to
+`main` after a clean `tsc` + no-new-lint check (deps installed with
+`--ignore-scripts` since `sharp`'s native postinstall is blocked by the sandbox
+proxy; `next build` gates on TypeScript, not ESLint — the repo already carries
+pre-existing lint errors on `main`).
+
+- **Property country: always stored, always shown.** A property added by address
+  alone left `assets.country` null, so its Overview sub-line was blank and — same
+  root cause — its NL indicative-value chart was hidden while an identical neighbour
+  showed both. Fix has three layers: (1) the write path (`apply-changes.ts`, add +
+  edit) now resolves the country from the stated value or recovers it from the
+  canonical address (`countryFromAddress` in `country-currency.ts`, e.g.
+  "…, Eindhoven, Netherlands" → `NL`) and persists it, which also feeds native-
+  currency derivation and the estimate's NL check; (2) the display normalises a
+  stored code or name to a readable label (`countryDisplayName`); (3) every NL gate
+  — the client `EstimatedValueChart`, `/api/property-estimate`, the add-flow
+  `estimatePropertyValue`, and the snapshot reconstruction — now uses
+  `effectivePropertyCountry(country, address)`, so **existing** rows with a null
+  country qualify by their address with no backfill.
+- **Diary entries always read as a journal.** Noteless rows showed only a bare
+  figure. `autoNote(m)` (`diary-utils.tsx`) gives any entry with no personal note a
+  factual caption of what happened ("Opened a position in …", "Trimmed …",
+  "Recorded a new valuation for …") — descriptive, never a fabricated feeling —
+  rendered on both the mobile (`DiaryTab`) and desktop (`DesktopDiary`) journals,
+  only where no personal note and no market context already fill the line.
+- **Chat numeric guardrail stopped false-tripping.** The agent narration guardrail
+  validated *every* number in a reply against the tool-figure set, so bare counts
+  ("18 positions") and dates ("2 years ago") failed it; on a commit/import turn
+  (no scenario card) it discarded the real reply and showed "Let me double-check
+  those numbers — could you rephrase the question?" repeatedly. Now
+  `validateMonetaryNarration` checks only money/percent tokens, and the no-card
+  fallback is neutral, never an interrogative. See `narrate/guardrail.ts`.
+- **Post-add rebuild is visible and self-refreshing.** A past-dated add rebuilds the
+  net-worth history (`backfillSnapshots`) and generates the new holdings' market
+  notes in a background `after()` job, so the chart/journal lagged the reply and the
+  client (which refetched once, immediately) never re-checked. `/api/chat` now
+  returns `building: true` for a rebuild-triggering add; a module-level watcher
+  (`portfolio-build.ts`, survives tab navigation) polls the history until it changes
+  and refreshes every surface, showing a quiet "building" indicator meanwhile — a
+  chip on the mobile net-worth hero and a line in the chat thread — that clears
+  itself when the data lands.
+- **A chat message is never lost on an interrupted send.** Sending added the message
+  optimistically, but a thrown fetch (60s client timeout, dropped connection, or the
+  user leaving the tab mid-request) deleted it and persisted the deletion to the
+  local cache, defeating the existing remount-recovery — the question and the
+  already-saved answer vanished, so users re-asked and re-added. `send()` now treats
+  a throw as "not yet answered": it keeps the message, holds the composer disabled,
+  and reconciles from the server's saved thread (polls `/api/messages` until the
+  answer lands), mirroring the remount path; the in-place poll stops itself on
+  navigation so the remount poll can take over.
+- Process note: per CLAUDE.md, developed and pushed directly on `main`.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).
@@ -1013,3 +1070,5 @@ types (or uploads) anything." Full sections above; the audit trail:
 - **Safari OAuth on localhost** is broken (ITP). Production unaffected.
 - **PDF upload capped at ~3 MB inline** (`CHAT_PDF_MAX_MB`) by Vercel's ~4.5 MB serverless body limit — a full multi-page statement over that gets a "send the holdings page as a screenshot" message. Routing uploads through Supabase Storage (client uploads, server fetches by key) would lift the ceiling; deferred until users hit it.
 - **HEIC images fail to decode client-side**. `compressImageFile` uses a canvas, which can't decode HEIC in most webviews, so a raw HEIC lands on the "Couldn't read that image" path. iOS usually transcodes to JPEG for web pickers and broker *screenshots* are PNG, so this is an edge case — a graceful failure, not a crash. A HEIC→JPEG decode step would close it.
+- **Post-add "building" indicator is mobile-only** (2026-07-06). The chip renders on the mobile net-worth hero (`NetWorthHero`); the desktop Overview (`OverviewContent`) auto-refreshes on the same `bumpPortfolioRevision()` ticks but shows no chip. The chat-thread line appears on both. Deferred — the primary surface is iOS.
+- **No server-side de-duplication of adds** (2026-07-06). Keeping the user's message on an interrupted send (see "Session log — 2026-07-06") removes the main reason people re-ask, but a user who does re-add the same holding still gets two positions — the commit path accepts both. A dedupe guard on commit (same symbol/name + recent occurred_at) would be the belt-and-suspenders follow-up.
