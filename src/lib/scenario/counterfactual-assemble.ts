@@ -35,6 +35,25 @@ export interface DiaryContextEntry {
   market_context: string | null;
 }
 
+// Capital deployed into / withdrawn from a position over its mutation log, for the
+// "vs. holding cash" counterfactual. A cash flow exists ONLY when the UNIT COUNT
+// changed — a buy, a sell, a trim, or the initial add/final remove. A value-only
+// EDIT (a manual revaluation with units unchanged) is market appreciation, NOT
+// deployed capital; counting its before→after value delta as a flow made the
+// counterfactual think fresh money went in, understating the position's computed
+// gain. Pure and exported so the rule is unit-tested without a DB.
+export function cashFlowsFromMutations(muts: DiaryContextEntry[]): CashFlow[] {
+  const flows: CashFlow[] = [];
+  for (const mu of muts) {
+    const isValueOnlyEdit =
+      mu.action === "edit" && Number(mu.before_units ?? 0) === Number(mu.after_units ?? 0);
+    if (isValueOnlyEdit) continue;
+    const amount = Number(mu.after_value ?? 0) - Number(mu.before_value ?? 0);
+    if (amount !== 0) flows.push({ date: mu.occurred_at as string, amount, currency: (mu.currency as string) || "USD" });
+  }
+  return flows;
+}
+
 export interface CounterfactualData {
   asset: { id: string; name: string; symbol: string; type: string };
   actualSeries: CurvePoint[];
@@ -120,11 +139,7 @@ export async function assembleCounterfactual(
     ? target.units
     : 0;
 
-  const cashFlows: CashFlow[] = [];
-  for (const mu of muts) {
-    const amount = Number(mu.after_value ?? 0) - Number(mu.before_value ?? 0);
-    if (amount !== 0) cashFlows.push({ date: mu.occurred_at as string, amount, currency: (mu.currency as string) || "USD" });
-  }
+  const cashFlows = cashFlowsFromMutations(muts);
 
   // Historical price + FX series over the curve + flow window.
   const earliestCurve = actualCurve[0]?.date ?? todayStr;
