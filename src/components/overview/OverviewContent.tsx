@@ -80,16 +80,25 @@ function decisionTitle(m: Mutation): string {
 function hasOwnNote(m: Mutation): boolean {
   return !!m.personal_context && m.personal_context !== STARTING_POSITION_CTX;
 }
-// Signed value moved by a change, in the asset's native currency.
-function impactRaw(m: Mutation): number {
-  if (m.action === "add") return m.after_value ?? 0;
+// Signed value moved by a change, in the asset's native currency. A real-estate
+// ADD stores the acquisition amount (purchase price / value), but its net-worth
+// impact is EQUITY — without this the marker overstates a mortgaged purchase by
+// the whole loan and disagrees with the net-worth line it sits on. Edit and
+// remove already store equity in before/after_value, so only the add needs the
+// asset's current equity passed in (falls back to after_value when unavailable,
+// e.g. a since-removed property).
+function impactRaw(m: Mutation, assetEquity?: number | null): number {
+  if (m.action === "add") {
+    if (m.asset_type === "real_estate" && assetEquity != null) return assetEquity;
+    return m.after_value ?? 0;
+  }
   if (m.action === "remove") return -(m.before_value ?? 0);
   return (m.after_value ?? 0) - (m.before_value ?? 0);
 }
 // Value impact of a change → "▲ €34.000" / "▼ €33.000" (or null when flat).
-function impact(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): { text: string; dn: boolean } | null {
+function impact(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>, assetEquity?: number | null): { text: string; dn: boolean } | null {
   const cur = m.currency || "USD";
-  const amt = impactRaw(m);
+  const amt = impactRaw(m, assetEquity);
   if (!amt) return null;
   const dn = amt < 0;
   return { text: `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(amt), cur, displayCurrency)}`, dn };
@@ -141,9 +150,9 @@ const fmtUnits = (n: number) =>
 
 // Prose bullets describing a decision's mechanics — replaces the stat-chip row so
 // the panel reads like a journal entry (units, value movement, money in/out).
-function decisionPoints(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>): string[] {
+function decisionPoints(m: Mutation, displayCurrency: ReturnType<typeof useDisplayCurrency>, assetEquity?: number | null): string[] {
   const cur = m.currency || "USD";
-  const amt = impactRaw(m);
+  const amt = impactRaw(m, assetEquity);
   const money = (v: number) => formatMoney(Math.abs(v), cur, displayCurrency);
   const noun = m.asset_type ? unitNoun(m.asset_type) : "units";
   const pts: string[] = [];
@@ -486,11 +495,26 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   // Chart markers — one per entry. Decisions use the accent ("you"); market swings
   // the muted "market" colour. Each carries the short content the chart shows on
   // hover; hovering previews, clicking commits the selection (drives the page).
+  // Current equity per real-estate asset (value − amortised mortgage), so a
+  // property ADD's marker/journal impact reads the equity it added to net worth,
+  // not the gross acquisition amount stored on the mutation.
+  const propertyEquityById = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of netWorthAssets) {
+      if (a.type === "real_estate") m.set(a.id, Math.max(0, a.value - computeCurrentBalance(a)));
+    }
+    return m;
+  }, [netWorthAssets]);
+  const equityOfMutation = useCallback(
+    (m: Mutation): number | null => (m.asset_id ? propertyEquityById.get(m.asset_id) ?? null : null),
+    [propertyEquityById],
+  );
+
   const markers = useMemo(
     () => navEntries.map((e) => e.kind === "decision"
-      ? { id: e.id, date: e.date, kind: "you" as const, title: decisionTitle(e.m), sub: shortDate(e.date), value: impact(e.m, displayCurrency)?.text }
+      ? { id: e.id, date: e.date, kind: "you" as const, title: decisionTitle(e.m), sub: shortDate(e.date), value: impact(e.m, displayCurrency, equityOfMutation(e.m))?.text }
       : { id: e.id, date: e.date, kind: "market" as const, title: `${e.mv.index_label} ${e.mv.pct_change >= 0 ? "+" : "−"}${fmtPct(Math.abs(e.mv.pct_change), 1)}%`, sub: shortDate(e.date), value: marketImpactText(e.mv) }),
-    [navEntries, displayCurrency],
+    [navEntries, displayCurrency, equityOfMutation],
   );
 
   // Navigation order: Today (null) first, then in-range entries newest→oldest. ←
@@ -880,7 +904,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           })() : (() => {
             const m = selectedDecision!;
             const own = hasOwnNote(m);
-            const points = decisionPoints(m, displayCurrency);
+            const points = decisionPoints(m, displayCurrency, equityOfMutation(m));
             const verdict = verdicts[`${m.id}|${displayCurrency}`];
             return (
               <>
@@ -1033,7 +1057,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             }
             const m = row.m;
             const own = hasOwnNote(m);
-            const imp = impact(m, displayCurrency);
+            const imp = impact(m, displayCurrency, equityOfMutation(m));
             const why = own ? m.personal_context
               : m.market_context ? m.market_context
               : m.personal_context === STARTING_POSITION_CTX ? "Started tracking from here." : "Recorded automatically.";
