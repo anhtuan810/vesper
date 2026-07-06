@@ -16,6 +16,7 @@ import { useSubscription } from "@/components/SubscriptionProvider";
 import { classifyChip, cheapHash } from "@/lib/chip-telemetry";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 import { isNative } from "@/lib/platform";
+import { usePortfolioBuilding } from "@/lib/portfolio-build";
 import type { useChatSession } from "@/lib/use-chat-session";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
@@ -80,6 +81,10 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     };
 
     const isPage = variant === "page";
+
+    // While a past-dated add rebuilds the net-worth history in the background,
+    // show a quiet line so the user knows the charts/journal are still filling in.
+    const building = usePortfolioBuilding();
 
     // Demo sessions get an extra point-of-use reassurance beneath the composer:
     // anything entered is wiped when the ephemeral session ends. Inert otherwise.
@@ -551,6 +556,12 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
             <span className="chat-dot" />
             <span className="chat-dot" />
             <span className="chat-dot" />
+          </div>
+        )}
+        {building && !thinking && (
+          <div className="flex items-center gap-2 py-1 text-dim" style={{ fontSize: "var(--fs-caption)" }}>
+            <span className="chat-build-spinner" aria-hidden />
+            <span>Building your history and market notes — your charts and journal will fill in shortly.</span>
           </div>
         )}
         <div ref={bottomRef} />

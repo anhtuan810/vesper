@@ -5,6 +5,7 @@ import { useDisplayCurrencyState } from "@/lib/hooks";
 import { fmtTipDate, type SnapshotPoint, type Range } from "@/components/NetWorthChart";
 import type { Mutation } from "@/lib/supabase";
 import { firstSnapshotDate, hasSufficientHistory } from "@/lib/networth-history";
+import { usePortfolioBuilding } from "@/lib/portfolio-build";
 
 const RANGE_LABEL: Record<Range, string> = {
   "1D": "today",
@@ -76,7 +77,7 @@ function fmtPct(n: number): string {
 // Track/thumb tones and slimming live in globals.css (.liquid-seg*).
 function LiquidToggle({ liquidOnly, onSetLiquid }: { liquidOnly: boolean; onSetLiquid: (v: boolean) => void }) {
   return (
-    <div className="liquid-seg font-numeric" style={{ marginBottom: "var(--space-3)" }}>
+    <div className="liquid-seg font-numeric">
       <button
         type="button"
         onClick={() => onSetLiquid(false)}
@@ -109,6 +110,7 @@ function LiquidToggle({ liquidOnly, onSetLiquid }: { liquidOnly: boolean; onSetL
 //      the ONLY state that can show a change pill.
 export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations, liquidOnly, onSetLiquid, scrubPoint, rewind, onExitRewind }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
+  const building = usePortfolioBuilding();
 
   const seriesStart = series?.[0];
 
@@ -218,7 +220,17 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
           {fmtSelectedDate(rewind.date)}
         </div>
       ) : (
-        <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", minHeight: 25, marginBottom: "var(--space-3)" }}>
+          <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
+          {/* While a past-dated add rebuilds the history, mark the chart as still
+              filling in — clears itself when the rebuild lands. */}
+          {building && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-caption)", color: "var(--text-dim)" }}>
+              <span className="chat-build-spinner" aria-hidden />
+              Building your history…
+            </span>
+          )}
+        </div>
       )}
 
       {/* Hero number — monochrome. Rewound at rest it steps down from the hero

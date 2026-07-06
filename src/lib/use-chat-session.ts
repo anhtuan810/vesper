@@ -5,6 +5,7 @@ import { track } from "@vercel/analytics";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { invalidateAssetsCache, invalidateInsightCache, invalidateVitalsCache } from "@/lib/hooks";
 import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
+import { watchPortfolioBuild, refreshAfterQuickCommit } from "@/lib/portfolio-build";
 import {
   CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX,
   CHAT_IMAGE_MAX_EDGE_PX, CHAT_IMAGE_JPEG_QUALITY, CHAT_IMAGE_MAX_INPUT_MB,
@@ -68,6 +69,9 @@ interface ChatResponse {
   /** Explicit signal that the portfolio mutated this turn; preferred over
    * inferring from `assets` for cache invalidation. */
   portfolioChanged?: boolean;
+  /** A past-dated add kicked off a background net-worth history rebuild; the
+   * client shows a "building" indicator and auto-refreshes until it lands. */
+  building?: boolean;
 }
 
 const ROUND_AMOUNT: Record<DisplayCurrency, number> = {
@@ -554,6 +558,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       // Diary, Profile) refetches without a manual refresh.
       bumpPortfolioRevision();
       onPortfolioUpdateRef.current?.();
+      // A past-dated add rebuilds the net-worth history in the background: show a
+      // "building" indicator and keep refreshing until it lands. Other commits
+      // still fill in market notes shortly, so give them one delayed refresh.
+      if (data.building) watchPortfolioBuild();
+      else refreshAfterQuickCommit();
     }
     onNewMessageRef.current?.();
   }, [input, imageData, imagePreviews, pdfData, csvData, loading, userId, clearImage, applyAssistantResponse]);
@@ -679,6 +688,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       // Diary, Profile) refetches without a manual refresh.
       bumpPortfolioRevision();
       onPortfolioUpdateRef.current?.();
+      // A past-dated add rebuilds the net-worth history in the background: show a
+      // "building" indicator and keep refreshing until it lands. Other commits
+      // still fill in market notes shortly, so give them one delayed refresh.
+      if (data.building) watchPortfolioBuild();
+      else refreshAfterQuickCommit();
     }
     onNewMessageRef.current?.();
   }, [loading, userId, applyAssistantResponse, sendScenarioConfirm]);

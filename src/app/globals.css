@@ -415,6 +415,21 @@
   .loading-dot {
     animation: loading-dot 1.4s ease-in-out infinite;
   }
+  @keyframes chat-build-spin { to { transform: rotate(360deg); } }
+  .chat-build-spinner { animation: chat-build-spin 0.8s linear infinite; }
+}
+
+/* Small ring spinner for the "building your history" indicator (chat line + the
+   Overview chart chip). Static ring under reduced motion (the keyframe above is
+   gated), so it still reads as a status marker. */
+.chat-build-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  border-top-color: var(--accent);
+  flex: none;
 }
 
 html {

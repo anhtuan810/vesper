@@ -250,6 +250,10 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
     suggested_replies: chips,
     assets: updatedAssets,
     remaining: CHAT_DAILY_LIMIT - input.used,
+    // A past-dated add triggers a background history rebuild (backfillSnapshots),
+    // which is what makes the net-worth chart lag the reply. Signal it so the
+    // client shows a "building" indicator and auto-refreshes when it lands.
+    ...(commit?.needsBackfill ? { building: true } : {}),
     ...(analyticsEvent ? { analyticsEvent } : {}),
   };
 }
