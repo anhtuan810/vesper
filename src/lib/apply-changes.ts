@@ -1127,6 +1127,11 @@ export async function applyPortfolioChanges({
           ? realEstateEquity(existing.value, existing.mortgage_balance)
           : existing.value;
         const newRunningTotal = runningTotal - toUsdSync(existingContribution, existing.currency || "USD");
+        // An income (db/state) pension carries a null value, so its removal would
+        // record before_value = null and (pre-hasContent-fix) leave no journal row.
+        // Record the annual entitlement given up so the event is legible.
+        const isIncomePensionRemove = existing.type === "pension" && (existing.pension_kind === "db" || existing.pension_kind === "state");
+        const removeBeforeValue = isIncomePensionRemove ? (existing.annual_income ?? null) : existingContribution;
 
         if (reason === "mistake") {
           // Erase from history: drop the asset's mutations (so backfill's unit
@@ -1160,7 +1165,7 @@ export async function applyPortfolioChanges({
           // must be the EQUITY that actually leaves net worth — not the gross
           // market value, which overstated a mortgaged-property sale by the whole
           // loan and contradicted this row's own equity-based portfolio_total.
-          before_value: existingContribution,
+          before_value: removeBeforeValue,
           after_value: null,
           before_units: existing.units || null,
           after_units: null,

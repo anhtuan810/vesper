@@ -19,7 +19,12 @@ export interface ConcentrationValue {
 }
 
 export function applies(_user: VitalUser, assets: Asset[], _snapshots?: Snapshot[]): boolean {
-  return assets.length >= 2;
+  // Gate on the SAME set compute() measures — income (db/state) pensions are
+  // excluded there, so counting them here surfaced the card for a user with one
+  // real position plus a pension entitlement and then reported it as 100%
+  // concentrated ("needs attention"), which the copy ("2 or more assets")
+  // contradicted.
+  return assets.filter((a) => !isIncomePension(a)).length >= 2;
 }
 
 export function compute(

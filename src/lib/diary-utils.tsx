@@ -47,7 +47,10 @@ export function unitNoun(assetType: string | null): string {
 }
 
 export function hasContent(m: Mutation): boolean {
-  return m.before_value != null || m.after_value != null || !!m.personal_context;
+  // A removal is always a real, audit-worthy event even when it carries no value
+  // (e.g. an income-pension entitlement, whose value column is null) — otherwise
+  // deleting it left no journal trace at all.
+  return m.action === "remove" || m.before_value != null || m.after_value != null || !!m.personal_context;
 }
 
 export function relativeAge(past: Date, now: Date): string {

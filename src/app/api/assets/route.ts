@@ -64,7 +64,11 @@ export async function POST(req: NextRequest) {
 
     const { data: allAssets } = await supabase
       .from("assets")
-      .select("type, value, currency, mortgage_balance")
+      // pension_kind is needed so computeNetWorth can exclude income (db/state)
+      // pension entitlements; the amortisation fields let it use the CURRENT
+      // mortgage balance for real-estate equity, matching every other net-worth
+      // read. Omitting them mis-valued the recorded portfolio_total.
+      .select("type, value, currency, mortgage_balance, mortgage_balance_recorded_at, mortgage_rate, monthly_payment, mortgage_type, pension_kind")
       .eq("user_id", user.id)
       .is("removed_at", null);
     const usdRates = await getUsdRates();
@@ -83,6 +87,15 @@ export async function POST(req: NextRequest) {
     const buyDate = typeof created.buy_date === "string" ? created.buy_date.slice(0, 10) : null;
     const occurredAt = buyDate || todayStr;
 
+    // Record the acquisition amount the same way the chat add path does: a
+    // property's purchase price (buy_price) when known, the stated value
+    // otherwise. Mirrors apply-changes so a restored asset's journal/Overview
+    // entry reads the same as a freshly-added one.
+    const acquisitionValue =
+      created.type === "real_estate" && typeof created.buy_price === "number" && created.buy_price > 0
+        ? created.buy_price
+        : created.value;
+
     const { data: mutation } = await supabase
       .from("mutations")
       .insert({
@@ -93,7 +106,7 @@ export async function POST(req: NextRequest) {
         asset_type: created.type,
         symbol: created.symbol || null,
         before_value: null,
-        after_value: created.value,
+        after_value: acquisitionValue,
         before_units: null,
         after_units: created.units ?? null,
         currency: created.currency || "EUR",
