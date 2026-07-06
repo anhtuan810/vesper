@@ -926,6 +926,19 @@ export function VitalsContent({
     } catch {}
   }, [pulseSentence]);
 
+  // The Pulse loads on a separate channel and a failed pulse fetch is swallowed
+  // upstream (useVitals), leaving pulseSentence null forever. Without a terminal
+  // state the shimmer/skeleton would animate indefinitely. Once the body has
+  // landed (data present) but no sentence has arrived within a grace period,
+  // treat the pulse as settled-with-nothing so the row hides instead of
+  // shimmering. A real sentence always renders immediately regardless.
+  const [pulseGaveUp, setPulseGaveUp] = useState(false);
+  useEffect(() => {
+    if (pulseSentence || !data) return;
+    const t = setTimeout(() => setPulseGaveUp(true), 8000);
+    return () => clearTimeout(t);
+  }, [pulseSentence, data]);
+
   const hasMixed = useMemo(() => {
     if (!data?.assets?.length) return false;
     return (
@@ -1100,7 +1113,10 @@ export function VitalsContent({
   );
 
   // ── Empty state ────────────────────────────────────────────────────────────
-  if (activeVitals.length === 0 && data.netWorthEur === 0) {
+  // A brand-new user has no assets. The Liquidity vital always applies and is
+  // always scope-visible, so activeVitals is never empty — the real "no assets"
+  // signal is the assets list itself, not activeVitals.length.
+  if (data.assets.length === 0) {
     return (
       <>
         {pageTitle}
@@ -1317,10 +1333,13 @@ export function VitalsContent({
                 dateLabel={`Pulse · ${fmtDate()}${pulseIsNew ? " · new" : ""}`}
                 sentence={pulseSentence}
                 metaLabel={`${activeVitals.length} vitals`}
+                animate={traceAnimate}
               />
             );
           }
-          return hasAssets ? <PulseBannerSkeleton /> : null;
+          // No sentence yet: hold the slot with a skeleton, but once the pulse
+          // has settled with nothing (pulseGaveUp) stop shimmering forever.
+          return hasAssets && !pulseGaveUp ? <PulseBannerSkeleton /> : null;
         }
 
         // Mobile: the pulse family as ONE full-bleed tinted wash holding four
@@ -1386,9 +1405,10 @@ export function VitalsContent({
                         />
                       )}
                     </>
-                  ) : (
-                    // Pulse still loading (or unavailable): a shimmering
-                    // sentence-length bar holds the row's slot.
+                  ) : pulseGaveUp ? null : (
+                    // Pulse still loading: a shimmering sentence-length bar holds
+                    // the row's slot. Once the pulse settles with nothing
+                    // (pulseGaveUp) the row hides rather than shimmering forever.
                     <div className="animate-pulse" style={{ height: 12, width: "72%", borderRadius: "var(--radius-pill)", background: "var(--surface)", opacity: 0.7, margin: "4px 0" }} />
                   )}
                 </div>

@@ -146,7 +146,7 @@ export function DesktopSettings() {
                 {label}{currentTheme === value && <span className="dot" />}
               </button>
             ))}
-            <div className="st-val" style={{ marginTop: "var(--space-1)" }}>The desktop site always uses the light theme; this also sets the theme on mobile.</div>
+            <div className="st-val" style={{ marginTop: "var(--space-1)" }}>Applies to both the desktop site and the mobile app.</div>
           </div>
         )}
         <NativeSettingsRows />

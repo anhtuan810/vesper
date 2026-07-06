@@ -390,6 +390,10 @@ export function NetWorthChart(props: Props) {
   const values = useMemo(() => converted.map((p) => p.total_value), [converted]);
   const up = converted.length >= 2 && converted[converted.length - 1].total_value >= converted[0].total_value;
   const strokeColor = up ? "var(--positive-text)" : "var(--negative-text)";
+  // A cold-start chart (a single real snapshot, so `up` is trivially false) has no
+  // trend yet — its lone "tracking since" marker uses a neutral colour rather than
+  // the loss/red one, which would misread as a decline on a brand-new account.
+  const coldStartColor = "var(--text-dim)";
 
   // `realPointCount`/`trackingSinceDate` are derived from the FULL snapshot
   // history (not the range-clipped display series) — so the marker reflects a
@@ -724,8 +728,8 @@ export function NetWorthChart(props: Props) {
               }}
             >
               <svg viewBox={`0 0 40 40`} width={20} height={20} aria-hidden>
-                <circle cx={20} cy={20} r={9} fill="none" stroke={strokeColor} strokeOpacity={0.25} />
-                <circle cx={20} cy={20} r={4} fill={strokeColor} />
+                <circle cx={20} cy={20} r={9} fill="none" stroke={coldStartColor} strokeOpacity={0.25} />
+                <circle cx={20} cy={20} r={4} fill={coldStartColor} />
               </svg>
               {currentValue != null && (
                 <div className="tnum" style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)" }}>

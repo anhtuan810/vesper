@@ -91,7 +91,7 @@ export function DrawdownBars({ data, displayCurrency }: Props) {
               left: 0,
               top: 0,
               height: '100%',
-              width: '100%',
+              width: pct(combinedShockEur),
               background: 'var(--negative)',
               opacity: 0.88,
             }}

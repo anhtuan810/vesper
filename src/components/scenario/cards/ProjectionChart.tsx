@@ -92,7 +92,7 @@ export function ProjectionChart({
             key={v}
             style={{
               position: "absolute",
-              top: `${(1 - v / yMax) * 100}%`,
+              top: `${yOf(v)}px`,
               right: 0,
               transform: "translateY(-50%)",
               fontSize: "var(--fs-micro)",

@@ -7,6 +7,10 @@ export interface PulseBannerProps {
   dateLabel: string;
   sentence: string;
   metaLabel?: string;
+  /** Drives the heartbeat draw-in. A host that has already consumed the
+   *  once-per-session flag (usePulseTraceOnce) passes its value here so the
+   *  flag isn't double-read. Omitted → standalone: the banner reads it itself. */
+  animate?: boolean;
 }
 
 // Escapes the Haiku sentence and converts *emphasis* to classed spans:
@@ -60,8 +64,9 @@ export function usePulseTraceOnce(): boolean {
 
 // Desktop/standalone Pulse: the same plate as the mobile band, kept as a
 // rounded card so it sits in the desktop rail.
-export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps) {
-  const animate = usePulseTraceOnce();
+export function PulseBanner({ dateLabel, sentence, metaLabel, animate }: PulseBannerProps) {
+  const tracedOnce = usePulseTraceOnce();
+  const shouldAnimate = animate ?? tracedOnce;
   return (
     <div
       className="pulse-plate"
@@ -92,7 +97,7 @@ export function PulseBanner({ dateLabel, sentence, metaLabel }: PulseBannerProps
           {dateLabel}
         </div>
         <div style={{ flex: 1, minWidth: 0, color: "var(--plate-gold)" }}>
-          <PulseTrace animate={animate} />
+          <PulseTrace animate={shouldAnimate} />
         </div>
         {metaLabel && (
           <div

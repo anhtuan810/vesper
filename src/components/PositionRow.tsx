@@ -73,7 +73,7 @@ export function PositionRow({ asset, closes: closesProp, valuesSettled }: { asse
   const isTradeable = TRADEABLE_TYPES.has(asset.type);
   const isRealEstate = asset.type === "real_estate";
   const mortgageBalance = isRealEstate ? computeCurrentBalance(asset) : 0;
-  const displayValue = isRealEstate ? asset.value - mortgageBalance : asset.value;
+  const displayValue = isRealEstate ? Math.max(0, asset.value - mortgageBalance) : asset.value;
 
   // Owned share of the property: equity / gross value, clamped to [0,1]. NaN when
   // there's no usable value (drives the outline-only icon and hides the caption).

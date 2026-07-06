@@ -1169,6 +1169,16 @@ function HoldingGroup({ category, label, total, pct, items, historical, displayC
     setOpen(next);
   };
 
+  // Keep an OPEN group's cap synced to its content. The height is captured once
+  // on expand, but the same open group can later gain rows (stepping to a busier
+  // journal date, or an add via chat) — without this, the taller content would be
+  // clipped by the stale maxHeight (`.hg-pos` is overflow:hidden) with no scroll.
+  // Re-measuring whenever items change while open grows the cap to fit; closed
+  // groups stay pinned at 0.
+  useEffect(() => {
+    if (open && posRef.current) setMaxH(posRef.current.scrollHeight);
+  }, [items, open]);
+
   return (
     <div className={`hg${open ? " open" : ""}`}>
       <button className="hg-h" type="button" aria-expanded={open} aria-controls={panelId} onClick={toggle}>

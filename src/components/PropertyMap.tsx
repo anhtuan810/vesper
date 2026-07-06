@@ -53,9 +53,27 @@ function OpenInMapsOverlay({ asset }: { asset: RealEstateAsset }) {
 
 export function PropertyMap({ asset }: Props) {
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
+
+  // The cached PNG is theme-specific (uploaded as `{id}-{theme}.png`). Derive which
+  // theme it was captured in from the stored URL so we can tell whether it still
+  // matches the current app theme; a fresh in-session capture records the live
+  // theme via handleCached. Without this the first-viewed theme's map stays frozen
+  // in place after the user switches light/dark.
+  const initialCachedTheme: "light" | "dark" | null = asset.photo_url?.includes("-dark.png")
+    ? "dark"
+    : asset.photo_url?.includes("-light.png")
+    ? "light"
+    : null;
 
   // asset.photo_url is server-provided and confirmed to exist in storage — safe initial value
   const [cachedUrl, setCachedUrl] = useState<string | null>(asset.photo_url ?? null);
+  const [cachedTheme, setCachedTheme] = useState<"light" | "dark" | null>(initialCachedTheme);
+
+  const handleCached = useCallback((url: string) => {
+    setCachedUrl(url);
+    setCachedTheme(url ? resolvedTheme : null);
+  }, [resolvedTheme]);
 
   const handleImgError = useCallback(() => {
     setCachedUrl(null);
@@ -70,8 +88,9 @@ export function PropertyMap({ asset }: Props) {
     background: "var(--surface-elev)",
   };
 
-  // If we have a cached map PNG, render it as a static image
-  if (cachedUrl) {
+  // Show the cached PNG only while it matches the current app theme; otherwise
+  // fall through to MapLibreMap below to re-capture for the active theme.
+  if (cachedUrl && cachedTheme === resolvedTheme) {
     return (
       <div style={containerStyle}>
         <img
@@ -118,7 +137,7 @@ export function PropertyMap({ asset }: Props) {
     <MapLibreMap
       asset={asset}
       skipCaching={false}
-      onCached={setCachedUrl}
+      onCached={handleCached}
     />
   );
 }

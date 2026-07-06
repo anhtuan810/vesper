@@ -342,6 +342,20 @@ export function PortfolioTab({
     () => liquidAssets.reduce((s, a) => s + a.displayValue, 0),
     [liquidAssets],
   );
+  // Whether the Liquid lens can apply at all. Only when the user actually holds
+  // liquid assets (stocks/ETF/crypto) is a Liquid view meaningful — otherwise
+  // tapping "Liquid" would zero the hero and drop the chart while the full
+  // portfolio still lists below (a contradictory, broken empty state).
+  const hasLiquidAssets = liquidAssets.length > 0;
+
+  // Guard against a stale liquidOnly (a sessionStorage flag from a prior visit, or
+  // a removal that emptied the liquid set): with no liquid holdings, snap the lens
+  // back to net worth so the hero can never strand at €0.
+  useEffect(() => {
+    if (!hasLiquidAssets && liquidOnly) setLiquid(false);
+    // setLiquid is a render-local closure; hasLiquidAssets/liquidOnly are the real deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLiquidAssets, liquidOnly]);
 
   // Liquid line series — each historical point's liquid USD sum
   // (breakdown.stocks+etf+crypto) converted to the display currency at the live
@@ -678,6 +692,7 @@ export function PortfolioTab({
             mutations={mutations}
             liquidOnly={liquidOnly}
             onSetLiquid={setLiquid}
+            showLiquidToggle={hasLiquidAssets}
             scrubPoint={scrubPoint}
             rewind={rewind ? { date: rewind.date, total: rewindBook?.total ?? null } : null}
             onExitRewind={exitToNow}

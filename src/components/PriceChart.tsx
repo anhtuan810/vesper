@@ -20,6 +20,12 @@ interface PriceChartProps {
   defaultRange?: Range;
   onPeriodChange?: (pct: number | null, range: Range, label: string) => void;
   onScrub?: (info: ScrubInfo | null) => void;
+  // Currency the raw `closes` are quoted in (the instrument's native/Yahoo
+  // currency). The Y-axis is labelled in THIS currency because the closes are not
+  // FX-converted — labelling them with the user's display symbol would stamp e.g.
+  // "€150" on an unconverted $150 price. Defaults to the display currency for
+  // callers whose data is already in it.
+  priceCurrency?: string;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = {
@@ -131,10 +137,13 @@ function fmtScrubLabel(timestamp: number, range: Range): string {
   });
 }
 
-export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScrub }: PriceChartProps) {
+export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScrub, priceCurrency }: PriceChartProps) {
   const router = useRouter();
   const [range, setRange] = useState<Range>(defaultRange);
   const { currency: displayCurrency } = useDisplayCurrencyState();
+  // The axis labels the native (unconverted) closes, so use the instrument's own
+  // currency when known, falling back to the display currency.
+  const axisCurrency = priceCurrency ?? displayCurrency;
   const [chartWidth, setChartWidth] = useState(320);
   const svgContainerRef = useRef<HTMLDivElement>(null);
 
@@ -268,8 +277,26 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
           applyScrub(calcIndex(e.touches[0].clientX, e.currentTarget.getBoundingClientRect()));
         },
         onTouchEnd() { clearScrub(); },
+        // iOS fires touchcancel (not touchend) when a system gesture steals the
+        // touch — left-edge swipe-back, Control/Notification Center, an app switch.
+        // Without this the crosshair + scrubbed hero stay parked on a past point.
+        onTouchCancel() { clearScrub(); },
       }
     : {};
+
+  // Backgrounding the app (or an app switch) can also strand a scrub, since a
+  // canceled touch may not fire touchcancel at all. Clear on hide, mirroring the
+  // net-worth chart.
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") {
+        setSelectedIndex(null);
+        onScrub?.(null);
+      }
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+  }, [onScrub]);
 
   function selectRange(r: Range) {
     setRange(r);
@@ -362,7 +389,7 @@ export function PriceChart({ symbol, defaultRange = "1M", onPeriodChange, onScru
                   pointerEvents: "none",
                 }}
               >
-                {fmtYLabel(value, displayCurrency)}
+                {fmtYLabel(value, axisCurrency)}
               </div>
             ))}
           </div>

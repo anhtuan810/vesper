@@ -47,6 +47,10 @@ interface NetWorthHeroProps {
   mutations?: Mutation[];
   liquidOnly: boolean;
   onSetLiquid: (v: boolean) => void;
+  // Whether to offer the Net worth / Liquid toggle. Defaults to true (unchanged
+  // behavior); passed false when the user has no liquid holdings, so the Liquid
+  // lens — which would zero the hero — is never presented.
+  showLiquidToggle?: boolean;
   // The point under a HELD scrub gesture (already display-currency). Transient
   // by construction — the chart emits null the moment the finger lifts, so the
   // hero springs back to whatever it was showing before (rewind or live).
@@ -108,7 +112,7 @@ function LiquidToggle({ liquidOnly, onSetLiquid }: { liquidOnly: boolean; onSetL
 //      Named time may persist, because the journal entry below says what it is.
 //   3. Live (rest) — the current value with its range delta. The default, and
 //      the ONLY state that can show a change pill.
-export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations, liquidOnly, onSetLiquid, scrubPoint, rewind, onExitRewind }: NetWorthHeroProps) {
+export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations, liquidOnly, onSetLiquid, showLiquidToggle = true, scrubPoint, rewind, onExitRewind }: NetWorthHeroProps) {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
   const building = usePortfolioBuilding();
 
@@ -190,7 +194,7 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
   if (!currencyLoaded || !valuesSettled) {
     return (
       <div>
-        <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
+        {showLiquidToggle && <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />}
         <div
           className="bg-surface-elev rounded-lg animate-pulse"
           style={{ height: 42, width: "60%", maxWidth: 280 }}
@@ -219,9 +223,9 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
         >
           {fmtSelectedDate(rewind.date)}
         </div>
-      ) : (
+      ) : (showLiquidToggle || building) ? (
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", minHeight: 25, marginBottom: "var(--space-3)" }}>
-          <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />
+          {showLiquidToggle && <LiquidToggle liquidOnly={liquidOnly} onSetLiquid={onSetLiquid} />}
           {/* While a past-dated add rebuilds the history, mark the chart as still
               filling in — clears itself when the rebuild lands. */}
           {building && (
@@ -231,7 +235,7 @@ export function NetWorthHero({ netTotal, range, series, valuesSettled, mutations
             </span>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* Hero number — monochrome. Rewound at rest it steps down from the hero
           tone (this is a reconstruction, not your money right now). */}

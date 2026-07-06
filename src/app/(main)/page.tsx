@@ -154,6 +154,14 @@ export default function Dashboard() {
   }
 
   if (userLoading || assetsLoading) {
+    // On desktop this renders inside the WebShell, which already supplies the real
+    // nav — so the mobile skeleton's faux navbar strip + narrow card would stack a
+    // second nav under the real one and flash a wrong-shaped layout before snapping
+    // to the two-column dashboard. Show a neutral full-width placeholder there
+    // instead; keep the mobile skeleton exactly as-is for the phone.
+    if (isDesktop) {
+      return <div className="min-h-screen bg-bg" />;
+    }
     return (
       <div className="min-h-screen bg-bg">
         <div className="h-9 md:h-14 bg-surface border-b border-border" />

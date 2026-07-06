@@ -68,7 +68,7 @@ export function GrowthChart({
         {yLabels.map((v) => (
           <div
             key={v}
-            style={{ position: "absolute", top: `${(1 - v / yMax) * 100}%`, right: 0, transform: "translateY(-50%)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, pointerEvents: "none", fontFamily: "var(--font-numeric)" }}
+            style={{ position: "absolute", top: `${yOf(v)}px`, right: 0, transform: "translateY(-50%)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1, pointerEvents: "none", fontFamily: "var(--font-numeric)" }}
           >
             {compactMoney(v, symbol)}
           </div>

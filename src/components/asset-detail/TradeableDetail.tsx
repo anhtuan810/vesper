@@ -293,7 +293,7 @@ export function TradeableDetail({ asset }: Props) {
         </div>
 
         {/* Price chart */}
-        {asset.symbol && <PriceChart symbol={asset.symbol} defaultRange="1M" onPeriodChange={onPeriodChange} onScrub={onScrub} />}
+        {asset.symbol && <PriceChart symbol={asset.symbol} defaultRange="1M" priceCurrency={assetCur} onPeriodChange={onPeriodChange} onScrub={onScrub} />}
 
         {/* Your position */}
         <div style={{ marginTop: 26 }}>
