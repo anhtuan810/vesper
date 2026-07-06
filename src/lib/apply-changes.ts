@@ -153,6 +153,19 @@ export type MutationMeta = {
   assetType: string | null;
 };
 
+// Best-effort stamp of the outstanding mortgage balance onto a real-estate
+// mutation, so the net-worth history can reconstruct equity at a past date from
+// the balance in effect then. Guarded: in a pre-migration environment the column
+// doesn't exist and the update fails — swallowed, since the reconstruction falls
+// back to the amortisation schedule until the column is applied.
+async function stampMortgageBalance(supabase: SupabaseClient, mutationId: string, balance: number): Promise<void> {
+  try {
+    await supabase.from("mutations").update({ mortgage_balance: balance }).eq("id", mutationId);
+  } catch {
+    /* column not yet applied — safe to skip */
+  }
+}
+
 export async function applyPortfolioChanges({
   supabase,
   userId,
@@ -697,6 +710,11 @@ export async function applyPortfolioChanges({
           else addedNamesThisBatch.add(dupNameKey);
           if (addedMutation?.id) {
             mutationMetas.push({ id: addedMutation.id, symbol: effectiveSymbol, occurredAt: addOccurredAt, assetType: change.type || "other" });
+            // Record the property's mortgage balance at acquisition so history can
+            // step it (see stampMortgageBalance / the reconstruction).
+            if (isRealEstate && resolvedMortgageBalance != null) {
+              await stampMortgageBalance(supabase, addedMutation.id, resolvedMortgageBalance);
+            }
           }
         }
       }
@@ -1072,6 +1090,11 @@ export async function applyPortfolioChanges({
           if (editMutError) console.error("EDIT MUTATION ERROR (edit applied, audit row missing):", editMutError);
           if (editedMutation?.id && !onlyNameChanged) {
             mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
+            // Record the property's mortgage balance AFTER this edit, so a paydown
+            // or drawdown becomes a step the net-worth history can honour.
+            if (isRealEstateEdit && editedMutation?.id) {
+              await stampMortgageBalance(supabase, editedMutation.id, newMortgage);
+            }
           }
 
           // Image-import workflow: the batch is committed (action "add",

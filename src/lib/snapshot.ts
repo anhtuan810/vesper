@@ -393,13 +393,45 @@ async function buildRealEstateProgressSamplers(assets: any[], todayStr: string):
   return realEstateT;
 }
 
+// Wraps a schedule-based balance sampler so it honours DISCRETE mortgage changes
+// recorded on mutations (a lump-sum paydown or a redraw). The amortisation
+// schedule alone is anchored to today's balance and smoothly back-projects it, so
+// a paydown made the whole pre-paydown history understate the debt (and overstate
+// equity). For each pair of consecutive recorded balances we isolate the part of
+// the change NOT explained by amortisation (schedule drop over the interval) — the
+// genuine step — and add it back for every date before it. Pure + exported for
+// testing. With no recorded balances (all historical data, and any pre-migration
+// environment) it returns the schedule sampler UNCHANGED, so behaviour is
+// byte-identical until a real discrete event exists.
+export function historizeBalanceSampler(
+  scheduleBalAt: (date: string) => number,
+  balancePoints: { date: string; balance: number }[],
+): (date: string) => number {
+  const sorted = [...balancePoints].sort((a, b) => a.date.localeCompare(b.date));
+  const steps: { date: string; delta: number }[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const actualDrop = sorted[i - 1].balance - sorted[i].balance;
+    const scheduleDrop = scheduleBalAt(sorted[i - 1].date) - scheduleBalAt(sorted[i].date);
+    const discrete = actualDrop - scheduleDrop; // the jump amortisation doesn't explain
+    if (Math.abs(discrete) > 1) steps.push({ date: sorted[i].date, delta: discrete });
+  }
+  if (steps.length === 0) return scheduleBalAt;
+  return (date: string) => {
+    let adj = 0;
+    for (const s of steps) if (s.date > date) adj += s.delta;
+    return Math.max(0, scheduleBalAt(date) + adj);
+  };
+}
+
 // Per real-estate asset: a historical mortgage-balance sampler from
 // projectMortgage — the same schedule the MortgageBlock card uses, so the
 // today value matches. Callers fall back to computeCurrentBalance when an
 // asset has no usable schedule. Shared by backfillSnapshots and
-// reconstructHoldingsAt.
+// reconstructHoldingsAt. `balancePointsByAsset` (optional) supplies recorded
+// mortgage balances from the mutation log so discrete paydowns/redraws are
+// honoured; absent, the pure schedule is used (unchanged behaviour).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildRealEstateBalanceSamplers(assets: any[], todayStr: string): Map<string, (date: string) => number> {
+function buildRealEstateBalanceSamplers(assets: any[], todayStr: string, balancePointsByAsset?: Map<string, { date: string; balance: number }[]>): Map<string, (date: string) => number> {
   const realEstateBalanceAt = new Map<string, (date: string) => number>();
   const todayDate = new Date(todayStr + "T12:00:00Z");
   for (const a of assets.filter((x) => x.type === "real_estate")) {
@@ -430,9 +462,40 @@ function buildRealEstateBalanceSamplers(assets: any[], todayStr: string): Map<st
       const frac = k - i;
       return curve[i].balance + frac * (curve[i + 1].balance - curve[i].balance);
     };
-    realEstateBalanceAt.set(a.id as string, balAt);
+    // Honour recorded discrete paydowns/redraws for this asset (no-op when none).
+    const points = balancePointsByAsset?.get(a.id as string);
+    realEstateBalanceAt.set(a.id as string, points && points.length > 0 ? historizeBalanceSampler(balAt, points) : balAt);
   }
   return realEstateBalanceAt;
+}
+
+// Guarded fetch of recorded mortgage balances from the mutation log, grouped by
+// asset. Pre-migration (the mortgage_balance column absent) the query errors —
+// we swallow it and return an empty map, so the reconstruction falls back to the
+// pure amortisation schedule. Only real-estate mutations carry a balance.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchMortgageBalancePoints(supabase: any, userId: string): Promise<Map<string, { date: string; balance: number }[]>> {
+  const byAsset = new Map<string, { date: string; balance: number }[]>();
+  try {
+    const { data, error } = await supabase
+      .from("mutations")
+      .select("asset_id, occurred_at, mortgage_balance")
+      .eq("user_id", userId)
+      .eq("asset_type", "real_estate")
+      .not("mortgage_balance", "is", null)
+      .not("asset_id", "is", null);
+    if (error || !data) return byAsset;
+    for (const r of data) {
+      const id = r.asset_id as string;
+      const date = ((r.occurred_at as string | null) ?? "").slice(0, 10);
+      const balance = Number(r.mortgage_balance);
+      if (!id || !date || !Number.isFinite(balance)) continue;
+      (byAsset.get(id) ?? byAsset.set(id, []).get(id)!).push({ date, balance });
+    }
+  } catch {
+    /* column not yet applied — fall back to the schedule */
+  }
+  return byAsset;
 }
 
 export interface HoldingAt {
@@ -545,7 +608,8 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
       }),
     ),
   ]);
-  const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr);
+  const mortgagePoints = await fetchMortgageBalancePoints(supabase, userId);
+  const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr, mortgagePoints);
 
   const out: HoldingAt[] = [];
   for (const a of assets) {
@@ -732,7 +796,8 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     }
 
     const realEstateT = await buildRealEstateProgressSamplers(assets, todayStr);
-    const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr);
+    const mortgagePoints = await fetchMortgageBalancePoints(supabase, userId);
+    const realEstateBalanceAt = buildRealEstateBalanceSamplers(assets, todayStr, mortgagePoints);
 
     // Build per-asset unit timeline.
     // Mutations with null occurred_at (starting positions) are placed at earliest.
