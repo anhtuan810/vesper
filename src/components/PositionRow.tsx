@@ -19,7 +19,17 @@ const fmtPct = new Intl.NumberFormat("nl-NL", {
 });
 
 function subLine(asset: LiveAsset): string {
-  if (asset.type === "real_estate") return asset.country ?? "";
+  if (asset.type === "real_estate") {
+    if (asset.country) return asset.country;
+    // A property added from an address alone leaves the country column null,
+    // which renders a blank sub-line while sibling properties show theirs.
+    // Recover it from the stored canonical address, whose last segment is the
+    // country ("Street 1, 1234 AB City, Netherlands"). Only when there are 3+
+    // segments, so a bare "Street, City" never echoes the city (already in the
+    // name) as though it were a country.
+    const parts = (asset.address ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    return parts.length >= 3 ? parts[parts.length - 1] : "";
+  }
 
   if (TRADEABLE_TYPES.has(asset.type)) {
     const parts: string[] = [];
