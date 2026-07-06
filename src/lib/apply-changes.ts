@@ -3,7 +3,7 @@ import { fetchHistoricalPrice, normalizePrice } from "./prices";
 import { fetchPriceWithFallback, fetchYahooPrice, fetchYahooQuote } from "./prices-server";
 import { resolveSymbol, normalizeCryptoSymbol } from "./symbol-aliases";
 import { mapWithConcurrency } from "./concurrency";
-import { computeNetWorth } from "./utils";
+import { computeNetWorth, realEstateEquity } from "./utils";
 import { getUsdRates } from "./fx";
 import { countryToCurrency } from "./country-currency";
 import { isCostBasisOnlyEdit, applyCostBasisOnly } from "./cost-basis";
@@ -652,7 +652,14 @@ export async function applyPortfolioChanges({
               : resolvedValue;
         // Only commit the running total once the mutation lands, so a failed
         // mutation insert doesn't leave the recorded portfolio_total drifting.
-        const newRunningTotal = runningTotal + toUsdSync(resolvedValue, resolvedCurrency);
+        // A mortgaged property adds only its EQUITY to net worth (the same basis
+        // computeNetWorth seeds runningTotal with, and the edit/remove paths use);
+        // adding the full market value overstated portfolio_total by the mortgage
+        // and let that drift into every later row in the batch.
+        const addNetWorthContribution = isRealEstate
+          ? realEstateEquity(resolvedValue, resolvedMortgageBalance)
+          : resolvedValue;
+        const newRunningTotal = runningTotal + toUsdSync(addNetWorthContribution, resolvedCurrency);
         const { data: addedMutation, error: addMutError } = await supabase.from("mutations").insert({
           user_id: userId,
           asset_id: inserted?.id || null,
@@ -940,8 +947,8 @@ export async function applyPortfolioChanges({
           const newMortgage = updateData.mortgage_balance !== undefined
             ? (updateData.mortgage_balance as number)
             : oldMortgage;
-          const beforeRecorded: number | null = isRealEstateEdit ? (existing.value ?? 0) - oldMortgage : existing.value;
-          const afterRecorded: number | null = isRealEstateEdit ? (rawAfter ?? 0) - newMortgage : rawAfter;
+          const beforeRecorded: number | null = isRealEstateEdit ? realEstateEquity(existing.value ?? 0, oldMortgage) : existing.value;
+          const afterRecorded: number | null = isRealEstateEdit ? realEstateEquity(rawAfter ?? 0, newMortgage) : rawAfter;
 
           // Income pensions are off-balance — their net-worth contribution is 0,
           // so the running total never picks up an annual-income figure. Capital
@@ -953,6 +960,19 @@ export async function applyPortfolioChanges({
           // "€X / year" downstream), equity for real estate, the resolved value
           // otherwise.
           const afterValue: number | null = isIncomePensionEdit ? pensionEditIncomeAmount : afterRecorded;
+          // An income-pension edit must NOT pair the old CAPITAL pot value against
+          // the new annual-INCOME after_value — they are different quantities (a
+          // balance vs a yearly flow), and the Diary/Activity would subtract them
+          // into a nonsense "/year" delta (e.g. a €50k pot reclassified to €12k/yr
+          // rendered "−€38,000 / year"). Store the PRIOR annual income instead: a
+          // raise then reads "+€X / year", and a capital→income reclassification —
+          // which had no prior income — reads as a neutral restatement of the new
+          // entitlement. The running total above still uses beforeRecorded, so the
+          // old pot is correctly removed from net worth. Non-income edits are
+          // unchanged (equity for real estate, resolved value otherwise).
+          const storedBeforeValue: number | null = isIncomePensionEdit
+            ? (existing.annual_income ?? null)
+            : beforeRecorded;
 
           // Every edit is logged — including a pure rename, which records the
           // before/after name (value/units unchanged) so the Diary audit trail
@@ -974,7 +994,7 @@ export async function applyPortfolioChanges({
             action: "edit",
             asset_type: existing.type,
             symbol: existing.symbol || null,
-            before_value: beforeRecorded,
+            before_value: storedBeforeValue,
             after_value: afterValue,
             before_units: existing.units || null,
             after_units: change.units !== undefined ? change.units : (existing.units || null),
@@ -1041,7 +1061,7 @@ export async function applyPortfolioChanges({
       for (const existing of matching) {
         // Match how computeNetWorth counted this asset: equity for real estate, value for others.
         const existingContribution = existing.type === "real_estate"
-          ? existing.value - (existing.mortgage_balance ?? 0)
+          ? realEstateEquity(existing.value, existing.mortgage_balance)
           : existing.value;
         const newRunningTotal = runningTotal - toUsdSync(existingContribution, existing.currency || "USD");
 
@@ -1072,7 +1092,12 @@ export async function applyPortfolioChanges({
           action: "remove",
           asset_type: existing.type,
           symbol: existing.symbol || null,
-          before_value: existing.value,
+          // The removal's displayed magnitude (struck-through in the Diary, the
+          // "▼" impact in the Overview) is read straight from before_value, so it
+          // must be the EQUITY that actually leaves net worth — not the gross
+          // market value, which overstated a mortgaged-property sale by the whole
+          // loan and contradicted this row's own equity-based portfolio_total.
+          before_value: existingContribution,
           after_value: null,
           before_units: existing.units || null,
           after_units: null,

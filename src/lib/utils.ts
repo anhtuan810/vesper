@@ -69,6 +69,18 @@ export function getMonthLabel(key: string): string {
   return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
+// A property's contribution to net worth is its EQUITY: market value minus the
+// outstanding mortgage balance. This is the SINGLE definition the write path
+// (add / edit / remove mutations) and the net-worth math below both call, so the
+// "is it value or equity?" decision can never drift between code paths again (the
+// class of bug behind the mortgage-paydown and sell-a-mortgaged-property defects).
+// The balance is passed in so each caller supplies the point-in-time figure it
+// holds — the stored balance for a discrete mutation event, the amortized balance
+// for a live total.
+export function realEstateEquity(value: number, mortgageBalance: number | null | undefined): number {
+  return value - (mortgageBalance ?? 0);
+}
+
 export function computeNetWorth(
   assets: Array<{
     type: string;
@@ -95,8 +107,10 @@ export function computeNetWorth(
     // the same basis the Portfolio hero and the allocation donut use, so this stays
     // matched as the loan amortizes. computeCurrentBalance degrades to the stored
     // balance when the amortization fields (recorded_at/rate/payment/type) are absent.
-    const mortgageUsd = a.type === "real_estate" ? toUsd(computeCurrentBalance(a), cur) : 0;
-    return sum + valueUsd - mortgageUsd;
+    if (a.type === "real_estate") {
+      return sum + realEstateEquity(valueUsd, toUsd(computeCurrentBalance(a), cur));
+    }
+    return sum + valueUsd;
   }, 0);
 }
 
