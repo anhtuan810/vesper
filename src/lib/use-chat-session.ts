@@ -226,6 +226,14 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const pendingScenarioRef = useRef<Record<string, unknown> | null>(null);
   // Latest messages, for callbacks that shouldn't re-create when messages change.
   const messagesRef = useRef<ChatMessage[]>([]);
+  // Tracks whether this surface is still mounted, so a reconcile poll started in
+  // send()'s error path stops itself when the user navigates away (the remount
+  // effect then takes over the reconciliation).
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Use refs for callbacks so send() doesn't recreate when parent re-renders
   const onPortfolioUpdateRef = useRef(onPortfolioUpdate);
@@ -508,6 +516,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     // post-success side-effect (track / cache invalidation / callback) must NOT
     // surface a "Connection issue" bubble after the answer already rendered.
     let data: ChatResponse;
+    // Set when the catch path hands off to a reconcile poll: the finally must then
+    // leave `loading` / the send-guard HELD (composer disabled) so a still-waiting
+    // user can't fire a duplicate send; the poll releases them when it resolves.
+    let reconciling = false;
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
@@ -531,19 +543,54 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
         return;
       }
     } catch {
-      setThinking(false);
-      // Restore the composer so the user's text isn't lost and can be retried,
-      // and drop the orphaned optimistic user bubble.
-      setInput(text);
-      setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
-      setMessages((prev) => [
-        ...prev,
-        { localId: nextLocalId(), from: "assistant", text: "Connection issue. Please try again." },
-      ]);
+      // A thrown fetch — a client-side timeout, a dropped connection, or the user
+      // leaving the tab mid-request — is NOT a definitive failure: the server may
+      // still be finishing and persists the turn regardless. So NEVER yank the
+      // message the user typed (deleting it here is exactly what made a question
+      // vanish on a tab switch and pushed users to re-ask — and re-add the same
+      // holding). Keep the message, keep the waiting state, and reconcile from the
+      // saved thread, the same way the remount path does: poll until the answer
+      // lands, then adopt it. A note only appears if it truly never arrives.
+      reconciling = true;
+      const priorId = [...messagesRef.current].reverse().find((m) => m.id)?.id ?? null;
+      const startedAt = Date.now();
+      const finish = () => { setLoading(false); sendInFlightRef.current = false; };
+      const reconcile = async () => {
+        if (!mountedRef.current) { finish(); return; } // left the tab — remount poll takes over
+        try {
+          const r = await apiFetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`);
+          const d = await r.json();
+          if (Array.isArray(d?.messages) && d.messages.length > 0) {
+            const mapped = mapDbMessages(d.messages);
+            const newestId = [...mapped].reverse().find((m) => m.id)?.id ?? null;
+            if (newestId && newestId !== priorId) {
+              setMessages(mapped);
+              setThinking(false);
+              finish();
+              return;
+            }
+          }
+        } catch {}
+        if (!mountedRef.current) { finish(); return; }
+        if (Date.now() - startedAt < 75_000) {
+          setTimeout(reconcile, 2500);
+        } else {
+          setThinking(false);
+          setMessages((prev) => [
+            ...prev,
+            { localId: nextLocalId(), from: "assistant", text: "That's taking longer than usual — your message is saved and I'm still working on it. Give it a moment, or ask again." },
+          ]);
+          finish();
+        }
+      };
+      reconcile();
       return;
     } finally {
-      setLoading(false);
-      sendInFlightRef.current = false;
+      // The reconcile path keeps the composer disabled until its poll resolves.
+      if (!reconciling) {
+        setLoading(false);
+        sendInFlightRef.current = false;
+      }
     }
 
     // Success side-effects — outside the catch so a throw here can't render a
