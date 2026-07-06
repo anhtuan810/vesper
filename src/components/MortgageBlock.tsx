@@ -94,7 +94,15 @@ export function MortgageBlock({ asset }: Props) {
       }
     }
 
-    const proj = projectMortgage(balance, rate, pmt ?? 0, type, startDate, new Date(), endDate);
+    // Amortise the ACTUAL stated payment to find the mortgage-free date. Passing
+    // the calendar end date makes projectMortgage report the contractual maturity
+    // and silently ignore an over- or under-payment, so "Mortgage-free" / "years
+    // to go" were wrong whenever the entered payment differed from the contractual
+    // annuity (the normal case). Keep the end date only for interest-only (whose
+    // payoff IS the end date) and for a payment we DERIVED from the term (no stated
+    // payment — that payment amortises to the end date by construction).
+    const endForProjection = (type !== "interest_only" && payment != null) ? undefined : endDate;
+    const proj = projectMortgage(balance, rate, pmt ?? 0, type, startDate, new Date(), endForProjection);
     return {
       projection: proj,
       renderState: proj.status === "payment_below_interest" ? "payment_below_interest" : "ok",

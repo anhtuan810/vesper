@@ -108,6 +108,14 @@ export function MortgageProjectionLine({
       if (pmt == null) return null;
     }
 
+    // Baseline payoff must amortise the ACTUAL stated payment, not the calendar
+    // term — otherwise remainingMonths is the contractual maturity and the
+    // "X years sooner" saving (baseline − with-extra) is measured against the
+    // wrong baseline, inflating it whenever the entered payment differs from the
+    // contractual annuity. Keep the end date only for interest-only and for a
+    // term-derived payment (which amortises to the end date by construction). This
+    // matches MortgageBlock so the card and this line still agree to the month.
+    const endForProjection = (type !== "interest_only" && payment != null) ? undefined : endDate;
     const proj = projectMortgage(
       balance,
       rate,
@@ -115,7 +123,7 @@ export function MortgageProjectionLine({
       type as "annuity" | "linear" | "interest_only",
       startDate,
       new Date(),
-      endDate,
+      endForProjection,
     );
     if (proj.status !== "ok" || !proj.payoffDate || proj.remainingMonths <= 0) return null;
 
