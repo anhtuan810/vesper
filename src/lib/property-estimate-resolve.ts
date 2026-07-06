@@ -6,6 +6,7 @@
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex, targetRegionName } from "@/lib/cbs-pbk";
 import { estimateValue, parseBuyYear, clampBuyYear } from "@/lib/property-estimate";
+import { effectivePropertyCountry } from "@/lib/country-currency";
 
 export interface PropertyEstimate {
   available: boolean;
@@ -32,7 +33,7 @@ export async function estimatePropertyValue(opts: {
   buyDate: string | null;
 }): Promise<PropertyEstimate> {
   try {
-    if (!isNL(opts.country)) return UNAVAILABLE;
+    if (!isNL(effectivePropertyCountry(opts.country, opts.address))) return UNAVAILABLE;
     if (!opts.buyPrice || opts.buyPrice <= 0) return UNAVAILABLE;
     const buyYear = parseBuyYear(opts.buyDate);
     if (buyYear == null) return UNAVAILABLE;

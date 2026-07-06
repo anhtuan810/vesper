@@ -100,6 +100,21 @@ export function countryFromAddress(address: string | null | undefined): string |
 }
 
 /**
+ * A property's country for gating country-specific features (the NL indicative
+ * value, the net-worth CBS reconstruction): the stored value when set, otherwise
+ * recovered from the canonical address. Lets a property whose country column was
+ * never populated still qualify by the country named in its address, with no
+ * database backfill. Null when neither source names a country.
+ */
+export function effectivePropertyCountry(
+  country: string | null | undefined,
+  address: string | null | undefined,
+): string | null {
+  if (country && country.trim()) return country;
+  return countryFromAddress(address);
+}
+
+/**
  * A readable label for a stored country value, whether it's an ISO-2 code ("NL")
  * or already a name ("Netherlands"). Empty string for null/blank.
  */

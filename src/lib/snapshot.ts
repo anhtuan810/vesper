@@ -7,6 +7,7 @@ import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
 import { parseBuyYear, normalizeIndex } from "@/lib/property-estimate";
+import { effectivePropertyCountry } from "@/lib/country-currency";
 
 export async function writeSnapshot(userId: string): Promise<void> {
   try {
@@ -370,7 +371,7 @@ async function buildRealEstateProgressSamplers(assets: any[], todayStr: string):
         const linearT = (date: string) => (fractionalYear(date) - buyFy) / (todayFy - buyFy);
 
         let shapeT: ((date: string) => number) | null = null;
-        if (isNL(a.country as string | null) && a.address) {
+        if (a.address && isNL(effectivePropertyCountry(a.country as string | null, a.address as string | null))) {
           const region = await resolveRegion(a.address as string);
           if (region) {
             const idx = await getRegionIndex(region.gemeente, region.province);

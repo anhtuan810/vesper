@@ -3,6 +3,7 @@ import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex, targetRegionName, diagnoseRegionIndex } from "@/lib/cbs-pbk";
 import { estimateValue, estimateSeries, parseBuyYear, clampBuyYear } from "@/lib/property-estimate";
+import { effectivePropertyCountry } from "@/lib/country-currency";
 
 // GET /api/property-estimate?assetId=<id> — deterministic CBS-PBK value estimate
 // for an authed user's NL real-estate asset. Server-side only; NO LLM. Everything
@@ -35,8 +36,8 @@ export async function GET(request: NextRequest) {
     // resolution and the first failing step instead of the normal result. No
     // secrets are involved; the address shown is the requesting user's own asset.
     if (request.nextUrl.searchParams.get("debug") === "1") {
-      const country = (asset?.country as string | null) ?? null;
       const addr = (asset?.address as string | null) ?? null;
+      const country = effectivePropertyCountry((asset?.country as string | null) ?? null, addr);
       const buyPrice = typeof asset?.buy_price === "number" && asset.buy_price > 0 ? asset.buy_price : null;
       const storedValue = typeof asset?.value === "number" && asset.value > 0 ? asset.value : null;
       const requestedYear = parseBuyYear((asset?.buy_date as string | null) ?? null);
@@ -58,7 +59,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (!asset || asset.type !== "real_estate" || !isNL(asset.country as string | null)) {
+    const effectiveCountry = asset
+      ? effectivePropertyCountry(asset.country as string | null, asset.address as string | null)
+      : null;
+    if (!asset || asset.type !== "real_estate" || !isNL(effectiveCountry)) {
       return NextResponse.json(UNAVAILABLE);
     }
 

@@ -6,6 +6,7 @@ import { useChartHaptic } from "@/hooks/useChartHaptic";
 import { formatMoney } from "@/lib/money";
 import type { RealEstateAsset } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
+import { effectivePropertyCountry } from "@/lib/country-currency";
 
 // Per-year indicative property value chart. Sourced ENTIRELY from the prompt-1
 // estimate engine via GET /api/property-estimate — the component does no
@@ -74,7 +75,9 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
   const haptic = useChartHaptic();
 
-  const eligible = isNL(asset.country) && !!asset.address;
+  // A property whose country column was never set still qualifies when its
+  // address names the Netherlands (the server route recovers it the same way).
+  const eligible = !!asset.address && isNL(effectivePropertyCountry(asset.country, asset.address));
 
   useEffect(() => {
     if (!eligible) return;
