@@ -120,6 +120,15 @@ const EXCHANGE_SUFFIXES = new Set([
   "MX", "BA",
 ]);
 
+// Format a holding's unit count. The plain nl-NL format caps at 3 decimals,
+// which rendered a value-mode 0.00022222 BTC buy (stored at 8 dp) as "+0 units"
+// and a 0.0234 BTC buy as "+0,023", silently dropping precision. Allow up to 8
+// decimals so small fractional positions (crypto, fractional shares) keep what
+// was stored; whole counts still render clean ("20"), no trailing zeros.
+export function formatUnits(n: number): string {
+  return n.toLocaleString("nl-NL", { maximumFractionDigits: 8 });
+}
+
 export function displayTicker(symbol: string): string {
   const dot = symbol.lastIndexOf(".");
   if (dot === -1) return symbol;

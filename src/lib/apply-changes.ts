@@ -453,7 +453,11 @@ export async function applyPortfolioChanges({
           );
         }
 
-        const statedCurrency = change.currency ?? priceResult.nativeCurrency;
+        // An untagged amount is in the user's OWN (display) currency, not the
+        // instrument's native currency — "put 10k into Apple" means 10k of their
+        // money, and defaulting to Yahoo's native (USD) treated €10k as $10k,
+        // over-scaling the derived share count by the FX rate.
+        const statedCurrency = change.currency ?? fallbackCurrency;
         let valueInYahooCurrency = change.value!;
         if (statedCurrency !== priceResult.nativeCurrency) {
           valueInYahooCurrency = await convertCurrency(
@@ -722,31 +726,53 @@ export async function applyPortfolioChanges({
             );
           }
 
-          const priceResult = await fetchYahooPrice(normalizeCryptoSymbol(existing.symbol, existing.type));
+          const normSym = normalizeCryptoSymbol(existing.symbol, existing.type);
 
-          if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
-            throw new ValueModeError(
-              `Couldn't fetch a live price for ${existing.symbol} right now — could you state the unit count instead?`
-            );
+          // Price the delta at the date the money actually moved. A BACK-DATED
+          // contribution ("I put €5k into ETH back in February") must derive its
+          // unit count from February's price — the mutation is dated then and the
+          // net-worth history is rebuilt from then, so pricing it at today's
+          // (different) price stored the wrong units and skewed every rebuilt row.
+          // Falls back to the live price when there's no past date or the
+          // historical lookup misses.
+          const pastEditDate = change.buy_date && change.buy_date < todayStr ? change.buy_date : null;
+          let unitPrice: number | null = null;
+          let nativeCurrency: string | null = null;
+          if (pastEditDate) {
+            const hist = await fetchHistoricalPrice(normSym, pastEditDate);
+            if (hist && hist.price > 0) {
+              unitPrice = normalizePrice(hist.price, hist.currency);
+              nativeCurrency = hist.currency === "GBp" ? "GBP" : hist.currency;
+            }
+          }
+          if (unitPrice == null) {
+            const priceResult = await fetchYahooPrice(normSym);
+            if (priceResult.error || !priceResult.price || priceResult.price <= 0) {
+              throw new ValueModeError(
+                `Couldn't fetch a live price for ${existing.symbol} right now — could you state the unit count instead?`
+              );
+            }
+            unitPrice = priceResult.price;
+            nativeCurrency = priceResult.nativeCurrency;
           }
 
-          const statedCurrency = change.currency ?? existing.currency ?? priceResult.nativeCurrency;
-          let deltaInYahooCurrency: number = change.value_delta!;
-          if (statedCurrency !== priceResult.nativeCurrency) {
-            deltaInYahooCurrency = await convertCurrency(
-              change.value_delta!,
-              statedCurrency,
-              priceResult.nativeCurrency,
-            );
+          // An untagged amount is in the user's OWN (display) currency — "put 10k
+          // in" means 10k of their money, not 10k of the instrument's native
+          // currency (USD for a US listing or crypto), which silently mis-scaled
+          // the derived units by the FX rate.
+          const statedCurrency = change.currency ?? fallbackCurrency;
+          let deltaInNative: number = change.value_delta!;
+          if (statedCurrency !== nativeCurrency) {
+            deltaInNative = await convertCurrency(change.value_delta!, statedCurrency, nativeCurrency!);
           }
 
-          const rawUnitsDelta = deltaInYahooCurrency / priceResult.price;
+          const rawUnitsDelta = deltaInNative / unitPrice;
           const decimals = existing.type === "crypto" ? 8 : 4;
           const factor = Math.pow(10, decimals);
           const unitsDelta = Math.round(rawUnitsDelta * factor) / factor;
 
           // The stated amount is below the smallest tracked fraction at the
-          // current price — nothing to apply. Ask rather than no-op silently.
+          // price — nothing to apply. Ask rather than no-op silently.
           if (unitsDelta === 0) {
             throw new ValueModeError(
               `That amount is too small to change the ${existing.name} position at the current price — could you give a larger amount, or the unit count instead?`
@@ -765,11 +791,48 @@ export async function applyPortfolioChanges({
             );
           }
 
-          const newValue = Math.round(newUnits * priceResult.price * 100) / 100;
+          // A value-mode sell that lands EXACTLY on zero is a full disposal, not a
+          // €0 / 0-unit holding to keep. Remove the position (soft-delete + a
+          // remove mutation) instead of leaving a permanent zero ghost in the
+          // portfolio and holdings list. Mirrors the remove-"sold" path.
+          if (newUnits === 0) {
+            const saleDate = pastEditDate ?? todayStr;
+            const newRunningTotal = runningTotal - toUsdSync(existing.value ?? 0, existing.currency || "USD");
+            const { data: removedMutation, error: remMutErr } = await supabase.from("mutations").insert({
+              user_id: userId,
+              asset_id: existing.id,
+              asset_name: existing.name,
+              action: "remove",
+              asset_type: existing.type,
+              symbol: existing.symbol || null,
+              before_value: existing.value,
+              after_value: null,
+              before_units: existing.units || null,
+              after_units: null,
+              currency: existing.currency || "USD",
+              personal_context: change.personal_context || contextNote,
+              portfolio_total: newRunningTotal,
+              occurred_at: saleDate,
+            }).select("id").single();
+            if (remMutErr) throw remMutErr;
+            const { error: remErr } = await supabase.from("assets")
+              .update({ removed_at: new Date().toISOString() }).eq("id", existing.id).eq("user_id", userId);
+            if (remErr) {
+              console.error("EDIT→REMOVE (value-mode full disposal) ERROR:", remErr);
+            } else {
+              changed = true;
+              runningTotal = newRunningTotal;
+              considerRebuild(saleDate);
+              if (removedMutation?.id) mutationMetas.push({ id: removedMutation.id, symbol: existing.symbol || null, occurredAt: saleDate, assetType: existing.type });
+            }
+            continue; // fully handled as a removal — skip the normal edit update
+          }
+
+          const newValue = Math.round(newUnits * unitPrice * 100) / 100;
 
           change.units = newUnits;
           change.value = newValue;
-          change.currency = priceResult.nativeCurrency;
+          change.currency = nativeCurrency!;
           delete change.value_delta;
         }
 

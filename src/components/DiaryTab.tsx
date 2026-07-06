@@ -3,7 +3,7 @@
 import { useState, Fragment } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
-import { formatDate, getMonthKey, getMonthLabel } from "@/lib/utils";
+import { formatDate, getMonthKey, getMonthLabel, formatUnits } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import type { Mutation } from "@/lib/supabase";
@@ -34,7 +34,7 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
     if (m.action === "add" && m.after_units != null) {
       return (
         <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--positive-text)" }}>
-          +{m.after_units.toLocaleString("nl-NL")} {noun}
+          +{formatUnits(m.after_units)} {noun}
         </span>
       );
     }
@@ -42,14 +42,14 @@ function buildValueNode(m: Mutation, displayCurrency: DisplayCurrency): React.Re
       const delta = (m.after_units ?? 0) - (m.before_units ?? 0);
       if (delta !== 0) return (
         <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: delta >= 0 ? "var(--positive-text)" : "var(--negative-text)" }}>
-          {delta >= 0 ? "+" : ""}{delta.toLocaleString("nl-NL")} {noun}
+          {delta >= 0 ? "+" : ""}{formatUnits(delta)} {noun}
         </span>
       );
     }
     if (m.action === "remove" && m.before_units != null) {
       return (
         <span className="tnum" style={{ fontSize: "var(--fs-meta)", fontWeight: 500, flexShrink: 0, color: "var(--negative-text)", textDecoration: "line-through" }}>
-          {m.before_units.toLocaleString("nl-NL")} {noun}
+          {formatUnits(m.before_units)} {noun}
         </span>
       );
     }

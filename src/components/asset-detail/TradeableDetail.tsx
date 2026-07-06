@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { PriceChart, type Range, type ScrubInfo } from "@/components/PriceChart";
 import { CryptoVolatilityBlock } from "@/components/asset-detail/CryptoVolatilityBlock";
-import { pctChange, formatDate } from "@/lib/utils";
+import { pctChange, formatDate, formatUnits } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { formatMoney } from "@/lib/money";
@@ -196,7 +196,7 @@ export function TradeableDetail({ asset }: Props) {
             </div>
             {asset.units != null && (
               <div style={{ fontSize: "var(--fs-body)", color: "var(--text-dim)", fontFamily: "var(--font-numeric)", fontFeatureSettings: '"tnum" 1' }}>
-                {asset.units.toLocaleString("nl-NL")} {noun}
+                {formatUnits(asset.units)} {noun}
               </div>
             )}
           </div>
@@ -373,12 +373,12 @@ export function TradeableDetail({ asset }: Props) {
               if (m.before_units != null && m.after_units != null) {
                 // Both unit fields present: show unit delta
                 const d = m.after_units - m.before_units;
-                if (d !== 0) { delta = `${d >= 0 ? "+" : ""}${d.toLocaleString("nl-NL")} ${noun}`; deltaPositive = d >= 0; }
+                if (d !== 0) { delta = `${d >= 0 ? "+" : ""}${formatUnits(d)} ${noun}`; deltaPositive = d >= 0; }
               } else if (m.action === "add" && m.after_units != null && m.before_units == null) {
                 // Initial buy: both fields technically partial — show as add
-                delta = `+${m.after_units.toLocaleString("nl-NL")} ${noun}`;
+                delta = `+${formatUnits(m.after_units)} ${noun}`;
               } else if (m.action === "remove" && m.before_units != null && m.after_units == null) {
-                delta = `−${m.before_units.toLocaleString("nl-NL")} ${noun}`; deltaPositive = false;
+                delta = `−${formatUnits(m.before_units)} ${noun}`; deltaPositive = false;
               } else if (m.after_value != null) {
                 // No unit data: fall back to signed value delta
                 const mCur = m.currency || assetCur;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { pctChange, displayTicker } from "@/lib/utils";
+import { pctChange, displayTicker, formatUnits } from "@/lib/utils";
 import { MiniSparkline } from "@/components/MiniSparkline";
 import { AssetLogo } from "@/components/AssetLogo";
 import { usePriceHistory, useDisplayCurrency } from "@/lib/hooks";
@@ -40,14 +40,14 @@ function subLine(asset: LiveAsset): string {
         asset.type === "stocks" || asset.type === "etf" ? "shares"
         : asset.type === "gold" ? "oz"
         : "units";
-      parts.push(`${asset.units.toLocaleString("nl-NL")} ${unitLabel}`);
+      parts.push(`${formatUnits(asset.units)} ${unitLabel}`);
     }
     // country intentionally omitted for all tradeables
     return parts.join(" · ");
   }
 
   // Static positions (cash, pension, bonds, other): no country
-  if (asset.units != null) return `${asset.units.toLocaleString("nl-NL")} units`;
+  if (asset.units != null) return `${formatUnits(asset.units)} units`;
   return "";
 }
 

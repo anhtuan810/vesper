@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Fragment } from "react";
 import Link from "next/link";
-import { getMonthKey, getMonthLabel, formatDate } from "@/lib/utils";
+import { getMonthKey, getMonthLabel, formatDate, formatUnits } from "@/lib/utils";
 import { useDisplayCurrency } from "@/lib/hooks";
 import { formatMoney, toUsdClient, type DisplayCurrency } from "@/lib/money";
 import type { Mutation } from "@/lib/supabase";
@@ -24,9 +24,9 @@ function diaryValue(m: Mutation, dc: DisplayCurrency): Val {
   const unitEligible = m.asset_type != null && TRADEABLE_TYPES.has(m.asset_type) && (m.before_units != null || m.after_units != null);
   const noun = unitNoun(m.asset_type);
   if (unitEligible) {
-    if (m.action === "add" && m.after_units != null) return { text: `+${m.after_units.toLocaleString("nl-NL")} ${noun}`, cls: "up" };
-    if (m.action === "edit") { const d = (m.after_units ?? 0) - (m.before_units ?? 0); if (d !== 0) return { text: `${d >= 0 ? "+" : "−"}${Math.abs(d).toLocaleString("nl-NL")} ${noun}`, cls: d >= 0 ? "up" : "dn" }; }
-    if (m.action === "remove" && m.before_units != null) return { text: `${m.before_units.toLocaleString("nl-NL")} ${noun}`, cls: "strike" };
+    if (m.action === "add" && m.after_units != null) return { text: `+${formatUnits(m.after_units)} ${noun}`, cls: "up" };
+    if (m.action === "edit") { const d = (m.after_units ?? 0) - (m.before_units ?? 0); if (d !== 0) return { text: `${d >= 0 ? "+" : "−"}${formatUnits(Math.abs(d))} ${noun}`, cls: d >= 0 ? "up" : "dn" }; }
+    if (m.action === "remove" && m.before_units != null) return { text: `${formatUnits(m.before_units)} ${noun}`, cls: "strike" };
   }
   const cur = m.currency || "USD";
   if (m.action === "add" && m.after_value != null) return { text: `+${formatMoney(m.after_value, cur, dc)}`, cls: "up" };
