@@ -15,6 +15,16 @@ const config: CapacitorConfig = {
     CapacitorUpdater: {
       autoUpdate: false,
     },
+    // Hold the (theme-adaptive) launch splash briefly over the WKWebView so a
+    // dark-mode user doesn't see the light `backgroundColor` flash in the gap
+    // between the launch screen dismissing and the first web frame painting. The
+    // generated splash imageset has light AND dark variants, so it follows the
+    // device appearance. Auto-hide keeps it from ever getting stuck on a bad load.
+    SplashScreen: {
+      launchAutoHide: true,
+      launchShowDuration: 700,
+      launchFadeOutDuration: 250,
+    },
   },
   ios: {
     // "never": don't let the WKWebView scroll view auto-inset content for the
@@ -23,9 +33,10 @@ const config: CapacitorConfig = {
     // "always" the native inset stacked on top of the CSS inset, double-padding
     // the top so the NavBar sat ~2x the status-bar height down the screen.
     contentInset: "never",
-    // Native WebView background fallback (light mode). Prevents a white flash
-    // behind the web content before/around paint. Dark-mode parity comes with
-    // @capacitor/status-bar in a later phase.
+    // Native WebView background fallback. The theme-adaptive SplashScreen (above)
+    // now covers the launch gap, so a dark-mode user no longer sees this light
+    // colour flash before first paint; it remains only as a late fallback. The
+    // status bar + keyboard follow the in-app theme via ThemeProvider.
     backgroundColor: "#F6F5F1",
     // NOTE: limitsNavigationsToAppBoundDomains was removed with the move to
     // bundled assets — the webview now serves capacitor://localhost, which an

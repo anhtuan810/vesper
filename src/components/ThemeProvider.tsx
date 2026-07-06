@@ -47,15 +47,25 @@ export function ThemeProvider({
     document
       .querySelectorAll('meta[name="theme-color"]')
       .forEach((m) => m.setAttribute("content", theme === "dark" ? "#131109" : "#F6F5F1"));
-    // Native: match the iOS keyboard appearance to the app theme — otherwise a
-    // dark-mode phone shows a black keyboard under the light UI (and vice versa).
+    // Native: match the iOS keyboard AND status bar to the app theme. Both follow
+    // the system light/dark by default, so a user whose OS appearance disagrees
+    // with their chosen in-app theme would otherwise get a black keyboard under a
+    // light UI, or dark-on-dark (invisible) status-bar clock/battery.
     if (isNativeBuild) {
       (async () => {
         try {
           const { Capacitor } = await import("@capacitor/core");
-          if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("Keyboard")) return;
-          const { Keyboard, KeyboardStyle } = await import("@capacitor/keyboard");
-          await Keyboard.setStyle({ style: theme === "dark" ? KeyboardStyle.Dark : KeyboardStyle.Light });
+          if (!Capacitor.isNativePlatform()) return;
+          if (Capacitor.isPluginAvailable("Keyboard")) {
+            const { Keyboard, KeyboardStyle } = await import("@capacitor/keyboard");
+            await Keyboard.setStyle({ style: theme === "dark" ? KeyboardStyle.Dark : KeyboardStyle.Light });
+          }
+          if (Capacitor.isPluginAvailable("StatusBar")) {
+            // Capacitor Style.Dark = light glyphs (for a dark background);
+            // Style.Light = dark glyphs (for a light background).
+            const { StatusBar, Style } = await import("@capacitor/status-bar");
+            await StatusBar.setStyle({ style: theme === "dark" ? Style.Dark : Style.Light });
+          }
         } catch {
           // Cosmetic — older binaries without the plugin keep the OS default.
         }

@@ -6,6 +6,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    // Opaque cover added over the window when the app backgrounds WITH App lock
+    // enabled, so the user's portfolio never appears in the iOS app-switcher
+    // snapshot. The JS AppLock overlay (driven by visibilitychange) cannot be
+    // guaranteed to composite a new frame before iOS captures that snapshot, so a
+    // synchronous native cover is the reliable guard. Removed on foreground, where
+    // the JS overlay takes over the actual Face ID re-lock.
+    private var privacyCover: UIView?
+
+    // App lock is a device-local opt-in stored by the web layer via
+    // @capacitor/preferences (key "volnar.appLock"), which persists to
+    // UserDefaults under the "CapacitorStorage." prefix.
+    private func appLockEnabled() -> Bool {
+        return UserDefaults.standard.string(forKey: "CapacitorStorage.volnar.appLock") == "1"
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         return true
@@ -17,12 +32,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-        // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        // iOS captures the app-switcher snapshot right after this returns. With App
+        // lock on, cover the window synchronously so the snapshot shows a blank
+        // themed screen instead of the portfolio. Skipped when App lock is off, so
+        // users who didn't opt in keep their normal multitasking thumbnail. Using
+        // didEnterBackground (not willResignActive) avoids re-covering every time
+        // the Face ID sheet transiently resigns the app.
+        guard appLockEnabled(), privacyCover == nil, let window = window else { return }
+        let cover = UIView(frame: window.bounds)
+        cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        cover.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.075, green: 0.067, blue: 0.035, alpha: 1) // ~#131109
+                : UIColor(red: 0.965, green: 0.961, blue: 0.945, alpha: 1) // ~#F6F5F1
+        }
+        window.addSubview(cover)
+        privacyCover = cover
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
+        // Coming back to the foreground: drop the native cover so the JS AppLock
+        // overlay (which prompts for Face ID) is what the user sees.
+        privacyCover?.removeFromSuperview()
+        privacyCover = nil
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
