@@ -9,6 +9,7 @@ import { VitalsPrefetch } from "@/components/VitalsPrefetch";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/components/UserProvider";
 import { SubscriptionProvider } from "@/components/SubscriptionProvider";
+import { ChatSessionProvider } from "@/components/ChatSessionProvider";
 import { Paywall } from "@/components/Paywall";
 import { AppGate } from "@/components/AppGate";
 import { DemoBanner } from "@/components/DemoBanner";
@@ -152,31 +153,37 @@ export default async function RootLayout({
           <UserProvider>
             <SubscriptionProvider>
               {/* Marketing pages lay themselves out full-bleed (hero, ticker,
-                  dark bands); only the app gets the centered reading column. */}
+                  dark bands); only the app gets the centered reading column.
+                  ChatSessionProvider holds ONE chat session above the router for
+                  the whole app, so the desktop chat rail survives navigating
+                  between routes (Overview/Vitals/Settings/asset) instead of
+                  resetting each time a differently-mounted shell takes over. */}
               {isMarketing ? (
                 children
               ) : (
-                <div className="mx-auto w-full max-w-[720px] px-5">
-                  {children}
-                </div>
+                <ChatSessionProvider>
+                  <div className="mx-auto w-full max-w-[720px] px-5">
+                    {children}
+                  </div>
+                  <BottomNav />
+                  <UndoDeleteToast />
+                  <VitalsPrefetch />
+                  <AiConsentGate />
+                  {/* Paywall-first access gate. Inert on marketing/login, while
+                      loading, signed out, or entitled. */}
+                  <Paywall />
+                  {/* Quiet demo-account notice (web: + Subscribe link). Inert
+                      unless the entitlement is the seeded demo. */}
+                  <DemoBanner />
+                  {/* Walls an ended demo session and routes to account creation +
+                      the 7-day-trial paywall. Inert unless isDemo and expired. */}
+                  <DemoExpiryWall />
+                  {/* Covers the app during auth/subscription transitions so the
+                      main surfaces never flash before the access decision (login
+                      → Paywall) or during sign-out (→ /login). */}
+                  <AppGate />
+                </ChatSessionProvider>
               )}
-              {!isMarketing && <BottomNav />}
-              {!isMarketing && <UndoDeleteToast />}
-              {!isMarketing && <VitalsPrefetch />}
-              {!isMarketing && <AiConsentGate />}
-              {/* Paywall-first access gate. Inert on marketing/login, while
-                  loading, signed out, or entitled. */}
-              {!isMarketing && <Paywall />}
-              {/* Quiet demo-account notice (web: + Subscribe link). Inert unless
-                  the entitlement is the seeded demo (SubscriptionView.isDemo). */}
-              {!isMarketing && <DemoBanner />}
-              {/* Walls an ended demo session and routes to account creation +
-                  the 7-day-trial paywall. Inert unless isDemo and expired. */}
-              {!isMarketing && <DemoExpiryWall />}
-              {/* Covers the app during auth/subscription transitions so the main
-                  surfaces never flash before the access decision (login →
-                  Paywall) or during sign-out (→ /login). */}
-              {!isMarketing && <AppGate />}
             </SubscriptionProvider>
           </UserProvider>
         </ThemeProvider>

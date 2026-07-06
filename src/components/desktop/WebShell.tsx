@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
-import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
+import { getChatSuggestions } from "@/lib/use-chat-session";
+import { useSharedChatSession } from "@/components/ChatSessionProvider";
 import { useUser, useProfile, useDisplayCurrency, useAssets, useSignOut } from "@/lib/hooks";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { takeHandoff } from "@/lib/scenario/handoff";
@@ -79,7 +80,9 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
   const hasPortfolio = assets.length > 0;
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
 
-  const session = useChatSession({ userId: user?.id });
+  // One app-wide session (mounted above the router) so the rail persists across
+  // route changes instead of resetting when a differently-mounted shell renders.
+  const session = useSharedChatSession();
   const { messages, thinking, loadMore, hasMore, isLoadingMore } = session;
 
   // ── Scenario seeds (explore / what-if) → the mounted rail ──────────────────
