@@ -50,6 +50,10 @@ interface MoveRow {
 
 const DAY_MS = 86_400_000;
 const TRADEABLE = new Set(["stocks", "etf", "crypto", "gold"]);
+// Days of index/price/FX history fetched BEFORE the lookback window, so the
+// earliest in-window swing can be valued against its true prior trading day
+// (trading gaps mean the prior close can be several calendar days earlier).
+const SWING_PRIOR_BUFFER_DAYS = 14;
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -72,6 +76,42 @@ function computeDailyPctChanges(series: { date: string; price: number }[]): Move
     out.push({ date: series[i].date, pct_change: ((cur - prev) / prev) * 100 });
   }
   return out;
+}
+
+// A per-index daily-move series. `rows` is sorted ascending and MAY include a few
+// rows dated before the lookback window — kept only so the earliest in-window
+// swing has a real prior trading day to value against.
+export interface IndexMoveSeries {
+  symbol: string;
+  label: string;
+  rows: MoveRow[];
+}
+
+// Detects big index swings within [lookbackCutoff, today], deduped by date across
+// indices (largest |move| wins). Pre-cutoff rows are skipped for DETECTION but
+// still serve as the `prior` for the first in-window swing — previously that
+// swing sat at index 0 with prior=null and was dropped even though its real prior
+// close existed in the fetched series. Pure + exported for unit testing.
+export function detectSwings(
+  seriesByIndex: IndexMoveSeries[],
+  lookbackCutoff: string,
+  thresholdPct: number,
+): Map<string, { index_symbol: string; index_label: string; pct_change: number; prior: string | null }> {
+  const swings = new Map<string, { index_symbol: string; index_label: string; pct_change: number; prior: string | null }>();
+  for (const { symbol, label, rows } of seriesByIndex) {
+    const dates = rows.map((r) => r.date);
+    for (let i = 0; i < rows.length; i++) {
+      const date = rows[i].date;
+      if (date < lookbackCutoff) continue; // pre-window row: kept only to serve as a prior
+      const pct = rows[i].pct_change;
+      if (Math.abs(pct) < thresholdPct) continue;
+      const existing = swings.get(date);
+      if (!existing || Math.abs(pct) > Math.abs(existing.pct_change)) {
+        swings.set(date, { index_symbol: symbol, index_label: label, pct_change: pct, prior: i > 0 ? dates[i - 1] : null });
+      }
+    }
+  }
+  return swings;
 }
 
 async function ensureCachedMoves(
@@ -288,20 +328,15 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   };
 
   // ── Detect every big swing in the lookback (dedup by date, largest wins) ──
-  const swings = new Map<string, { index_symbol: string; index_label: string; pct_change: number; prior: string | null }>();
+  // Fetch a small buffer of rows BEFORE the window so the earliest in-window swing
+  // has a real prior trading day (otherwise it was dropped with prior=null).
+  const detectFrom = addDays(lookbackCutoff, -SWING_PRIOR_BUFFER_DAYS);
+  const seriesByIndex: IndexMoveSeries[] = [];
   for (const { symbol, label } of DIARY_MARKET_INDICES) {
-    const rows = await ensureCachedMoves(supabase, symbol, lookbackCutoff, today);
-    const dates = rows.map((r) => r.date);
-    for (let i = 0; i < rows.length; i++) {
-      const pct = rows[i].pct_change;
-      if (Math.abs(pct) < MARKET_MOVE_THRESHOLD_PCT) continue;
-      const date = rows[i].date;
-      const existing = swings.get(date);
-      if (!existing || Math.abs(pct) > Math.abs(existing.pct_change)) {
-        swings.set(date, { index_symbol: symbol, index_label: label, pct_change: pct, prior: i > 0 ? dates[i - 1] : null });
-      }
-    }
+    const rows = await ensureCachedMoves(supabase, symbol, detectFrom, today);
+    seriesByIndex.push({ symbol, label, rows });
   }
+  const swings = detectSwings(seriesByIndex, lookbackCutoff, MARKET_MOVE_THRESHOLD_PCT);
   if (swings.size === 0) return [];
 
   // ── Price history per held symbol + historical FX, fetched once ──
@@ -313,13 +348,15 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   const histMap = new Map<string, Array<{ date: string; price: number; currency: string }>>();
   await Promise.all(
     [...symbolByNorm.values()].map(async ({ norm }) => {
-      const series = await fetchHistoricalSeries(norm, addDays(lookbackCutoff, -7), today);
+      // Cover the prior-day buffer too (plus a trading-week margin), so a swing on
+      // the first in-window day can price its holdings on the prior close.
+      const series = await fetchHistoricalSeries(norm, addDays(lookbackCutoff, -(SWING_PRIOR_BUFFER_DAYS + 7)), today);
       if (series && series.length > 0) histMap.set(norm, series);
     }),
   );
 
   const liveFx = await getUsdRates();
-  const fxSeries = await getHistoricalUsdRates(lookbackCutoff, today);
+  const fxSeries = await getHistoricalUsdRates(addDays(lookbackCutoff, -SWING_PRIOR_BUFFER_DAYS), today);
   const fxDates = Object.keys(fxSeries).sort();
   const rateCache = new Map<string, number | null>();
   const rateOf = (date: string, cur: string): number | null => {
