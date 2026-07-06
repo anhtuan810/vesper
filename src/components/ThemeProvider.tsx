@@ -41,6 +41,12 @@ export function ThemeProvider({
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    // Keep the browser-chrome tint / native WebView background in sync with the
+    // chosen theme on a runtime toggle (the per-request viewport sets the initial
+    // value; without this the address-bar tint would keep the load-time colour).
+    document
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((m) => m.setAttribute("content", theme === "dark" ? "#131109" : "#F6F5F1"));
     // Native: match the iOS keyboard appearance to the app theme — otherwise a
     // dark-mode phone shows a black keyboard under the light UI (and vice versa).
     if (isNativeBuild) {

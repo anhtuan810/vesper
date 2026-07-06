@@ -104,7 +104,7 @@
 .tw .hcopy{max-width:760px}
 .tw .pill{display:inline-flex;align-items:center;gap:9px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:7px 15px;font-size:13px;font-weight:600;color:var(--green)}
 .tw .pill .d{width:7px;height:7px;border-radius:50%;background:var(--gb);animation:tw-pulse 1.9s infinite}
-.tw h1{font-size:clamp(36px,5.1vw,56px);line-height:1.02;letter-spacing:-0.038em;font-weight:700;margin:20px 0 0}
+.tw h1{font-size:clamp(36px,5.1vw,56px);line-height:1.02;letter-spacing:-0.038em;font-weight:700;margin:20px 0 0;overflow-wrap:break-word}
 .tw .acc{color:var(--green);position:relative;white-space:nowrap}
 .tw .acc svg{position:absolute;left:0;bottom:-0.16em;width:100%;height:0.32em;overflow:visible}
 .tw .acc svg path{stroke:var(--gb);stroke-width:4;fill:none;stroke-linecap:round;stroke-dasharray:240;stroke-dashoffset:240;animation:tw-draw 1.1s ease .6s forwards}
@@ -136,7 +136,7 @@
 .tw .mech-grid{display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
 .tw .card{background:var(--soft);border:1px solid var(--line);border-radius:22px;box-shadow:0 1px 2px rgba(18,18,14,.03),0 36px 64px -40px rgba(18,18,14,.26)}
 .tw .chart-card{padding:18px 20px}
-.tw .st-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.tw .st-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;row-gap:4px}
 .tw .st-l{font-size:12px;color:var(--muted);font-weight:500}
 .tw .st-nw{font-size:31px;font-weight:700;letter-spacing:-0.02em;margin-top:2px;transition:color .2s}
 .tw .st-badge{font-size:12px;font-weight:600;color:var(--green);background:var(--mint);border-radius:8px;padding:5px 10px;white-space:nowrap}
@@ -316,7 +316,7 @@
 .tw .vital.warn{border-left-color:var(--sig-warn)}
 .tw .vital.bad{border-left-color:var(--sig-bad)}
 .tw .vital-top{display:flex;align-items:center;flex-wrap:wrap;margin-bottom:9px;gap:5px 8px}
-.tw .vital-name{font-size:13px;font-weight:600;color:var(--ink);flex:1 0 auto}
+.tw .vital-name{font-size:13px;font-weight:600;color:var(--ink);flex:1 1 auto;min-width:0;overflow-wrap:break-word}
 /* A–D grade chip — the same solid-fill + halo mark the app's Vitals carry
    (GradeChip.tsx); tones ride the card's band class. */
 .tw .vgrade{width:20px;height:20px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--btnfg);flex:0 0 auto}
@@ -479,6 +479,10 @@
   .tw .themesw{display:none}
   .tw .nav .inner{padding:13px 18px;gap:10px}
   .tw .mcta{display:flex}
+  /* Long localized accent phrases can be wider than the phone content box —
+     let the accent wrap instead of overflowing (and getting clipped by
+     .tw overflow-x:hidden). */
+  .tw .acc{white-space:normal}
 }
 @media(max-width:560px){
   /* Tighter section rhythm on phones — the desktop 72px bands read as dead

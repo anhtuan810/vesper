@@ -28,7 +28,7 @@ export default function SupportPage() {
         two business days.
       </p>
       <p>
-        <a href="mailto:support@volnar.nl">support@volnar.nl</a>
+        <a href="mailto:support@novahub.nl">support@novahub.nl</a>
       </p>
 
       <h2>Billing and subscriptions</h2>
@@ -44,7 +44,7 @@ export default function SupportPage() {
         Volnar stores only what you enter. It does not connect to your bank or
         broker. To request a copy of your data, or to delete your account and all
         associated data, email{" "}
-        <a href="mailto:support@volnar.nl">support@volnar.nl</a> from the address
+        <a href="mailto:support@novahub.nl">support@novahub.nl</a> from the address
         linked to your account. See the <Link href="/privacy">Privacy Policy</Link>{" "}
         for details.
       </p>
@@ -52,7 +52,7 @@ export default function SupportPage() {
       <h2>Account deletion</h2>
       <p>
         You can request deletion of your account and data at any time by emailing{" "}
-        <a href="mailto:support@volnar.nl">support@volnar.nl</a>. Data is removed
+        <a href="mailto:support@novahub.nl">support@novahub.nl</a>. Data is removed
         in line with the Privacy Policy and applicable law.
       </p>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, Fragment, useContext, useState, type ReactNode } from "react";
+import { createContext, Fragment, useContext, useEffect, useState, type ReactNode } from "react";
 import { en } from "./en";
 import { nl } from "./nl";
 import { de } from "./de";
@@ -70,6 +70,12 @@ const I18nContext = createContext<I18nValue>({ lang: "EN", setLang: () => {}, m:
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>("EN");
+  // Keep the document language in sync with the chosen locale so screen readers
+  // pronounce the translated copy correctly. The root layout renders lang="en" for
+  // SSR (the default), and this updates it live when the picker switches language.
+  useEffect(() => {
+    document.documentElement.lang = lang.toLowerCase();
+  }, [lang]);
   return <I18nContext.Provider value={{ lang, setLang, m: MESSAGES[lang] }}>{children}</I18nContext.Provider>;
 }
 

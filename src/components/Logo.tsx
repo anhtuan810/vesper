@@ -12,7 +12,11 @@ export function Logo({ size = 24, className }: LogoProps) {
       className={className}
       style={{ display: "inline-flex", alignItems: "center", gap: `${size * 0.4}px` }}
     >
-      <LogoMark size={size} />
+      {/* The visible wordmark below already announces the brand name, so the
+          mark's own aria-label would make screen readers say "Volnar" twice. */}
+      <span aria-hidden="true" style={{ display: "inline-flex" }}>
+        <LogoMark size={size} />
+      </span>
       <span
         style={{
           fontFamily: "var(--font-ui)",

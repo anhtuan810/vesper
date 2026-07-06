@@ -55,31 +55,44 @@ export const metadata: Metadata = {
     "Quiet confidence over your portfolio — everything you own, in one calm place.",
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  // Shrink the layout viewport when the soft keyboard opens so fixed/flex-bottom
-  // elements (the chat composer) ride above it instead of being covered.
-  interactiveWidget: "resizes-content",
-  // Extend the layout into the safe-area insets so env(safe-area-inset-*)
-  // resolves to real values (needed by the bottom nav on notched iOS devices).
-  viewportFit: "cover",
-  // Native WebView background fallback / browser chrome tint. Matches --bg
-  // (warmed bone paper light / warm charcoal dark — the Voice & Plate pass).
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F6F5F1" },
-    { media: "(prefers-color-scheme: dark)", color: "#131109" },
-  ],
-};
-
 type ThemeMode = "light" | "dark";
 
 // Native (static-export) build: no request, so no cookies()/headers() — both
 // are unsupported under output:"export". Theme comes from localStorage via the
 // pre-paint inline script below; the marketing chrome never applies in-app.
 const isNativeBuild = process.env.NEXT_PUBLIC_BUILD_TARGET === "native";
+
+// Per-request viewport so the chrome tint and zoom policy can react to state the
+// static export can't see: the user's chosen in-app theme (data-theme cookie) and
+// whether this is a public marketing page.
+export async function generateViewport(): Promise<Viewport> {
+  let theme: ThemeMode = "light";
+  let isMarketing = false;
+  if (!isNativeBuild) {
+    const cookieStore = await cookies();
+    theme = cookieStore.get("volnar.theme")?.value === "dark" ? "dark" : "light";
+    const headersList = await headers();
+    isMarketing = headersList.get("x-volnar-domain") === "marketing";
+  }
+  return {
+    width: "device-width",
+    initialScale: 1,
+    // The app keeps a native, no-zoom feel; public marketing/legal content stays
+    // pinch-zoomable (WCAG 1.4.4 — it's read, not operated).
+    ...(isMarketing ? {} : { maximumScale: 1, userScalable: false }),
+    // Shrink the layout viewport when the soft keyboard opens so fixed/flex-bottom
+    // elements (the chat composer) ride above it instead of being covered.
+    interactiveWidget: "resizes-content",
+    // Extend the layout into the safe-area insets so env(safe-area-inset-*)
+    // resolves to real values (needed by the bottom nav on notched iOS devices).
+    viewportFit: "cover",
+    // Browser chrome tint / native WebView background fallback. Keyed to the actual
+    // in-app theme (--bg: warmed bone paper light / warm charcoal dark), NOT the OS
+    // scheme — otherwise a user whose OS and app theme disagree gets a mismatched
+    // toolbar tint. ThemeProvider keeps this meta in sync on a runtime toggle.
+    themeColor: theme === "dark" ? "#131109" : "#F6F5F1",
+  };
+}
 
 // Sets data-theme before first paint so a dark-mode user doesn't get a light
 // flash on cold start. ThemeProvider initializes from the same key.

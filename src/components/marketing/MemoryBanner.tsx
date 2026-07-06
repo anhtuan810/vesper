@@ -10,8 +10,15 @@ export function MemoryBanner() {
   const [shown, setShown] = useState(true);
 
   useEffect(() => {
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let swap: ReturnType<typeof setTimeout>;
     const id = setInterval(() => {
+      if (reduce) {
+        setI((p) => (p + 1) % memories.length);
+        return;
+      }
       setShown(false);
       swap = setTimeout(() => {
         setI((p) => (p + 1) % memories.length);
