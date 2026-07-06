@@ -26,15 +26,16 @@ const CURRENCY_META: Record<DisplayCurrency, CurrencyMeta> = {
   GBP: { symbol: "£", locale: "nl-NL" },
 };
 
-const FALLBACK_RATES: Partial<Record<DisplayCurrency, number>> = {
-  EUR: USD_FALLBACK_RATES.EUR,
-  GBP: USD_FALLBACK_RATES.GBP,
-};
-
-// Client-side module-level USD→X rate cache, seeded with fallback rates.
-// Populated at runtime by useFxRate() / useDisplayCurrency() via setUsdRate().
-const usdRateCache: Partial<Record<DisplayCurrency, number>> = {
-  ...FALLBACK_RATES,
+// Client-side module-level USD→X rate cache, seeded with the bundled majors
+// (EUR, GBP, CHF, JPY, CAD, AUD, HKD). Seeding ALL of them — not just the three
+// display currencies — is what lets a holding in a non-display native currency
+// (a Tokyo, Zürich, Toronto or Hong Kong listing) convert correctly before any
+// live rate loads, instead of failing to null → counted as 0 in totals and
+// ~100× in its own row. Live fetches (useFxRate) overwrite the display
+// currency's entry; the rest ride on these approximate fallbacks (right
+// magnitude). Keyed by string so any currency can be cached, not only the three.
+const usdRateCache: Record<string, number> = {
+  ...USD_FALLBACK_RATES,
 };
 
 // Tracks when each rate was last written by a live fetch (not from fallback seed).
@@ -50,9 +51,24 @@ export function setUsdRate(currency: DisplayCurrency, rate: number): void {
   rateTimestamps.set(currency, Date.now());
 }
 
-export function getUsdRate(currency: DisplayCurrency): number {
+// USD→currency rate for ANY currency the app can encounter — not just the three
+// display currencies. GBp (pence) is 1/100 of a pound, so its USD rate is the GBP
+// rate × 100. Unknown currencies degrade to 1:1 with USD (unchanged behaviour).
+export function getUsdRate(currency: string): number {
   if (currency === "USD") return 1;
-  return usdRateCache[currency] ?? FALLBACK_RATES[currency] ?? 1;
+  if (currency === "GBp") return (usdRateCache.GBP ?? USD_FALLBACK_RATES.GBP ?? 1) * 100;
+  return usdRateCache[currency] ?? USD_FALLBACK_RATES[currency] ?? 1;
+}
+
+// The USD-based rate table convertCurrency needs to bridge from→to. Covers every
+// currency we have a rate for (the seeded/live cache + the bundled majors) plus
+// GBp as GBP×100, so a non-display native currency converts through USD instead
+// of returning null (which callers coerce to 0 in totals, and which the money
+// formatters otherwise "rescue" by mis-scaling the raw native number ~100×).
+function usdRateTable(): Record<string, number> {
+  const table: Record<string, number> = { ...USD_FALLBACK_RATES, ...usdRateCache };
+  if (table.GBP != null) table.GBp = table.GBP * 100;
+  return table;
 }
 
 export function getRateFreshness(currency: DisplayCurrency): FxFreshness {
@@ -97,12 +113,7 @@ export function convertToUsd(displayValue: number, displayCurrency: DisplayCurre
  */
 export function toDisplay(amount: number, from: string, to: string): number | null {
   if (from === to) return amount;
-  const rates: Record<string, number> = {};
-  for (const c of SUPPORTED_CURRENCIES) {
-    if (c === "USD") continue;
-    rates[c] = getUsdRate(c);
-  }
-  return convertCurrency(amount, from, to, rates);
+  return convertCurrency(amount, from, to, usdRateTable());
 }
 
 export interface MoneyParts {
@@ -129,14 +140,9 @@ export function formatMoney(
     // Identity — no rate lookup, renders correctly even before rates load.
     displayValue = amount;
   } else {
-    const rates: Record<string, number> = {};
-    for (const c of SUPPORTED_CURRENCIES) {
-      if (c === "USD") continue;
-      rates[c] = getUsdRate(c);
-    }
-    const converted = convertCurrency(amount, fromCurrency, displayCurrency, rates);
-    // Missing cross-rate (e.g. an unsupported native currency) — fall back to
-    // treating the native amount as USD-equivalent rather than producing NaN.
+    const converted = convertCurrency(amount, fromCurrency, displayCurrency, usdRateTable());
+    // Missing cross-rate (a currency outside even the bundled majors) — fall back
+    // to treating the native amount as USD-equivalent rather than producing NaN.
     displayValue = converted != null ? converted : amount * getUsdRate(displayCurrency);
   }
   const absValue = Math.abs(displayValue);
@@ -164,18 +170,16 @@ export function formatMoneyCompact(
   if (fromCurrency === displayCurrency) {
     displayValue = amount;
   } else {
-    const rates: Record<string, number> = {};
-    for (const c of SUPPORTED_CURRENCIES) {
-      if (c === "USD") continue;
-      rates[c] = getUsdRate(c);
-    }
-    const converted = convertCurrency(amount, fromCurrency, displayCurrency, rates);
+    const converted = convertCurrency(amount, fromCurrency, displayCurrency, usdRateTable());
     displayValue = converted != null ? converted : amount * getUsdRate(displayCurrency);
   }
   const abs = Math.abs(displayValue);
   const sign = displayValue < 0 ? "−" : "";
   const { symbol } = CURRENCY_META[displayCurrency];
-  if (abs >= 1_000_000) return `${sign}${symbol}${(abs / 1_000_000).toFixed(1).replace(".", ",")}M`;
+  // Roll to "M" once rounding to K would read "1000K" (abs ≥ 999,500 rounds the
+  // K figure up to 1000) — otherwise the top sliver of the sub-million band broke
+  // the compact scheme with a four-digit K.
+  if (abs >= 999_500) return `${sign}${symbol}${(abs / 1_000_000).toFixed(1).replace(".", ",")}M`;
   if (abs >= 1_000) return `${sign}${symbol}${Math.round(abs / 1_000)}K`;
   return `${sign}${symbol}${Math.round(abs)}`;
 }
