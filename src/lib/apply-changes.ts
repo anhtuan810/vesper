@@ -5,7 +5,7 @@ import { resolveSymbol, normalizeCryptoSymbol } from "./symbol-aliases";
 import { mapWithConcurrency } from "./concurrency";
 import { computeNetWorth, realEstateEquity } from "./utils";
 import { getUsdRates } from "./fx";
-import { countryToCurrency } from "./country-currency";
+import { countryToCurrency, countryFromAddress } from "./country-currency";
 import { isCostBasisOnlyEdit, applyCostBasisOnly } from "./cost-basis";
 import { parseAcquisitionMonth } from "./acquisition-date";
 import { estimatePropertyValue } from "./property-estimate-resolve";
@@ -420,11 +420,20 @@ export async function applyPortfolioChanges({
         throw new ValueModeError(`What's ${resolvedAssetName} worth? I need a current value to record it.`);
       }
 
+      // Houses always carry a country: use the stated one, else recover it from
+      // the canonical address ("…, City, Netherlands" → "NL"). This drives the
+      // native currency, the indicative-value estimate's NL check, and the
+      // stored country column, so a property added by address alone is never
+      // left country-less. Non-property types keep the stated country as-is.
+      const resolvedCountry = isRealEstate
+        ? (change.country || countryFromAddress(change.address) || null)
+        : (change.country ?? null);
+
       // For real estate, derive native currency from country when Claude omits it.
       // For tradeables, Yahoo overrides this below. Other types (cash/bonds/
       // other/pension) fall back to the user's display currency, not USD.
       let resolvedCurrency = change.currency || (
-        isRealEstate ? countryToCurrency(change.country) : fallbackCurrency
+        isRealEstate ? countryToCurrency(resolvedCountry) : fallbackCurrency
       );
 
       if (resolvedSymbols[i]?.nativeCurrency) resolvedCurrency = resolvedSymbols[i]!.nativeCurrency;
@@ -560,7 +569,7 @@ export async function applyPortfolioChanges({
       ) {
         const est = await estimatePropertyValue({
           address: change.address ?? null,
-          country: change.country ?? null,
+          country: resolvedCountry,
           buyPrice: resolvedBuyPrice,
           buyDate: change.buy_date,
         });
@@ -618,7 +627,7 @@ export async function applyPortfolioChanges({
         type: change.type || "other",
         value: insertValue,
         currency: resolvedCurrency,
-        country: change.country || null,
+        country: resolvedCountry,
         symbol: effectiveSymbol,
         units: change.units || null,
         buy_price: resolvedBuyPrice,
@@ -944,6 +953,20 @@ export async function applyPortfolioChanges({
 
         if (change.latitude !== undefined) updateData.latitude = change.latitude;
         if (change.longitude !== undefined) updateData.longitude = change.longitude;
+
+        // Houses always carry a country. If this edit leaves the row a property
+        // with no country set (neither stated here nor already stored), recover
+        // it from the address so the location line is never blank.
+        const editResultType = change.type ?? existing.type;
+        const existingRE = existing as { country?: string | null; address?: string | null };
+        if (
+          editResultType === "real_estate" &&
+          change.country === undefined &&
+          !existingRE.country
+        ) {
+          const derived = countryFromAddress(change.address ?? existingRE.address ?? null);
+          if (derived) updateData.country = derived;
+        }
 
         // Monetary fields stay in the asset's native currency — no conversion.
 
