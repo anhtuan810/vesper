@@ -15,7 +15,7 @@ import type { DiaryMarketMove } from "@/lib/diary-market-moves";
 import {
   TRADEABLE_TYPES, STARTING_POSITION_CTX, type DiaryItem, type PeriodKey,
   PERIOD_OPTIONS, SELECT_STYLE, unitNoun, hasContent, relativeAge, displayName,
-  actionVerb, buildDisplayItems, abbrevMoney, getMonthOptions, isInPeriod,
+  actionVerb, autoNote, buildDisplayItems, abbrevMoney, getMonthOptions, isInPeriod,
 } from "@/lib/diary-utils";
 
 type Val = { text: string; cls: string } | null;
@@ -239,6 +239,9 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
                     <div className="drow-m">
                       <div className={`drow-n${gone ? " gone" : ""}`}>{name}{isAuto && <span className="drow-auto">Auto</span>}</div>
                       {m.personal_context && <div className="drow-why">{m.personal_context}</div>}
+                      {/* No note and no market line — give the entry a factual
+                          caption so it still reads as a journal line, not a bare figure. */}
+                      {!m.personal_context && !m.market_context && <div className="drow-why">{autoNote(m)}</div>}
                       {m.market_context && <div className="drow-why"><span className="drow-ctx">Markets</span>{m.market_context}</div>}
                     </div>
                     <ValueRight v={v} date={m.occurred_at || m.recorded_at} />
@@ -249,7 +252,7 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
               // Auto-open the group that holds the deep-linked entry so it can scroll to it.
               const open = expandedGroups.has(gid) || (focusId != null && members.some((mm) => mm.id === focusId));
               const gone = !anchor.asset_id;
-              const ctx = members.find((mm) => !!mm.personal_context)?.personal_context ?? null;
+              const ctx = members.find((mm) => !!mm.personal_context)?.personal_context ?? autoNote(anchor);
               const gv = groupValue(members, displayCurrency);
               return (
                 <Fragment key={gid}>

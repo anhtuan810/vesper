@@ -71,6 +71,34 @@ export function actionVerb(action: string): string {
   return "edited";
 }
 
+// A gentle, factual caption for a diary entry that carries no personal note, so
+// every row reads as part of a continuous story rather than a bare figure. It
+// describes what happened — opened, trimmed, revalued — and never invents a
+// feeling or a first-person reflection the writer didn't actually record.
+export function autoNote(m: Mutation): string {
+  const name = displayName(m);
+  const isTradeable = m.asset_type != null && TRADEABLE_TYPES.has(m.asset_type);
+  const typeLabel = assetTypeLabel(m.asset_type);
+  const subject = name || (typeLabel ? `this ${typeLabel}` : "this holding");
+
+  if (m.action === "add") {
+    return isTradeable ? `Opened a position in ${subject}.` : `Added ${subject} to the portfolio.`;
+  }
+  if (m.action === "remove") {
+    return isTradeable ? `Closed out ${subject}.` : `Removed ${subject} from the portfolio.`;
+  }
+  // An edit: a unit change reads as a top-up or trim; a value-only change is a
+  // revaluation. The signed figure beside the row already carries the direction.
+  const { before_units: bu, after_units: au, before_value: bv, after_value: av } = m;
+  if (typeof bu === "number" && typeof au === "number" && bu !== au) {
+    return au > bu ? `Added to the ${subject} position.` : `Trimmed the ${subject} position.`;
+  }
+  if (typeof bv === "number" && typeof av === "number" && bv !== av) {
+    return `Recorded a new valuation for ${subject}.`;
+  }
+  return `Updated ${subject}.`;
+}
+
 export function abbrevMoney(usdValue: number, displayCurrency: DisplayCurrency): string {
   // Convert BEFORE deciding to abbreviate — the old path compacted the raw USD
   // number and pinned the display symbol on it. ≥1M in display currency reads

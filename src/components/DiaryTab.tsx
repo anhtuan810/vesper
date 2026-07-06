@@ -18,7 +18,7 @@ import {
   TRADEABLE_TYPES, STARTING_POSITION_CTX,
   type DiaryItem, type PeriodKey,
   PERIOD_OPTIONS, SELECT_STYLE,
-  unitNoun, hasContent, relativeAge, displayName, actionVerb,
+  unitNoun, hasContent, relativeAge, displayName, actionVerb, autoNote,
   buildDisplayItems, buildGroupAggregate,
   getMonthOptions, isInPeriod,
 } from "@/lib/diary-utils";
@@ -531,7 +531,11 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                         nameColor={isRemovedAsset ? "var(--text-dim)" : "var(--text)"}
                         valueNode={valueNode}
                         date={date}
-                        personalContext={m.personal_context ?? null}
+                        // Fall back to a factual auto-caption so an entry with no
+                        // written note still reads as a journal line — but only
+                        // when there's no market context, which already fills that
+                        // slot with its own line.
+                        personalContext={m.personal_context || (m.market_context ? null : autoNote(m))}
                         marketContext={m.market_context ?? null}
                       />
                     </div>
@@ -542,7 +546,7 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
                 const isGroupExpanded = expandedGroups.has(groupId);
                 const isRemovedGroup = !anchor.asset_id;
                 const anchorDate = anchor.occurred_at || anchor.recorded_at;
-                const anchorContext = members.find((m) => !!m.personal_context)?.personal_context ?? null;
+                const anchorContext = members.find((m) => !!m.personal_context)?.personal_context ?? autoNote(anchor);
                 const groupAggNode = buildGroupAggregate(members, displayCurrency);
                 const verb = actionVerb(anchor.action);
 
