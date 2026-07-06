@@ -342,7 +342,17 @@ function buildPresentMods(rawMods: unknown[], ctx: ToolContext): Modification[] 
       const property = ctx.currentAssets.find((a) => a.type === "real_estate" && Number(a.mortgage_balance ?? 0) > 0);
       if (!property) continue;
       mods.push({ kind: "payDownMortgage", assetId: String(property.id), amount: toNative(amount, String(property.currency || "USD")) });
-      const cash = ctx.currentAssets.filter((a) => a.type === "cash" || a.type === "pension").sort((x, y) => Number(y.value) - Number(x.value))[0];
+      // Pick the LARGEST reserve to draw down — compared in USD, not raw native
+      // value, or a big number in a weak currency (¥1,000,000 ≈ €6k) wrongly beats
+      // a smaller one in a strong currency (€50k) and the scenario sources the
+      // paydown from a pot that can't cover it.
+      const usdOf = (a: Record<string, unknown>) => {
+        const cur = String(a.currency || "USD");
+        if (cur === "USD") return Number(a.value);
+        const rate = ctx.usdRates[cur];
+        return rate ? Number(a.value) / rate : Number(a.value);
+      };
+      const cash = ctx.currentAssets.filter((a) => a.type === "cash" || a.type === "pension").sort((x, y) => usdOf(y) - usdOf(x))[0];
       if (cash) mods.push({ kind: "setValue", assetId: String(cash.id), nativeValue: Math.max(0, Number(cash.value) - toNative(amount, String(cash.currency || "USD"))) });
       continue;
     }
@@ -660,6 +670,12 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
 
 
   const hasAdds = changes.some((c) => c.action === "add");
+  // "first_asset_added" is the time-to-first-asset conversion metric — it must
+  // fire ONLY on the genuine first add (an empty portfolio), like the tag path
+  // gates it on isNewUser. Captured BEFORE the post-commit refresh below, which
+  // would otherwise always show ≥1 asset. Every later add emitted it too,
+  // polluting the metric.
+  const portfolioWasEmpty = ctx.currentAssets.length === 0;
 
   // applyPortfolioChanges resolves every date and writes every mutation, so it
   // is the single source of truth for which historical rows changed. It returns
@@ -726,6 +742,6 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
       ...(nothingLanded && hasAdds ? { note: "Nothing was written and there were no per-row errors — the change rows were malformed (each add needs a non-empty name and a symbol). Rebuild the rows with an explicit name on each and commit once more." } : {}),
       ...(fxWarnings.length ? { notes: fxWarnings } : {}),
     },
-    commit: { changed, mutationMetas, analyticsEvent: hasAdds ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
+    commit: { changed, mutationMetas, analyticsEvent: hasAdds && portfolioWasEmpty ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
   };
 }

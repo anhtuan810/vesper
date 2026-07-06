@@ -291,7 +291,14 @@ async function buildPortfolioMods(
       const property = assets.find((a) => a.type === "real_estate" && Number(a.mortgage_balance ?? 0) > 0);
       if (!property) return { error: "There's no mortgage on file to pay down." };
       mods.push({ kind: "payDownMortgage", assetId: String(property.id), amount: toNative(amount, String(property.currency || "USD")) });
-      const cash = assets.filter((a) => a.type === "cash" || a.type === "pension").sort((x, y) => Number(y.value) - Number(x.value))[0];
+      // Compare reserves in USD, not raw native value — otherwise a large number
+      // in a weak currency (¥1,000,000 ≈ €6k) outranks a smaller one in a strong
+      // currency (€50k) and the paydown is sourced from a pot that can't cover it.
+      const usdOf = (a: Record<string, unknown>) => {
+        const cur = String(a.currency || "USD");
+        return cur === "USD" ? Number(a.value) : Number(a.value) / (usdRates[cur] ?? 1);
+      };
+      const cash = assets.filter((a) => a.type === "cash" || a.type === "pension").sort((x, y) => usdOf(y) - usdOf(x))[0];
       if (cash) mods.push({ kind: "setValue", assetId: String(cash.id), nativeValue: Math.max(0, Number(cash.value) - toNative(amount, String(cash.currency || "USD"))) });
       continue;
     }

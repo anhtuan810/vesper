@@ -103,11 +103,25 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
   const cbsEnd = series[series.length - 1].value;
   const targetEnd = typeof asset.value === "number" && asset.value > 0 ? asset.value : cbsEnd;
   const cbsRange = cbsEnd - cbsStart;
+
+  // Two anchoring modes:
+  // • A real purchase price on file (series[0] IS the buy price) → pin BOTH ends:
+  //   buy_price at the start, the stated value at the end, CBS driving the shape.
+  // • No purchase price → the estimate route defaults the basis to the CURRENT
+  //   value, so series[0] === the current value and the two-point remap collapsed
+  //   the whole line flat (and mislabelled today's value as the "Purchase").
+  //   Instead scale the CBS shape so it ENDS at the stated value; the earlier
+  //   points are the de-appreciated (estimated) historical values, giving a real
+  //   curve with an implied — not asserted — starting value.
+  const hasRealBasis = typeof asset.buy_price === "number" && asset.buy_price > 0;
   const anchoredSeries = series.map((p, i) => {
-    const t = Math.abs(cbsRange) > 1e-6
-      ? (p.value - cbsStart) / cbsRange
-      : series.length > 1 ? i / (series.length - 1) : 1;
-    return { year: p.year, value: cbsStart + t * (targetEnd - cbsStart) };
+    if (hasRealBasis) {
+      const t = Math.abs(cbsRange) > 1e-6
+        ? (p.value - cbsStart) / cbsRange
+        : series.length > 1 ? i / (series.length - 1) : 1;
+      return { year: p.year, value: cbsStart + t * (targetEnd - cbsStart) };
+    }
+    return { year: p.year, value: cbsEnd > 1e-6 ? targetEnd * (p.value / cbsEnd) : targetEnd };
   });
 
   const purchase = anchoredSeries[0];
@@ -211,7 +225,7 @@ export function EstimatedValueChart({ asset }: { asset: RealEstateAsset }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 12 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontFamily: "var(--font-numeric)" }}>
             <span style={{ width: 9, height: 9, borderRadius: "var(--radius-pill)", border: `1.8px solid ${stroke}`, background: "var(--surface)" }} />
-            Purchase {money(purchase.value)}
+            {hasRealBasis ? "Purchase" : `Est. ${purchase.year}`} {money(purchase.value)}
           </span>
         </div>
 

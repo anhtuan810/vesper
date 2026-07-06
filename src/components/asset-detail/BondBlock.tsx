@@ -16,17 +16,24 @@ function parseLocalDate(str: string): Date {
 function computeTimeToMaturity(maturityDateStr: string): string {
   const today = new Date();
   const maturity = parseLocalDate(maturityDateStr);
-  if (maturity <= today) return "Matured";
+  // A year/year-month maturity ("July 2026", "2026") is stored as the 1st of the
+  // month, so a strict `maturity <= today` labelled a bond "Matured" as soon as
+  // that month began (6 July for a July-2026 bond). Treat the whole maturity month
+  // as active — matured only once its month is entirely past.
+  const maturityMonthEnd = new Date(maturity.getFullYear(), maturity.getMonth() + 1, 0);
+  if (maturityMonthEnd < today) return "Matured";
 
   const totalMonths =
     (maturity.getFullYear() - today.getFullYear()) * 12 +
     (maturity.getMonth() - today.getMonth());
 
+  // Same month (or a specific day later this month) → less than a month out, not "0 months".
+  if (totalMonths <= 0) return "< 1 month";
+
   const years = Math.floor(totalMonths / 12);
   const months = totalMonths % 12;
-
-  if (years === 0) return `${months} months`;
-  if (months === 0) return `${years} years`;
+  if (years === 0) return `${months} month${months === 1 ? "" : "s"}`;
+  if (months === 0) return `${years} year${years === 1 ? "" : "s"}`;
   return `${years}yr ${months}mo`;
 }
 
