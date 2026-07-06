@@ -157,10 +157,13 @@ export interface SwingHolding {
 }
 
 // Pure day-change attribution for one swing: for each holding, value on D minus
-// value on the prior trading day P (same units, so it's pure price+FX move),
-// in display currency via `toDisplay`. Returns the net total, the gross tradeable
-// value on D (for the expand floor), and the movers sorted by |impact| desc.
-// Exported and dependency-injected so the math is unit-testable without network.
+// value on the prior trading day P at a FIXED unit count (so it's pure price+FX
+// move), in display currency via `toDisplay`. The caller passes the units held
+// as of P — the exposure that actually rode the P→D move — so a position bought
+// on D contributes 0 and one sold on D still counts. Returns the net total, the
+// gross tradeable value on D (for the expand floor), and the movers sorted by
+// |impact| desc. Exported and dependency-injected so the math is unit-testable
+// without network.
 export function computeSwingDayChange(
   date: string,
   prior: string,
@@ -348,8 +351,13 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     const P = s.prior;
     if (!P) { built.push({ move: base, total: 0, tradeableValue: 0, month: date.slice(0, 7) }); continue; }
 
+    // Value the move with the units held at the START of the swing day — i.e. as
+    // of the prior trading day P, the exposure that actually rode the P→D price
+    // move. Using D's end-of-day units attributed a full day's move to shares
+    // BOUGHT that day (a dip-buy showed as "your portfolio lost €X"), and dropped
+    // a position SOLD that day (D units = 0) whose loss the user really took.
     const holdings: SwingHolding[] = tradeables.map((a) => ({
-      symbol: a.symbol!, label: a.name || a.symbol!, units: unitsOf(a, date), histKey: normalizeCryptoSymbol(a.symbol!, a.type), assetId: a.id,
+      symbol: a.symbol!, label: a.name || a.symbol!, units: unitsOf(a, P), histKey: normalizeCryptoSymbol(a.symbol!, a.type), assetId: a.id,
     }));
     const { total, tradeableValue, movers } = computeSwingDayChange(date, P, holdings, histMap, toDisplay);
 
