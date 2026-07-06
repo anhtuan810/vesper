@@ -55,8 +55,12 @@ export function formatDate(dateStr: string): string {
 }
 
 export function getMonthKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  // Read the year-month straight off the stored string. `new Date("2026-07-01")`
+  // parses as UTC midnight and the local getters then read it in the viewer's
+  // zone — so a July-1 entry bucketed under "June" (and dropped from the "1M"
+  // filter) for anyone west of UTC, while its own date chip still read "1 Jul".
+  const [y, m] = dateStr.split("T")[0].split("-");
+  return `${y}-${m}`;
 }
 
 export function getMonthLabel(key: string): string {

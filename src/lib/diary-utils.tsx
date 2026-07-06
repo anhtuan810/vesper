@@ -199,20 +199,29 @@ export function isInPeriod(m: Mutation, period: PeriodKey, customFrom: string, c
   if (period === "all") return true;
   const dateStr = m.occurred_at || m.recorded_at;
   if (!dateStr) return true;
-  const date = new Date(dateStr);
+  // Parse the stored calendar date in LOCAL time. `new Date("2026-07-01")` is UTC
+  // midnight, so the local getters below read it as June 30 for anyone west of
+  // UTC — dropping a July-1 entry from the "month"/"year" filters even though its
+  // own date chip says "1 Jul". Building from Y/M/D pins it to the intended day.
+  const [py, pm, pd] = dateStr.split("T")[0].split("-").map(Number);
+  const date = new Date(py, (pm || 1) - 1, pd || 1);
   const now = new Date();
+  const monthStart = (ym: string) => {
+    const [y, mo] = ym.split("-").map(Number);
+    return new Date(y, (mo || 1) - 1, 1);
+  };
 
   switch (period) {
-    case "week": return date >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    case "week": return date >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
     case "month": return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     case "3months": return date >= new Date(now.getFullYear(), now.getMonth() - 3, 1);
     case "year": return date.getFullYear() === now.getFullYear();
     case "custom": {
       let from = customFrom, to = customTo;
       if (from && to && from > to) [from, to] = [to, from];
-      if (from && date < new Date(from + "-01")) return false;
+      if (from && date < monthStart(from)) return false;
       if (to) {
-        const toDate = new Date(to + "-01");
+        const toDate = monthStart(to);
         toDate.setMonth(toDate.getMonth() + 1);
         if (date >= toDate) return false;
       }

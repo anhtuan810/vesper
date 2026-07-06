@@ -72,7 +72,11 @@ export function StaticDetail({ asset }: Props) {
   // Compute this-year delta for the change pill
   const currentYear = new Date().getFullYear();
   const thisYearDelta = mutations.reduce((sum, m) => {
-    const year = m.occurred_at ? new Date(m.occurred_at).getFullYear() : null;
+    // Read the year off the stored date string, not via new Date(): a Jan-1
+    // occurred_at parses as UTC midnight and reads back as the PRIOR year for
+    // western-timezone viewers, dropping a genuine start-of-year change from the
+    // "+… this year" pill.
+    const year = m.occurred_at ? Number(m.occurred_at.slice(0, 4)) : null;
     if (year !== currentYear) return sum;
     if (m.action === "add" && m.after_value != null && m.before_value != null) return sum + m.after_value - m.before_value;
     if (m.action === "add" && m.after_value != null && m.before_value == null) return sum + m.after_value;
