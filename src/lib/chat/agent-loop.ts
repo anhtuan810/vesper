@@ -10,7 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
 import { getUsdRates } from "@/lib/fx";
 import { type DisplayCurrency } from "@/lib/money";
-import { validateNarration } from "@/lib/narrate/guardrail";
+import { validateMonetaryNarration } from "@/lib/narrate/guardrail";
 import { stripTags, timestampedPair } from "@/lib/chat-helpers";
 import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 import { generateMarketContext } from "@/lib/market-context";
@@ -182,11 +182,17 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
 
   if (!finalText) finalText = "Here's what I found.";
 
-  // Numeric guardrail, defense-in-depth: if the prose asserts a number no tool
-  // returned, drop the prose (the card, if any, carries the deterministic truth).
-  if (figures.length > 0 && !validateNarration(finalText, figures)) {
+  // Numeric guardrail, defense-in-depth: if the prose asserts a MONEY/percent
+  // figure no tool returned, drop the prose (the card, if any, carries the
+  // deterministic truth). Only money/percent tokens are checked — bare counts,
+  // years and ordinals ("18 positions", "2 years ago") are legitimate prose and
+  // used to trip this on ordinary commit/import turns, replacing a good reply
+  // with a confusing "rephrase the question?" right after the user had answered.
+  // Without a card there's nothing to fall back to, so use a neutral line, never
+  // an interrogative that reads as a non-sequitur.
+  if (figures.length > 0 && !validateMonetaryNarration(finalText, figures)) {
     Sentry.captureMessage("agent narration failed numeric guardrail", "warning");
-    finalText = card ? "Here are the figures from the calculation:" : "Let me double-check those numbers — could you rephrase the question?";
+    finalText = card ? "Here are the figures from the calculation:" : "Here's what I found.";
   }
 
   // ── Post-commit side effects (the proven background jobs) ───────────────────

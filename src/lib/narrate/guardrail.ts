@@ -16,3 +16,21 @@ export function validateNarration(text: string, allowedFigures: string[]): boole
   const allowed = new Set(allowedFigures.map(normFigure));
   return extractNumbers(text).every((t) => allowed.has(t));
 }
+
+// Money- or percent-tagged tokens only — the figures whose fabrication actually
+// misleads a reader ("€26.971", "5,2%"). Bare integers are excluded: position
+// counts ("18 positions"), totals ("80 total"), years and ordinals ("2 years
+// ago") are legitimate prose the model writes and were never "figures", so
+// validating them tripped the guard on ordinary conversational turns.
+const MONEY_PCT_TOKEN = /[€$£]\s?\d[\d.,]*%?|\d[\d.,]*\s?%/g;
+
+/** Every money/percent token in `text`, normalised the same way as {@link extractNumbers}. */
+export function extractMonetaryNumbers(text: string): string[] {
+  return (text.match(MONEY_PCT_TOKEN) ?? []).map(normFigure).filter(Boolean);
+}
+
+/** True iff every money/percent figure in `text` appears in the allowed set. */
+export function validateMonetaryNarration(text: string, allowedFigures: string[]): boolean {
+  const allowed = new Set(allowedFigures.map(normFigure));
+  return extractMonetaryNumbers(text).every((t) => allowed.has(t));
+}
