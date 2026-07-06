@@ -29,6 +29,20 @@ console.log("A stated date resolves to a stored month (the reported bug):");
   check('ISO month "2021-03" → 2021-03-01', parseAcquisitionMonth("2021-03") === "2021-03-01");
 }
 
+console.log("Day-bearing dates keep their month (was collapsing to Jan-1):");
+{
+  // US "Month Day, Year" and EU "Day Month Year" — the day between the month
+  // name and the year previously defeated the month-year regex, so the whole
+  // date fell through to the bare-year branch and lost the month.
+  check('"March 5, 2021" → 2021-03-01', parseAcquisitionMonth("March 5, 2021") === "2021-03-01", String(parseAcquisitionMonth("March 5, 2021")));
+  check('"March 5 2021" → 2021-03-01', parseAcquisitionMonth("March 5 2021") === "2021-03-01", String(parseAcquisitionMonth("March 5 2021")));
+  check('"Dec 5, 2021" → 2021-12-01 (not 2021-01)', parseAcquisitionMonth("Dec 5, 2021") === "2021-12-01", String(parseAcquisitionMonth("Dec 5, 2021")));
+  check('"December 31, 2021" → 2021-12-01', parseAcquisitionMonth("December 31, 2021") === "2021-12-01", String(parseAcquisitionMonth("December 31, 2021")));
+  check('"5 March 2021" → 2021-03-01', parseAcquisitionMonth("5 March 2021") === "2021-03-01", String(parseAcquisitionMonth("5 March 2021")));
+  check('"5th of March, 2021" → 2021-03-01', parseAcquisitionMonth("5th of March, 2021") === "2021-03-01", String(parseAcquisitionMonth("5th of March, 2021")));
+  check('"bought 15 Aug 2014" → 2014-08-01', parseAcquisitionMonth("bought 15 Aug 2014") === "2014-08-01", String(parseAcquisitionMonth("bought 15 Aug 2014")));
+}
+
 console.log("Relative phrases resolve (the reported \"6 months ago\" bug):");
 {
   // Month arithmetic is anchored to today, so compute the expected month the

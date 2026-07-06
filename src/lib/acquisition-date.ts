@@ -88,6 +88,29 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
     if (month) return notFuture(`${year}-${pad2(month)}-01`);
   }
 
+  // A day-bearing date, US ("March 5, 2021" / "Mar 5 2021") or EU ("5 March 2021"
+  // / "5th of March, 2021"). The month-year regex above requires the year to
+  // follow the month name immediately, so a day in between made these fall
+  // through to the bare-year branch and silently collapse to Jan-1 of that year
+  // (losing the month by up to 11 months). Resolved to month precision (this
+  // module's contract), same as the "March 2021" case.
+  const monthDayYear = lower.match(
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+(\d{4})\b/
+  );
+  if (monthDayYear) {
+    const month = MONTHS[monthDayYear[1]];
+    const year = Number(monthDayYear[2]);
+    if (month) return notFuture(`${year}-${pad2(month)}-01`);
+  }
+  const dayMonthYear = lower.match(
+    /\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?,?\s+(\d{4})\b/
+  );
+  if (dayMonthYear) {
+    const month = MONTHS[dayMonthYear[1]];
+    const year = Number(dayMonthYear[2]);
+    if (month) return notFuture(`${year}-${pad2(month)}-01`);
+  }
+
   // "early 2015" / "late 2015" / "mid-2015"
   const partYear = lower.match(/\b(early|beginning|start|mid|middle|summer|late|end)(?:\s+of)?[\s-]+(\d{4})\b/);
   if (partYear) {
