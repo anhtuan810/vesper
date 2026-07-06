@@ -26,6 +26,8 @@
 	<false/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Volnar uses Face ID to unlock the app when App lock is enabled.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Volnar uses the camera so you can snap a photo of a statement or holding to add it to your portfolio.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

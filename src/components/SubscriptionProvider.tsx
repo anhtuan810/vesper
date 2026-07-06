@@ -67,14 +67,21 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       try {
         const res = await apiFetch("/api/subscription");
         if (!res.ok) {
-          setData(null);
+          // Preserve the last-known-good entitlement on a transient failure (an
+          // offline blip on wake, a 401 session hiccup, a 500) rather than nulling
+          // it. The focus/visibility refetch fires the moment the app returns to the
+          // foreground — often while the radio is still reconnecting — and on web
+          // `entitled` is just `data?.entitled`, so nulling here would flip a paying
+          // user behind the paywall until a later refetch happened to succeed. A real
+          // sign-out clears `data` via the user effect above, not from here.
           return null;
         }
         const view = (await res.json()) as SubscriptionView;
         setData(view);
         return view;
       } catch {
-        setData(null);
+        // Network error (commonly the radio still reconnecting right after
+        // foreground): keep the last-known-good value instead of re-gating. See above.
         return null;
       } finally {
         inFlight.current = null;
