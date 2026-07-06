@@ -925,20 +925,47 @@ export async function applyPortfolioChanges({
           const isIncomePensionEdit = pensionEditIncomeAmount !== null;
           const rawAfter = updateData.value !== undefined ? (updateData.value as number | null) : existing.value;
           const editCur = change.currency || existing.currency || "USD";
+
+          // A property's Diary/Activity figure is its EQUITY (market value − mortgage
+          // balance), not the raw market value. So a mortgage paydown or drawdown —
+          // which moves equity but leaves the market value untouched — surfaces as
+          // the change it is (e.g. "+€10,000") instead of a zero-delta no-op the
+          // journal and the property's own Activity list both hid (both derive the
+          // shown delta from after_value − before_value). For a plain revaluation
+          // (mortgage unchanged) equity moves exactly with value, so appreciation
+          // still reads identically. Non-real-estate assets keep the raw value
+          // (existing.value may be null for an income pension — preserved as-is).
+          const isRealEstateEdit = existing.type === "real_estate";
+          const oldMortgage = existing.mortgage_balance ?? 0;
+          const newMortgage = updateData.mortgage_balance !== undefined
+            ? (updateData.mortgage_balance as number)
+            : oldMortgage;
+          const beforeRecorded: number | null = isRealEstateEdit ? (existing.value ?? 0) - oldMortgage : existing.value;
+          const afterRecorded: number | null = isRealEstateEdit ? (rawAfter ?? 0) - newMortgage : rawAfter;
+
           // Income pensions are off-balance — their net-worth contribution is 0,
           // so the running total never picks up an annual-income figure. Capital
-          // pensions and all other assets use the resolved value.
-          const afterValueForTotal = isIncomePensionEdit ? 0 : (rawAfter ?? 0);
-          runningTotal += toUsdSync(afterValueForTotal, editCur) - toUsdSync(existing.value ?? 0, existing.currency || "USD");
+          // pensions and all other assets use the resolved value (equity for
+          // real estate).
+          const afterValueForTotal = isIncomePensionEdit ? 0 : (afterRecorded ?? 0);
+          runningTotal += toUsdSync(afterValueForTotal, editCur) - toUsdSync(beforeRecorded ?? 0, existing.currency || "USD");
           // The mutation records the annual income for income pensions (phrased
-          // "€X / year" downstream), the resolved value otherwise.
-          const afterValue: number | null = isIncomePensionEdit ? pensionEditIncomeAmount : rawAfter;
+          // "€X / year" downstream), equity for real estate, the resolved value
+          // otherwise.
+          const afterValue: number | null = isIncomePensionEdit ? pensionEditIncomeAmount : afterRecorded;
 
           // Every edit is logged — including a pure rename, which records the
           // before/after name (value/units unchanged) so the Diary audit trail
           // is complete. Market-context backfill is skipped for renames.
           const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
           const renameNote = onlyNameChanged ? `Renamed ${existing.name} to ${change.new_name}.` : null;
+          // A mortgage-only move shows the same "+€X" shape as appreciation, so when
+          // the user left no note of their own, tag what actually happened — this is
+          // what makes a paydown legible as a paydown in the Diary/Activity.
+          const mortgageMoved = isRealEstateEdit && updateData.mortgage_balance !== undefined && newMortgage !== oldMortgage;
+          const mortgageNote = mortgageMoved
+            ? (newMortgage < oldMortgage ? "Paid down the mortgage." : "Increased the mortgage.")
+            : null;
           const editOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
           const { data: editedMutation, error: editMutError } = await supabase.from("mutations").insert({
             user_id: userId,
@@ -947,12 +974,12 @@ export async function applyPortfolioChanges({
             action: "edit",
             asset_type: existing.type,
             symbol: existing.symbol || null,
-            before_value: existing.value,
+            before_value: beforeRecorded,
             after_value: afterValue,
             before_units: existing.units || null,
             after_units: change.units !== undefined ? change.units : (existing.units || null),
             currency: change.currency || existing.currency || "USD",
-            personal_context: change.personal_context || contextNote || renameNote,
+            personal_context: change.personal_context || contextNote || renameNote || mortgageNote,
             portfolio_total: runningTotal,
             occurred_at: editOccurredAt,
           }).select("id").single();

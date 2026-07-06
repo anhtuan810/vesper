@@ -87,7 +87,7 @@ Chat history. Read by `/api/chat` to build conversation context (last 6 messages
 Financial diary. Every portfolio change (other than pure renames) creates a row.
 - `id`, `user_id`, `asset_id` (nullable for deleted assets), `asset_name`, `asset_type`, `symbol`
 - `action` (add | edit | remove)
-- `before_value`, `after_value` (numeric, in `currency` — the asset's native currency at the time of the change)
+- `before_value`, `after_value` (numeric, in `currency` — the asset's native currency at the time of the change). For a **real-estate edit** these hold **equity** (market value − mortgage balance), not the raw market value — so a mortgage paydown/drawdown records the equity change it actually is (the Diary and the property's Activity both derive the shown delta from `after_value − before_value`; recording the unchanged market value gave a zero delta they hid). A plain revaluation moves equity with value, so it reads identically. A mortgage-only move with no user note also gets a deterministic `personal_context` ("Paid down the mortgage." / "Increased the mortgage.") so it isn't mistaken for appreciation.
 - `before_units`, `after_units` (numeric, nullable — tradeable mutations only)
 - `currency` (text, nullable; backfilled from `assets.currency` via `asset_id`, defaulted to `'EUR'` for orphans)
 - `personal_context` (extracted from Claude's `<context>` block at the moment of mutation; **write-once** — never edited after, per Decision 1)
