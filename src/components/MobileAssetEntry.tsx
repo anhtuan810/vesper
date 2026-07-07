@@ -39,7 +39,9 @@ export function MobileAssetEntry({ move }: { move: DiaryMarketMove }) {
         display: "flex", gap: 10, alignItems: "flex-start",
         padding: "8px 12px", margin: "6px 0",
         background: "color-mix(in srgb, var(--accent) 14%, var(--surface))",
-        borderLeft: "3px solid var(--accent)",
+        // Accent rail as an inset shadow (not a border) so it doesn't shift the
+        // content 3px and misalign the glyph with the index rows above/below.
+        boxShadow: "inset 3px 0 0 var(--accent)",
         borderRadius: "var(--radius-md)",
       }}
     >

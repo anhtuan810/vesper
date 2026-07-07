@@ -312,12 +312,21 @@ type Entry =
   | { id: string; date: string; kind: "decision"; m: Mutation }
   | { id: string; date: string; kind: "market"; mv: DiaryMarketMove };
 
-// "▲ €1.240" / "▼ €930" — a market swing's signed impact in its display currency.
+// The headline figure for a swing: an ASSET swing reports the named asset's OWN
+// impact on the position (movers[0]) — matching how the Journal renders it — while
+// an INDEX swing reports the whole portfolio's day-change. Null when there's no
+// figure to show.
+function moveHeadlineImpact(mv: DiaryMarketMove): number | null {
+  if (!mv.impact) return null;
+  return mv.kind === "asset" ? (mv.impact.movers[0]?.impact ?? null) : mv.impact.total;
+}
+
+// "▲ €1.240" / "▼ €930" — a swing's signed headline impact in its display currency.
 function marketImpactText(mv: DiaryMarketMove): string | undefined {
-  if (!mv.impact) return undefined;
-  const dn = mv.impact.total < 0;
+  const amt = moveHeadlineImpact(mv);
+  if (amt == null || !mv.impact) return undefined;
   const mc = mv.impact.currency as DisplayCurrency;
-  return `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(mv.impact.total), mc, mc)}`;
+  return `${amt < 0 ? "▼" : "▲"} ${formatMoney(Math.abs(amt), mc, mc)}`;
 }
 
 export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSettled, mutations }: Props) {
@@ -880,17 +889,22 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
             const mv = selectedMove;
             const imp = mv.impact!;
             const mc = imp.currency as typeof displayCurrency;
-            const dn = imp.total < 0;
+            const isAsset = mv.kind === "asset";
+            // Asset swing: report the asset's OWN impact on the position (matching
+            // the Journal); index swing: the whole portfolio's day-change.
+            const own = isAsset ? (imp.movers[0]?.impact ?? 0) : imp.total;
+            const dn = own < 0;
             return (
               <>
                 <div className="ep-top">
                   <span className="ep-date">{shortDate(mv.date)}</span>
-                  <span className="ep-kind market">Auto · Market</span>
+                  <span className="ep-kind market">{isAsset ? "Auto · Your holding" : "Auto · Market"}</span>
                 </div>
                 <h3 className="ep-title">{mv.index_label} {mv.pct_change >= 0 ? "+" : "−"}{fmtPct(Math.abs(mv.pct_change), 1)}%</h3>
                 <p className="ep-why">
-                  Your portfolio {dn ? "lost" : "gained"} {formatMoney(Math.abs(imp.total), mc, mc)} that day
-                  {imp.movers[0] ? `, led by ${imp.movers[0].label}` : ""}. No action taken — recorded automatically.
+                  {isAsset
+                    ? <>{mv.index_label} {mv.pct_change >= 0 ? "rose" : "fell"} {fmtPct(Math.abs(mv.pct_change), 1)}% that day — {dn ? "−" : "+"}{formatMoney(Math.abs(own), mc, mc)} on your position. No action taken — recorded automatically.</>
+                    : <>Your portfolio {dn ? "lost" : "gained"} {formatMoney(Math.abs(imp.total), mc, mc)} that day{imp.movers[0] ? `, led by ${imp.movers[0].label}` : ""}. No action taken — recorded automatically.</>}
                 </p>
                 {imp.movers.length > 0 && (
                   <ul className="ep-points">
@@ -1036,10 +1050,15 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
               const mv = row.mv;
               const imp = mv.impact!;
               const mc = imp.currency as typeof displayCurrency;
-              const dn = imp.total < 0;
+              const isAsset = mv.kind === "asset";
               const top = imp.movers[0];
-              const why = `Your portfolio ${dn ? "lost" : "gained"} ${formatMoney(Math.abs(imp.total), mc, mc)} that day`
-                + (top ? `, led by ${top.label}.` : ".");
+              // Asset swing: report the asset's OWN impact (matching the Journal);
+              // index swing: the whole portfolio's day-change.
+              const amt = isAsset ? (top?.impact ?? 0) : imp.total;
+              const dn = amt < 0;
+              const why = isAsset
+                ? `${mv.index_label} ${mv.pct_change >= 0 ? "rose" : "fell"} ${fmtPct(Math.abs(mv.pct_change), 1)}% — ${dn ? "−" : "+"}${formatMoney(Math.abs(amt), mc, mc)} on your position.`
+                : `Your portfolio ${dn ? "lost" : "gained"} ${formatMoney(Math.abs(imp.total), mc, mc)} that day` + (top ? `, led by ${top.label}.` : ".");
               return (
                 <div className={`led${selectedId === row.id ? " sel" : ""}`} key={row.id} {...selectRowProps(row.id)}>
                   <span className={`led-dot${dn ? " dn" : ""}`} />
@@ -1047,11 +1066,11 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
                   <div>
                     <div className="led-l1">
                       <span className="led-title">{mv.index_label} {mv.pct_change >= 0 ? "+" : "−"}{fmtPct(Math.abs(mv.pct_change), 1)}%</span>
-                      <span className="led-tag auto">Market</span>
+                      <span className="led-tag auto">{isAsset ? "Holding" : "Market"}</span>
                     </div>
                     <div className="led-why">{why}</div>
                   </div>
-                  <span className={`led-imp${dn ? " dn" : ""}`}>{dn ? "▼" : "▲"} {formatMoney(Math.abs(imp.total), mc, mc)}</span>
+                  <span className={`led-imp${dn ? " dn" : ""}`}>{dn ? "▼" : "▲"} {formatMoney(Math.abs(amt), mc, mc)}</span>
                 </div>
               );
             }

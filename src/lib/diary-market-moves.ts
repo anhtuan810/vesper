@@ -133,28 +133,38 @@ export interface AssetMoveSeries {
   unitsAt: (date: string) => number;
 }
 
-// Detects ASSET swings: a held asset's OWN single-day move of at least
-// `thresholdPct`, on a date the user actually held it. Deduped per date across
-// assets (largest |move| wins — the headline). Uses the raw price ratio, which is
-// scale-invariant, so a pence-vs-pound quote doesn't distort the %. Sibling of
-// detectSwings — pure + exported for unit testing.
+export interface AssetSwingCandidate {
+  symbol: string;
+  label: string;
+  pct: number;    // the asset's own single-day % move
+  prior: string;  // its prior trading day, to value the move against
+}
+
+// Detects ASSET swings: for each date within [lookbackCutoff, latest], every held
+// asset whose OWN single-day move is at least `thresholdPct`, on a date the user
+// actually held it. Returns ALL such candidates per date (NOT deduped) so the
+// caller can pick the headline by real portfolio impact rather than by raw % — a
+// big % on a tiny position must not shadow a smaller % on a large one. Pre-cutoff
+// rows are skipped for DETECTION (they only exist in the series as priors), same
+// as detectSwings, so an asset swing never lands before the journal's window. Uses
+// the raw price ratio, which is scale-invariant (pence-vs-pound safe). Pure +
+// exported for unit testing.
 export function detectAssetSwings(
   assets: AssetMoveSeries[],
+  lookbackCutoff: string,
   thresholdPct: number,
-): Map<string, { symbol: string; label: string; pct: number; prior: string }> {
-  const out = new Map<string, { symbol: string; label: string; pct: number; prior: string }>();
+): Map<string, AssetSwingCandidate[]> {
+  const out = new Map<string, AssetSwingCandidate[]>();
   for (const { symbol, label, series, unitsAt } of assets) {
     for (let i = 1; i < series.length; i++) {
       const prev = series[i - 1];
       const cur = series[i];
+      if (cur.date < lookbackCutoff) continue; // pre-window row: kept only as a prior
       if (!prev.price) continue;
       const pct = ((cur.price - prev.price) / prev.price) * 100;
       if (Math.abs(pct) < thresholdPct) continue;
       if (unitsAt(cur.date) <= 0) continue; // not held that day → not the user's swing
-      const existing = out.get(cur.date);
-      if (!existing || Math.abs(pct) > Math.abs(existing.pct)) {
-        out.set(cur.date, { symbol, label, pct, prior: prev.date });
-      }
+      (out.get(cur.date) ?? out.set(cur.date, []).get(cur.date)!).push({ symbol, label, pct, prior: prev.date });
     }
   }
   return out;
@@ -409,14 +419,17 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
 
   // ── Detect ASSET swings: a held asset's OWN big single-day move ──
   // Each held asset with a price series contributes its walk; detectAssetSwings
-  // dedups per date to the largest |move| (the headline) and gates on units held.
+  // returns every held ≥threshold mover per date (bounded to the window, gated on
+  // units held). The headline per date is chosen by real impact below, not by %.
   const assetSeries: AssetMoveSeries[] = [];
+  const assetBySymbol = new Map<string, AssetRow>();
   for (const a of tradeables) {
     const series = histMap.get(normalizeCryptoSymbol(a.symbol!, a.type));
     if (!series) continue;
     assetSeries.push({ symbol: a.symbol!, label: a.name || a.symbol!, series, unitsAt: (d) => unitsOf(a, d) });
+    if (!assetBySymbol.has(a.symbol!)) assetBySymbol.set(a.symbol!, a);
   }
-  const assetCandidates = detectAssetSwings(assetSeries, MARKET_MOVE_HOLDING_THRESHOLD_PCT);
+  const assetCandidates = detectAssetSwings(assetSeries, lookbackCutoff, MARKET_MOVE_HOLDING_THRESHOLD_PCT);
 
   if (swings.size === 0 && assetCandidates.size === 0) return [];
 
@@ -492,32 +505,46 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   }
 
   // ── Compute per-ASSET-swing impact ──
-  // Same day-change attribution as the index path, valued with the units held as
-  // of the prior day P. Then reorder movers so the headline asset (the one that
-  // moved) is first and present — the row shows ITS own impact + %, not the index
-  // total — and keep up to three.
+  // One held asset's OWN day-change (units held as of its prior day), in display
+  // currency — the ranking key that lets a big-position mover beat a big-% tiny one.
+  const ownImpactOf = (a: AssetRow, date: string, prior: string): number => {
+    const h: SwingHolding = { symbol: a.symbol!, label: a.name || a.symbol!, units: unitsOf(a, prior), histKey: normalizeCryptoSymbol(a.symbol!, a.type), assetId: a.id };
+    return computeSwingDayChange(date, prior, [h], histMap, toDisplay).movers[0]?.impact ?? 0;
+  };
+
+  // For each date, the headline is the candidate with the largest OWN |impact| —
+  // NOT the largest % — so a 12% day on a €50 stake can't shadow an 8% day on a
+  // large position that would actually qualify. Then value the full portfolio on
+  // the headline's prior, reorder its movers so the headline leads, keep up to 3.
   type BuiltAsset = { move: DiaryMarketMove; headlineImpact: number; tradeableValue: number; month: string };
   const builtAsset: BuiltAsset[] = [];
-  for (const [date, c] of assetCandidates) {
-    const P = c.prior;
+  for (const [date, cands] of assetCandidates) {
+    let head: { c: AssetSwingCandidate; own: number } | null = null;
+    for (const c of cands) {
+      const a = assetBySymbol.get(c.symbol);
+      if (!a) continue;
+      const own = ownImpactOf(a, date, c.prior);
+      if (!head || Math.abs(own) > Math.abs(head.own)) head = { c, own };
+    }
+    // No candidate was a real mover that day (e.g. all bought on the swing day, so
+    // 0 units as of the prior) → no own impact to show; skip the phantom swing.
+    if (!head || head.own === 0) continue;
+
+    const P = head.c.prior;
     const holdings: SwingHolding[] = tradeables.map((a) => ({
       symbol: a.symbol!, label: a.name || a.symbol!, units: unitsOf(a, P), histKey: normalizeCryptoSymbol(a.symbol!, a.type), assetId: a.id,
     }));
     const { total, tradeableValue, movers } = computeSwingDayChange(date, P, holdings, histMap, toDisplay);
-
-    // The headline must be a real mover that day (held across P→D). If it wasn't
-    // valued — e.g. bought on the swing day itself, so 0 units as of P — it had no
-    // own impact to show; skip rather than surface a phantom asset swing.
-    const hi = movers.findIndex((mv) => mv.symbol === c.symbol);
+    const hi = movers.findIndex((mv) => mv.symbol === head.c.symbol);
     if (hi < 0) continue;
     const ordered = [movers[hi], ...movers.slice(0, hi), ...movers.slice(hi + 1)];
     const headlineImpact = ordered[0].impact;
 
     const move: DiaryMarketMove = {
       date,
-      index_symbol: c.symbol,
-      index_label: c.label,
-      pct_change: c.pct,
+      index_symbol: head.c.symbol,
+      index_label: head.c.label,
+      pct_change: head.c.pct,
       kind: "asset",
       impact: { total, currency: displayCurrency, movers: ordered.slice(0, 3) },
       expanded: false, // asset swings are always full rows

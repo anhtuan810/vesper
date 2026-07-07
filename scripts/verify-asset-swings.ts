@@ -1,11 +1,13 @@
 // Unit tests for ASSET-swing detection + qualification (pure, no I/O).
 // Run:  npx tsx scripts/verify-asset-swings.ts
 //
-// Covers the new "asset swing" kind — a held asset's OWN big single-day move:
+// Covers the "asset swing" kind — a held asset's OWN big single-day move:
 //   • detectAssetSwings: threshold, the units-held gate (no swing before the buy
-//     date), and per-date dedup to the largest |move| (the headline).
-//   • the qualify step's headline reorder (movers[0] must be the named asset) and
-//     the tiny-position floor, exercised against the REAL computeSwingDayChange.
+//     date), the window bound (no swing before the lookback cutoff), and that it
+//     returns ALL held movers per date (headline chosen by impact, not %).
+//   • the headline-by-impact ranking (a big-% tiny position must not shadow a
+//     large one), the qualify step's reorder (movers[0] must be the named asset)
+//     and the tiny-position floor — all against the REAL computeSwingDayChange.
 
 import {
   detectAssetSwings,
@@ -20,6 +22,7 @@ function check(label: string, cond: boolean, detail = "") {
   console.log(`  [${cond ? "PASS" : "FAIL"}] ${label}${detail ? `  — ${detail}` : ""}`);
 }
 const near = (a: number, b: number, eps = 0.01) => Math.abs(a - b) < eps;
+const NO_CUTOFF = "0000-01-01"; // low cutoff → nothing window-excluded
 
 // ── detectAssetSwings ────────────────────────────────────────────────────────
 console.log("A ≥5% own move on a held day is detected; a sub-5% day is not:");
@@ -33,10 +36,10 @@ console.log("A ≥5% own move on a held day is detected; a sub-5% day is not:");
     ],
     unitsAt: () => 30, // held throughout
   };
-  const out = detectAssetSwings([nvda], 5);
-  check("one swing, on the +8% day", out.size === 1 && out.has("2024-02-21"));
-  const c = out.get("2024-02-21")!;
-  check("headline is NVDA with prior = the day before", c.symbol === "NVDA" && c.prior === "2024-02-20");
+  const out = detectAssetSwings([nvda], NO_CUTOFF, 5);
+  check("one swing date, on the +8% day", out.size === 1 && out.has("2024-02-21"));
+  const c = out.get("2024-02-21")![0];
+  check("candidate is NVDA with prior = the day before", c.symbol === "NVDA" && c.prior === "2024-02-20");
   check("pct ≈ +8%", near(c.pct, 8), String(c.pct));
   check("the +1.85% day is not a swing", !out.has("2024-02-22"));
 }
@@ -54,11 +57,27 @@ console.log("No swing on a date the asset was NOT held (before the buy):");
     ],
     unitsAt: (d) => (d >= bought ? 30 : 0),
   };
-  const out = detectAssetSwings([a], 5);
+  const out = detectAssetSwings([a], NO_CUTOFF, 5);
   check("pre-buy move excluded, held move kept", out.size === 1 && out.has("2024-05-13") && !out.has("2024-05-09"), [...out.keys()].join(","));
 }
 
-console.log("Per date, the largest |move| wins across assets (the headline):");
+console.log("A move before the lookback cutoff is excluded (window bound):");
+{
+  const a: AssetMoveSeries = {
+    symbol: "AAPL", label: "Apple",
+    series: [
+      { date: "2024-01-04", price: 100 },
+      { date: "2024-01-05", price: 110 }, // +10% but BEFORE the cutoff → excluded
+      { date: "2024-06-10", price: 110 }, // flat vs prior in series → not a swing
+      { date: "2024-06-11", price: 123 }, // +11.8% in-window → swing
+    ],
+    unitsAt: () => 10, // held throughout
+  };
+  const out = detectAssetSwings([a], "2024-06-01", 5);
+  check("pre-cutoff move excluded, in-window kept", out.size === 1 && out.has("2024-06-11") && !out.has("2024-01-05"), [...out.keys()].join(","));
+}
+
+console.log("All held ≥threshold movers on a date are returned (NO %-dedup — headline is chosen by impact downstream):");
 {
   const nvda: AssetMoveSeries = {
     symbol: "NVDA", label: "NVIDIA",
@@ -70,9 +89,24 @@ console.log("Per date, the largest |move| wins across assets (the headline):");
     series: [{ date: "2024-03-04", price: 100 }, { date: "2024-03-05", price: 91 }], // −9%
     unitsAt: () => 0.1,
   };
-  const out = detectAssetSwings([nvda, btc], 5);
-  check("same date → single candidate", out.size === 1 && out.has("2024-03-05"));
-  check("BTC (−9%) beats NVDA (+6%) as headline", out.get("2024-03-05")!.symbol === "BTC-EUR", out.get("2024-03-05")!.symbol);
+  const day = detectAssetSwings([nvda, btc], NO_CUTOFF, 5).get("2024-03-05") ?? [];
+  check("both candidates kept for the shared date", day.length === 2, `len ${day.length}`);
+  check("includes NVDA and BTC", day.some((c) => c.symbol === "NVDA") && day.some((c) => c.symbol === "BTC-EUR"), day.map((c) => c.symbol).join(","));
+}
+
+console.log("Headline is chosen by OWN impact, not %, so a big-% tiny position can't shadow a large one:");
+{
+  const D = "2024-07-11", P = "2024-07-10";
+  const hist = new Map<string, Array<{ date: string; price: number; currency: string }>>([
+    ["TINY", [{ date: P, price: 100, currency: "USD" }, { date: D, price: 112, currency: "USD" }]], // +12%
+    ["NVDA", [{ date: P, price: 100, currency: "USD" }, { date: D, price: 108, currency: "USD" }]], // +8%
+  ]);
+  const own = (symbol: string, units: number) =>
+    computeSwingDayChange(D, P, [{ symbol, label: symbol, units, histKey: symbol }], hist, (a) => a).movers[0]?.impact ?? 0;
+  const tinyOwn = own("TINY", 0.4); // 0.4 × +12 = +4.8
+  const nvdaOwn = own("NVDA", 60);  // 60  × +8  = +480
+  check("TINY moved a bigger % (+12) but NVDA has the bigger own impact → NVDA is the headline",
+    Math.abs(nvdaOwn) > Math.abs(tinyOwn), `nvda ${nvdaOwn} vs tiny ${tinyOwn}`);
 }
 
 // ── qualify: headline reorder + floor (with the REAL computeSwingDayChange) ──

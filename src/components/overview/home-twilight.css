@@ -305,9 +305,10 @@
 .vhome .mktentry-total.up{color:var(--up)}.vhome .mktentry-total.dn{color:var(--down)}
 .vhome .mktentry-date{font-family:var(--font-numeric);font-size:var(--fs-caption);color:var(--faint)}
 /* ASSET swing — a held asset's own big day. A distinct accent ground + accent
-   rail (replacing the index swing's reserves-toned inset rail), so a personal
-   position event reads apart from the market-wide index rows. */
-.vhome .mktentry.asset{background:color-mix(in srgb,var(--accent) 14%,var(--surface));border-left:3px solid var(--accent);box-shadow:none}
+   rail (an inset shadow, same geometry as the index swing's reserves-toned rail,
+   so the row's content stays aligned with index rows — no border-box shift), so a
+   personal position event reads apart from the market-wide index rows. */
+.vhome .mktentry.asset{background:color-mix(in srgb,var(--accent) 14%,var(--surface));box-shadow:inset 3px 0 0 var(--accent)}
 .vhome .drow-more{font-size:var(--fs-body);color:var(--faint);margin-top:6px}
 .vhome .drow-r{text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
 .vhome .drow-v{font-family:var(--font-numeric);font-size:var(--fs-body);font-weight:600}

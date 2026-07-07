@@ -482,14 +482,19 @@ export function PortfolioTab({
   const markers = useMemo(
     () => [
       ...navDecisions.map((d) => ({ id: d.id, date: mDate(d).slice(0, 10), kind: "you" as const, title: decisionTitle(d), sub: shortDate(mDate(d)) })),
-      ...navMarketMoves.map((mv) => ({
-        id: `mv-${mv.index_symbol}-${mv.date}`,
-        date: mv.date,
-        kind: "market" as const,
-        title: `${mv.index_label} ${mv.pct_change >= 0 ? "+" : "−"}${Math.abs(mv.pct_change).toFixed(1).replace(".", ",")}%`,
-        sub: shortDate(mv.date),
-        value: mv.impact ? `${mv.impact.total >= 0 ? "▲" : "▼"} ${formatMoney(Math.abs(mv.impact.total), displayCurrency, displayCurrency)}` : undefined,
-      })),
+      ...navMarketMoves.map((mv) => {
+        // Asset swing: the named asset's OWN impact (movers[0]) — matching the
+        // Journal; index swing: the whole portfolio's day-change.
+        const amt = mv.impact ? (mv.kind === "asset" ? (mv.impact.movers[0]?.impact ?? null) : mv.impact.total) : null;
+        return {
+          id: `mv-${mv.index_symbol}-${mv.date}`,
+          date: mv.date,
+          kind: "market" as const,
+          title: `${mv.index_label} ${mv.pct_change >= 0 ? "+" : "−"}${Math.abs(mv.pct_change).toFixed(1).replace(".", ",")}%`,
+          sub: shortDate(mv.date),
+          value: amt != null ? `${amt >= 0 ? "▲" : "▼"} ${formatMoney(Math.abs(amt), displayCurrency, displayCurrency)}` : undefined,
+        };
+      }),
     ],
     [navDecisions, navMarketMoves, displayCurrency],
   );
