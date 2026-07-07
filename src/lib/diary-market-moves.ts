@@ -5,10 +5,12 @@ import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
 import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import {
   DIARY_MARKET_INDICES,
+  MARKET_MOVE_HOLDING_THRESHOLD_PCT,
   MARKET_MOVE_LOOKBACK_DAYS,
   MARKET_MOVE_MAX_LOOKBACK_DAYS,
   MARKET_MOVE_THRESHOLD_PCT,
   MARKET_SWING_EXPAND_FLOOR_PCT,
+  MARKET_SWING_MAX_ASSET_PER_MONTH,
   MARKET_SWING_MAX_EXPANDED_PER_MONTH,
   MARKET_SWING_MAX_PER_MONTH,
 } from "@/lib/constants";
@@ -35,11 +37,18 @@ export interface DiaryMarketMove {
   index_symbol: string;
   index_label: string;
   pct_change: number;
+  // Which flavour of auto-entry this is:
+  //   "index" — a big market-index day (Nasdaq/S&P/AEX), the original behaviour.
+  //   "asset" — a held asset's OWN big single-day move.
+  // index_symbol/index_label/pct_change carry the headline in both cases (the
+  // index for "index", the asset for "asset"). Missing is treated as "index".
+  kind?: "index" | "asset";
   // Per-holding portfolio impact on this swing day (null when the user held no
   // priceable tradeables that day, or the day-change couldn't be computed).
   impact?: SwingImpact | null;
   // True when this swing is rendered as a full journal card (vs a compact row):
-  // among the largest by |impact| in its month and above the floor.
+  // among the largest by |impact| in its month and above the floor. Only used by
+  // index swings — asset swings are always full rows, so they leave this false.
   expanded?: boolean;
 }
 
@@ -112,6 +121,43 @@ export function detectSwings(
     }
   }
   return swings;
+}
+
+// One held asset's own price series plus a units-held probe, for asset-swing
+// detection. `series` is sorted ascending; `unitsAt(date)` returns the units the
+// user held on that date (0 before the buy).
+export interface AssetMoveSeries {
+  symbol: string;
+  label: string;
+  series: Array<{ date: string; price: number }>;
+  unitsAt: (date: string) => number;
+}
+
+// Detects ASSET swings: a held asset's OWN single-day move of at least
+// `thresholdPct`, on a date the user actually held it. Deduped per date across
+// assets (largest |move| wins — the headline). Uses the raw price ratio, which is
+// scale-invariant, so a pence-vs-pound quote doesn't distort the %. Sibling of
+// detectSwings — pure + exported for unit testing.
+export function detectAssetSwings(
+  assets: AssetMoveSeries[],
+  thresholdPct: number,
+): Map<string, { symbol: string; label: string; pct: number; prior: string }> {
+  const out = new Map<string, { symbol: string; label: string; pct: number; prior: string }>();
+  for (const { symbol, label, series, unitsAt } of assets) {
+    for (let i = 1; i < series.length; i++) {
+      const prev = series[i - 1];
+      const cur = series[i];
+      if (!prev.price) continue;
+      const pct = ((cur.price - prev.price) / prev.price) * 100;
+      if (Math.abs(pct) < thresholdPct) continue;
+      if (unitsAt(cur.date) <= 0) continue; // not held that day → not the user's swing
+      const existing = out.get(cur.date);
+      if (!existing || Math.abs(pct) > Math.abs(existing.pct)) {
+        out.set(cur.date, { symbol, label, pct, prior: prev.date });
+      }
+    }
+  }
+  return out;
 }
 
 async function ensureCachedMoves(
@@ -249,10 +295,15 @@ interface AssetRow {
   removed_at: string | null;
 }
 
-// Builds the user's market-swing journal entries: every big index swing in the
-// lookback, enriched with how the user's holdings moved that day (real numbers,
-// display currency). The largest few per month are flagged `expanded` (full
-// card); the rest stay compact rows.
+// Builds the user's market-swing journal entries. Two kinds, computed together:
+//   • INDEX swings — every big index day (Nasdaq/S&P/AEX) in the lookback,
+//     enriched with how the user's holdings moved that day (real numbers, display
+//     currency). The largest few per month are flagged `expanded` (full card);
+//     the rest stay compact rows.
+//   • ASSET swings — a held asset's OWN big single-day move (≥ the holding
+//     threshold), on a date the user actually held it. Always full rows; capped
+//     per month on a separate budget so a volatile name can't flood the timeline.
+// Both are tagged by `kind` and returned combined, newest first.
 export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClient): Promise<DiaryMarketMove[]> {
   const today = toDateStr(new Date());
 
@@ -327,7 +378,7 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     return asset.units ?? 0;
   };
 
-  // ── Detect every big swing in the lookback (dedup by date, largest wins) ──
+  // ── Detect every big INDEX swing in the lookback (dedup by date, largest wins) ──
   // Fetch a small buffer of rows BEFORE the window so the earliest in-window swing
   // has a real prior trading day (otherwise it was dropped with prior=null).
   const detectFrom = addDays(lookbackCutoff, -SWING_PRIOR_BUFFER_DAYS);
@@ -337,9 +388,10 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     seriesByIndex.push({ symbol, label, rows });
   }
   const swings = detectSwings(seriesByIndex, lookbackCutoff, MARKET_MOVE_THRESHOLD_PCT);
-  if (swings.size === 0) return [];
 
-  // ── Price history per held symbol + historical FX, fetched once ──
+  // ── Price history per held symbol, fetched once ──
+  // Pulled up ahead of asset detection (which walks these same series) and reused
+  // by both impact loops below.
   const symbolByNorm = new Map<string, { norm: string; raw: string }>();
   for (const a of tradeables) {
     const norm = normalizeCryptoSymbol(a.symbol!, a.type);
@@ -355,6 +407,20 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     }),
   );
 
+  // ── Detect ASSET swings: a held asset's OWN big single-day move ──
+  // Each held asset with a price series contributes its walk; detectAssetSwings
+  // dedups per date to the largest |move| (the headline) and gates on units held.
+  const assetSeries: AssetMoveSeries[] = [];
+  for (const a of tradeables) {
+    const series = histMap.get(normalizeCryptoSymbol(a.symbol!, a.type));
+    if (!series) continue;
+    assetSeries.push({ symbol: a.symbol!, label: a.name || a.symbol!, series, unitsAt: (d) => unitsOf(a, d) });
+  }
+  const assetCandidates = detectAssetSwings(assetSeries, MARKET_MOVE_HOLDING_THRESHOLD_PCT);
+
+  if (swings.size === 0 && assetCandidates.size === 0) return [];
+
+  // ── Historical FX + display conversion (shared by both impact loops) ──
   const liveFx = await getUsdRates();
   const fxSeries = await getHistoricalUsdRates(addDays(lookbackCutoff, -SWING_PRIOR_BUFFER_DAYS), today);
   const fxDates = Object.keys(fxSeries).sort();
@@ -378,12 +444,12 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     return amount * (rTo / rFrom);
   };
 
-  // ── Compute per-swing portfolio impact ──
+  // ── Compute per-INDEX-swing portfolio impact ──
   type Built = { move: DiaryMarketMove; total: number; tradeableValue: number; month: string };
   const built: Built[] = [];
   for (const [date, s] of swings) {
     const base: DiaryMarketMove = {
-      date, index_symbol: s.index_symbol, index_label: s.index_label, pct_change: s.pct_change, impact: null, expanded: false,
+      date, index_symbol: s.index_symbol, index_label: s.index_label, pct_change: s.pct_change, kind: "index", impact: null, expanded: false,
     };
     const P = s.prior;
     if (!P) { built.push({ move: base, total: 0, tradeableValue: 0, month: date.slice(0, 7) }); continue; }
@@ -425,7 +491,57 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     });
   }
 
-  return kept.sort((a, b) => b.date.localeCompare(a.date));
+  // ── Compute per-ASSET-swing impact ──
+  // Same day-change attribution as the index path, valued with the units held as
+  // of the prior day P. Then reorder movers so the headline asset (the one that
+  // moved) is first and present — the row shows ITS own impact + %, not the index
+  // total — and keep up to three.
+  type BuiltAsset = { move: DiaryMarketMove; headlineImpact: number; tradeableValue: number; month: string };
+  const builtAsset: BuiltAsset[] = [];
+  for (const [date, c] of assetCandidates) {
+    const P = c.prior;
+    const holdings: SwingHolding[] = tradeables.map((a) => ({
+      symbol: a.symbol!, label: a.name || a.symbol!, units: unitsOf(a, P), histKey: normalizeCryptoSymbol(a.symbol!, a.type), assetId: a.id,
+    }));
+    const { total, tradeableValue, movers } = computeSwingDayChange(date, P, holdings, histMap, toDisplay);
+
+    // The headline must be a real mover that day (held across P→D). If it wasn't
+    // valued — e.g. bought on the swing day itself, so 0 units as of P — it had no
+    // own impact to show; skip rather than surface a phantom asset swing.
+    const hi = movers.findIndex((mv) => mv.symbol === c.symbol);
+    if (hi < 0) continue;
+    const ordered = [movers[hi], ...movers.slice(0, hi), ...movers.slice(hi + 1)];
+    const headlineImpact = ordered[0].impact;
+
+    const move: DiaryMarketMove = {
+      date,
+      index_symbol: c.symbol,
+      index_label: c.label,
+      pct_change: c.pct,
+      kind: "asset",
+      impact: { total, currency: displayCurrency, movers: ordered.slice(0, 3) },
+      expanded: false, // asset swings are always full rows
+    };
+    builtAsset.push({ move, headlineImpact, tradeableValue, month: date.slice(0, 7) });
+  }
+
+  // ── Asset-swing qualify + cap (separate budget from index swings) ──
+  // Floor on the headline asset's OWN impact kills tiny-position noise (a 5% day
+  // on a €50 stake isn't worth a full row). Then keep the top few per month by
+  // that impact — no `expanded` tier, they're all full rows.
+  const assetByMonth = new Map<string, BuiltAsset[]>();
+  for (const b of builtAsset) {
+    const floor = (b.tradeableValue * MARKET_SWING_EXPAND_FLOOR_PCT) / 100;
+    if (Math.abs(b.headlineImpact) < floor || Math.abs(b.headlineImpact) === 0) continue;
+    (assetByMonth.get(b.month) ?? assetByMonth.set(b.month, []).get(b.month)!).push(b);
+  }
+  const keptAsset: DiaryMarketMove[] = [];
+  for (const list of assetByMonth.values()) {
+    list.sort((a, b) => Math.abs(b.headlineImpact) - Math.abs(a.headlineImpact));
+    list.slice(0, MARKET_SWING_MAX_ASSET_PER_MONTH).forEach((b) => keptAsset.push(b.move));
+  }
+
+  return [...kept, ...keptAsset].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // ── Persistence: generated in the background, read instantly ─────────────────
@@ -437,7 +553,7 @@ export async function getStoredMarketSwings(userId: string, supabase: SupabaseCl
   try {
     const { data, error } = await supabase
       .from("market_swings")
-      .select("date, index_symbol, index_label, pct_change, total, currency, movers, expanded")
+      .select("date, index_symbol, index_label, pct_change, kind, total, currency, movers, expanded")
       .eq("user_id", userId)
       .order("date", { ascending: false });
     if (error || !data) return [];
@@ -446,6 +562,7 @@ export async function getStoredMarketSwings(userId: string, supabase: SupabaseCl
       index_symbol: r.index_symbol as string,
       index_label: r.index_label as string,
       pct_change: Number(r.pct_change),
+      kind: (r.kind as "index" | "asset") ?? "index",
       impact: { total: Number(r.total), currency: r.currency as string, movers: (r.movers as SwingHoldingImpact[]) ?? [] },
       expanded: Boolean(r.expanded),
     }));
@@ -492,6 +609,7 @@ async function replaceStoredSwings(userId: string, moves: DiaryMarketMove[], sup
       index_symbol: mv.index_symbol,
       index_label: mv.index_label,
       pct_change: mv.pct_change,
+      kind: mv.kind ?? "index",
       total: mv.impact!.total,
       currency: mv.impact!.currency,
       movers: mv.impact!.movers,

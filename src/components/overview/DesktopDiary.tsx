@@ -209,7 +209,12 @@ export function DesktopDiary({ mutations, hasMore, onLoadMore }: Props) {
             </div>
             {entries.map((entry) => {
               if (entry.kind === "move") {
-                const key = `mv-${entry.move.index_symbol}-${entry.move.date}`;
+                // An ASSET swing always renders as the full card; an INDEX swing
+                // keeps the expanded-card / compact-row split.
+                if (entry.move.kind === "asset" && entry.move.impact) {
+                  return <DesktopMarketEntry key={`mv-asset-${entry.move.index_symbol}-${entry.move.date}`} move={entry.move} />;
+                }
+                const key = `mv-index-${entry.move.index_symbol}-${entry.move.date}`;
                 return entry.move.expanded && entry.move.impact
                   ? <DesktopMarketEntry key={key} move={entry.move} />
                   : <DiaryMarketRow key={key} move={entry.move} />;

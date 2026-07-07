@@ -11,6 +11,7 @@ import { AssetLogo } from "@/components/AssetLogo";
 import { DiaryRowContent } from "@/components/diary/DiaryRowContent";
 import { DiaryMarketRow } from "@/components/DiaryMarketRow";
 import { MobileMarketEntry } from "@/components/MobileMarketEntry";
+import { MobileAssetEntry } from "@/components/MobileAssetEntry";
 import { PeriodHighlight } from "@/components/diary/PeriodHighlight";
 import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
@@ -482,11 +483,17 @@ export function DiaryTab({ mutations, hasMore, onLoadMore }: DiaryTabProps) {
             <div>
               {renderEntries.map((entry) => {
                 if (entry.kind === "move") {
-                  // A big swing (largest by portfolio impact in its month, above
-                  // the floor) renders as the full auto entry with its computed
-                  // impact + movers; smaller swings keep the compact one-liner —
-                  // mirrors the desktop Journal.
-                  const moveKey = `move-${entry.move.index_symbol}-${entry.move.date}`;
+                  // An ASSET swing (a holding's own big day) always renders as a
+                  // full, always-open row on the accent ground — visibly apart from
+                  // the gold index swings.
+                  if (entry.move.kind === "asset" && entry.move.impact) {
+                    return <MobileAssetEntry key={`mv-asset-${entry.move.index_symbol}-${entry.move.date}`} move={entry.move} />;
+                  }
+                  // INDEX swing: a big one (largest by portfolio impact in its
+                  // month, above the floor) renders as the full auto entry with its
+                  // computed impact + movers; smaller ones keep the compact
+                  // one-liner — mirrors the desktop Journal.
+                  const moveKey = `mv-index-${entry.move.index_symbol}-${entry.move.date}`;
                   return entry.move.expanded && entry.move.impact
                     ? <MobileMarketEntry key={moveKey} move={entry.move} />
                     : <DiaryMarketRow key={moveKey} move={entry.move} />;

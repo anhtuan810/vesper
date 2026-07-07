@@ -453,7 +453,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const entries = useMemo<Entry[]>(() => {
     const rows: Entry[] = [
       ...sortedMutations.map((m): Entry => ({ id: m.id, date: mDate(m).slice(0, 10), kind: "decision", m })),
-      ...moves.filter((mv) => mv.impact).map((mv): Entry => ({ id: `mv-${mv.index_symbol}-${mv.date}`, date: mv.date, kind: "market", mv })),
+      ...moves.filter((mv) => mv.impact).map((mv): Entry => ({ id: `mv-${mv.kind ?? "index"}-${mv.index_symbol}-${mv.date}`, date: mv.date, kind: "market", mv })),
     ];
     // Newest first; on a tie, decisions before market rows.
     return rows.sort((a, b) => b.date.localeCompare(a.date) || (a.kind === b.kind ? 0 : a.kind === "market" ? 1 : -1));

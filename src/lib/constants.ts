@@ -131,6 +131,17 @@ export const MARKET_SWING_EXPAND_FLOOR_PCT = 0.3;
 // even a very volatile month never floods the journal (on desktop OR mobile).
 export const MARKET_SWING_MAX_PER_MONTH = 8;
 
+// ── Asset swings (a held asset's OWN big single-day move) ─────────────────────
+// A second auto-journal kind alongside the index swings above: a day a holding
+// the user actually held moved this much (or more) on its own. Rendered as full,
+// always-open rows on a distinct ground, so a personal-position event reads apart
+// from the market-wide index swings.
+export const MARKET_MOVE_HOLDING_THRESHOLD_PCT = 5;   // a held asset's own day-move to qualify as an asset swing
+// Asset swings kept per calendar month — a separate budget from the index swings'
+// per-month cap, ranked by the headline asset's own |impact| (largest first), so a
+// volatile name (e.g. a tiny crypto) can't flood the timeline with its own moves.
+export const MARKET_SWING_MAX_ASSET_PER_MONTH = 3;
+
 export const DIARY_MARKET_INDICES: { symbol: string; label: string }[] = [
   { symbol: "^IXIC", label: "Nasdaq" },
   { symbol: "^GSPC", label: "S&P 500" },
