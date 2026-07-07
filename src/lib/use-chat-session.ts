@@ -10,8 +10,13 @@ import {
   CHAT_TTL_MS, CHAT_LOAD_LIMIT, chatHistoryCacheKey, CHAT_HISTORY_PREFIX,
   CHAT_IMAGE_MAX_EDGE_PX, CHAT_IMAGE_JPEG_QUALITY, CHAT_IMAGE_MAX_INPUT_MB,
   CHAT_MAX_PDFS, CHAT_PDF_MAX_MB, CHAT_CSV_MAX_BYTES, CHAT_CSV_MAX_ROWS,
-  CHAT_CSV_MAX_TEXT_LEN, CHAT_REQUEST_MAX_BASE64,
+  CHAT_CSV_MAX_TEXT_LEN, CHAT_REQUEST_MAX_BASE64, CHAT_REPLY_WAIT_MS,
 } from "@/lib/constants";
+
+// Poll cadence while waiting for a reply to commit: quick at first, backing off
+// over a long wait so a multi-minute window doesn't hammer /api/messages.
+const replyPollDelay = (elapsedMs: number): number =>
+  elapsedMs < 30_000 ? 2500 : elapsedMs < 90_000 ? 5000 : 10_000;
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import type { ScenarioResult } from "@/lib/scenario/result";
 import { apiFetch } from "@/lib/api";
@@ -335,11 +340,14 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
           setThinking(false);
           return;
         }
-        if (Date.now() - startedAt < 75_000) {
-          pollTimer = setTimeout(poll, 2500);
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < CHAT_REPLY_WAIT_MS) {
+          pollTimer = setTimeout(poll, replyPollDelay(elapsed));
         } else {
-          // Gave up — the request likely failed. Stop the spinner; the user's
-          // message stays in the thread so they can re-ask.
+          // Held the whole window without the reply committing. Stop the spinner
+          // but LEAVE the user's message as the thread tail, so opening the chat
+          // again re-detects the pending turn and resumes this poll — the reply is
+          // never permanently lost, it just appears whenever it finally lands.
           setLoading(false);
           setThinking(false);
         }
@@ -607,15 +615,18 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
           }
         } catch {}
         if (!mountedRef.current) { finish(); return; }
-        if (Date.now() - startedAt < 75_000) {
-          setTimeout(reconcile, 2500);
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < CHAT_REPLY_WAIT_MS) {
+          setTimeout(reconcile, replyPollDelay(elapsed));
         } else {
+          // Held the whole window without the reply committing. Stop the spinner,
+          // but do NOT append an assistant "taking longer" note here: that ends the
+          // thread on an assistant turn, which stops the remount reconcile from ever
+          // re-detecting the pending user turn — permanently hiding a reply that
+          // lands later. Keep the user's message as the tail so any later visit
+          // resumes the poll and shows the reply whenever it finally commits.
           setThinking(false);
           setProcessingKind(null);
-          setMessages((prev) => [
-            ...prev,
-            { localId: nextLocalId(), from: "assistant", text: "That's taking longer than usual — your message is saved and I'm still working on it. Give it a moment, or ask again." },
-          ]);
           finish();
         }
       };

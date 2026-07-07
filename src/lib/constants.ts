@@ -68,6 +68,13 @@ export const DIARY_MAX_CONTEXT_LEN    = 500;
 // ── Polling ────────────────────────────────────────────────────────────────────
 export const PRICES_POLL_INTERVAL_MS   = 10 * 60 * 1000; // 10 minutes
 export const PRICES_SAFETY_TIMEOUT_MS  = 3000;           // 3 seconds
+// How long a sent chat turn keeps waiting for its reply before the spinner stops.
+// A heavy onboarding turn (screenshot → holdings → history backfill) can take a
+// while server-side; the reply is persisted regardless, so we poll for it this
+// long (with a backing-off interval) rather than giving up at ~1 minute. On the
+// rare timeout we KEEP the user's message so a later visit resumes the poll — the
+// reply is never permanently lost, it just appears whenever it lands.
+export const CHAT_REPLY_WAIT_MS        = 4 * 60 * 1000;  // 4 minutes
 
 // ── FX fallback rates (USD as base, 1 USD = N quote) ─────────────────────────
 // Last reviewed: 2026. These drift over time; review annually.
