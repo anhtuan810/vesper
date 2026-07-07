@@ -4,7 +4,8 @@ import { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
-import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
+import { getChatSuggestions } from "@/lib/use-chat-session";
+import { useSharedChatSession } from "@/components/ChatSessionProvider";
 import { getChatSeed, type ChatSeed, type SeedSource } from "@/lib/chat-seeds";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
 import { takeHandoff } from "@/lib/scenario/handoff";
@@ -19,7 +20,12 @@ export default function ChatPage() {
   const { assets, loading: assetsLoading } = useAssets(user?.id);
   const hasPortfolio = assets.length > 0;
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
-  const session = useChatSession({ userId: user?.id });
+  // The ONE app-wide session (mounted above the router in ChatSessionProvider), so
+  // switching bottom-nav tabs and returning keeps the exact same in-memory thread
+  // — the /chat route no longer owns a per-mount session that was destroyed on
+  // every tab switch and had to be rebuilt from localStorage/DB (the "chat
+  // disappeared when I moved to another tab" bug).
+  const session = useSharedChatSession();
   const {
     messages, setInput, thinking, imageData, send, handleFile,
     loadMore, hasMore, isLoadingMore,

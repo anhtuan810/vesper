@@ -3,30 +3,52 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
-import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
+import { getChatSuggestions } from "@/lib/use-chat-session";
+import { useSharedChatSession } from "@/components/ChatSessionProvider";
 import { useDisplayCurrency, useAssets } from "@/lib/hooks";
 import { getChatSeed, type ChatSeed } from "@/lib/chat-seeds";
 
 interface ChatPopupProps {
   userId?: string;
   isOpen: boolean;
-  hasNew: boolean;
   onToggle: () => void;
-  onPortfolioUpdate: () => void;
-  onNewMessage: () => void;
-  onOpen: () => void;
 }
 
-export default function ChatPopup({
-  userId, isOpen, hasNew, onToggle, onPortfolioUpdate, onNewMessage, onOpen,
-}: ChatPopupProps) {
+export default function ChatPopup({ userId, isOpen, onToggle }: ChatPopupProps) {
   const pathname = usePathname();
   const displayCurrency = useDisplayCurrency();
   const { assets } = useAssets(userId);
   const hasPortfolio = assets.length > 0;
   const chatSuggestions = getChatSuggestions(displayCurrency, hasPortfolio);
-  const session = useChatSession({ userId, onPortfolioUpdate, onNewMessage });
+  // The ONE app-wide session (shared with the desktop rail and the mobile /chat
+  // route) so the popup thread survives navigation and there is a single writer to
+  // the localStorage cache. Portfolio refresh after a chat mutation flows through
+  // bumpPortfolioRevision() (→ useAssets refetch + the Overview's revision effect),
+  // so no onPortfolioUpdate callback is needed.
+  const session = useSharedChatSession();
   const { messages, thinking, loadMore, hasMore, isLoadingMore } = session;
+
+  // Unread dot, derived from the shared thread instead of a session callback.
+  // While the popup is CLOSED, a brand-new assistant message at the bottom lights
+  // it. Compare the last message's stable localId (not length — loadMore prepends
+  // older history, growing length with no new bottom message) against a "seen"
+  // marker that advances whenever the popup is open, and treat the first settled
+  // thread as a baseline so pre-existing history never lights the badge.
+  const [hasNew, setHasNew] = useState(false);
+  const seenLastIdRef = useRef<string | undefined>(undefined);
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    const lastId = messages[messages.length - 1]?.localId;
+    if (!initializedRef.current && messages.length > 0) {
+      // First settled thread: baseline all existing history as seen.
+      initializedRef.current = true;
+      seenLastIdRef.current = lastId;
+      return;
+    }
+    if (isOpen) seenLastIdRef.current = lastId; // everything visible is seen
+    const unread = !isOpen && messages[messages.length - 1]?.from === "assistant" && lastId !== seenLastIdRef.current;
+    setHasNew(unread);
+  }, [isOpen, messages]);
 
   const [seedMessage, setSeedMessage] = useState<ChatSeed | null>(null);
   const [size, setSize] = useState({ width: 400, height: 560 });
@@ -51,10 +73,8 @@ export default function ChatPopup({
 
   useEffect(() => {
     if (isOpen) {
-      onOpen();
       setTimeout(() => threadRef.current?.focus(), 100);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Context-aware seed: when opened on /asset?id=<id>, show a seed message with chips.

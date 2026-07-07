@@ -29,6 +29,13 @@ export interface ChatMessage {
   scenarioResult?: ScenarioResult | null;
 }
 
+// What the current in-flight turn is chewing on, so the thinking indicator can
+// name it ("Reading your screenshot…") instead of bare dots — reassuring on
+// onboarding, when the user has just handed over a screenshot / statement / list
+// of holdings and wants to know it landed. Transient (never persisted); captured
+// at send time because the attachment arrays are wiped before the reply lands.
+export type ProcessingKind = "image" | "pdf" | "csv" | "holdings";
+
 // Monotonic counter backing the stable client-side message key (localId).
 let localIdSeq = 0;
 const nextLocalId = () => `m${++localIdSeq}`;
@@ -108,6 +115,10 @@ export function getChatSuggestions(
 
 // Shared across ChatPopup and /chat so history persists between surfaces
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+// Conservative "this typed turn looks like a holdings list" test — a currency
+// figure or a share/unit count. A plain question ("how diversified am I?") must
+// NOT trip it, so it needs an amount, not just any digit.
+const HOLDINGS_HINT = /[$€£]\s?\d|\d[\d,.]*\s?(k\b|shares?\b|units?\b)/i;
 const CSV_TYPES = new Set(["text/csv", "application/csv", "application/vnd.ms-excel"]);
 const isCsvFile = (f: File) => CSV_TYPES.has(f.type) || /\.csv$/i.test(f.name);
 const isPdfFile = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
@@ -207,6 +218,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [thinking, setThinking] = useState(false);
+  // Non-null only while send() is processing a data-bearing turn (attachment or a
+  // holdings list), so the indicator can name what it's reading. Cleared the
+  // moment the reply lands or the wait ends.
+  const [processingKind, setProcessingKind] = useState<ProcessingKind | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageData, setImageData] = useState<Array<{ base64: string; mediaType: string }>>([]);
@@ -338,6 +353,13 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   // Write only the latest CHAT_LOAD_LIMIT messages to localStorage — older paginated history stays out of the cache.
   useEffect(() => {
     if (!userId) return;
+    // Never overwrite a good cache with an EMPTY thread. On the userId
+    // undefined→defined commit (cold start, or a second session's first mount)
+    // this effect runs in the same flush as the load effect while `messages` is
+    // still [] — persisting [] here would clobber history another surface saved.
+    // No path legitimately persists an empty thread (there is no clear-chat
+    // feature; every emptying is a localStorage.removeItem), so this is safe.
+    if (messages.length === 0) return;
     try {
       const latest = messages.slice(-CHAT_LOAD_LIMIT);
       const stripped = latest.map(({ id, localId, from, text, suggestedReplies, scenarioResult }) => ({ id, localId, from, text, suggestedReplies, scenarioResult }));
@@ -497,6 +519,17 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setInput("");
     setLoading(true);
     setThinking(true);
+    // Capture WHAT this turn is processing BEFORE clearImage() wipes the arrays,
+    // so the indicator can name it ("Reading your screenshot…") instead of bare
+    // dots. Attachments are the primary trigger; a holdings-list text turn is the
+    // onboarding fallback.
+    setProcessingKind(
+      imageData.length > 0 ? "image"
+      : pdfData.length > 0 ? "pdf"
+      : csvData.length > 0 ? "csv"
+      : HOLDINGS_HINT.test(text) ? "holdings"
+      : null,
+    );
     setMessages((prev) => [...prev, userMsg]);
 
     const payload: {
@@ -529,6 +562,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       });
       data = await res.json();
       setThinking(false);
+      setProcessingKind(null);
 
       if (!res.ok) {
         const errText = res.status === 401
@@ -566,6 +600,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
             if (newestId && newestId !== priorId) {
               setMessages(mapped);
               setThinking(false);
+              setProcessingKind(null);
               finish();
               return;
             }
@@ -576,6 +611,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
           setTimeout(reconcile, 2500);
         } else {
           setThinking(false);
+          setProcessingKind(null);
           setMessages((prev) => [
             ...prev,
             { localId: nextLocalId(), from: "assistant", text: "That's taking longer than usual — your message is saved and I'm still working on it. Give it a moment, or ask again." },
@@ -799,6 +835,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
     setInput,
     loading,
     thinking,
+    processingKind,
     remaining,
     imagePreviews,
     imageData,

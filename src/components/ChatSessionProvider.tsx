@@ -5,16 +5,18 @@ import { useChatSession } from "@/lib/use-chat-session";
 import { useUser } from "@/lib/hooks";
 
 // Holds ONE chat session for the whole authenticated app, mounted above the
-// router so it survives navigation. The desktop WebShell rail reads from here
-// (useSharedChatSession) instead of creating its own session per route — without
-// this, opening Vitals / Settings / an asset (routes outside the (main) group)
-// remounted a fresh WebShell whose session reset: the rail flashed its empty
-// suggestion chips, snapped scroll to the bottom, and dropped any older history
-// the user had paginated in. A single hoisted session keeps the rail continuous
-// across every desktop route.
+// router so it survives navigation. EVERY chat surface reads from here via
+// useSharedChatSession — the desktop WebShell rail, the tablet ChatPopup, and the
+// mobile /chat route — so there is a single conversation and a single writer to
+// the localStorage cache.
 //
-// Mobile (ChatPage / ChatPopup) keeps its own session — those are full-screen and
-// never hit the multi-shell problem; this instance simply idles there.
+// Without this, each surface created its own per-mount useChatSession. On desktop
+// that reset the rail when a differently-mounted shell took over (Vitals /
+// Settings / an asset); on mobile the /chat route's session was destroyed on
+// every bottom-nav tab switch and had to be rebuilt from localStorage/DB — the
+// thread visibly disappeared/flashed on return, and two sessions racing on the
+// same cache key could clobber it. A single hoisted session keeps the thread
+// continuous and in-memory across every route on every device.
 
 type ChatSession = ReturnType<typeof useChatSession>;
 

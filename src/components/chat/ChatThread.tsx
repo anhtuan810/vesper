@@ -17,10 +17,20 @@ import { classifyChip, cheapHash } from "@/lib/chip-telemetry";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 import { isNative } from "@/lib/platform";
 import { usePortfolioBuilding } from "@/lib/portfolio-build";
-import type { useChatSession } from "@/lib/use-chat-session";
+import type { useChatSession, ProcessingKind } from "@/lib/use-chat-session";
 import type { ChatSeed } from "@/lib/chat-seeds";
 
 type ChatSession = ReturnType<typeof useChatSession>;
+
+// While the model works on a data-bearing turn, name what it's reading instead of
+// showing bare typing dots — reassuring during onboarding that the screenshot /
+// statement / list they just handed over actually landed.
+const PROCESSING_LABEL: Record<ProcessingKind, string> = {
+  image: "Reading your screenshot…",
+  pdf: "Reading your statement…",
+  csv: "Reading your file…",
+  holdings: "Processing your data…",
+};
 
 export interface ChatThreadHandle {
   /** Focus the composer input — used by callers on open / prefill. */
@@ -66,7 +76,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     ref
   ) {
     const {
-      messages, input, setInput, loading, thinking, remaining,
+      messages, input, setInput, loading, thinking, processingKind, remaining,
       imagePreviews, imageData, canSend, send, sendText, sendScenario, removeImage, handlePaste, handleFile,
       pdfData, csvData, attachmentError, removePdf, removeCsv,
       isLoadingMore,
@@ -552,11 +562,26 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         )}
 
         {thinking && (
-          <div className="flex items-center gap-0.5 py-1">
-            <span className="chat-dot" />
-            <span className="chat-dot" />
-            <span className="chat-dot" />
-          </div>
+          processingKind ? (
+            // Named "working on your data" line — reuses the `building` line's
+            // styling so the two working states read as one system, and is
+            // announced (aria-live) unlike the silent dots.
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center gap-2 py-1 text-dim"
+              style={{ fontSize: "var(--fs-caption)" }}
+            >
+              <span className="chat-build-spinner" aria-hidden />
+              <span>{PROCESSING_LABEL[processingKind]}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-0.5 py-1">
+              <span className="chat-dot" />
+              <span className="chat-dot" />
+              <span className="chat-dot" />
+            </div>
+          )
         )}
         {building && !thinking && (
           <div className="flex items-center gap-2 py-1 text-dim" style={{ fontSize: "var(--fs-caption)" }}>

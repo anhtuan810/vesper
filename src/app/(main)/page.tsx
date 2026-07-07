@@ -29,7 +29,6 @@ export default function Dashboard() {
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
   const valuesSettled = pricesLoaded && currencyLoaded;
   const [chatOpen, setChatOpen] = useState(false);
-  const [hasNew, setHasNew] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
   const [initialSnapshots, setInitialSnapshots] = useState<SnapshotPoint[] | undefined>();
 
@@ -296,22 +295,15 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ChatPopup is desktop-only; mobile users access chat via /chat route */}
+      {/* ChatPopup is desktop-only; mobile users access chat via /chat route.
+          It reads the shared session and derives its own unread dot, so no
+          hasNew/onNewMessage/onPortfolioUpdate wiring is needed here — a chat
+          mutation refreshes this page via usePortfolioRevision (below). */}
       <div className="hidden md:block">
         <ChatPopup
           userId={user?.id}
           isOpen={chatOpen}
-          hasNew={hasNew}
           onToggle={() => setChatOpen(!chatOpen)}
-          onPortfolioUpdate={() => {
-            refetchAssets();
-            refreshMutations();
-            if (!chatOpen) setHasNew(true);
-          }}
-          onNewMessage={() => {
-            if (!chatOpen) setHasNew(true);
-          }}
-          onOpen={() => setHasNew(false)}
         />
       </div>
     </div>
