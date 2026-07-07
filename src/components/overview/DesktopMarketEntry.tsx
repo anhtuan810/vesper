@@ -31,17 +31,18 @@ export function DesktopMarketEntry({ move }: { move: DiaryMarketMove }) {
   const totalVal = isAsset ? own?.impact ?? 0 : imp.total;
   const totalUp = totalVal >= 0;
 
-  // Deterministic narrative built from the real numbers.
-  const lead = isAsset
-    ? `${move.index_label} ${headlineUp ? "rose" : "fell"} ${x}% on ${formatDate(move.date)} — ${signed(own?.impact ?? 0)} on your position.`
-    : `${move.index_label} ${headlineUp ? "rose" : "fell"} ${x}% on ${formatDate(move.date)}.`;
-  const body = isAsset
-    ? ""
-    : m.length === 0
-      ? `Your portfolio was flat that day.`
-      : `Your portfolio ${imp.total >= 0 ? "gained" : "lost"} about ${money(imp.total)} that day` +
-        (m[0] ? ` — led by ${m[0].label} (${signed(m[0].impact)})` : "") +
-        (m[1] ? `, with ${m[1].label} ${m[1].impact >= 0 ? "up" : "down"} ${money(m[1].impact)}` : "") + ".";
+  // Deterministic narrative — INDEX swings only. An asset swing's headline
+  // ("{ASSET} {±%}"), its own-impact total on the right, and the date already say
+  // everything, so a prose line would just repeat them (redundant) — asset cards
+  // render no narrative.
+  const narrative = isAsset
+    ? null
+    : `${move.index_label} ${headlineUp ? "rose" : "fell"} ${x}% on ${formatDate(move.date)}. ` +
+      (m.length === 0
+        ? `Your portfolio was flat that day.`
+        : `Your portfolio ${imp.total >= 0 ? "gained" : "lost"} about ${money(imp.total)} that day` +
+          (m[0] ? ` — led by ${m[0].label} (${signed(m[0].impact)})` : "") +
+          (m[1] ? `, with ${m[1].label} ${m[1].impact >= 0 ? "up" : "down"} ${money(m[1].impact)}` : "") + ".");
 
   return (
     <div className={`mktentry${isAsset ? " asset" : ""}`}>
@@ -53,7 +54,7 @@ export function DesktopMarketEntry({ move }: { move: DiaryMarketMove }) {
           </span>
           <span className="mktentry-tag">{isAsset ? "Auto · Your holding" : "Auto · Market"}</span>
         </div>
-        <p className="mktentry-narr">{isAsset ? lead : `${lead} ${body}`}</p>
+        {narrative && <p className="mktentry-narr">{narrative}</p>}
         {m.length > 0 && (
           <div className="mktentry-movers">
             {m.map((h) => {

@@ -14,11 +14,12 @@ const fmtPct = new Intl.NumberFormat("nl-NL", {
 });
 
 // Mobile diary entry for an ASSET swing — a held asset's OWN big single-day move
-// (≥5%). Unlike the collapsible index MobileMarketEntry / DiaryMarketRow (soft
-// gold wash), this is a FULL, always-open row on the accent-mix ground with an
-// accent rail, so a holding's own headline day reads as visibly distinct from the
-// market-wide index swings. It shows the asset's OWN figures: its impact on the
-// user's position (movers[0]) and its own % (pct_change), not the index numbers.
+// (≥5%). A single-line row on the accent-mix ground with an accent rail, visibly
+// distinct from the market-wide index swings (which use the ~ / activity glyph on
+// the gold wash). It shows the asset's OWN figures — its impact on the position
+// (movers[0]) and its own % (pct_change). No prose line: the headline "{ASSET}
+// {±%}" and the date on the right already say it, so a sentence would just repeat
+// them.
 export function MobileAssetEntry({ move }: { move: DiaryMarketMove }) {
   const imp = move.impact;
   if (!imp) return null;
@@ -30,13 +31,11 @@ export function MobileAssetEntry({ move }: { move: DiaryMarketMove }) {
   const own = imp.movers[0]; // the named asset's own impact + deep-link id
   const up = move.pct_change >= 0;
   const label = move.index_label;
-  const x = Math.abs(move.pct_change).toFixed(1).replace(".", ",");
-  const line = `${label} ${up ? "rose" : "fell"} ${x}% on ${formatDate(move.date)}.`;
 
   return (
     <div
       style={{
-        display: "flex", gap: 10, alignItems: "flex-start",
+        display: "flex", gap: 10, alignItems: "center",
         padding: "8px 12px", margin: "6px 0",
         background: "color-mix(in srgb, var(--accent) 14%, var(--surface))",
         // Accent rail as an inset shadow (not a border) so it doesn't shift the
@@ -50,13 +49,13 @@ export function MobileAssetEntry({ move }: { move: DiaryMarketMove }) {
         <AssetLogo type={null} symbol={move.index_symbol} name={move.index_label} size={26} />
       </div>
 
-      {/* Headline + Volnar's one deterministic line. */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
+      {/* Headline · own impact · date — one line, no redundant prose. */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span
           style={{
+            flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             fontSize: "var(--fs-body)", fontFamily: "var(--font-ui)", fontWeight: 500,
             color: "var(--text)", lineHeight: "var(--lh-tight)",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}
         >
           {own?.assetId ? (
@@ -65,20 +64,7 @@ export function MobileAssetEntry({ move }: { move: DiaryMarketMove }) {
           <span className="tnum" style={{ fontWeight: 500, color: up ? "var(--positive-text)" : "var(--negative-text)" }}>
             {fmtPct.format(move.pct_change)}%
           </span>
-        </div>
-        <p
-          className="font-display"
-          style={{
-            fontStyle: "italic", fontSize: "var(--fs-caption)", color: "var(--text-dim)",
-            lineHeight: "var(--lh-body)", margin: "3px 0 0", fontVariationSettings: "'opsz' 16",
-          }}
-        >
-          {line}
-        </p>
-      </div>
-
-      {/* The asset's own impact on the position + the date. */}
-      <div style={{ flexShrink: 0, textAlign: "right", display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end" }}>
+        </span>
         {own && (
           <span
             className="tnum"
