@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabase } from "@/lib/supabase";
 import { fetchHistoricalSeries, normalizePrice } from "@/lib/prices";
+import { getCachedPriceSeries } from "@/lib/price-history-cache";
 import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
 import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
 import {
@@ -416,8 +417,10 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   await Promise.all(
     [...symbolByNorm.values()].map(async ({ norm }) => {
       // Cover the prior-day buffer too (plus a trading-week margin), so a swing on
-      // the first in-window day can price its holdings on the prior close.
-      const series = await fetchHistoricalSeries(norm, addDays(lookbackCutoff, -(SWING_PRIOR_BUFFER_DAYS + 7)), today);
+      // the first in-window day can price its holdings on the prior close. Routed
+      // through the persistent price cache so the deep per-symbol history is fetched
+      // once (shared with the net-worth backfill) rather than re-pulled every time.
+      const series = await getCachedPriceSeries(norm, addDays(lookbackCutoff, -(SWING_PRIOR_BUFFER_DAYS + 7)), today);
       if (series && series.length > 0) histMap.set(norm, series);
     }),
   );

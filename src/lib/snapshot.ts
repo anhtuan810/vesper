@@ -8,6 +8,7 @@ import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
 import { parseBuyYear, normalizeIndex } from "@/lib/property-estimate";
 import { effectivePropertyCountry } from "@/lib/country-currency";
+import { getCachedPriceSeries } from "@/lib/price-history-cache";
 
 export async function writeSnapshot(userId: string): Promise<void> {
   try {
@@ -196,7 +197,10 @@ async function getPriceSeriesCached(
 ): Promise<Array<{ date: string; price: number; currency: string }> | null> {
   const hit = priceSeriesMemo.get(symbol);
   if (hit && hit.from <= from && Date.now() - hit.fetchedAt < PRICE_SERIES_TTL_MS) return hit.history;
-  const history = await fetchFullPriceHistory(symbol, from, todayStr);
+  // Persistent DB cache underneath the warm memo: on a cold instance this serves the
+  // symbol's deep history from `price_history` and only re-fetches the recent tail
+  // from Yahoo, instead of pulling the whole multi-year series over the network.
+  const history = await getCachedPriceSeries(symbol, from, todayStr);
   if (history && history.length > 0) priceSeriesMemo.set(symbol, { from, fetchedAt: Date.now(), history });
   return history;
 }
