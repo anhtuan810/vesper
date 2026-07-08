@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getAuthUser, createServerSupabase } from "@/lib/supabase";
 import { backfillSnapshots } from "@/lib/snapshot";
 import { parseMarketDetail } from "@/lib/market-highlights";
@@ -62,22 +62,21 @@ export async function GET(request: NextRequest) {
       .order("occurred_at", { ascending: false, nullsFirst: false }),
   ]);
 
-  let snapshots = snapshotsRes.data ?? [];
+  const snapshots = snapshotsRes.data ?? [];
 
   const today = new Date().toISOString().slice(0, 10);
   const hasHistory = snapshots.some((s) => s.date < today);
 
-  if (!hasHistory) {
-    await backfillSnapshots(user.id);
-    const refetch = await supabase
-      .from("snapshots")
-      .select("date, total_value")
-      .eq("user_id", user.id)
-      .gte("date", cutoff.toISOString().slice(0, 10))
-      .gt("total_value", 0)
-      .order("date", { ascending: true });
-    snapshots = refetch.data ?? [];
-  }
+  // No reconstructed history yet (a first-ever load, or the background rebuild
+  // from a recent add hasn't landed). Previously we AWAITED the full backfill
+  // here — Yahoo price history per symbol + a multi-year FX series + the whole
+  // date lattice — so the dashboard hung on it before it could paint. Kick it in
+  // the background instead and flag `building`: the client shows the same quiet
+  // "building" indicator it uses after a chat add and polls /api/snapshots until
+  // the rebuilt rows appear (watchPortfolioBuild). The chart paints immediately
+  // from whatever rows exist and fills in a moment later — no blocking wait.
+  const building = !hasHistory;
+  if (building) after(() => backfillSnapshots(user.id));
 
   const portfolioCards = (portfolioRes.data ?? [])
     .map((r) => ({ title: r.title ?? "", detail: r.detail ?? "" }))
@@ -103,6 +102,7 @@ export async function GET(request: NextRequest) {
     marketHighlights: market,
     snapshots,
     mutations: mutationsRes.data ?? [],
+    building,
   }, {
     headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=300" },
   });

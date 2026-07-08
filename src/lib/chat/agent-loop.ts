@@ -14,6 +14,7 @@ import { validateMonetaryNarration } from "@/lib/narrate/guardrail";
 import { stripTags, timestampedPair } from "@/lib/chat-helpers";
 import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 import { generateMarketContext } from "@/lib/market-context";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
 import { generateMarketSwings } from "@/lib/diary-market-moves";
 import { generateInsight } from "@/lib/insight-generator";
@@ -207,10 +208,16 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       after(async () => {
         try {
           const sb = createServerSupabase();
-          for (const meta of commit.mutationMetas) {
-            const c = await generateMarketContext(meta.symbol, meta.occurredAt, meta.assetType);
-            if (c) await sb.from("mutations").update({ market_context: c }).eq("id", meta.id);
-          }
+          // Each meta's market context is an independent external lookup, so run
+          // them with bounded concurrency instead of one-at-a-time — a multi-asset
+          // add no longer serializes N sequential fetches. Per-item errors are
+          // swallowed so one bad symbol can't drop the rest.
+          await mapWithConcurrency(commit.mutationMetas, 5, async (meta) => {
+            try {
+              const c = await generateMarketContext(meta.symbol, meta.occurredAt, meta.assetType);
+              if (c) await sb.from("mutations").update({ market_context: c }).eq("id", meta.id);
+            } catch (err) { Sentry.captureException(err, { tags: { background: "agent-market-context-item" } }); }
+          });
         } catch (err) { Sentry.captureException(err, { tags: { background: "agent-market-context" } }); }
       });
     }

@@ -16,6 +16,7 @@ import type { LiveAsset, Mutation } from "@/lib/supabase";
 import type { SnapshotPoint } from "@/components/NetWorthChart";
 import type { InsightCard } from "@/lib/portfolio-insights";
 import { apiFetch } from "@/lib/api";
+import { watchPortfolioBuild } from "@/lib/portfolio-build";
 
 
 export default function Dashboard() {
@@ -52,11 +53,17 @@ export default function Dashboard() {
     if (!user?.id) return;
     const res = await apiFetch("/api/dashboard-init");
     if (!res.ok) return;
-    const { insight, insights, market, snapshots, mutations } = await res.json();
+    const { insight, insights, market, snapshots, mutations, building } = await res.json();
     // Chart + diary badge come from dashboard-init's fast, deterministic data —
     // paint them immediately, never behind the insight Haiku.
     setInitialSnapshots(snapshots ?? []);
     setMutations(mutations ?? []);
+
+    // The server had no reconstructed history yet and kicked the rebuild in the
+    // background (no longer blocking this response). Show the shared "building"
+    // indicator and poll until the rebuilt snapshots land, same as after a chat
+    // add — the chart paints now and fills in when the history appears.
+    if (building) watchPortfolioBuild();
 
     const cards: InsightCard[] = insights ?? [];
     if (insight != null || cards.length > 0) {

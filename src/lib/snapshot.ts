@@ -62,6 +62,10 @@ export async function writeSnapshot(userId: string): Promise<void> {
     const priceHistories = new Map<string, Array<{ date: string; price: number; currency: string }>>();
     await Promise.all(
       tradeableSymbols.map(async (symbol) => {
+        // This values TODAY's live dot, so fetch fresh (a 10-day window, cheap)
+        // rather than serving the possibly-12h-stale memo — the latest close must
+        // be current. The memo is used by the expensive multi-year backfill/rewind
+        // paths, where closes are immutable and freshness doesn't matter.
         const history = await fetchFullPriceHistory(symbol, historyStartStr, today);
         if (history && history.length > 0) priceHistories.set(symbol, history);
       }),
@@ -831,7 +835,12 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     const priceHistories = new Map<string, Array<{ date: string; price: number; currency: string }>>();
     await Promise.all(
       symbols.map(async (symbol) => {
-        const history = await fetchFullPriceHistory(symbol, earliest, todayStr);
+        // Use the shared warm-instance memo (previously this called
+        // fetchFullPriceHistory directly, re-fetching a series a concurrent
+        // writeSnapshot / rewind on the same instance had just pulled). A symbol's
+        // historical closes are immutable, so one Yahoo call per symbol per instance
+        // now serves all three rebuild paths.
+        const history = await getPriceSeriesCached(symbol, earliest, todayStr);
         if (history && history.length > 0) priceHistories.set(symbol, history);
       }),
     );

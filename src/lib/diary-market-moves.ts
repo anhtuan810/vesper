@@ -392,11 +392,16 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   // Fetch a small buffer of rows BEFORE the window so the earliest in-window swing
   // has a real prior trading day (otherwise it was dropped with prior=null).
   const detectFrom = addDays(lookbackCutoff, -SWING_PRIOR_BUFFER_DAYS);
-  const seriesByIndex: IndexMoveSeries[] = [];
-  for (const { symbol, label } of DIARY_MARKET_INDICES) {
-    const rows = await ensureCachedMoves(supabase, symbol, detectFrom, today);
-    seriesByIndex.push({ symbol, label, rows });
-  }
+  // Fetch the indices concurrently rather than one-at-a-time: each ensureCachedMoves
+  // may hit Yahoo, and they're independent (distinct index_symbol, no upsert conflict),
+  // so the wait is the slowest single index instead of their sum.
+  const seriesByIndex: IndexMoveSeries[] = await Promise.all(
+    DIARY_MARKET_INDICES.map(async ({ symbol, label }) => ({
+      symbol,
+      label,
+      rows: await ensureCachedMoves(supabase, symbol, detectFrom, today),
+    })),
+  );
   const swings = detectSwings(seriesByIndex, lookbackCutoff, MARKET_MOVE_THRESHOLD_PCT);
 
   // ── Price history per held symbol, fetched once ──
