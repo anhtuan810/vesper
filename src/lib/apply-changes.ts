@@ -1154,17 +1154,98 @@ export async function applyPortfolioChanges({
       //               remove mutation dated to the sale, so backfill keeps
       //               reconstructing the position as held up to that date and
       //               zero after. History up to the sale is preserved.
-      //   "mistake" — the position never belonged here. Hard-delete the row
-      //               AND its mutations so backfill can't reconstruct it, then
-      //               rebuild from its acquisition so it vanishes everywhere.
+      //   "mistake" — a data correction: the position never belonged here. Erase
+      //               it and EVERY trace it left — the asset row(s), all their
+      //               journal mutations, and its footprint in the graph — so a
+      //               correction records nothing (see the mistake block below).
       // Default is "sold" (non-destructive — data is preserved; a mistake can
       // still be corrected later, but erased history can't be recovered).
       const reason = change.removal_reason === "mistake" ? "mistake" : "sold";
       const saleDate = resolveAcquisitionDate(change.sell_date) ?? todayStr;
+      const nameKey = name.toLowerCase();
+
+      if (reason === "mistake") {
+        // A correction must leave NOTHING behind — no journal row, no graph
+        // point. Crucially it has to reach a soft-removed row too: a user who
+        // first said "sold" (a soft-delete that keeps the row + writes a remove
+        // mutation) and then "actually that was a mistake" would otherwise be
+        // told "done" while the row and its journal entries silently survived —
+        // they're absent from currentAssets, which excludes removed_at rows. So
+        // query the DB directly for every asset row under this name/symbol,
+        // whatever its removed state.
+        const { data: allRows } = await supabase
+          .from("assets")
+          .select("id, name, symbol, type, value, currency, mortgage_balance, buy_date, created_at, removed_at")
+          .eq("user_id", userId);
+        const assetRows = (allRows || []).filter(
+          (a) => (a.name && a.name.toLowerCase() === nameKey) ||
+                 (a.symbol && a.symbol.toLowerCase() === nameKey)
+        );
+
+        // Every journal row it ever produced — matched by asset_id AND by
+        // name/symbol, so nothing is missed: a mutation still linked to one of
+        // the rows above, an orphan left by an earlier hard-delete (asset_id
+        // nulled), or a stale row naming the holding directly. These are the
+        // entries the user sees in the Journal.
+        const assetIdSet = new Set(assetRows.map((a) => a.id));
+        const { data: allMuts } = await supabase
+          .from("mutations")
+          .select("id, asset_id, asset_name, symbol, occurred_at, recorded_at")
+          .eq("user_id", userId);
+        const mutationRows = (allMuts || []).filter(
+          (m) => (m.asset_id && assetIdSet.has(m.asset_id)) ||
+                 (m.asset_name && m.asset_name.toLowerCase() === nameKey) ||
+                 (m.symbol && m.symbol.toLowerCase() === nameKey)
+        );
+
+        if (assetRows.length === 0 && mutationRows.length === 0) {
+          // Nothing under this name to correct — say so honestly rather than
+          // report a phantom "done" (the false-success the user hit before).
+          throw new ValueModeError(
+            `I couldn't find "${name}" in your portfolio or its history to remove. Could you check the name?`
+          );
+        }
+
+        // Rebuild every graph point back to the earliest date this holding
+        // touched — its acquisition, and any dated mutation (a past-dated
+        // sale/edit) — so each row that once counted it is recomputed without it.
+        for (const a of assetRows) {
+          considerRebuild(a.buy_date ?? (a.created_at ? a.created_at.slice(0, 10) : null));
+        }
+        for (const m of mutationRows) {
+          considerRebuild((m.occurred_at ?? m.recorded_at)?.slice(0, 10) ?? null);
+        }
+
+        // Drop the journal rows first (no remove mutation is written — a
+        // correction is not a financial event), then the asset rows themselves.
+        if (mutationRows.length > 0) {
+          const { error: mErr } = await supabase
+            .from("mutations")
+            .delete()
+            .eq("user_id", userId)
+            .in("id", mutationRows.map((m) => m.id));
+          if (mErr) console.error("REMOVE (mistake) mutations ERROR:", mErr);
+          else changed = true;
+        }
+        for (const a of assetRows) {
+          // Deleting a still-held row takes its value out of net worth; a
+          // soft-removed row already left it, so only adjust for live rows.
+          if (!a.removed_at) {
+            const contribution = a.type === "real_estate"
+              ? realEstateEquity(a.value, a.mortgage_balance)
+              : a.value;
+            runningTotal = runningTotal - toUsdSync(contribution, a.currency || "USD");
+          }
+          const { error } = await supabase.from("assets").delete().eq("id", a.id).eq("user_id", userId);
+          if (error) console.error("REMOVE (mistake) ERROR:", error);
+          else changed = true;
+        }
+        continue;
+      }
 
       const matching = currentAssets.filter(
-        (a) => a.name.toLowerCase() === name.toLowerCase() ||
-               (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
+        (a) => a.name.toLowerCase() === nameKey ||
+               (a.symbol && a.symbol.toLowerCase() === nameKey)
       );
 
       for (const existing of matching) {
@@ -1178,24 +1259,6 @@ export async function applyPortfolioChanges({
         // Record the annual entitlement given up so the event is legible.
         const isIncomePensionRemove = existing.type === "pension" && (existing.pension_kind === "db" || existing.pension_kind === "state");
         const removeBeforeValue = isIncomePensionRemove ? (existing.annual_income ?? null) : existingContribution;
-
-        if (reason === "mistake") {
-          // Erase from history: drop the asset's mutations (so backfill's unit
-          // timeline / acquisition map no longer see it) then hard-delete the
-          // row. No remove mutation is written — this was not a financial event.
-          // Rebuild from acquisition so every row that falsely included it is
-          // recomputed without it.
-          considerRebuild(existing.buy_date ?? (existing.created_at ? existing.created_at.slice(0, 10) : null));
-          await supabase.from("mutations").delete().eq("user_id", userId).eq("asset_id", existing.id);
-          const { error } = await supabase.from("assets").delete().eq("id", existing.id).eq("user_id", userId);
-          if (error) {
-            console.error("REMOVE (mistake) ERROR:", error);
-          } else {
-            changed = true;
-            runningTotal = newRunningTotal;
-          }
-          continue;
-        }
 
         // sold: INSERT the remove mutation (asset_id preserved — soft-delete
         // keeps the row, so asset_id never nulls out), then mark removed_at.
