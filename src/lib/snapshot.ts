@@ -2,13 +2,14 @@ import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
-import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
+import { getUsdRates, historicalFxRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
 import { parseBuyYear, normalizeIndex } from "@/lib/property-estimate";
 import { effectivePropertyCountry } from "@/lib/country-currency";
 import { getCachedPriceSeries } from "@/lib/price-history-cache";
+import { getCachedHistoricalUsdRates } from "@/lib/fx-history-cache";
 
 export async function writeSnapshot(userId: string): Promise<void> {
   try {
@@ -886,7 +887,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // USD terms as real exchange rates move; freezing it at today's rate would
     // erase that movement and break reconciliation with the live snapshot path
     // (which always converts at the rate for the date it's valuing).
-    const fxSeries = await getHistoricalUsdRates(earliest, todayStr);
+    const fxSeries = await getCachedHistoricalUsdRates(earliest, todayStr);
     const fxSeriesDates = Object.keys(fxSeries).sort();
     // Gap-fill on top of historicalFxRate's prior-date carry-forward + live
     // fallback: if a date falls before the first available historical entry

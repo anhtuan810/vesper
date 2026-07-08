@@ -2,8 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabase } from "@/lib/supabase";
 import { fetchHistoricalSeries, normalizePrice } from "@/lib/prices";
 import { getCachedPriceSeries } from "@/lib/price-history-cache";
+import { getCachedHistoricalUsdRates } from "@/lib/fx-history-cache";
 import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
-import { getUsdRates, getHistoricalUsdRates, historicalFxRate } from "@/lib/fx";
+import { getUsdRates, historicalFxRate } from "@/lib/fx";
 import {
   DIARY_MARKET_INDICES,
   MARKET_MOVE_HOLDING_THRESHOLD_PCT,
@@ -442,8 +443,10 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
   if (swings.size === 0 && assetCandidates.size === 0) return [];
 
   // ── Historical FX + display conversion (shared by both impact loops) ──
+  // Routed through the persistent FX cache so the multi-year series is shared with
+  // the net-worth backfill and survives cold starts, rather than re-fetched here.
   const liveFx = await getUsdRates();
-  const fxSeries = await getHistoricalUsdRates(addDays(lookbackCutoff, -SWING_PRIOR_BUFFER_DAYS), today);
+  const fxSeries = await getCachedHistoricalUsdRates(addDays(lookbackCutoff, -SWING_PRIOR_BUFFER_DAYS), today);
   const fxDates = Object.keys(fxSeries).sort();
   const rateCache = new Map<string, number | null>();
   const rateOf = (date: string, cur: string): number | null => {
