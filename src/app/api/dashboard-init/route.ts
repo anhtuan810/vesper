@@ -67,16 +67,26 @@ export async function GET(request: NextRequest) {
   const today = new Date().toISOString().slice(0, 10);
   const hasHistory = snapshots.some((s) => s.date < today);
 
+  // A past-dated holding is what makes a rebuild produce pre-today rows: an add
+  // mutation's occurred_at is the acquisition date (= buy_date), so any mutation
+  // dated before today means real history is coming. A portfolio added entirely
+  // "today" has none to build.
+  const hasPastBasis = (mutationsRes.data ?? []).some(
+    (m) => typeof m.occurred_at === "string" && (m.occurred_at as string).slice(0, 10) < today,
+  );
+
   // No reconstructed history yet (a first-ever load, or the background rebuild
   // from a recent add hasn't landed). Previously we AWAITED the full backfill
   // here — Yahoo price history per symbol + a multi-year FX series + the whole
   // date lattice — so the dashboard hung on it before it could paint. Kick it in
-  // the background instead and flag `building`: the client shows the same quiet
-  // "building" indicator it uses after a chat add and polls /api/snapshots until
-  // the rebuilt rows appear (watchPortfolioBuild). The chart paints immediately
-  // from whatever rows exist and fills in a moment later — no blocking wait.
-  const building = !hasHistory;
-  if (building) after(() => backfillSnapshots(user.id));
+  // the background instead (cheap + self-healing; a no-op when there's nothing to
+  // build). Only flag `building` when a past-dated holding means rows are actually
+  // coming: the client then shows the same quiet "building" indicator it uses after
+  // a chat add and polls /api/snapshots until they land (watchPortfolioBuild). This
+  // gate keeps a today-only new user from seeing the spinner churn the whole watch
+  // window with nothing to fill in. The chart paints immediately either way.
+  if (!hasHistory) after(() => backfillSnapshots(user.id));
+  const building = !hasHistory && hasPastBasis;
 
   const portfolioCards = (portfolioRes.data ?? [])
     .map((r) => ({ title: r.title ?? "", detail: r.detail ?? "" }))
