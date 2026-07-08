@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
+import { tradeableUnitsOn } from "@/lib/holdings-units";
 import { getUsdRates, nearestHistoricalRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
@@ -313,20 +314,6 @@ function monotoneCubic(points: XY[]): (x: number) => number {
     const h11 = t3 - t2;
     return h00 * ys[i] + h10 * h * m[i] + h01 * ys[i + 1] + h11 * h * m[i + 1];
   };
-}
-
-// Returns units held as of `date` by walking a sorted-ascending mutation timeline.
-// Returns 0 if no mutation precedes the date.
-function unitsAtDate(
-  timeline: Array<{ date: string; units: number }>,
-  date: string,
-): number {
-  let units = 0;
-  for (const entry of timeline) {
-    if (entry.date > date) break;
-    units = entry.units;
-  }
-  return units;
 }
 
 // Generates snapshot target dates with decreasing resolution going further back:
@@ -668,14 +655,19 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
     const removed = removalDate != null && date >= removalDate;
 
     if (TRADEABLE.has(type) && a.symbol) {
-      const tl = mutsByAsset.get(id) ?? [];
-      // Same fallback as computeRow / getDiaryMarketMoves.unitsOf: an empty
-      // timeline (add mutation with after_units=null) must not drop a genuinely
-      // held position from the rewound book — fall back to the current units
-      // gated by acquisition + sale dates.
-      const units = tl.length > 0
-        ? unitsAtDate(tl, date)
-        : (!removed && date >= inception ? ((a.units as number | null) ?? 0) : 0);
+      // Shared with computeRow and getDiaryMarketMoves (holdings-units.ts): an
+      // empty timeline (add mutation with after_units=null) must not drop a
+      // genuinely held position from the rewound book — fall back to the current
+      // units gated by acquisition + sale dates, all three surfaces in lockstep.
+      const units = tradeableUnitsOn({
+        date,
+        timeline: mutsByAsset.get(id) ?? [],
+        acquisitionDate: acquisitionByAsset.get(id) ?? null,
+        buyDate: a.buy_date as string | null,
+        createdAt: a.created_at as string,
+        removalDate: removalDate ?? null,
+        currentUnits: (a.units as number | null) ?? 0,
+      });
       if (units <= 0) continue;
       const p = priceBySymbol.get(a.symbol as string) ?? null;
       if (p) {
@@ -963,17 +955,22 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         let nativeCurrency = "USD";
 
         if (TRADEABLE.has(type) && asset.symbol) {
-          const timeline = mutsByAsset.get(asset.id as string) ?? [];
           // Units from the mutation timeline; fall back to the asset's current
           // units (gated by acquisition + sale dates) when the timeline is EMPTY.
           // An add mutation with after_units=null leaves no timeline entry, which
           // would value a genuinely-held tradeable at 0 for every historical date
           // and collapse the whole rebuild to zero rows (skip:no-rows-computed) —
           // even though the journal date and market-swing impact are correct.
-          // Mirrors getDiaryMarketMoves.unitsOf so all three surfaces agree.
-          const units = timeline.length > 0
-            ? unitsAtDate(timeline, date)
-            : (!removed && date >= inception ? ((asset.units as number | null) ?? 0) : 0);
+          // Shared with getDiaryMarketMoves via holdings-units.ts so all three agree.
+          const units = tradeableUnitsOn({
+            date,
+            timeline: mutsByAsset.get(asset.id as string) ?? [],
+            acquisitionDate: acquisitionByAsset.get(asset.id as string) ?? null,
+            buyDate: asset.buy_date as string | null,
+            createdAt: asset.created_at as string,
+            removalDate: removalDate ?? null,
+            currentUnits: (asset.units as number | null) ?? 0,
+          });
           if (units > 0) {
             const history = priceHistories.get(asset.symbol as string);
             if (history) {

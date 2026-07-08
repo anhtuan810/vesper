@@ -4,6 +4,7 @@ import { fetchHistoricalSeries, normalizePrice } from "@/lib/prices";
 import { getCachedPriceSeries } from "@/lib/price-history-cache";
 import { getCachedHistoricalUsdRates } from "@/lib/fx-history-cache";
 import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
+import { tradeableUnitsOn } from "@/lib/holdings-units";
 import { getUsdRates, nearestHistoricalRate } from "@/lib/fx";
 import {
   DIARY_MARKET_INDICES,
@@ -235,17 +236,6 @@ function priceAtOrBefore(
   return result;
 }
 
-// Units held as of `date`, walking a sorted-ascending unit timeline. 0 before
-// the first event.
-function unitsAtDate(timeline: Array<{ date: string; units: number }>, date: string): number {
-  let units = 0;
-  for (const entry of timeline) {
-    if (entry.date > date) break;
-    units = entry.units;
-  }
-  return units;
-}
-
 export interface SwingHolding {
   symbol: string;
   label: string;
@@ -391,21 +381,20 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     acquisitionByAsset.set(m.asset_id as string, (m.occurred_at as string).slice(0, 10));
   }
 
-  // Units held by an asset on a given date — from its mutation timeline, or
-  // (for an asset with no unit mutations) its current units gated by acquisition
-  // and sale dates.
-  const unitsOf = (asset: AssetRow, date: string): number => {
-    const timeline = timelineByAsset.get(asset.id);
-    if (timeline && timeline.length > 0) return unitsAtDate(timeline, date);
-    if (asset.removed_at && date >= asset.removed_at.slice(0, 10)) return 0;
-    // Gate on the real acquisition date, not the row's insert time, so a holding
-    // logged long after purchase still counts as held back to its buy date. Prefer
-    // the add mutation's occurred_at (matches the net-worth rewind); fall back to
-    // buy_date, then created_at, for assets with no add mutation on file.
-    const acquired = acquisitionByAsset.get(asset.id) ?? (asset.buy_date ?? asset.created_at).slice(0, 10);
-    if (date < acquired) return 0;
-    return asset.units ?? 0;
-  };
+  // Units held by an asset on a given date — the shared rule used by the net-worth
+  // rewind too (holdings-units.ts), so the diary and the chart agree on what was
+  // held on any past date. From the mutation timeline when one exists, else the
+  // current units gated by the add-mutation date / buy_date / sale date.
+  const unitsOf = (asset: AssetRow, date: string): number =>
+    tradeableUnitsOn({
+      date,
+      timeline: timelineByAsset.get(asset.id) ?? [],
+      acquisitionDate: acquisitionByAsset.get(asset.id) ?? null,
+      buyDate: asset.buy_date,
+      createdAt: asset.created_at,
+      removalDate: asset.removed_at ? asset.removed_at.slice(0, 10) : null,
+      currentUnits: asset.units ?? 0,
+    });
 
   // ── Detect every big INDEX swing in the lookback (dedup by date, largest wins) ──
   // Fetch a small buffer of rows BEFORE the window so the earliest in-window swing
