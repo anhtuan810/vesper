@@ -376,6 +376,21 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     t.sort((a, b) => a.date.localeCompare(b.date) || a.seq.localeCompare(b.seq));
   }
 
+  // Per-asset acquisition date, keyed off the "add" mutation's occurred_at (= the
+  // stated buy date) — the SAME anchor the net-worth rewind uses (snapshot.ts's
+  // acquisitionByAsset). This must match, or the two disagree on what was held on a
+  // past date: the chart rewinds a holding to its add-mutation date while the swing
+  // computation, using buy_date/created_at, would think it wasn't held yet. That
+  // divergence is exactly what left seeded portfolios (add mutations dated to the
+  // real buy date, but buy_date NULL and created_at = the recent seed time) with a
+  // full net-worth line yet ZERO market swings: every historical swing valued the
+  // holdings at 0 units and was dropped.
+  const acquisitionByAsset = new Map<string, string>();
+  for (const m of mutationRows ?? []) {
+    if (!m.asset_id || m.action !== "add" || !m.occurred_at) continue;
+    acquisitionByAsset.set(m.asset_id as string, (m.occurred_at as string).slice(0, 10));
+  }
+
   // Units held by an asset on a given date — from its mutation timeline, or
   // (for an asset with no unit mutations) its current units gated by acquisition
   // and sale dates.
@@ -384,8 +399,10 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     if (timeline && timeline.length > 0) return unitsAtDate(timeline, date);
     if (asset.removed_at && date >= asset.removed_at.slice(0, 10)) return 0;
     // Gate on the real acquisition date, not the row's insert time, so a holding
-    // logged long after purchase still counts as held back to its buy date.
-    const acquired = (asset.buy_date ?? asset.created_at).slice(0, 10);
+    // logged long after purchase still counts as held back to its buy date. Prefer
+    // the add mutation's occurred_at (matches the net-worth rewind); fall back to
+    // buy_date, then created_at, for assets with no add mutation on file.
+    const acquired = acquisitionByAsset.get(asset.id) ?? (asset.buy_date ?? asset.created_at).slice(0, 10);
     if (date < acquired) return 0;
     return asset.units ?? 0;
   };
