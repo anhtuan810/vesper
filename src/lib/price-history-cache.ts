@@ -47,18 +47,15 @@ export interface PriceFetchPlan {
 // live and how much of the cache to reuse. The deep history (< today − LIVE_TAIL_DAYS)
 // is served from the cache when covered; the recent tail is always re-fetched.
 //
-// KNOWN LIMITATION (correctness-safe, efficiency-only): coverage keys on
-// hasNear(from). Callers pass from = the portfolio's GLOBAL earliest acquisition
-// (min across all holdings), but a symbol younger than that (an IPO/listing after
-// `from`) can never have a cached row near `from` — Yahoo has none — so
-// settledCovered stays false and its (short) full history is re-fetched on every
-// cold rebuild instead of tail-only. It is NOT wrong (the fetch returns correct
-// data; the same check also correctly forces a deep re-fetch when a shallow prior
-// fetch left the cache incomplete), and round-trip COUNT is unchanged (a tail fetch
-// is one round-trip too) — only the payload is larger. The root-cause fix is to
-// pass from = the SYMBOL's own acquisition date (its price before that is never read
-// — units are 0), or to persist a per-symbol coverage floor; deferred as a
-// background-only payload optimization.
+// Coverage keys on hasNear(from). Callers must pass from = the SYMBOL's own
+// earliest-held date, NOT the portfolio's global earliest (snapshot.ts computes this
+// via earliestHeldBySymbol) — otherwise a symbol younger than the oldest holding
+// would never have a cached row near `from` (Yahoo has none before its listing), so
+// settledCovered would stay false and its full history would be re-pulled on every
+// cold rebuild instead of tail-only. With a per-symbol `from` the cache reaches its
+// own earliest, coverage passes, and only the tail is re-fetched. (hasNear also
+// correctly forces a deep re-fetch when a shallower prior fetch left the cache
+// incomplete — e.g. the diary's clamped window populated it before a deeper backfill.)
 export function planPriceFetch(
   cachedDates: string[],
   from: string,

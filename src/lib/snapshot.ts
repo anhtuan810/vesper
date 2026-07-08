@@ -145,6 +145,36 @@ export async function writeSnapshot(userId: string): Promise<void> {
 
 const TRADEABLE = new Set(["stocks", "etf", "crypto", "gold"]);
 
+// Earliest date each held tradeable symbol needs a price for: the first date its
+// unit timeline can be non-zero (the earliest timeline entry, else its
+// acquisition/inception when it has no timeline), taken as the MINIMUM across every
+// asset that shares the symbol. A symbol's price BEFORE this is never read — units
+// are 0, so it contributes nothing — which makes it safe to fetch each symbol only
+// from here instead of from the portfolio's single global `earliest`. That (a) lets
+// the persistent price cache serve a symbol younger than the portfolio's oldest
+// holding with a tail-only refetch (its cache now reaches its own `from`, so the
+// coverage check passes instead of re-pulling the full history every cold rebuild),
+// and (b) shrinks the very first fetch. Pure; exported for testing.
+export function earliestHeldBySymbol(
+  assets: Array<{ id: string; type: string; symbol: string | null; created_at: string }>,
+  mutsByAsset: Map<string, Array<{ date: string }>>,
+  acquisitionByAsset: Map<string, string>,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const a of assets) {
+    if (!TRADEABLE.has(a.type as string) || !a.symbol) continue;
+    const tl = mutsByAsset.get(a.id as string);
+    const f =
+      tl && tl.length > 0
+        ? tl[0].date
+        : acquisitionByAsset.get(a.id as string) ?? (a.created_at as string).slice(0, 10);
+    const sym = a.symbol as string;
+    const cur = out.get(sym);
+    if (!cur || f < cur) out.set(sym, f);
+  }
+  return out;
+}
+
 // Fetches a full daily closing-price series from Yahoo Finance for a date range.
 // Returns prices sorted ascending by date.
 async function fetchFullPriceHistory(
@@ -607,12 +637,16 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
       assets.filter((a) => TRADEABLE.has(a.type as string) && a.symbol).map((a) => a.symbol as string),
     ),
   ];
+  // Each symbol only needs prices from its own earliest-held date (see
+  // earliestHeldBySymbol) — fetching from there rather than the global `earliest`
+  // lets the cache tail-refetch a symbol younger than the oldest holding.
+  const heldFrom = earliestHeldBySymbol(assets, mutsByAsset, acquisitionByAsset);
   const priceBySymbol = new Map<string, { price: number; currency: string } | null>();
   const [realEstateT] = await Promise.all([
     buildRealEstateProgressSamplers(assets, todayStr),
     Promise.all(
       symbols.map(async (symbol) => {
-        const history = await getPriceSeriesCached(symbol, earliest, todayStr);
+        const history = await getPriceSeriesCached(symbol, heldFrom.get(symbol) ?? earliest, todayStr);
         const p = history && history.length > 0 ? priceAtOrBefore(history, date) ?? history[0] : null;
         priceBySymbol.set(symbol, p ? { price: p.price, currency: p.currency } : null);
       }),
@@ -837,6 +871,11 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
           .map((a) => a.symbol as string),
       ),
     ];
+    // Each symbol only needs prices from its own earliest-held date, not the
+    // portfolio's global `earliest` (see earliestHeldBySymbol): a symbol's price
+    // before its own acquisition is never read, and this lets the cache tail-refetch
+    // a symbol younger than the oldest holding instead of re-pulling its full history.
+    const heldFrom = earliestHeldBySymbol(assets, mutsByAsset, acquisitionByAsset);
     const priceHistories = new Map<string, Array<{ date: string; price: number; currency: string }>>();
     await Promise.all(
       symbols.map(async (symbol) => {
@@ -845,7 +884,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
         // writeSnapshot / rewind on the same instance had just pulled). A symbol's
         // historical closes are immutable, so one Yahoo call per symbol per instance
         // now serves all three rebuild paths.
-        const history = await getPriceSeriesCached(symbol, earliest, todayStr);
+        const history = await getPriceSeriesCached(symbol, heldFrom.get(symbol) ?? earliest, todayStr);
         if (history && history.length > 0) priceHistories.set(symbol, history);
       }),
     );
