@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createServerSupabase } from "@/lib/supabase";
 import { computeCurrentBalance, projectMortgage, annuityPayment, monthsBetween } from "@/lib/mortgage";
 import { normalizePrice } from "@/lib/prices";
-import { getUsdRates, historicalFxRate } from "@/lib/fx";
+import { getUsdRates, nearestHistoricalRate } from "@/lib/fx";
 import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
@@ -889,21 +889,15 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // (which always converts at the rate for the date it's valuing).
     const fxSeries = await getCachedHistoricalUsdRates(earliest, todayStr);
     const fxSeriesDates = Object.keys(fxSeries).sort();
-    // Gap-fill on top of historicalFxRate's prior-date carry-forward + live
-    // fallback: if a date falls before the first available historical entry
-    // (and there's no live rate either), fall forward to the nearest LATER
-    // date in the series. Only an entirely-empty series (and no live rate)
-    // yields null.
-    const rateAt = (date: string, currency: string): number | null => {
-      const r = historicalFxRate(fxSeries, fxSeriesDates, date, currency, fx);
-      if (r != null) return r;
-      for (const d of fxSeriesDates) {
-        if (d < date) continue;
-        const rate = fxSeries[d]?.[currency];
-        if (rate != null) return rate;
-      }
-      return null;
-    };
+    // Convert each date at the nearest REAL historical rate — at-or-before, else
+    // forward-filled to the nearest later entry — preferring that over today's live
+    // rate. This matters when the fetched fxSeries starts a few days AFTER the
+    // earliest snapshot date (e.g. the shared fx_rate_history cache was populated
+    // from a slightly later date, or `earliest` is a non-trading day): the old
+    // path returned the live rate for that oldest date (its carry-forward found
+    // nothing at/before and fell to `fx`), pricing years-old equity at today's FX.
+    const rateAt = (date: string, currency: string): number | null =>
+      nearestHistoricalRate(fxSeries, fxSeriesDates, date, currency, fx);
 
     type SnapshotRow = { user_id: string; date: string; total_value: number; breakdown: Record<string, number>; native_breakdown: Record<string, number> };
 

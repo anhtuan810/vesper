@@ -152,6 +152,43 @@ export function historicalFxRate(
   return result ?? currentFx[currency] ?? null;
 }
 
+// Nearest REAL historical rate for `date`, preferring a nearby historical rate
+// over today's live rate: the most recent entry at or before `date`, else — when
+// `date` predates the series' earliest entry — the nearest entry AFTER it, and
+// only as a last resort the live rate. This matters for the OLDEST snapshot/swing
+// date when the fetched series happens to start a few days later than `date` (e.g.
+// the global fx_rate_history cache was first populated from a slightly later date,
+// or `date` is a non-trading day before the first quote): today's live rate can be
+// years — and double-digit percent — off, whereas the neighbouring historical rate
+// is within a few days. `historicalFxRate` alone returns the live rate in that case
+// (its currentFx fallback fires before any forward-fill), which is why callers that
+// value historical dates use THIS instead.
+export function nearestHistoricalRate(
+  series: FxSeries,
+  sortedDates: string[],
+  date: string,
+  currency: string,
+  currentFx: Record<string, number>,
+): number | null {
+  if (currency === "USD") return 1;
+  // Most recent at or before `date`.
+  let before: number | null = null;
+  for (const d of sortedDates) {
+    if (d > date) break;
+    const rate = series[d]?.[currency];
+    if (rate != null) before = rate;
+  }
+  if (before != null) return before;
+  // None at/before → nearest entry AFTER `date` (series is sorted ascending).
+  for (const d of sortedDates) {
+    if (d < date) continue;
+    const rate = series[d]?.[currency];
+    if (rate != null) return rate;
+  }
+  // Nothing historical at all → today's live rate.
+  return currentFx[currency] ?? null;
+}
+
 
 // Cross-rate conversion using the live USD-based rates table. Identity
 // short-circuit for from === to (no fetch needed). Returns null only if a

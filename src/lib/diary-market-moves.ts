@@ -4,7 +4,7 @@ import { fetchHistoricalSeries, normalizePrice } from "@/lib/prices";
 import { getCachedPriceSeries } from "@/lib/price-history-cache";
 import { getCachedHistoricalUsdRates } from "@/lib/fx-history-cache";
 import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
-import { getUsdRates, historicalFxRate } from "@/lib/fx";
+import { getUsdRates, nearestHistoricalRate } from "@/lib/fx";
 import {
   DIARY_MARKET_INDICES,
   MARKET_MOVE_HOLDING_THRESHOLD_PCT,
@@ -454,7 +454,10 @@ export async function getDiaryMarketMoves(userId: string, supabase: SupabaseClie
     const key = `${date}|${cur}`;
     const hit = rateCache.get(key);
     if (hit !== undefined) return hit;
-    const r = historicalFxRate(fxSeries, fxDates, date, cur, liveFx);
+    // Nearest real historical rate (at-or-before, else forward-filled) in
+    // preference to today's live rate, so the earliest in-window swing — whose
+    // date can precede the fetched series' first entry — isn't valued at today's FX.
+    const r = nearestHistoricalRate(fxSeries, fxDates, date, cur, liveFx);
     rateCache.set(key, r);
     return r;
   };
