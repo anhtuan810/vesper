@@ -1051,15 +1051,19 @@ export async function POST(req: NextRequest) {
       try {
         const changes = JSON.parse(changesRaw.trim());
         if (Array.isArray(changes) && changes.length > 0) {
-          // Irreversible-delete guard: removal_reason "mistake" HARD-deletes the
-          // asset and ALL its history (apply-changes remove branch) — unrecoverable.
-          // The prompt routes every remove through the propose→confirm handshake,
-          // but if the model ever emits a bare <changes> mistake-delete outside a
-          // confirmation turn, downgrade it to "sold" (a recoverable soft-delete)
-          // so history is never erased without the user explicitly confirming.
+          // Irreversible-delete guard: a mistake/correction remove HARD-deletes
+          // the asset and ALL its history (apply-changes remove branch) —
+          // unrecoverable. The prompt routes every remove through the
+          // propose→confirm handshake, but if the model ever emits a bare
+          // <changes> erase outside a confirmation turn, downgrade it to "sold"
+          // (a recoverable soft-delete) and strip the correction flag, so history
+          // is never erased without the user explicitly confirming.
           if (!isConfirmationTurn) {
             for (const c of changes) {
-              if (c?.action === "remove" && c?.removal_reason === "mistake") c.removal_reason = "sold";
+              if (c?.action === "remove" && (c?.removal_reason === "mistake" || c?.correction)) {
+                c.removal_reason = "sold";
+                c.correction = false;
+              }
             }
           }
           hasAdds = changes.some((c) => c.action === "add");

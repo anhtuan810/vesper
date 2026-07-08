@@ -96,6 +96,7 @@ const CHANGE_ITEM_SCHEMA = {
     buy_price: { type: "number", description: "Purchase price. For real_estate, the price paid at acquisition (used to index an estimated current value when no value is given)." },
     buy_date: { type: "string", description: "Acquisition date/month/year or a relative phrase; omit if unknown." },
     removal_reason: { type: "string", enum: ["sold", "mistake"] },
+    correction: { type: "boolean", description: "TRUE when fixing data the user entered WRONG (wrong value/units/name/date, a typo, a duplicate) rather than recording a real event. Applied silently: the data is fixed, no journal entry is written, and the history graph is redrawn as if the corrected figure had always been true. On an edit, pass the corrected ABSOLUTE figure. A full remove of a never-owned entry uses removal_reason \"mistake\" instead." },
     address: { type: "string", description: "Street address for a real-estate add/edit." },
     country: { type: "string" },
     // ── Real-estate / mortgage ──
@@ -625,14 +626,17 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
   const changes = geo.changes;
 
-  // Irreversible-delete guard (mirrors the tag path in /api/chat): a bare
-  // removal_reason "mistake" HARD-deletes the asset AND all its history,
+  // Irreversible-delete guard (mirrors the tag path in /api/chat): a
+  // mistake/correction remove HARD-deletes the asset AND all its history,
   // unrecoverable. The agent loop carries no per-turn confirmation signal, so
-  // downgrade it to "sold" (a recoverable soft-delete) — the agent can never
-  // erase history on its own; a genuine mistake-delete needs an explicit path.
+  // downgrade it to "sold" (a recoverable soft-delete) and strip the correction
+  // flag — the agent can never erase history on its own; a genuine
+  // mistake-delete needs an explicit path. (An edit correction only rewrites the
+  // asset's own figure in place and stays reversible, so it is left intact.)
   for (const change of changes) {
-    if (change.action === "remove" && change.removal_reason === "mistake") {
+    if (change.action === "remove" && (change.removal_reason === "mistake" || change.correction)) {
       change.removal_reason = "sold";
+      change.correction = false;
     }
   }
 

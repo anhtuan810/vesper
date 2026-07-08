@@ -70,6 +70,13 @@ type PortfolioChange = {
   // never truly belonged here — erase it from all history (hard-delete + drop
   // its mutations). See the remove branch.
   removal_reason?: "sold" | "mistake";
+  // Data correction (any action): the stored data is WRONG, not a new financial
+  // event. Fix it and leave no trace — no "Recorded a new valuation" journal
+  // row, no bump in the net-worth graph. On an edit, the acquisition record is
+  // rewritten in place so history reads as if the corrected figure had always
+  // been true; on a remove it means the same as removal_reason "mistake" (full
+  // erase). See the edit and remove branches.
+  correction?: boolean;
   sell_date?: string;
   buy_price_source?: string;
   mortgage_balance?: number;
@@ -1078,66 +1085,96 @@ export async function applyPortfolioChanges({
             ? (existing.annual_income ?? null)
             : beforeRecorded;
 
-          // Every edit is logged — including a pure rename, which records the
-          // before/after name (value/units unchanged) so the Diary audit trail
-          // is complete. Market-context backfill is skipped for renames.
           const onlyNameChanged = Object.keys(updateData).length === 1 && updateData.name !== undefined;
-          const renameNote = onlyNameChanged ? `Renamed ${existing.name} to ${change.new_name}.` : null;
-          // A mortgage-only move shows the same "+€X" shape as appreciation, so when
-          // the user left no note of their own, tag what actually happened — this is
-          // what makes a paydown legible as a paydown in the Diary/Activity.
-          const mortgageMoved = isRealEstateEdit && updateData.mortgage_balance !== undefined && newMortgage !== oldMortgage;
-          const mortgageNote = mortgageMoved
-            ? (newMortgage < oldMortgage ? "Paid down the mortgage." : "Increased the mortgage.")
-            : null;
-          const editOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
-          const { data: editedMutation, error: editMutError } = await supabase.from("mutations").insert({
-            user_id: userId,
-            asset_id: existing.id,
-            asset_name: change.new_name || name,
-            action: "edit",
-            asset_type: existing.type,
-            symbol: existing.symbol || null,
-            before_value: storedBeforeValue,
-            after_value: afterValue,
-            before_units: existing.units || null,
-            after_units: change.units !== undefined ? change.units : (existing.units || null),
-            currency: change.currency || existing.currency || "USD",
-            personal_context: change.personal_context || contextNote || renameNote || mortgageNote,
-            portfolio_total: runningTotal,
-            occurred_at: editOccurredAt,
-          }).select("id").single();
-          // The asset update already committed; a failed mutation insert leaves
-          // an audit-trail gap (no Diary row for this edit) rather than corrupt
-          // state, so surface it for monitoring but don't undo the edit.
-          if (editMutError) console.error("EDIT MUTATION ERROR (edit applied, audit row missing):", editMutError);
-          if (editedMutation?.id && !onlyNameChanged) {
-            mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
-            // Record the property's mortgage balance AFTER this edit, so a paydown
-            // or drawdown becomes a step the net-worth history can honour.
-            if (isRealEstateEdit && editedMutation?.id) {
-              await stampMortgageBalance(supabase, editedMutation.id, newMortgage);
-            }
-          }
+          const afterUnitsResolved = change.units !== undefined ? change.units : (existing.units || null);
 
-          // Image-import workflow: the batch is committed (action "add",
-          // occurred_at = today, since the acquisition date isn't known yet)
-          // BEFORE the model asks "when did you start holding most of these?"
-          // — the answer then arrives as an "edit" carrying buy_date. That's
-          // the position's REAL acquisition date, so retroactively stamp the
-          // asset's original "add" mutation with it — exactly the basis the
-          // single-add path uses up front (line ~442) — so the period delta
-          // and backfill key off when the holding was actually acquired, not
-          // when the row happened to be imported.
-          // Gated on !editChangesUnits: this only fires for a pure date-fill edit
-          // (units unchanged). A buy-more edit carries its own later transaction
-          // date, which must NOT be back-stamped onto the original acquisition.
-          if (change.buy_date && !editChangesUnits) {
-            await supabase.from("mutations")
-              .update({ occurred_at: change.buy_date })
+          if (change.correction) {
+            // DATA CORRECTION — the stored figure was WRONG, not a new event.
+            // Leave no trace: write NO edit mutation (so no "Recorded a new
+            // valuation" row appears in the Journal) and instead rewrite the
+            // acquisition ("add") record in place so the history graph — which
+            // is rebuilt from the mutation timeline — reads as if the corrected
+            // figure had always been true. The asset row is already updated
+            // above; the running total already reflects the corrected value.
+            const addFix: Record<string, unknown> = { after_value: afterValue };
+            if (afterUnitsResolved !== null) addFix.after_units = afterUnitsResolved;
+            if (change.new_name) addFix.asset_name = change.new_name;
+            if (change.currency) addFix.currency = change.currency;
+            // A corrected acquisition date moves the whole timeline anchor.
+            if (change.buy_date) addFix.occurred_at = change.buy_date;
+            const { error: addFixErr } = await supabase.from("mutations")
+              .update(addFix)
               .eq("user_id", userId)
               .eq("asset_id", existing.id)
               .eq("action", "add");
+            if (addFixErr) console.error("EDIT (correction) add-record rewrite ERROR:", addFixErr);
+            // Recompute the graph from the acquisition forward so every point
+            // that showed the wrong figure is redrawn with the corrected one.
+            // A pure rename touches no figure, so it needs no rebuild.
+            if (!onlyNameChanged) {
+              considerRebuild(change.buy_date ?? existing.buy_date ?? (existing.created_at ? existing.created_at.slice(0, 10) : null));
+            }
+          } else {
+            // Every edit is logged — including a pure rename, which records the
+            // before/after name (value/units unchanged) so the Diary audit trail
+            // is complete. Market-context backfill is skipped for renames.
+            const renameNote = onlyNameChanged ? `Renamed ${existing.name} to ${change.new_name}.` : null;
+            // A mortgage-only move shows the same "+€X" shape as appreciation, so when
+            // the user left no note of their own, tag what actually happened — this is
+            // what makes a paydown legible as a paydown in the Diary/Activity.
+            const mortgageMoved = isRealEstateEdit && updateData.mortgage_balance !== undefined && newMortgage !== oldMortgage;
+            const mortgageNote = mortgageMoved
+              ? (newMortgage < oldMortgage ? "Paid down the mortgage." : "Increased the mortgage.")
+              : null;
+            const editOccurredAt = change.buy_date || new Date().toISOString().split("T")[0];
+            const { data: editedMutation, error: editMutError } = await supabase.from("mutations").insert({
+              user_id: userId,
+              asset_id: existing.id,
+              asset_name: change.new_name || name,
+              action: "edit",
+              asset_type: existing.type,
+              symbol: existing.symbol || null,
+              before_value: storedBeforeValue,
+              after_value: afterValue,
+              before_units: existing.units || null,
+              after_units: afterUnitsResolved,
+              currency: change.currency || existing.currency || "USD",
+              personal_context: change.personal_context || contextNote || renameNote || mortgageNote,
+              portfolio_total: runningTotal,
+              occurred_at: editOccurredAt,
+            }).select("id").single();
+            // The asset update already committed; a failed mutation insert leaves
+            // an audit-trail gap (no Diary row for this edit) rather than corrupt
+            // state, so surface it for monitoring but don't undo the edit.
+            if (editMutError) console.error("EDIT MUTATION ERROR (edit applied, audit row missing):", editMutError);
+            if (editedMutation?.id && !onlyNameChanged) {
+              mutationMetas.push({ id: editedMutation.id, symbol: existing.symbol || null, occurredAt: editOccurredAt, assetType: existing.type });
+              // Record the property's mortgage balance AFTER this edit, so a paydown
+              // or drawdown becomes a step the net-worth history can honour.
+              if (isRealEstateEdit && editedMutation?.id) {
+                await stampMortgageBalance(supabase, editedMutation.id, newMortgage);
+              }
+            }
+
+            // Image-import workflow: the batch is committed (action "add",
+            // occurred_at = today, since the acquisition date isn't known yet)
+            // BEFORE the model asks "when did you start holding most of these?"
+            // — the answer then arrives as an "edit" carrying buy_date. That's
+            // the position's REAL acquisition date, so retroactively stamp the
+            // asset's original "add" mutation with it — exactly the basis the
+            // single-add path uses up front (line ~442) — so the period delta
+            // and backfill key off when the holding was actually acquired, not
+            // when the row happened to be imported.
+            // Gated on !editChangesUnits: this only fires for a pure date-fill edit
+            // (units unchanged). A buy-more edit carries its own later transaction
+            // date, which must NOT be back-stamped onto the original acquisition.
+            if (change.buy_date && !editChangesUnits) {
+              await supabase.from("mutations")
+                .update({ occurred_at: change.buy_date })
+                .eq("user_id", userId)
+                .eq("asset_id", existing.id)
+                .eq("action", "add");
+            }
           }
         }
       } else {
@@ -1160,7 +1197,10 @@ export async function applyPortfolioChanges({
       //               correction records nothing (see the mistake block below).
       // Default is "sold" (non-destructive — data is preserved; a mistake can
       // still be corrected later, but erased history can't be recovered).
-      const reason = change.removal_reason === "mistake" ? "mistake" : "sold";
+      // A remove flagged as a correction is a mistake erase (never a "sold"
+      // disposal) — a correction must leave no trace, so it can't degrade to the
+      // history-preserving soft-delete.
+      const reason = (change.removal_reason === "mistake" || change.correction) ? "mistake" : "sold";
       const saleDate = resolveAcquisitionDate(change.sell_date) ?? todayStr;
       const nameKey = name.toLowerCase();
 

@@ -21,8 +21,14 @@ export type ProposalChange = {
   buy_price?: number;
   buy_date?: string;
   personal_context?: string;
+  // Data correction: fix a wrong figure and leave no trace (see apply-changes).
+  correction?: boolean;
   [key: string]: unknown;
 };
+
+// A correction fixes wrong data rather than recording a new event, so the
+// confirm block should say the earlier figure won't be logged.
+const CORRECTION_SUFFIX = " — correcting a wrong entry; it won't be logged as a change or shown in your history";
 
 export type CurrentAssetLight = {
   name: string;
@@ -133,6 +139,8 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
       const noun = existing.type === "crypto" ? "units" : existing.type === "gold" ? "oz" : "shares";
       const newUnits = proposal.units;
       const delta = Math.round((newUnits - existing.units) * 1e8) / 1e8;
+      // A correction restates what the count always was — never a buy/sell.
+      if (proposal.correction) return `Correct ${label} to ${newUnits} ${noun}${CORRECTION_SUFFIX}`;
       if (delta > 0) return `Buy ${delta} more ${label} ${noun}, bringing total holding to ${newUnits} ${noun}`;
       if (delta < 0) return `Reduce ${label} by ${Math.abs(delta)} ${noun}, leaving ${newUnits} ${noun}`;
       return `Set ${label} to ${newUnits} ${noun}`;
@@ -292,6 +300,24 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
     const buyDate = proposal.buy_date ? ` on ${proposal.buy_date}` : "";
     const todayFlag = !proposal.buy_date ? " (today's date — change if incorrect)" : "";
     return `Add ${proposal.units ?? "?"} ${sym} shares${buyPrice}${buyDate}${todayFlag}`;
+  }
+
+  // A value/name/date correction on any asset that didn't match a more specific
+  // branch above (e.g. a cash/bond/other value fix, or a rename): state the
+  // corrected figure and that it leaves no trace.
+  if (action === "edit" && proposal.correction) {
+    const existing = currentAssets.find(
+      (a) => a.name.toLowerCase() === name.toLowerCase() ||
+             (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
+    );
+    const label = existing?.name ?? name;
+    if (proposal.new_name) return `Rename ${label} to ${proposal.new_name}${CORRECTION_SUFFIX}`;
+    if (typeof proposal.value === "number") {
+      const cur = (typeof proposal.currency === "string" ? proposal.currency : existing?.currency ?? "") || "";
+      return `Correct ${label} to ${`${cur} ${proposal.value.toLocaleString()}`.trim()}${CORRECTION_SUFFIX}`;
+    }
+    if (proposal.buy_date) return `Correct ${label}'s date to ${proposal.buy_date}${CORRECTION_SUFFIX}`;
+    return `Correct ${label}${CORRECTION_SUFFIX}`;
   }
 
   return `Update ${name} position`;

@@ -334,6 +334,24 @@ Field names for remove: name, plus removal_reason (always) and sell_date (when t
       whenever it is not clearly a mistake.
   Every remove goes through <propose_change> first — never a bare <changes> remove.
 
+DATA CORRECTIONS (fixing wrong data — leave no trace):
+The user is CORRECTING data they entered wrong — not recording a real
+financial event — whenever they say things like "that's wrong", "I made a
+mistake", "it should be X not Y", "wrong amount/number", "I never owned
+that", "fix that", "typo", or point out a bad figure/name/date/duplicate.
+A correction must be applied SILENTLY: the data is fixed, but NO journal
+entry is written and NOTHING is added to the history graph — the graph is
+redrawn as if the corrected value had always been true. This works for ANY
+asset and ANY field:
+  • Wrong VALUE / UNITS / NAME / DATE → action "edit" with "correction": true
+    and the corrected field(s). Give the corrected ABSOLUTE figure (or a
+    value_delta for a money amount on a tradeable); never a running note.
+  • Entire entry was a mistake / never owned → action "remove" with
+    removal_reason "mistake" (a correction — erases it completely).
+Contrast with real EVENTS (bought more, sold some, price/value genuinely
+changed over time): those are NOT corrections — omit "correction", let them
+log normally. When unsure whether it's a correction or an event, ask.
+
 IMPORTANT: The <changes> block must contain valid JSON only. No markdown, no comments.
 Match assets by name (case-insensitive) when editing or removing.
 
@@ -406,21 +424,24 @@ matches:
 Branching on the user's chip selection (next turn):
 
 - If user clicked "Replace the previous one":
-  Compute the corrective delta:
-    delta = NEW_VALUE - OLD_VALUE
-  Then emit <propose_change> with action="edit", the asset name,
-  and value_delta = delta. This routes through Mode 5 at the
-  current market price. The proposal flow shows the resolved
-  corrective units. Both the original and corrective mutations
-  appear in the diary — append-only, honest audit trail.
+  This is a CORRECTION — the earlier figure was WRONG, not a new
+  event. Emit <propose_change> with action="edit", the asset name,
+  and "correction": true, carrying the corrected figure:
+    • Money amount on a tradeable → value_delta = NEW_VALUE - OLD_VALUE
+      (resolves at market price to the corrected TOTAL units).
+    • A stated unit count → units = the corrected absolute count.
+    • A non-tradeable value (cash/bond/other) → value = corrected value.
+  Because it is a correction, it is applied silently: no journal
+  entry is written and the history graph is redrawn as if the
+  corrected figure had always been true — no trace of the wrong one.
 
   Example: user previously added $500 of NVDA, now says
   "I meant 5000 not 500", taps "Replace the previous one":
 
-    <propose_change>[{"action":"edit","name":"NVIDIA","value_delta":4500,"personal_context":"Corrected previous $500 add — intended total addition was $5,000 at market price."}]</propose_change>
+    <propose_change>[{"action":"edit","name":"NVIDIA","value_delta":4500,"correction":true,"personal_context":"Correcting the NVDA entry to $5,000 — the $500 was a mistake."}]</propose_change>
 
-  Prose: "Adding the corrective $4,500 to bring the total
-   addition to $5,000 at market price."
+  Prose: "Correcting your Nvidia entry to $5,000 at market price —
+   the earlier $500 won't be logged or shown in your history."
 
 - If user clicked "Add on top of it":
   Emit <propose_change> with action="edit" and
@@ -437,15 +458,13 @@ CORRECTION OF NON-VALUE FIELDS:
 
 When the user is correcting an inferred field other than value
 (a buy_date that was defaulted, a name guessed from a screenshot,
-etc.), do NOT silently amend. Ask:
-
-  "Should I update the previous [field] to [new value], or log
-   this as new information?"
-
-Note: mutations are append-only. For the pilot, redirect:
-"The previous entry stays as-is for the audit trail. Want me
-to add a corrective note?" Full edit of past mutations is out
-of scope.
+a wrong unit count, etc.), treat it as a CORRECTION: emit
+<propose_change> with action="edit", "correction": true, and the
+corrected field (new_name, buy_date, units, …). On confirm it is
+applied silently — the stored data is fixed and NO journal entry
+is written, and the history graph is redrawn as if the corrected
+value had always been true. Do not invent a value the user didn't
+give; only set the field they are correcting.
 
 EXAMPLES:
 
@@ -1005,8 +1024,13 @@ matches:
 4. Do NOT emit any tag this turn.
 
 Branching (next turn):
-- "Replace the previous one" → delta = NEW - OLD → emit
-  <propose_change> with value_delta = delta (Mode 5).
+- "Replace the previous one" → a CORRECTION (the earlier figure was
+  wrong). Emit <propose_change> action="edit" with "correction": true
+  and the corrected figure: value_delta = NEW - OLD for a money amount
+  on a tradeable, units = the corrected count when the user stated
+  units, or value = corrected value for a non-tradeable. Applied
+  silently on confirm — no journal entry, and the history graph is
+  redrawn as if the corrected figure had always been true.
 - "Add on top of it" → emit <propose_change> with
   value_delta = NEW_VALUE (normal Mode 5).
 
