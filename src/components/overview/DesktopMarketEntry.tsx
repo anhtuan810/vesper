@@ -31,13 +31,21 @@ export function DesktopMarketEntry({ move }: { move: DiaryMarketMove }) {
   const totalVal = isAsset ? own?.impact ?? 0 : imp.total;
   const totalUp = totalVal >= 0;
 
-  // Deterministic narrative — INDEX swings only. An asset swing's headline
-  // ("{ASSET} {±%}"), its own-impact total on the right, and the date already say
-  // everything, so a prose line would just repeat them (redundant) — asset cards
-  // render no narrative.
+  // The story behind the move — one short, search-grounded clause of why the
+  // headline moved that day (global reference data, attached at read time).
+  const story = move.story?.trim() || null;
+
+  // Narrative. For an INDEX swing the numbers (headline, %, date, portfolio
+  // impact) already carry it, and the story is woven in after the first sentence.
+  // An ASSET swing's headline + own-impact total + date already say everything a
+  // templated prose line would, so it used to render none — but the story is the
+  // one thing the numbers can't say, so an asset card shows it as its read of the
+  // day (and still nothing when no story exists, unchanged from before).
   const narrative = isAsset
-    ? null
-    : `${move.index_label} ${headlineUp ? "rose" : "fell"} ${x}% on ${formatDate(move.date)}. ` +
+    ? story
+    : `${move.index_label} ${headlineUp ? "rose" : "fell"} ${x}% on ${formatDate(move.date)}.` +
+      (story ? ` ${story}` : "") +
+      ` ` +
       (m.length === 0
         ? `Your portfolio was flat that day.`
         : `Your portfolio ${imp.total >= 0 ? "gained" : "lost"} about ${money(imp.total)} that day` +

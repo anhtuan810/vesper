@@ -24,9 +24,12 @@
   verdict is computed live, which is just slower), `demo_visitor_trial` (per-browser
   demo trial — apply wherever `DEMO_ENABLED=true`), `price_history` (global per-symbol
   daily-close cache — apply in production; until then the first-add graph/journal rebuild
-  re-fetches each symbol's full history from Yahoo every time, which is just slower) and
+  re-fetches each symbol's full history from Yahoo every time, which is just slower),
   `fx_rate_history` (global per-date FX-rate cache — apply in production; until then the
-  same rebuild re-fetches the multi-year Frankfurter series every time, which is just slower).
+  same rebuild re-fetches the multi-year Frankfurter series every time, which is just slower)
+  and `market_stories` (global per-(date, symbol) "why the market moved" cache for auto
+  market entries — apply in production; until then entries render without the story clause,
+  which is just less rich).
   See `docs/technical-decisions.md` → Supabase Tables for the schema of each.
 - **The maintainer is non-technical and does not write or run code.** Claude makes
   all code changes, runs all commands (git, build, tests), and explains decisions
