@@ -71,6 +71,10 @@ export interface AgentChatInput {
   csvText?: string;
   recentMessages: Array<{ role: string; content: string }>;
   currentAssets: Array<Record<string, unknown>>;
+  /** Compact summary of the user's recent recorded actions (adds/edits/removes),
+   *  derived from the mutations log. Gives the assistant memory of what it and the
+   *  user recently did — the tool calls themselves aren't in the text history. */
+  recentActivity?: string;
   displayCurrency: DisplayCurrency;
   used: number;
   profile: Record<string, unknown>;
@@ -116,6 +120,16 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   // PDF broker statements → document blocks (the model extracts the text/tables).
   for (const pdf of input.pdfs ?? []) {
     userContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf.base64 } });
+  }
+  // Working memory of what was recently recorded. The model's own tool calls are
+  // stripped from the text history it sees next turn, so without this it can't tell
+  // what it just did (the "already dated, nothing to do" hallucination). This is
+  // read-only context derived from the saved mutations — reference, don't re-apply.
+  if (input.recentActivity) {
+    userContent.push({
+      type: "text",
+      text: `[Recent portfolio activity already on record (most recent first) — these are already saved; reference them naturally and do NOT re-add or re-record them:\n${input.recentActivity}]`,
+    });
   }
   const csvText = input.csvText ?? "";
   const hasImportFile = input.images.length > 0 || (input.pdfs?.length ?? 0) > 0 || csvText.length > 0;

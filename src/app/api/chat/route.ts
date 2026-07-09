@@ -664,6 +664,19 @@ export async function POST(req: NextRequest) {
     // When enabled, Claude reasons over the thread and calls deterministic tools
     // for every figure and write, replacing the tag-emission flow below.
     if (isAgentChatEnabled()) {
+      // Compact working-memory summary of recently recorded actions. The agent's
+      // own tool calls are stripped from the text history it sees next turn, so
+      // without this it can't tell what it just did. Newest first, capped small.
+      const recentActivity = (recentMutations ?? [])
+        .slice(0, 12)
+        .map((mm) => {
+          const verb = mm.action === "add" ? "Added" : mm.action === "remove" ? "Removed" : "Updated";
+          const when = mm.occurred_at ? ` (${String(mm.occurred_at).slice(0, 10)})` : "";
+          return mm.asset_name ? `${verb} ${mm.asset_name}${when}` : null;
+        })
+        .filter(Boolean)
+        .join("; ") || undefined;
+
       const result = await runAgentChat({
         userId,
         message: message ?? "",
@@ -676,6 +689,7 @@ export async function POST(req: NextRequest) {
           .slice(0, 20)
           .reverse(),
         currentAssets: currentAssets as Array<Record<string, unknown>>,
+        recentActivity,
         displayCurrency,
         used,
         profile: profile as Record<string, unknown>,
