@@ -118,17 +118,25 @@ export function pendingStoryTargets(
 
 // ── DB access (best-effort; table-missing tolerant) ──────────────────────────
 
-// Reads the cached rows for the given (date, symbol) pairs. Returns a map of
-// key → story (which may be null for a resolved "no cause" row). A present key
-// means "already looked up"; an absent key means "not yet attempted". Any read
-// error (most importantly, the table not existing pre-migration) yields an empty
-// map, so callers degrade to "no story".
+// Reads the cached rows for the given (date, symbol) pairs. Returns `{ ok, rows }`:
+//
+//   • ok=false means the cache is UNAVAILABLE — the `market_stories` table doesn't
+//     exist yet (before the migration is applied) or a transient DB error. Callers
+//     MUST treat this as "cannot cache", NOT as "empty cache". This distinction is
+//     the whole point: `backfillMarketStories` must never generate a story it can't
+//     persist, or it re-generates the same stories (each an LLM + web-search call)
+//     on every single view forever — an unbounded bill with nothing cached to show
+//     for it. Collapsing "unavailable" into "empty" is exactly the leak that made
+//     this feature expensive before the migration existed.
+//   • ok=true with an empty/partial map means the table exists; a present key means
+//     "already looked up" (story may be null for a resolved "no cause" row) and an
+//     absent key means "not yet attempted" — safe to generate + cache.
 async function readStoryRows(
   pairs: Array<{ date: string; symbol: string }>,
   supabase: SupabaseClient,
-): Promise<Map<string, string | null>> {
-  const out = new Map<string, string | null>();
-  if (pairs.length === 0) return out;
+): Promise<{ ok: boolean; rows: Map<string, string | null> }> {
+  const rows = new Map<string, string | null>();
+  if (pairs.length === 0) return { ok: true, rows };
   try {
     const dates = [...new Set(pairs.map((p) => p.date))];
     const symbols = [...new Set(pairs.map((p) => p.symbol))];
@@ -138,16 +146,16 @@ async function readStoryRows(
       .select("date, symbol, story")
       .in("date", dates)
       .in("symbol", symbols);
-    if (error || !data) return out;
+    if (error || !data) return { ok: false, rows }; // table missing / query error → unavailable
     for (const r of data) {
       const k = storyKey(r.date as string, r.symbol as string);
       // The date×symbol `.in` filter is a cross-product; keep only the exact pairs asked for.
-      if (wanted.has(k)) out.set(k, (r.story as string | null) ?? null);
+      if (wanted.has(k)) rows.set(k, (r.story as string | null) ?? null);
     }
+    return { ok: true, rows };
   } catch {
-    /* table missing / transient — degrade to no cache */
+    return { ok: false, rows }; // table missing / transient — cache unavailable
   }
-  return out;
 }
 
 // Attaches the cached story (when present) to each move, matched by its headline
@@ -158,7 +166,7 @@ export async function attachStories(
   supabase: SupabaseClient = createServerSupabase(),
 ): Promise<DiaryMarketMove[]> {
   if (moves.length === 0) return moves;
-  const rows = await readStoryRows(
+  const { rows } = await readStoryRows(
     moves.map((m) => ({ date: m.date, symbol: m.index_symbol })),
     supabase,
   );
@@ -199,7 +207,12 @@ Why did it move that day?`;
         model: STORY_MODEL,
         max_tokens: 1024,
         system,
-        tools: [{ type: "web_search_20260209", name: "web_search" }],
+        // Cap searches per story: one clause about one symbol on one day needs a
+        // search or two, not an open-ended crawl. Each web search is separately
+        // billed, so without a ceiling a single story call can quietly run up a
+        // large search bill. The result is cached per (date, symbol), so this cost
+        // is paid at most once per event — the cap just bounds that one payment.
+        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
         messages: [{ role: "user", content: user }],
       });
       break;
@@ -255,10 +268,15 @@ export async function backfillMarketStories(
       pctChange: m.pct_change,
     }));
 
-    const rows = await readStoryRows(
+    const { ok, rows } = await readStoryRows(
       targets.map((t) => ({ date: t.date, symbol: t.symbol })),
       supabase,
     );
+    // Cache unavailable (table not applied yet, or a transient DB error): do NOT
+    // generate. A story we can't persist would be re-generated on every view — an
+    // unbounded model + web-search bill with nothing cached. Skip this pass; the
+    // feature lights up automatically once the market_stories migration is applied.
+    if (!ok) return;
     const pending = pendingStoryTargets(targets, new Set(rows.keys()), limit);
     if (pending.length === 0) return;
 
