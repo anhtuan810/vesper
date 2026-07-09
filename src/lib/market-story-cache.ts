@@ -45,6 +45,18 @@ const STORY_MAX_LEN = 180;
 // a few views/cron ticks. Asset-relevant entries are generated first (see below).
 const DEFAULT_BACKFILL_LIMIT = 6;
 
+// Feature flag — OFF by default. The per-entry "why it moved" story calls
+// claude-sonnet-4-6 + web_search once per (date, symbol), so it stays fully
+// dormant unless explicitly enabled. When off, no story is ever generated OR
+// attached — regardless of whether the market_stories table exists — so the
+// feature can neither bill nor render. The auto market entries still show the
+// movement and portfolio impact; only the generated "why" clause is gated here.
+// To re-enable: set env MARKET_STORIES_ENABLED="true" AND apply the
+// market_stories migration (order doesn't matter — the cache is best-effort).
+export function marketStoriesEnabled(): boolean {
+  return process.env.MARKET_STORIES_ENABLED === "true";
+}
+
 export interface StoryTarget {
   date: string;   // YYYY-MM-DD
   symbol: string; // the swing headline symbol (index_symbol)
@@ -166,6 +178,7 @@ export async function attachStories(
   supabase: SupabaseClient = createServerSupabase(),
 ): Promise<DiaryMarketMove[]> {
   if (moves.length === 0) return moves;
+  if (!marketStoriesEnabled()) return moves; // feature off → attach no story
   const { rows } = await readStoryRows(
     moves.map((m) => ({ date: m.date, symbol: m.index_symbol })),
     supabase,
@@ -259,6 +272,7 @@ export async function backfillMarketStories(
   limit: number = DEFAULT_BACKFILL_LIMIT,
 ): Promise<void> {
   try {
+    if (!marketStoriesEnabled()) return; // feature off → never generate
     const supabase = createServerSupabase();
     const targets: StoryTarget[] = moves.map((m) => ({
       date: m.date,
