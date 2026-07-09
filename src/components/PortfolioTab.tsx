@@ -682,6 +682,15 @@ export function PortfolioTab({
     });
   };
 
+  // The rewind (historical) holdings list carries its own expand state, kept
+  // apart from the live list's persisted one so the day's view opens all groups
+  // by default (its "what did I own?" intent) yet each group still toggles on
+  // tap — a collapsed category here is `false`, everything else stays open.
+  const [rewindExpanded, setRewindExpanded] = useState<Record<string, boolean>>({});
+  const isRewindExpanded = (cat: string) => rewindExpanded[cat] !== false;
+  const toggleRewindGroup = (cat: string) =>
+    setRewindExpanded((prev) => ({ ...prev, [cat]: prev[cat] === false }));
+
   return (
     <>
       {/* Hero + chart — constrained so the chart never stretches past a readable aspect ratio.
@@ -859,8 +868,8 @@ export function PortfolioTab({
                   barColor={CATEGORY_COLOR[group.category] ?? "var(--accent)"}
                   barPct={rewindBook.total > 0 ? Math.max((group.total / rewindBook.total) * 100, 2) : 2}
                   total={group.total}
-                  expanded
-                  onToggle={() => {}}
+                  expanded={isRewindExpanded(group.category)}
+                  onToggle={() => toggleRewindGroup(group.category)}
                 >
                   {group.items.map((h) => (
                     <div
