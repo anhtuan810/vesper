@@ -762,17 +762,25 @@ export async function applyPortfolioChanges({
       // model extracted ("BTC", "Bitcoin") would otherwise match neither and throw
       // "couldn't find it to edit" — silently blocking a crypto date-fill.
       const nameLc = name.toLowerCase();
-      const changeSym = typeof change.symbol === "string" && change.symbol.trim()
-        ? resolveSymbol(change.symbol).toLowerCase()
+      // resolveSymbol can return null (unknown ticker), so resolve once and guard
+      // before lowercasing — a raw .toLowerCase() on it fails strict null checks.
+      const resolvedChangeSym = typeof change.symbol === "string" && change.symbol.trim()
+        ? resolveSymbol(change.symbol)
         : null;
+      const changeSym = resolvedChangeSym ? resolvedChangeSym.toLowerCase() : null;
       const existing = currentAssets.find((a) => {
         if (a.name.toLowerCase() === nameLc) return true;
         const aSym = a.symbol ? a.symbol.toLowerCase() : null;
         if (!aSym) return false;
         if (aSym === nameLc || (changeSym && aSym === changeSym)) return true;
         if (a.type === "crypto") {
-          const norm = normalizeCryptoSymbol(changeSym ?? resolveSymbol(name), "crypto").toLowerCase();
-          if (aSym === norm) return true;
+          // Normalize the incoming ticker (change.symbol, else the edit name) to the
+          // stored venue form ("BTC" → "BTC-USD"). Skip if neither resolves.
+          const cryptoBase = resolvedChangeSym ?? resolveSymbol(name);
+          if (cryptoBase) {
+            const norm = normalizeCryptoSymbol(cryptoBase, "crypto").toLowerCase();
+            if (aSym === norm) return true;
+          }
         }
         return false;
       });
