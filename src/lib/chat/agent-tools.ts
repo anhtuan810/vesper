@@ -191,6 +191,11 @@ export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
     description: "Apply a portfolio change to the database. Every change MUST carry a non-empty `name` (a rowless name is dropped). ONLY call after the user has explicitly confirmed a prior propose_mutation — except a direct tradeable add / screenshot import, which commits without a proposal.",
     input_schema: { type: "object", properties: { changes: { type: "array", items: CHANGE_ITEM_SCHEMA }, contextNote: { type: "string" } }, required: ["changes"] },
   },
+  {
+    name: "set_import_acquisition_date",
+    description: "After a screenshot/file/CSV import, apply the ONE batch acquisition date the user just gave to EVERY imported position that still has no date. Call this exactly once with the user's answer verbatim (a year, a month-year, a full date, a relative phrase like \"2 years ago\", or \"just track from now\"). It stamps all still-undated holdings in a single deterministic step — do NOT enumerate positions or issue per-position edits yourself. It returns how many were dated; narrate from that.",
+    input_schema: { type: "object", properties: { date: { type: "string", description: "The user's acquisition-date answer, verbatim." } }, required: ["date"] },
+  },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -289,6 +294,8 @@ export async function executeAgentTool(name: string, input: Record<string, unkno
       return proposeMutationTool(input, ctx);
     case "commit_mutation":
       return commitMutationTool(input, ctx);
+    case "set_import_acquisition_date":
+      return setImportAcquisitionDateTool(input, ctx);
 
     default:
       return { forModel: { error: `Unknown tool: ${name}` } };
@@ -738,14 +745,97 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   // not retry); `couldNotRecord` carries the specific reason per failed row so
   // the model states WHY instead of an opaque "try again". f.reason is already a
   // user-facing sentence for the common ValueMode cases.
+  // Batch import still needs a date: a multi-row add committed with no acquisition
+  // date leaves those positions dated today until the user gives the batch date.
+  // Surface an explicit, in-context signal (the model's own tool memory is stripped
+  // from later turns) so on the date reply it calls set_import_acquisition_date
+  // instead of hallucinating that the positions are "already dated". Gated at ≥2 so
+  // a single tracked-from-now add doesn't get re-prompted.
+  const undatedImportCount = changes.filter((c) => c.action === "add" && !c.buy_date).length;
+
   return {
     forModel: {
       committed: changed,
       ...(duplicateWarnings.length ? { alreadyInPortfolio: duplicateWarnings } : {}),
       ...(failures.length ? { couldNotRecord: failures.map((f) => (f.reason ? `${f.name} — ${f.reason}` : f.name)) } : {}),
       ...(nothingLanded && hasAdds ? { note: "Nothing was written and there were no per-row errors — the change rows were malformed (each add needs a non-empty name and a symbol). Rebuild the rows with an explicit name on each and commit once more." } : {}),
+      ...(changed && undatedImportCount >= 2 ? { awaitingAcquisitionDate: undatedImportCount, acquisitionDateHint: "These positions have no acquisition date yet and are currently dated today. Ask the user once for the batch's acquisition date, then call set_import_acquisition_date with their answer." } : {}),
       ...(fxWarnings.length ? { notes: fxWarnings } : {}),
     },
     commit: { changed, mutationMetas, analyticsEvent: hasAdds && portfolioWasEmpty ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
+  };
+}
+
+// ── set_import_acquisition_date (deterministic batch date-fill) ──────────────────
+// The import flow commits positions FIRST (dated today, since the acquisition date
+// isn't known yet), then asks the user for the batch date. Applying that date used
+// to rely on the model issuing a correct per-position EDIT for every row — a
+// skippable, error-prone second write that (per the audit) silently lost the date
+// whenever the model narrated completion without a tool call, echoed units on the
+// edit, re-added instead of editing, or hit a crypto-name mismatch. This tool
+// replaces that with ONE deterministic server-side operation: resolve the phrase
+// once, stamp every still-undated holding's buy_date, and back-stamp each original
+// "add" mutation's occurred_at (what the Journal and net-worth history key off), so
+// the whole class of failures disappears. It is idempotent (targets only undated
+// rows) and needs no migration.
+async function setImportAcquisitionDateTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
+  const raw = str(input.date);
+  if (!raw) {
+    return { forModel: { needsClarification: true, message: "What acquisition date should I use? A rough month or year is fine, or 'just track from now'." } };
+  }
+
+  // Three-state parse: an ISO date to apply, null for track-from-now (leave undated
+  // — that IS the recorded choice), or undefined for a phrase we couldn't read.
+  const parsed = parseAcquisitionMonth(raw);
+  if (parsed === undefined) {
+    return { forModel: { needsClarification: true, message: "I couldn't read that as a date — a year, a month and year, a phrase like '2 years ago', or 'just track from now' all work." } };
+  }
+  if (parsed === null) {
+    return { forModel: { trackFromNow: true, dated: 0 } };
+  }
+
+  // Every holding that still has no acquisition date — in the import flow these are
+  // exactly the just-committed rows. Bulk-update in two queries (all share the same
+  // resolved date), not a per-row fan-out.
+  const { data: undated, error: selErr } = await ctx.supabase
+    .from("assets")
+    .select("id, symbol, type")
+    .eq("user_id", ctx.userId)
+    .is("removed_at", null)
+    .is("buy_date", null);
+  if (selErr) {
+    Sentry.captureException(selErr, { tags: { tool: "set_import_acquisition_date" } });
+    return { forModel: { error: "Couldn't apply the date just now — try again in a moment." } };
+  }
+  const rows = undated ?? [];
+  if (rows.length === 0) {
+    return { forModel: { dated: 0, note: "Every position already has an acquisition date." } };
+  }
+  const ids = rows.map((r) => String(r.id));
+
+  await ctx.supabase.from("assets").update({ buy_date: parsed }).eq("user_id", ctx.userId).in("id", ids);
+  // Back-stamp each position's original acquisition ("add") mutation so the Journal
+  // entry and the net-worth history read the real acquisition date, not the import
+  // day. Returns the updated rows so the market-context background job can refresh
+  // them at the corrected date.
+  const { data: updatedMuts } = await ctx.supabase
+    .from("mutations")
+    .update({ occurred_at: parsed })
+    .eq("user_id", ctx.userId)
+    .eq("action", "add")
+    .in("asset_id", ids)
+    .select("id, symbol, asset_type");
+  const mutationMetas: MutationMeta[] = (updatedMuts ?? []).map((mm) => ({
+    id: String(mm.id),
+    symbol: (mm.symbol as string | null) ?? null,
+    occurredAt: parsed,
+    assetType: (mm.asset_type as string | null) ?? null,
+  }));
+
+  return {
+    forModel: { dated: rows.length, date: parsed },
+    // rebuildFrom = the resolved date → the agent loop's backfill redraws the
+    // net-worth history from acquisition forward. Not adds, so no first-asset metric.
+    commit: { changed: true, mutationMetas, analyticsEvent: null, needsBackfill: true, hasAdds: false, rebuildFrom: parsed },
   };
 }

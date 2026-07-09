@@ -18,19 +18,27 @@ export interface BasisEditChange {
 export interface BasisEditExisting {
   type: string;
   symbol?: string | null;
+  units?: number | null;
 }
 
 /**
  * True when an edit is a pure cost-basis/date update on a held tradeable: it
- * carries a buy_date and/or buy_price but no unit change and no value_delta. Such
+ * carries a buy_date and/or buy_price but no unit CHANGE and no value_delta. Such
  * an edit must not move the holding's size or current value.
+ *
+ * A units value that merely RESTATES the current holding's count (e.g. an
+ * acquisition-date fill that echoes the size it read back) is NOT a unit change,
+ * so it must still be treated as cost-basis-only — otherwise the buy_date it
+ * carries is silently dropped (the units branch and the !editChangesUnits guards
+ * downstream would misread the same-count echo as a "buy more"). Only a count
+ * that actually differs from the existing holding is a real re-acquisition.
  */
 export function isCostBasisOnlyEdit(change: BasisEditChange, existing: BasisEditExisting): boolean {
   const isTradeable = TRADEABLE_TYPES.has(existing.type);
   const hasValueDelta = typeof change.value_delta === "number" && change.value_delta !== 0;
-  const editHasUnits = typeof change.units === "number";
+  const editChangesUnits = typeof change.units === "number" && change.units !== (existing.units ?? null);
   const hasBasis = change.buy_date != null || (typeof change.buy_price === "number" && change.buy_price > 0);
-  return isTradeable && !!existing.symbol && !hasValueDelta && !editHasUnits && hasBasis;
+  return isTradeable && !!existing.symbol && !hasValueDelta && !editChangesUnits && hasBasis;
 }
 
 /**

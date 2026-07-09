@@ -29,11 +29,15 @@ const PART_OF_YEAR: Record<string, number> = {
   early: 1,
   beginning: 1,
   start: 1,
+  spring: 3,
   mid: 6,
   middle: 6,
   summer: 7,
+  fall: 10,
+  autumn: 10,
   late: 10,
   end: 12,
+  winter: 12,
 };
 
 const TRACK_FROM_NOW = /\b(track(ing)?\s+from\s+(now|today)|just\s+track\s+from\s+now|no\s+date|skip)\b/i;
@@ -111,12 +115,19 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
     if (month) return notFuture(`${year}-${pad2(month)}-01`);
   }
 
-  // "early 2015" / "late 2015" / "mid-2015"
-  const partYear = lower.match(/\b(early|beginning|start|mid|middle|summer|late|end)(?:\s+of)?[\s-]+(\d{4})\b/);
+  // "early 2015" / "late 2015" / "mid-2015" / "spring 2015" / "autumn 2015"
+  const partYear = lower.match(/\b(early|beginning|start|spring|mid|middle|summer|fall|autumn|late|end|winter)(?:\s+of)?[\s-]+(\d{4})\b/);
   if (partYear) {
     const month = PART_OF_YEAR[partYear[1]];
     const year = Number(partYear[2]);
     if (month) return notFuture(`${year}-${pad2(month)}-01`);
+  }
+
+  // "Q3 2021" / "Q1-2020" — a fiscal-style quarter, mapped to its first month.
+  const quarter = lower.match(/\bq([1-4])[\s-]+(\d{4})\b/);
+  if (quarter) {
+    const qMonth = (Number(quarter[1]) - 1) * 3 + 1; // Q1→1, Q2→4, Q3→7, Q4→10
+    return notFuture(`${quarter[2]}-${pad2(qMonth)}-01`);
   }
 
   // Bare year — "2015", "around 2015"
@@ -169,18 +180,28 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
     return notFuture(`${year}-${pad2(tm + 1)}-01`);
   }
 
-  // "<n> <unit> ago" — n is a digit or a small word quantifier ("a", "couple",
-  // "few"); unit is day/week/month/year (also accepts "…back"/"…earlier").
-  const WORD_QTY: Record<string, number> = { a: 1, an: 1, one: 1, couple: 2, few: 3 };
-  const rel = lower.match(/\b(\d+|a|an|one|couple|few)\s+(?:of\s+)?(day|week|month|year)s?\s+(?:ago|back|earlier)\b/);
+  // "<n> <unit> ago" — n is a digit or a word quantifier ("a", "two", "couple",
+  // "several"); unit is day/week/month/year, including the yr/mo/wk abbreviations,
+  // and accepts "…back"/"…earlier" as well as "…ago". Spelled-out numerals and
+  // abbreviations are included because a natural answer like "two years ago" or
+  // "6 mo ago" otherwise fell through to undefined and the date was silently
+  // dropped (position left tracked from today) — the exact reported class of bug.
+  const WORD_QTY: Record<string, number> = {
+    a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+    eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+    couple: 2, few: 3, several: 4,
+  };
+  const rel = lower.match(
+    /\b(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|couple|few|several)\s+(?:of\s+)?(day|week|wk|month|mo|year|yr)s?\s+(?:ago|back|earlier)\b/
+  );
   if (rel) {
     const n = /^\d+$/.test(rel[1]) ? parseInt(rel[1], 10) : WORD_QTY[rel[1]];
     if (n && n > 0) {
       switch (rel[2]) {
         case "day": return notFuture(daysAgo(n));
-        case "week": return notFuture(daysAgo(n * 7));
-        case "month": return notFuture(monthsAgo(n));
-        case "year": return notFuture(monthsAgo(n * 12));
+        case "week": case "wk": return notFuture(daysAgo(n * 7));
+        case "month": case "mo": return notFuture(monthsAgo(n));
+        case "year": case "yr": return notFuture(monthsAgo(n * 12));
       }
     }
   }

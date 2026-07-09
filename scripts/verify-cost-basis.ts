@@ -48,5 +48,23 @@ console.log("NOT a basis edit (must not trigger the basis path):");
   check("non-tradeable is not basis-only", !isCostBasisOnlyEdit(cash, { type: "cash", symbol: null }));
 }
 
+console.log("Date-fill that echoes the SAME unit count is still basis-only (the import bug):");
+{
+  // The reported failure: the import date-fill edit re-states each holding's count
+  // (same number, new buy_date). Presence of units must NOT be read as a re-
+  // acquisition — else the buy_date is silently dropped and the position stays
+  // dated today. A count equal to the holding's current units is not a change.
+  const HELD_100 = { type: "crypto", symbol: "BTC-USD", units: 100 };
+  const sameCount = { action: "edit", name: "Bitcoin", units: 100, buy_date: "2023-07-01" };
+  check("same-count date-fill IS basis-only", isCostBasisOnlyEdit(sameCount, HELD_100));
+  applyCostBasisOnly(sameCount, null);
+  check("buy_date preserved through normalization", sameCount.buy_date === "2023-07-01", String(sameCount.buy_date));
+  check("echoed units stripped (not a re-acquisition)", !("units" in sameCount));
+
+  // A count that actually differs IS a real buy-more/trim — not basis-only.
+  const changedCount = { action: "edit", name: "Bitcoin", units: 130, buy_date: "2023-07-01" };
+  check("changed-count edit is NOT basis-only", !isCostBasisOnlyEdit(changedCount, HELD_100));
+}
+
 console.log(failures === 0 ? "\nAll cost-basis checks passed." : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
