@@ -763,7 +763,7 @@ export async function applyPortfolioChanges({
       // "couldn't find it to edit" — silently blocking a crypto date-fill.
       const nameLc = name.toLowerCase();
       const changeSym = typeof change.symbol === "string" && change.symbol.trim()
-        ? resolveSymbol(change.symbol).toLowerCase()
+        ? (resolveSymbol(change.symbol) ?? change.symbol).toLowerCase()
         : null;
       const existing = currentAssets.find((a) => {
         if (a.name.toLowerCase() === nameLc) return true;
@@ -771,7 +771,7 @@ export async function applyPortfolioChanges({
         if (!aSym) return false;
         if (aSym === nameLc || (changeSym && aSym === changeSym)) return true;
         if (a.type === "crypto") {
-          const norm = normalizeCryptoSymbol(changeSym ?? resolveSymbol(name), "crypto").toLowerCase();
+          const norm = normalizeCryptoSymbol(changeSym ?? resolveSymbol(name) ?? name, "crypto").toLowerCase();
           if (aSym === norm) return true;
         }
         return false;
