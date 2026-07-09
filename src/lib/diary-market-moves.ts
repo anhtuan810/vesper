@@ -52,6 +52,12 @@ export interface DiaryMarketMove {
   // among the largest by |impact| in its month and above the floor. Only used by
   // index swings — asset swings are always full rows, so they leave this false.
   expanded?: boolean;
+  // "The story behind" the swing: one short, search-grounded sentence saying WHY
+  // the headline (index_symbol) moved that day — global reference data, cached
+  // per (date, symbol) in market_stories and attached at read time by
+  // attachStories(). Absent when not yet generated or when no confident cause was
+  // found; the full-card entries render it as a clause, compact rows ignore it.
+  story?: string | null;
 }
 
 interface MoveRow {
