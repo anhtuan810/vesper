@@ -9,8 +9,12 @@ export function isAgentChatEnabled(): boolean {
   return true;
 }
 
-// Max Claude<->tool round-trips per user turn, to bound latency.
-export const AGENT_MAX_TOOL_ROUNDTRIPS = 5;
+// Max Claude<->tool round-trips per user turn, to bound latency. Raised from 5 to
+// 8 so a genuinely multi-step question (read holdings → resolve a symbol → run a
+// scenario → relate it to net worth) can finish its reasoning instead of being cut
+// off mid-chain. A simple turn still stops as soon as the model emits no tool call,
+// so the ceiling costs nothing on ordinary replies.
+export const AGENT_MAX_TOOL_ROUNDTRIPS = 8;
 
 // The single source of truth for the chat model (tag flow, agent loop, and the
 // scenario narration on chat replies), so it can't drift between paths and is a

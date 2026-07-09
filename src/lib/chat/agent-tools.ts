@@ -126,7 +126,7 @@ const CHANGE_ITEM_SCHEMA = {
 // ── Tool schemas (given to Claude) ─────────────────────────────────────────────
 export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
   { name: "get_net_worth", description: "The user's current net worth and top-line vitals. Use before relating any figure to their net worth.", input_schema: { type: "object", properties: {} } },
-  { name: "get_holdings", description: "List the user's current holdings (name, category, value).", input_schema: { type: "object", properties: {} } },
+  { name: "get_holdings", description: "List the user's current holdings with per-position detail: name, type, value, ticker symbol, units held, acquisition date, cost basis, and gain (amount and %). Use it to answer how much of something they hold, when they bought it, what they paid, and how a position has performed.", input_schema: { type: "object", properties: {} } },
   { name: "get_vitals", description: "Allocation by category, single-name concentration, and mortgage LTV.", input_schema: { type: "object", properties: {} } },
   {
     name: "present_scenario",
@@ -254,8 +254,52 @@ export async function executeAgentTool(name: string, input: Record<string, unkno
     }
 
     case "get_holdings": {
-      const holdings = ctx.currentAssets.map((a) => ({ name: String(a.name), type: String(a.type), value: formatMoney(Number(a.value), String(a.currency || "USD"), ctx.displayCurrency) }));
-      return { forModel: { holdings, count: holdings.length }, figures: holdings.map((h) => h.value) };
+      // Full per-position detail, not just name/type/value: the model was
+      // previously handed only three fields, so it couldn't answer "how many
+      // shares", "when did I buy", "what did I pay", or "how has it done" — even
+      // though every one of those is on the loaded asset row. Surface units,
+      // ticker, acquisition date, cost basis and gain here so it actually knows
+      // the portfolio it's talking about.
+      const disp = ctx.displayCurrency;
+      const figures: string[] = [];
+      const holdings = ctx.currentAssets.map((a) => {
+        const cur = String(a.currency || "USD");
+        const valueNative = Number(a.value) || 0;
+        const units = typeof a.units === "number" && a.units > 0 ? a.units : null;
+        const buyPrice = typeof a.buy_price === "number" && a.buy_price > 0 ? a.buy_price : null;
+        // Cost basis = buy_price × units (native), only for a tradeable lot where
+        // both are known. Gain is current stored value minus that basis.
+        const costNative = buyPrice != null && units != null ? buyPrice * units : null;
+        const gainNative = costNative != null ? valueNative - costNative : null;
+        const gainPct = costNative != null && costNative > 0 ? (gainNative! / costNative) * 100 : null;
+
+        const valueStr = formatMoney(valueNative, cur, disp);
+        figures.push(valueStr);
+        const h: Record<string, unknown> = { name: String(a.name), type: String(a.type), value: valueStr };
+        if (a.symbol) h.symbol = String(a.symbol);
+        if (units != null) h.units = fmtUnits(units);
+        if (a.buy_date) h.acquired = String(a.buy_date).slice(0, 10);
+        if (costNative != null) {
+          const costStr = formatMoney(costNative, cur, disp);
+          h.costBasis = costStr;
+          figures.push(costStr);
+        }
+        if (gainNative != null) {
+          // Push the UNSIGNED amount to the allowlist — the narration guardrail
+          // extracts "€1,234" from the model's prose whether it wrote "+€1,234",
+          // "up €1,234" or "€1,234", so the signed display form would never match.
+          const gainAbs = formatMoney(Math.abs(gainNative), cur, disp);
+          h.gain = `${gainNative >= 0 ? "+" : "−"}${gainAbs}`;
+          figures.push(gainAbs);
+        }
+        if (gainPct != null) {
+          const gp = pct(gainPct);
+          h.gainPct = gp;
+          figures.push(gp);
+        }
+        return h;
+      });
+      return { forModel: { holdings, count: holdings.length }, figures };
     }
 
     case "get_vitals": {
