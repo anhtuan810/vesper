@@ -184,7 +184,9 @@ Anchors the per-visitor demo trial to the **browser** so re-entering the demo (e
 ## Cron Jobs
 
 Configured in `vercel.json`:
-- Daily at `0 0 * * *` (midnight UTC) → `/api/cron/snapshot`
+- Daily at `0 0 * * *` (midnight UTC) → `/api/cron/snapshot` — net-worth snapshots + market-swing rebuild. Pure compute/DB (Yahoo/Frankfurter via the persistent caches); **no model calls**.
+- Daily at `0 7 * * *` (07:00 UTC) → `/api/cron/market-highlights` — per-user AI highlights: Haiku portfolio-insight detectors (+ a Haiku free-form fallback), and one `claude-sonnet-4-6` + `web_search` market-highlights call. Only runs for users holding ≥ €1000 of tradeables. **Cost-hardened (Jul 2026):** `web_search` is capped at `max_uses: 5` (in `fetchMarketHighlights`), and the paid Sonnet call is **skipped when the user already received a market highlight in the last ~12h** — so a same-day re-run/retry can't re-bill the whole user base, while the normal 24h daily refresh is unaffected (24h ≫ 12h). The per-title dedup on insert guards duplicate *rows*, not duplicate *spend*; this pre-call recency gate is what guards spend.
+- Daily at `0 3 * * *` (03:00 UTC) → `/api/cron/reap-demo` — deletes expired per-visitor demo accounts past TTL + grace. No-op unless `DEMO_ENABLED=true`; never enumerates `auth.users`.
 - Authenticated via `CRON_SECRET` env var. Route checks `Authorization: Bearer ${CRON_SECRET}` and returns 401 otherwise.
 
 ## User Preferences Endpoint
