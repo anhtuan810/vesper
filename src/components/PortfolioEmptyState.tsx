@@ -8,6 +8,8 @@ import {
   QuoteIcon, FileSpreadsheetIcon, CameraIcon,
 } from "@/components/icons/EmptyStateIcons";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
+import { useUser } from "@/lib/hooks";
+import { AddAssetSheet } from "@/components/assets/AddAssetSheet";
 
 const pillStyle: CSSProperties = {
   display: "flex", alignItems: "center", gap: "var(--space-1)",
@@ -75,8 +77,18 @@ function ExampleRow({
 
 export function PortfolioEmptyState() {
   const router = useRouter();
+  const { onboardingCompletedAt } = useUser();
+  const [addOpen, setAddOpen] = useState(false);
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
+
+  // A user who has finished onboarding (flag set) but sits at zero assets opens the
+  // in-app collector inline. A visitor peeking on the empty-exit pass (flag still
+  // null) returns to /onboarding to continue the guided flow, per the gate.
+  const handleAddFirst = () => {
+    if (typeof onboardingCompletedAt === "string") setAddOpen(true);
+    else router.push("/onboarding");
+  };
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -237,7 +249,7 @@ export function PortfolioEmptyState() {
           to /onboarding to add their first asset step by step. */}
       <button
         className="es-add-first"
-        onClick={() => router.push("/onboarding")}
+        onClick={handleAddFirst}
         style={{
           marginTop: 18,
           width: "100%",
@@ -438,6 +450,8 @@ export function PortfolioEmptyState() {
           e.target.value = "";
         }}
       />
+
+      <AddAssetSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
   );
 }

@@ -25,6 +25,12 @@ interface UserContextValue {
   // Optimistically record the acknowledgment locally once the POST succeeds, so
   // the gate dismisses immediately without a refetch.
   markAiConsent: (at?: string) => void;
+  // The gated-onboarding completion timestamp. `undefined` while loading (or when
+  // the column doesn't exist yet, pre-migration), `null` once loaded and not yet
+  // completed, or an ISO string once completed. Used to branch the empty-state
+  // "add first asset" affordance: an already-onboarded user opens the in-app
+  // collector; a not-yet-onboarded pass holder returns to /onboarding.
+  onboardingCompletedAt: string | null | undefined;
 }
 
 const UserContext = createContext<UserContextValue>({
@@ -34,6 +40,7 @@ const UserContext = createContext<UserContextValue>({
   beginSignOut: () => {},
   aiConsentAt: undefined,
   markAiConsent: () => {},
+  onboardingCompletedAt: undefined,
 });
 
 export function useUserContext(): UserContextValue {
@@ -45,6 +52,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
   const [aiConsentAt, setAiConsentAt] = useState<string | null | undefined>(undefined);
+  const [onboardingCompletedAt, setOnboardingCompletedAt] = useState<string | null | undefined>(undefined);
   const beginSignOut = useCallback(() => setSigningOut(true), []);
 
   // Last authenticated user id we've seen on this client. `undefined` means "not
@@ -63,6 +71,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
         .then(({ data }) => setAiConsentAt(data?.ai_consent_at ?? null));
     };
 
+    // Separate query on purpose: before the onboarding migration is applied the
+    // column doesn't exist and this select errors — kept apart so it can never
+    // break the ai_consent read above. A read error degrades to `undefined`
+    // (unknown), not `null`, so we don't wrongly treat a user as un-onboarded.
+    const loadOnboarding = (client: SupabaseClient, userId: string) => {
+      client
+        .from("users")
+        .select("onboarding_completed_at")
+        .eq("id", userId)
+        .maybeSingle()
+        .then(({ data, error }) =>
+          setOnboardingCompletedAt(
+            error
+              ? undefined
+              : (data as { onboarding_completed_at?: string | null } | null)?.onboarding_completed_at ?? null,
+          ),
+        );
+    };
+
     // Initial resolution from the local session (fast, offline-friendly; no
     // purge on first load).
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,7 +97,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUser(user);
       setLoading(false);
       lastSeenUserId.current = user?.id ?? null;
-      if (user) loadConsent(supabase, user.id);
+      if (user) {
+        loadConsent(supabase, user.id);
+        loadOnboarding(supabase, user.id);
+      }
 
       // Validate the local JWT against the server exactly once per load. The
       // session above comes from storage, so a stale token (e.g. the user was
@@ -104,6 +134,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         bumpApiCacheGeneration();
         resetPortfolioRevision();
         setAiConsentAt(undefined);
+        setOnboardingCompletedAt(undefined);
       }
 
       lastSeenUserId.current = newId;
@@ -117,8 +148,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // Only (re)load the acknowledgment flag on an actual switch — not on a
       // routine token refresh, which would needlessly refetch and could briefly
       // re-show the AI gate if it raced a just-submitted acknowledgment.
-      if (switched && session?.user) loadConsent(supabase, session.user.id);
-      else if (!session?.user) setAiConsentAt(undefined);
+      if (switched && session?.user) {
+        loadConsent(supabase, session.user.id);
+        loadOnboarding(supabase, session.user.id);
+      } else if (!session?.user) {
+        setAiConsentAt(undefined);
+        setOnboardingCompletedAt(undefined);
+      }
     });
 
     return () => sub.subscription.unsubscribe();
@@ -140,7 +176,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, loading, signingOut, beginSignOut, aiConsentAt, markAiConsent }}>
+    <UserContext.Provider value={{ user, loading, signingOut, beginSignOut, aiConsentAt, markAiConsent, onboardingCompletedAt }}>
       {children}
     </UserContext.Provider>
   );

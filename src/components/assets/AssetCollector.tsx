@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import type { PortfolioChange } from "@/lib/apply-changes";
 import type { DisplayCurrency } from "@/lib/money";
+
+// Asset types that can be imported from a screenshot / statement (brokerage, crypto,
+// cash apps). Real estate is collected by hand.
+const SCREENSHOT_TYPES = new Set<CollectorAssetType>(["brokerage", "crypto"]);
 
 // Reusable, scripted per-asset collector: pick type -> collect that type's fields
 // one at a time -> editable confirm card -> emit a confirmed PortfolioChange for the
@@ -175,7 +180,10 @@ export interface AssetCollectorProps {
 
 type Phase =
   | { name: "pickType" }
+  | { name: "entry"; type: CollectorAssetType }
   | { name: "collect"; type: CollectorAssetType; index: number }
+  | { name: "upload"; type: CollectorAssetType }
+  | { name: "reviewParsed"; type: CollectorAssetType }
   | { name: "confirm"; type: CollectorAssetType };
 
 export function AssetCollector({ displayCurrency, onConfirm, onCancel, onStep }: AssetCollectorProps) {
@@ -184,13 +192,72 @@ export function AssetCollector({ displayCurrency, onConfirm, onCancel, onStep }:
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [parsed, setParsed] = useState<PortfolioChange[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function pickType(type: CollectorAssetType) {
     onStep?.("type_chosen", { asset_type: type });
     setDraft({});
     setError(null);
     setInput("");
-    setPhase({ name: "collect", type, index: 0 });
+    // Brokerage/crypto can be typed or imported from a screenshot; the rest go
+    // straight to the scripted fields.
+    setPhase(SCREENSHOT_TYPES.has(type) ? { name: "entry", type } : { name: "collect", type, index: 0 });
+  }
+
+  // Read the chosen files as base64 and extract holdings via the vision endpoint.
+  async function handleFiles(type: CollectorAssetType, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    onStep?.("screenshot_uploaded", { asset_type: type, count: files.length });
+    try {
+      const images: Array<{ base64: string; mediaType: string }> = [];
+      const pdfs: Array<{ base64: string }> = [];
+      for (const file of Array.from(files)) {
+        const base64 = await readAsBase64(file);
+        if (file.type === "application/pdf") pdfs.push({ base64 });
+        else images.push({ base64, mediaType: file.type || "image/jpeg" });
+      }
+      const res = await apiFetch("/api/assets/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images, pdfs }),
+        timeoutMs: 60000,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body?.error ?? "Couldn't read that — try a clearer screenshot, or type it instead.");
+        return;
+      }
+      const rows: PortfolioChange[] = Array.isArray(body?.changes) ? body.changes : [];
+      if (rows.length === 0) {
+        setError("I couldn't find any holdings in that. Try a clearer screenshot, or type it instead.");
+        return;
+      }
+      setParsed(rows);
+      setPhase({ name: "reviewParsed", type });
+    } catch {
+      setError("Couldn't read that — try a clearer screenshot, or type it instead.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function confirmParsed(type: CollectorAssetType) {
+    if (parsed.length === 0) return;
+    setSaving(true);
+    setError(null);
+    const res = await onConfirm(parsed);
+    setSaving(false);
+    if (res.ok) {
+      onStep?.("confirmed", { asset_type: type, count: parsed.length });
+      setParsed([]);
+      setPhase({ name: "pickType" });
+    } else {
+      setError(res.error ?? "Something went wrong. Please try again.");
+    }
   }
 
   // Abandon the in-progress asset (nothing was persisted — an asset is written only
@@ -202,6 +269,7 @@ export function AssetCollector({ displayCurrency, onConfirm, onCancel, onStep }:
     setDraft({});
     setInput("");
     setError(null);
+    setParsed([]);
     setPhase({ name: "pickType" });
     onCancel?.();
   }
@@ -288,6 +356,99 @@ export function AssetCollector({ displayCurrency, onConfirm, onCancel, onStep }:
               {TYPE_META[t].label}
             </button>
           ))}
+        </div>
+        <CollectorStyles />
+      </div>
+    );
+  }
+
+  if (phase.name === "entry") {
+    return (
+      <div className="oc-card">
+        <Bubble>Type it in, or upload a screenshot and I&apos;ll read the holdings.</Bubble>
+        <div className="oc-chips">
+          <button className="oc-chip" onClick={() => setPhase({ name: "collect", type: phase.type, index: 0 })}>
+            ✏️ Type it in
+          </button>
+          <button className="oc-chip" onClick={() => setPhase({ name: "upload", type: phase.type })}>
+            📷 Upload screenshot(s)
+          </button>
+        </div>
+        <button className="oc-link" onClick={cancelAsset}>Cancel</button>
+        <CollectorStyles />
+      </div>
+    );
+  }
+
+  if (phase.name === "upload") {
+    return (
+      <div className="oc-card">
+        <Bubble>
+          {uploading
+            ? "Reading your screenshot…"
+            : "Upload one or more screenshots of your positions (broker, exchange, or bank app). Several screenshots are fine — I'll combine them."}
+        </Bubble>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => {
+            void handleFiles(phase.type, e.target.files);
+            e.target.value = "";
+          }}
+        />
+        <div className="oc-actions">
+          <button className="oc-btn oc-btn-primary" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+            {uploading ? "Reading…" : "Choose screenshot(s)"}
+          </button>
+          <button className="oc-link" disabled={uploading} onClick={() => setPhase({ name: "collect", type: phase.type, index: 0 })}>
+            Type it instead
+          </button>
+        </div>
+        {error && <div className="oc-error">{error}</div>}
+        <button className="oc-link" onClick={cancelAsset}>Cancel</button>
+        <CollectorStyles />
+      </div>
+    );
+  }
+
+  if (phase.name === "reviewParsed") {
+    return (
+      <div className="oc-card">
+        <Bubble>
+          I found {parsed.length} {parsed.length === 1 ? "holding" : "holdings"}. Remove any that look wrong, then save.
+        </Bubble>
+        <div className="oc-confirm">
+          <div className="oc-confirm-rows">
+            {parsed.map((c, i) => (
+              <div key={`${c.symbol ?? c.name}-${i}`} className="oc-confirm-row" style={{ cursor: "default" }}>
+                <span className="oc-confirm-value" style={{ fontWeight: 500 }}>
+                  {TYPE_META[phase.type].emoji} {summarizeChange(c, displayCurrency)}
+                </span>
+                <button
+                  className="oc-link"
+                  style={{ margin: 0 }}
+                  onClick={() => setParsed((prev) => prev.filter((_, j) => j !== i))}
+                  aria-label={`Remove ${c.name}`}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        {error && <div className="oc-error">{error}</div>}
+        <div className="oc-actions">
+          <button
+            className="oc-btn oc-btn-primary"
+            disabled={saving || parsed.length === 0}
+            onClick={() => confirmParsed(phase.type)}
+          >
+            {saving ? "Saving…" : `Save ${parsed.length} ${parsed.length === 1 ? "holding" : "holdings"}`}
+          </button>
+          <button className="oc-link" disabled={saving} onClick={cancelAsset}>Discard</button>
         </div>
         <CollectorStyles />
       </div>
@@ -404,6 +565,20 @@ export function AssetCollector({ displayCurrency, onConfirm, onCancel, onStep }:
       <CollectorStyles />
     </div>
   );
+}
+
+// Read a File as raw base64 (no data: prefix), for the vision-parse payload.
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function Bubble({ children }: { children: React.ReactNode }) {
