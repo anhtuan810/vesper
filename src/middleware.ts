@@ -199,9 +199,11 @@ export async function middleware(request: NextRequest) {
       // status 'unknown' -> fail open (fall through)
     }
 
-    // A finished user never sees /onboarding again — even if they later sell
-    // everything and sit at zero assets.
-    if (completed && onOnboarding) {
+    // A finished user is never AUTO-sent into onboarding — but may re-enter it on
+    // purpose (the empty-state "Add your first asset" button links with ?add=1) to
+    // add assets again. Without that explicit intent, bounce them to the dashboard,
+    // so they can't accidentally land back in the guided flow.
+    if (completed && onOnboarding && request.nextUrl.searchParams.get("add") !== "1") {
       const url = request.nextUrl.clone();
       url.pathname = "/";
       url.search = "";
