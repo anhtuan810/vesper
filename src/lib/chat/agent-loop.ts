@@ -126,6 +126,25 @@ function textFrom(content: Anthropic.Messages.ContentBlock[]): string {
   return content.filter((b) => b.type === "text").map((b) => (b.type === "text" ? b.text : "")).join("").trim();
 }
 
+// A turn can carry more than one commit-bearing tool call (a split import, or a
+// commit followed by set_import_acquisition_date). Merge their outcomes instead
+// of keeping only the last: a trailing all-duplicates batch (`changed: false`)
+// must not erase the successful batch's snapshot/backfill/market-context work.
+function mergeCommits(a: CommitOutcome | null, b: CommitOutcome): CommitOutcome {
+  if (!a) return b;
+  return {
+    changed: a.changed || b.changed,
+    mutationMetas: [...a.mutationMetas, ...b.mutationMetas],
+    analyticsEvent: a.analyticsEvent ?? b.analyticsEvent,
+    needsBackfill: a.needsBackfill || b.needsBackfill,
+    hasAdds: a.hasAdds || b.hasAdds,
+    rebuildFrom:
+      a.rebuildFrom == null ? b.rebuildFrom
+      : b.rebuildFrom == null ? a.rebuildFrom
+      : a.rebuildFrom < b.rebuildFrom ? a.rebuildFrom : b.rebuildFrom,
+  };
+}
+
 export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResult> {
   const supabase = createServerSupabase();
   const usdRates = await getUsdRates();
@@ -230,7 +249,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       if (outcome.figures) figures.push(...outcome.figures);
       if (outcome.card) card = outcome.card;
       if (outcome.proposal) chips = outcome.proposal.chips;
-      if (outcome.commit) commit = outcome.commit;
+      if (outcome.commit) commit = mergeCommits(commit, outcome.commit);
       toolResults.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(outcome.forModel) });
     }
     messages.push({ role: "user", content: toolResults });
@@ -306,12 +325,15 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   }
 
   // Persist the turn. tool_result stores the card so it rehydrates on reload.
-  await supabase.from("messages").insert(
+  // A failed insert silently loses the turn from history (the reply still
+  // returns live) — capture it so history gaps are diagnosable.
+  const { error: persistError } = await supabase.from("messages").insert(
     timestampedPair(
       { user_id: input.userId, role: "user", content: input.message || (hasImportFile ? "[file uploaded]" : "[screenshot uploaded]") },
       { user_id: input.userId, role: "assistant", content: finalText, suggested_replies: chips, tool_result: card ?? null },
     ),
   );
+  if (persistError) Sentry.captureException(persistError, { tags: { route: "agent-chat", step: "persist-turn" } });
 
   return {
     message: finalText,

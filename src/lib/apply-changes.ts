@@ -999,6 +999,11 @@ export async function applyPortfolioChanges({
         if (change.mortgage_rate !== undefined) updateData.mortgage_rate = change.mortgage_rate;
         if (change.monthly_payment !== undefined) updateData.monthly_payment = change.monthly_payment;
         if (change.mortgage_type !== undefined) updateData.mortgage_type = change.mortgage_type;
+        // The schema advertises both mortgage dates (end date explicitly asked for
+        // on interest-only), and the add path stores them — an edit stating "my
+        // mortgage ends in 2040" used to silently drop the field.
+        if (change.mortgage_start_date !== undefined) updateData.mortgage_start_date = change.mortgage_start_date || null;
+        if (change.mortgage_end_date !== undefined) updateData.mortgage_end_date = change.mortgage_end_date || null;
         if (change.coupon_rate !== undefined) updateData.coupon_rate = change.coupon_rate;
         if (change.maturity_date !== undefined) updateData.maturity_date = normalizeMaturityDate(change.maturity_date);
         if (change.issuer !== undefined) updateData.issuer = change.issuer;

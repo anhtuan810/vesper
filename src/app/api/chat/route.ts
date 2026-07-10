@@ -40,6 +40,27 @@ async function handleScenarioNarration(userId: string, raw: unknown, demo: DemoS
   ) {
     return NextResponse.json({ message: "Invalid scenario handoff." }, { status: 400 });
   }
+  // Cap every client-controlled field. Legitimate handoffs (built by our own
+  // scenario UI) are far below these; without caps this path let any entitled
+  // client pump megabyte payloads into the narration model 50×/day, persist an
+  // arbitrarily long user row, and — via a guardrail miss serving `fallback`
+  // verbatim — author assistant-role history that later turns re-read as
+  // trusted context. Malformed diaryContext is dropped, not 500'd (a throw here
+  // would land after the rate-limit increment).
+  h.userMessage = h.userMessage.slice(0, 500);
+  h.description = h.description.slice(0, 4000);
+  h.fallback = h.fallback.slice(0, 2000);
+  h.figures = h.figures.filter((f): f is string => typeof f === "string").slice(0, 40).map((f) => f.slice(0, 64));
+  h.diaryContext = Array.isArray(h.diaryContext)
+    ? h.diaryContext
+        .filter((d): d is NonNullable<ScenarioHandoff["diaryContext"]>[number] => !!d && typeof d === "object" && typeof (d as { note?: unknown }).note === "string")
+        .slice(0, 20)
+        .map((d) => ({
+          date: String(d.date ?? "").slice(0, 40),
+          note: d.note.slice(0, 500),
+          ...(typeof d.market === "string" ? { market: d.market.slice(0, 500) } : {}),
+        }))
+    : undefined;
 
   const supabase = createServerSupabase();
   const dailyLimit = demo.isDemo ? DEMO_CHAT_DAILY_LIMIT : CHAT_DAILY_LIMIT;
@@ -59,7 +80,10 @@ async function handleScenarioNarration(userId: string, raw: unknown, demo: DemoS
       { status: 429 },
     );
   }
-  const used = (newCount as number) - 1;
+  // `used` INCLUDES the message just consumed, so the returned `remaining` hits
+  // 0 on the final allowed message and the composer can wall gracefully —
+  // `newCount - 1` had the UI showing "1 left" all the way into a 429.
+  const used = newCount as number;
 
   const { narration } = await narrateScenario(h as ScenarioHandoff);
 
@@ -189,7 +213,9 @@ export async function POST(req: NextRequest) {
       }, { status: 429 });
     }
 
-    const used = (newCount as number) - 1;
+    // `used` INCLUDES the message just consumed (see the narration path above) so
+    // `remaining` reaches 0 on the last allowed message instead of one send late.
+    const used = newCount as number;
 
     // --- Load user context ---
     const [

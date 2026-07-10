@@ -8,6 +8,7 @@
 import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
+import { parseAcquisitionMonth } from "@/lib/acquisition-date";
 
 export interface ScenarioGateContext {
   displayCurrency: DisplayCurrency;
@@ -39,7 +40,10 @@ const CCY_SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 
-/** ISO date as-is; relative token ("5y"/"18m"/"12w"/"90d") → that long ago; bare year → Jan 1; else (incl. null) → 5y ago. */
+/** ISO date as-is; relative token ("5y"/"18m"/"12w"/"90d") → that long ago; bare year → Jan 1;
+ *  then any natural phrase parseAcquisitionMonth reads ("2020-05", "March 2020", "2 years ago");
+ *  else (incl. null) → 5y ago. Natural phrases used to fall straight to the 5y default, silently
+ *  computing the scenario for a date the user never asked about. */
 export function resolveBuyDate(hint: unknown, now: Date): string {
   if (typeof hint === "string") {
     const s = hint.trim();
@@ -56,6 +60,8 @@ export function resolveBuyDate(hint: unknown, now: Date): string {
       return d.toISOString().slice(0, 10);
     }
     if (/^\d{4}$/.test(s)) return `${s}-01-01`;
+    const parsed = parseAcquisitionMonth(s);
+    if (parsed) return parsed;
   }
   const d = new Date(now);
   d.setFullYear(d.getFullYear() - 5);
