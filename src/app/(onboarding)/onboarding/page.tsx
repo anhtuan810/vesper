@@ -9,11 +9,13 @@ import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread"
 import { useChatSession } from "@/lib/use-chat-session";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
-// The gated onboarding flow. It opens on a clean "pick an asset" screen — every
-// asset class listed, no chat box (nothing to type yet). Choosing a type starts a
-// guided, scoped chat for that asset (free-form typing or a screenshot, the existing
-// before-change intake); the chat stays on asset setup and won't wander. The user
-// stays inside onboarding until they hit Done (the middleware gate enforces this).
+// The gated onboarding flow, one asset at a time. It opens on a clean "pick an asset"
+// menu — every class listed, no chat box. Choosing a class starts a FOCUSED, scoped
+// chat for that single asset (free typing or a screenshot, the existing before-change
+// intake); there is no way to jump to another class mid-flow. The user either
+// finishes it and returns to the menu to add another, or discards the in-progress
+// asset (deleting anything it added) and picks a different class. They stay inside
+// onboarding until they hit Done (the middleware gate enforces this server-side).
 
 interface AddedAsset {
   id: string;
@@ -37,14 +39,20 @@ const PICK_TYPES: Array<{ key: string; label: string; kickoff: string }> = [
   { key: "other", label: "Something else", kickoff: "I want to add another asset." },
 ];
 
+const LABEL_OF: Record<string, string> = Object.fromEntries(PICK_TYPES.map((t) => [t.key, t.label]));
+
 export default function OnboardingPage() {
   const { user, loading: userLoading } = useUser();
   const userId = user?.id;
 
   const [assets, setAssets] = useState<AddedAsset[] | null>(null); // null = loading
   const [busy, setBusy] = useState(false);
-  const [scope, setScope] = useState<string | null>(null);
+  // null = the menu; a type key = focused collection of that one asset.
+  const [activeType, setActiveType] = useState<string | null>(null);
   const scopeRef = useRef<string | null>(null);
+  // Asset ids present when the current focused asset began — anything added since is
+  // "the ongoing asset", which Discard removes.
+  const baselineRef = useRef<Set<string>>(new Set());
   const startedRef = useRef(false);
 
   const reload = useCallback(async () => {
@@ -68,23 +76,73 @@ export default function OnboardingPage() {
     try { track("onboarding_started"); } catch { /* best effort */ }
   }, []);
 
-  // The real chat, scoped to onboarding and to the chosen asset, and started CLEAN
-  // (skipHistory) so no old transcript shows.
   const session = useChatSession({
     userId,
     onPortfolioUpdate: reload,
     skipHistory: true,
     extraPayload: () => ({ onboarding: true, onboardingAsset: scopeRef.current ?? undefined }),
   });
-  const { messages, thinking } = session;
-  const hasMessages = messages.length > 0;
+  const { messages, thinking, reset } = session;
 
+  // Start focused collection of one asset: clean thread, snapshot the baseline, scope
+  // the chat, and open with a guided kickoff for that class.
   const pickType = useCallback((t: (typeof PICK_TYPES)[number]) => {
+    reset();
+    baselineRef.current = new Set((assets ?? []).map((a) => a.id));
     scopeRef.current = t.key;
-    setScope(t.key);
+    setActiveType(t.key);
     try { track("onboarding_step", { step: "type_chosen", asset_type: t.key }); } catch { /* best effort */ }
     session.sendText(t.kickoff);
-  }, [session]);
+  }, [assets, reset, session]);
+
+  // Finished with this asset — keep it and return to the menu.
+  const backToMenu = useCallback(() => {
+    reset();
+    scopeRef.current = null;
+    setActiveType(null);
+  }, [reset]);
+
+  // Discard the in-progress asset: delete anything added since it began, then return
+  // to the menu. (Only confirmed assets are ever written, so this cleanly rewinds.)
+  const discard = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    const ongoing = (assets ?? []).filter((a) => !baselineRef.current.has(a.id));
+    try {
+      if (ongoing.length > 0) {
+        try { track("onboarding_step", { step: "discarded", asset_type: activeType ?? "unknown", count: ongoing.length }); } catch { /* best effort */ }
+        await apiFetch("/api/assets/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ changes: ongoing.map((a) => ({ action: "remove", name: a.name, removal_reason: "mistake" })) }),
+        });
+        await reload();
+      }
+    } finally {
+      reset();
+      scopeRef.current = null;
+      setActiveType(null);
+      setBusy(false);
+    }
+  }, [assets, activeType, busy, reload, reset]);
+
+  const done = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    const count = assets?.length ?? 0;
+    try {
+      if (count > 0) {
+        try { track("onboarding_completed", { assets: count }); } catch { /* best effort */ }
+        await apiFetch("/api/onboarding/complete", { method: "POST" });
+      } else {
+        try { track("onboarding_skipped"); } catch { /* best effort */ }
+        await apiFetch("/api/onboarding/skip", { method: "POST" });
+      }
+    } catch {
+      /* navigate regardless */
+    }
+    window.location.assign("/");
+  }, [assets, busy]);
 
   // ── Chat scaffolding ────────────────────────────────────────────────────────
   const threadRef = useRef<ChatThreadHandle>(null);
@@ -112,41 +170,6 @@ export default function OnboardingPage() {
     };
   }, []);
 
-  const removeLast = useCallback(async () => {
-    if (!assets || assets.length === 0 || busy) return;
-    const last = assets[assets.length - 1];
-    setBusy(true);
-    try { track("onboarding_step", { step: "removed", asset_type: last.type }); } catch { /* best effort */ }
-    try {
-      await apiFetch("/api/assets/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ changes: [{ action: "remove", name: last.name, removal_reason: "mistake" }] }),
-      });
-      await reload();
-    } finally {
-      setBusy(false);
-    }
-  }, [assets, busy, reload]);
-
-  const done = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
-    const count = assets?.length ?? 0;
-    try {
-      if (count > 0) {
-        try { track("onboarding_completed", { assets: count }); } catch { /* best effort */ }
-        await apiFetch("/api/onboarding/complete", { method: "POST" });
-      } else {
-        try { track("onboarding_skipped"); } catch { /* best effort */ }
-        await apiFetch("/api/onboarding/skip", { method: "POST" });
-      }
-    } catch {
-      /* navigate regardless */
-    }
-    window.location.assign("/");
-  }, [assets, busy]);
-
   if (userLoading || assets === null) {
     return (
       <div className="onb-loading">
@@ -156,22 +179,7 @@ export default function OnboardingPage() {
   }
 
   const hasAssets = assets.length > 0;
-
-  const addedStrip = hasAssets ? (
-    <div className="onb-added">
-      <span className="onb-added-label">Added</span>
-      <div className="onb-added-chips">
-        {assets.map((a, i) => (
-          <span key={a.id} className="onb-chip">
-            <span aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span> {a.name}
-            {i === assets.length - 1 && (
-              <button className="onb-chip-x" onClick={removeLast} disabled={busy} aria-label={`Remove ${a.name}`}>✕</button>
-            )}
-          </span>
-        ))}
-      </div>
-    </div>
-  ) : null;
+  const collecting = activeType !== null;
 
   return (
     <div className="onb-shell">
@@ -185,11 +193,21 @@ export default function OnboardingPage() {
         </button>
       </div>
 
-      {addedStrip}
-
-      {!hasMessages ? (
-        // ── Clean start: pick an asset. Every class listed, no chat box. ────────
+      {!collecting ? (
+        // ── Menu: pick an asset. Every class listed, no chat box. ───────────────
         <div className="onb-pick">
+          {hasAssets && (
+            <div className="onb-added">
+              <span className="onb-added-label">Added</span>
+              <div className="onb-added-chips">
+                {assets.map((a) => (
+                  <span key={a.id} className="onb-chip">
+                    <span aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span> {a.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <h2 className="onb-pick-title">{hasAssets ? "Add another asset" : "What would you like to add?"}</h2>
           <div className="onb-grid">
             {PICK_TYPES.map((t) => (
@@ -202,21 +220,14 @@ export default function OnboardingPage() {
           {hasAssets && <p className="onb-pick-hint">Or tap <strong>Done</strong> when you&apos;re finished.</p>}
         </div>
       ) : (
-        // ── Guided chat, scoped to the chosen asset. ──────────────────────────
+        // ── Focused collection of one asset. No class switching. ────────────────
         <>
-          <div className="onb-picker">
-            <div className="onb-picker-chips">
-              {PICK_TYPES.map((t) => (
-                <button
-                  key={t.key}
-                  className={`onb-type${scope === t.key ? " onb-type-on" : ""}`}
-                  onClick={() => pickType(t)}
-                  disabled={busy}
-                >
-                  <span aria-hidden>{TYPE_EMOJI[t.key] ?? "•"}</span> {t.label}
-                </button>
-              ))}
-            </div>
+          <div className="onb-collect-bar">
+            <button className="onb-back" onClick={backToMenu} disabled={busy}>‹ Add another</button>
+            <span className="onb-collect-label">
+              Adding <span aria-hidden>{TYPE_EMOJI[activeType] ?? "•"}</span> {LABEL_OF[activeType] ?? "asset"}
+            </span>
+            <button className="onb-discard" onClick={discard} disabled={busy}>Discard</button>
           </div>
           <ChatThread
             variant="page"
@@ -274,38 +285,30 @@ export default function OnboardingPage() {
           color: var(--text); padding: 8px 16px; min-height: 36px;
         }
         .onb-done-btn:disabled { opacity: 0.5; cursor: default; }
+
+        /* Menu */
+        .onb-pick { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--space-2); }
         .onb-added {
           flex-shrink: 0; display: flex; align-items: baseline; gap: var(--space-2);
-          padding-bottom: var(--space-2); overflow-x: auto;
+          padding-bottom: var(--space-4); overflow-x: auto;
         }
         .onb-added-label {
           font-family: var(--font-ui); font-size: var(--fs-micro); text-transform: uppercase;
           letter-spacing: var(--tracking-label); color: var(--text-faint); flex-shrink: 0;
         }
-        .onb-added-chips { display: flex; gap: var(--space-2); flex-wrap: nowrap; }
+        .onb-added-chips { display: flex; gap: var(--space-2); flex-wrap: wrap; }
         .onb-chip {
           display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
           background: var(--surface); border: 0.5px solid var(--border);
           border-radius: var(--radius-pill); padding: 4px 10px;
           font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text);
         }
-        .onb-chip-x {
-          background: var(--text-faint); color: var(--bg); border: none; cursor: pointer;
-          width: 16px; height: 16px; border-radius: 50%; font-size: 10px; line-height: 16px;
-          text-align: center; padding: 0; flex-shrink: 0;
-        }
-        .onb-chip-x:disabled { opacity: 0.5; cursor: default; }
-
-        /* Clean start: full grid of every asset class */
-        .onb-pick { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--space-4); }
         .onb-pick-title {
           font-family: var(--font-display); font-style: italic; font-weight: 400;
           font-size: var(--fs-title); color: var(--hero); line-height: var(--lh-snug);
           letter-spacing: var(--tracking-title); margin: 0 0 var(--space-4);
         }
-        .onb-grid {
-          display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3);
-        }
+        .onb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
         .onb-tile {
           display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
           background: var(--surface); border: 0.5px solid var(--border-strong);
@@ -318,29 +321,24 @@ export default function OnboardingPage() {
         .onb-tile:disabled { opacity: 0.5; cursor: default; }
         .onb-tile-emoji { font-size: 24px; }
         .onb-tile-label { font-family: var(--font-ui); font-size: var(--fs-body); color: var(--text); font-weight: 500; }
-        .onb-pick-hint {
-          font-family: var(--font-ui); font-size: var(--fs-meta); color: var(--text-dim);
-          margin: var(--space-4) 0 0;
-        }
+        .onb-pick-hint { font-family: var(--font-ui); font-size: var(--fs-meta); color: var(--text-dim); margin: var(--space-4) 0 0; }
 
-        /* Active chat: compact switch bar */
-        .onb-picker { flex-shrink: 0; padding-bottom: var(--space-2); }
-        .onb-picker-chips {
-          display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: 2px;
-          scrollbar-width: none;
+        /* Focused collect bar */
+        .onb-collect-bar {
+          flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+          gap: var(--space-2); padding: var(--space-1) 0 var(--space-2);
         }
-        .onb-picker-chips::-webkit-scrollbar { display: none; }
-        .onb-type {
-          display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-          background: var(--surface); color: var(--text);
-          border: 0.5px solid var(--border-strong); border-radius: var(--radius-pill);
-          padding: 7px 12px; min-height: 36px; cursor: pointer; flex-shrink: 0;
-          font-family: var(--font-ui); font-size: var(--fs-caption);
-          transition: border-color 0.15s, background 0.12s;
+        .onb-back, .onb-discard {
+          background: none; border: none; cursor: pointer; padding: 6px 2px;
+          font-family: var(--font-ui); font-size: var(--fs-meta);
         }
-        .onb-type:hover { border-color: var(--accent); }
-        .onb-type-on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
-        .onb-type:disabled { opacity: 0.5; cursor: default; }
+        .onb-back { color: var(--accent-text, var(--accent)); font-weight: 500; }
+        .onb-discard { color: var(--negative, var(--text-faint)); }
+        .onb-back:disabled, .onb-discard:disabled { opacity: 0.5; cursor: default; }
+        .onb-collect-label {
+          font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-dim);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+        }
       `}</style>
     </div>
   );

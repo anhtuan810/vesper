@@ -424,6 +424,20 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     setAttachmentError(null);
   }, []);
 
+  // Clear the visible thread + composer. Used by onboarding to start each asset on a
+  // fresh, focused conversation (the server still has the full history, so the
+  // assistant keeps its context; only the local display resets).
+  const reset = useCallback(() => {
+    setMessages([]);
+    setInput("");
+    setImagePreviews([]);
+    setImageData([]);
+    setPdfData([]);
+    setCsvData([]);
+    setAttachmentError(null);
+    pendingScenarioRef.current = null;
+  }, []);
+
   const removeImage = useCallback((index: number) => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
     setImageData((prev) => prev.filter((_, i) => i !== index));
@@ -875,5 +889,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     loadMore,
     hasMore,
     isLoadingMore,
+    reset,
   };
 }
