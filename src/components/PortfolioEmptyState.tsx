@@ -9,7 +9,6 @@ import {
 } from "@/components/icons/EmptyStateIcons";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 import { useUser } from "@/lib/hooks";
-import { AddAssetSheet } from "@/components/assets/AddAssetSheet";
 
 const pillStyle: CSSProperties = {
   display: "flex", alignItems: "center", gap: "var(--space-1)",
@@ -78,17 +77,14 @@ function ExampleRow({
 export function PortfolioEmptyState() {
   const router = useRouter();
   const { onboardingCompletedAt } = useUser();
-  const [addOpen, setAddOpen] = useState(false);
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
 
-  // A user who has finished onboarding (flag set) but sits at zero assets opens the
-  // in-app collector inline. A visitor peeking on the empty-exit pass (flag still
-  // null) returns to /onboarding to continue the guided flow, per the gate.
-  const handleAddFirst = () => {
-    if (typeof onboardingCompletedAt === "string") setAddOpen(true);
-    else router.push("/onboarding");
-  };
+  // Only a visitor peeking on the empty-exit pass (onboarding flag still null) gets
+  // the "return to onboarding" button. A user who already finished onboarding but
+  // sits at zero assets just uses the chat-forward empty state below — no separate
+  // affordance needed, and never sent back into the gated flow.
+  const showReturnToOnboarding = onboardingCompletedAt === null;
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -246,23 +242,26 @@ export function PortfolioEmptyState() {
 
       {/* Primary path back into the guided flow. For a visitor who chose "Done with
           no data" (peeking at the empty app on a temporary pass), this returns them
-          to /onboarding to add their first asset step by step. */}
-      <button
-        className="es-add-first"
-        onClick={handleAddFirst}
-        style={{
-          marginTop: 18,
-          width: "100%",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          background: "var(--accent)", color: "var(--bg)",
-          border: "none", borderRadius: "var(--radius-lg)",
-          padding: "var(--space-4) var(--space-5)", minHeight: 52,
-          fontFamily: "var(--font-ui)", fontSize: "var(--fs-body)", fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        Add your first asset
-      </button>
+          to /onboarding to keep setting up. Hidden for anyone already onboarded —
+          they add via the chat below. */}
+      {showReturnToOnboarding && (
+        <button
+          className="es-add-first"
+          onClick={() => router.push("/onboarding")}
+          style={{
+            marginTop: 18,
+            width: "100%",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            background: "var(--accent)", color: "var(--bg)",
+            border: "none", borderRadius: "var(--radius-lg)",
+            padding: "var(--space-4) var(--space-5)", minHeight: 52,
+            fontFamily: "var(--font-ui)", fontSize: "var(--fs-body)", fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Add your first asset
+        </button>
+      )}
 
       {/* ─── Section 2: Multimodal input — a faster, free-form alternative ───────── */}
 
@@ -450,8 +449,6 @@ export function PortfolioEmptyState() {
           e.target.value = "";
         }}
       />
-
-      <AddAssetSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
   );
 }

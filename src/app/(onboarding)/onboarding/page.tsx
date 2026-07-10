@@ -5,54 +5,39 @@ import { track } from "@vercel/analytics";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
 import { useUser, useDisplayCurrencyState } from "@/lib/hooks";
-import { AssetCollector } from "@/components/assets/AssetCollector";
-import type { PortfolioChange } from "@/lib/apply-changes";
+import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
+import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
-// The gated, chat-only onboarding flow. Confirmed assets ARE the progress: on return
-// we load the assets added so far and continue from the "add another or done?" step
-// with a one-line recap — no chat transcript is restored. An in-progress unconfirmed
-// asset saves nothing, so it simply restarts. Completion flips the flag at Done (NOT
-// at the end of any price/history build), and Done-with-no-data issues a session pass
-// so the user can peek at the empty app.
+// The gated onboarding flow is the REAL chat, framed for setting up a portfolio:
+// the user types freely or drops a screenshot, and the assistant collects each
+// asset in full (the existing before-change propose/commit intake — real-estate
+// mortgage detail, holdings from a screenshot, etc.), one asset at a time, then
+// asks what else they own. Confirmed assets ARE the progress. Completion flips the
+// flag at "Done" (never at the end of a price/history build), and Done-with-no-data
+// issues a session pass so the user can peek at the empty app.
 
-interface RunningAsset {
+interface AddedAsset {
   id: string;
   name: string;
   type: string;
 }
 
 const TYPE_EMOJI: Record<string, string> = {
-  real_estate: "🏠",
-  stocks: "📈",
-  etf: "📈",
-  crypto: "🪙",
-  gold: "🪙",
-  cash: "💶",
-  pension: "🏦",
-  bonds: "📜",
-  other: "•",
+  real_estate: "🏠", stocks: "📈", etf: "📈", crypto: "🪙", gold: "🪙",
+  cash: "💶", pension: "🏦", bonds: "📜", other: "•",
 };
-
-function recapLine(assets: RunningAsset[]): string {
-  if (assets.length === 0) return "";
-  const names = assets.map((a) => a.name);
-  let list: string;
-  if (names.length === 1) list = names[0];
-  else if (names.length === 2) list = `${names[0]} and ${names[1]}`;
-  else list = `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
-  return `Welcome back — you've added ${list}.`;
-}
 
 export default function OnboardingPage() {
   const { user, loading: userLoading } = useUser();
   const { currency } = useDisplayCurrencyState();
-  const [assets, setAssets] = useState<RunningAsset[] | null>(null); // null = loading
-  const [busy, setBusy] = useState(false);
-  const startedRef = useRef(false);
   const userId = user?.id;
 
-  const load = useCallback(async () => {
+  const [assets, setAssets] = useState<AddedAsset[] | null>(null); // null = loading
+  const [busy, setBusy] = useState(false);
+  const startedRef = useRef(false);
+
+  const reload = useCallback(async () => {
     if (!userId) return;
     const supabase = createBrowserSupabase();
     const { data } = await supabase
@@ -61,93 +46,97 @@ export default function OnboardingPage() {
       .eq("user_id", userId)
       .is("removed_at", null)
       .order("created_at", { ascending: true });
-    setAssets(((data ?? []) as RunningAsset[]).map((a) => ({ id: a.id, name: a.name, type: a.type })));
+    setAssets(((data ?? []) as AddedAsset[]).map((a) => ({ id: a.id, name: a.name, type: a.type })));
   }, [userId]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void reload(); }, [reload]);
 
-  // Fire the funnel entry once per mount.
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    safeTrack("onboarding_started");
+    try { track("onboarding_started"); } catch { /* best effort */ }
   }, []);
 
-  // Fine-grained drop-off events from the collector (asset type chosen, field
-  // reached, confirmed/removed) — flat, PII-free props, reusing Vercel Analytics.
-  const step = useCallback((event: string, props?: Record<string, string | number>) => {
-    safeTrack("onboarding_step", { step: event, ...(props ?? {}) });
+  // The real chat session. onPortfolioUpdate fires whenever the assistant commits a
+  // change, so the added-list stays in sync as assets land.
+  const session = useChatSession({ userId, onPortfolioUpdate: reload });
+  const { messages, thinking } = session;
+
+  // Frame the chat as onboarding throughout (asset-add suggestions, "tell me what
+  // you own" empty copy) rather than flipping to portfolio-Q suggestions after the
+  // first add.
+  const chatSuggestions = getChatSuggestions(currency, false);
+
+  // ── Chat scaffolding (mirrors the /chat route) ──────────────────────────────
+  const threadRef = useRef<ChatThreadHandle>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const initialScrollDone = useRef(false);
+
+  useEffect(() => {
+    if (!bottomRef.current) return;
+    if (!initialScrollDone.current && messages.length > 0) {
+      bottomRef.current.scrollIntoView({ behavior: "instant" });
+      initialScrollDone.current = true;
+    } else if (initialScrollDone.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, thinking]);
+
+  // Lock body scroll so the iOS keyboard can't slide content under the status bar.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+      document.documentElement.dataset.kb = "";
+    };
   }, []);
 
-  // Persist a confirmed asset through the real write path. Returns ok:false + a
-  // user-facing message (e.g. a mortgage-intake question) so the collector can keep
-  // its confirm card open for a correction.
-  const persist = useCallback(
-    async (changes: PortfolioChange[]): Promise<{ ok: boolean; error?: string }> => {
-      const res = await apiFetch("/api/assets/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ changes, displayCurrency: currency }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        return { ok: false, error: body?.error ?? "Couldn't save that — please try again." };
-      }
-      if (body?.changed === false) {
-        const reason = Array.isArray(body?.failures) && body.failures[0]?.reason;
-        return { ok: false, error: reason || "I couldn't record that — please check the details." };
-      }
-      await load();
-      return { ok: true };
-    },
-    [currency, load],
-  );
-
-  // Remove-last: drop the most recently confirmed asset (a full erase — it was a
-  // mistake, not a sale) and reopen for re-entry. Only an asset is written on
-  // confirm, so this cleanly rewinds the running list.
+  // Remove-last: drop the most recently added asset (a full erase — a mistake, not a
+  // sale). Only committed assets are on record, so this cleanly rewinds the list.
   const removeLast = useCallback(async () => {
     if (!assets || assets.length === 0 || busy) return;
     const last = assets[assets.length - 1];
     setBusy(true);
-    step("removed", { asset_type: last.type });
+    try { track("onboarding_step", { step: "removed", asset_type: last.type }); } catch { /* best effort */ }
     try {
       await apiFetch("/api/assets/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ changes: [{ action: "remove", name: last.name, removal_reason: "mistake" }] }),
       });
-      await load();
+      await reload();
     } finally {
       setBusy(false);
     }
-  }, [assets, busy, load, step]);
+  }, [assets, busy, reload]);
 
   // Done: flip the flag (with assets) or issue the empty-exit pass (with none), then
-  // hard-navigate to the app so the middleware re-evaluates with the fresh cookie.
+  // hard-navigate so the middleware re-evaluates with the fresh cookie.
   const done = useCallback(async () => {
     if (busy) return;
     setBusy(true);
     const count = assets?.length ?? 0;
     try {
       if (count > 0) {
-        safeTrack("onboarding_completed", { assets: count });
+        try { track("onboarding_completed", { assets: count }); } catch { /* best effort */ }
         await apiFetch("/api/onboarding/complete", { method: "POST" });
       } else {
-        safeTrack("onboarding_skipped");
+        try { track("onboarding_skipped"); } catch { /* best effort */ }
         await apiFetch("/api/onboarding/skip", { method: "POST" });
       }
     } catch {
-      // Fall through to navigation regardless; a completed flag write that failed
-      // would just land the user back here on the next cold open.
+      /* navigate regardless; a failed flag write just lands them back here next cold open */
     }
     window.location.assign("/");
   }, [assets, busy]);
 
   if (userLoading || assets === null) {
     return (
-      <div className="onb-wrap onb-center">
+      <div className="onb-loading">
         <VolnarLogo size={44} className="logo-pulse" />
       </div>
     );
@@ -156,108 +145,108 @@ export default function OnboardingPage() {
   const hasAssets = assets.length > 0;
 
   return (
-    <div className="onb-wrap">
-      <header className="onb-head">
-        <VolnarLogo size={40} />
-        <h1 className="onb-title">
-          {hasAssets ? "Add another, or you're done" : "Let's set up your net worth"}
-        </h1>
-        <p className="onb-sub">
-          {hasAssets
-            ? `${recapLine(assets)} Add another asset, or tap Done to open your dashboard.`
-            : "Add your assets one at a time — property, investments, cash, crypto. You can stop any time; I'll never trap you here."}
-        </p>
-      </header>
-
-      {hasAssets && (
-        <div className="onb-list">
-          <div className="onb-list-head">Added so far</div>
-          {assets.map((a, i) => (
-            <div key={a.id} className="onb-list-row">
-              <span className="onb-list-emoji" aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span>
-              <span className="onb-list-name">{a.name}</span>
-              {i === assets.length - 1 && (
-                <button className="onb-remove" onClick={removeLast} disabled={busy} aria-label={`Remove ${a.name}`}>
-                  Remove
-                </button>
-              )}
-            </div>
-          ))}
+    <div className="onb-shell">
+      <div className="onb-topbar">
+        <div className="onb-brandline">
+          <VolnarLogo size={26} />
+          <span className="onb-eyebrow">Setting up your portfolio</span>
         </div>
-      )}
-
-      <div className="onb-collector">
-        <AssetCollector displayCurrency={currency} onConfirm={persist} onStep={step} />
-      </div>
-
-      <div className="onb-done">
         <button className="onb-done-btn" onClick={done} disabled={busy}>
-          {hasAssets ? "Done" : "Done — I'll add assets later"}
+          {hasAssets ? "Done" : "Skip for now"}
         </button>
       </div>
 
+      {hasAssets && (
+        <div className="onb-added">
+          <span className="onb-added-label">Added</span>
+          <div className="onb-added-chips">
+            {assets.map((a, i) => (
+              <span key={a.id} className="onb-chip">
+                <span aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span> {a.name}
+                {i === assets.length - 1 && (
+                  <button className="onb-chip-x" onClick={removeLast} disabled={busy} aria-label={`Remove ${a.name}`}>✕</button>
+                )}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <ChatThread
+        variant="page"
+        session={session}
+        seedMessage={null}
+        chatSuggestions={chatSuggestions}
+        hasPortfolio={false}
+        bottomInset={0}
+        scrollContainerRef={scrollContainerRef}
+        sentinelRef={sentinelRef}
+        bottomRef={bottomRef}
+        onScroll={() => {}}
+        ref={threadRef}
+      />
+
       <style>{`
-        .onb-wrap {
-          max-width: 560px; margin: 0 auto;
-          padding: max(env(safe-area-inset-top), var(--space-5)) 0 calc(env(safe-area-inset-bottom) + var(--space-6));
-          display: flex; flex-direction: column; gap: var(--space-5);
+        .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 2px; }
+        @media (prefers-reduced-motion: no-preference) {
+          @keyframes up { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+          @keyframes blink { 0%,100%{opacity:0.2}50%{opacity:1} }
+          .chat-msg { animation: up 0.25s ease forwards; }
+          .chat-dot { animation: blink 1.2s ease infinite; }
+          .chat-dot:nth-child(2){animation-delay:.2s}.chat-dot:nth-child(3){animation-delay:.4s}
         }
-        .onb-center { min-height: 60dvh; align-items: center; justify-content: center; }
-        .onb-head { display: flex; flex-direction: column; gap: var(--space-2); }
-        .onb-title {
-          font-family: var(--font-display); font-style: italic; font-weight: 400;
-          font-size: var(--fs-title); color: var(--hero); line-height: var(--lh-snug);
-          letter-spacing: var(--tracking-title); margin: var(--space-2) 0 0;
+        .chat-composer-gradient {
+          background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 0%, transparent) 0%, var(--bg) 30%, var(--bg) 100%);
         }
-        .onb-sub {
-          font-family: var(--font-ui); font-size: var(--fs-body); color: var(--text-dim);
-          line-height: var(--lh-body); margin: 0;
+        .onb-loading { min-height: 60dvh; display: flex; align-items: center; justify-content: center; }
+        .onb-shell {
+          position: fixed; top: 0; left: 0; right: 0;
+          height: calc(100dvh - var(--kb-inset, 0px));
+          max-width: 720px; margin: 0 auto;
+          padding-left: var(--space-5); padding-right: var(--space-5);
+          display: flex; flex-direction: column; overflow: hidden;
+          background: var(--bg);
         }
-        .onb-list {
-          background: var(--surface); border: 0.5px solid var(--border);
-          border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
-          display: flex; flex-direction: column; gap: 2px;
+        .onb-topbar {
+          flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+          gap: var(--space-3);
+          padding-top: calc(var(--space-3) + env(safe-area-inset-top));
+          padding-bottom: var(--space-2);
         }
-        .onb-list-head {
-          font-family: var(--font-ui); font-size: var(--fs-micro); text-transform: uppercase;
-          letter-spacing: var(--tracking-label); color: var(--text-faint); margin-bottom: var(--space-2);
+        .onb-brandline { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+        .onb-eyebrow {
+          font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-faint);
+          letter-spacing: var(--tracking-label); text-transform: uppercase;
         }
-        .onb-list-row {
-          display: flex; align-items: center; gap: var(--space-2);
-          padding: 8px 0; border-top: 0.5px solid var(--border);
-        }
-        .onb-list-row:first-of-type { border-top: none; }
-        .onb-list-emoji { font-size: 18px; }
-        .onb-list-name { flex: 1; min-width: 0; font-family: var(--font-ui); font-size: var(--fs-body); color: var(--text); }
-        .onb-remove {
-          background: none; border: none; cursor: pointer; padding: 4px 6px;
-          font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--negative, var(--text-faint));
-          text-decoration: underline; text-underline-offset: 3px;
-        }
-        .onb-remove:disabled { opacity: 0.5; cursor: default; }
-        .onb-collector {
-          background: var(--bg); border: 0.5px solid var(--border);
-          border-radius: var(--radius-xl); padding: var(--space-4);
-        }
-        .onb-done { display: flex; justify-content: center; padding-top: var(--space-2); }
         .onb-done-btn {
-          background: none; border: none; cursor: pointer;
-          font-family: var(--font-ui); font-size: var(--fs-body); font-weight: 500;
-          color: var(--text-dim); padding: 10px 16px; min-height: 44px;
-          text-decoration: underline; text-underline-offset: 4px;
+          flex-shrink: 0; background: none; border: 0.5px solid var(--border-strong);
+          border-radius: var(--radius-pill); cursor: pointer;
+          font-family: var(--font-ui); font-size: var(--fs-meta); font-weight: 500;
+          color: var(--text); padding: 8px 16px; min-height: 36px;
         }
         .onb-done-btn:disabled { opacity: 0.5; cursor: default; }
+        .onb-added {
+          flex-shrink: 0; display: flex; align-items: baseline; gap: var(--space-2);
+          padding-bottom: var(--space-2); overflow-x: auto;
+        }
+        .onb-added-label {
+          font-family: var(--font-ui); font-size: var(--fs-micro); text-transform: uppercase;
+          letter-spacing: var(--tracking-label); color: var(--text-faint); flex-shrink: 0;
+        }
+        .onb-added-chips { display: flex; gap: var(--space-2); flex-wrap: nowrap; }
+        .onb-chip {
+          display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+          background: var(--surface); border: 0.5px solid var(--border);
+          border-radius: var(--radius-pill); padding: 4px 10px;
+          font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text);
+        }
+        .onb-chip-x {
+          background: var(--text-faint); color: var(--bg); border: none; cursor: pointer;
+          width: 16px; height: 16px; border-radius: 50%; font-size: 10px; line-height: 16px;
+          text-align: center; padding: 0; flex-shrink: 0;
+        }
+        .onb-chip-x:disabled { opacity: 0.5; cursor: default; }
       `}</style>
     </div>
   );
-}
-
-// track() throws are never allowed to break the flow (analytics is best-effort, and
-// it's a no-op on the native build where <Analytics/> isn't mounted).
-function safeTrack(event: string, props?: Record<string, string | number>) {
-  try {
-    track(event, props);
-  } catch {
-    /* best effort */
-  }
 }

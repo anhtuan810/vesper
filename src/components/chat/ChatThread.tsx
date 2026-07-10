@@ -50,6 +50,9 @@ interface ChatThreadProps {
   source?: string | null;
   /** Override the composer input-pill background (popup variant). Defaults to var(--bg). */
   composerBg?: string;
+  /** Space reserved below the page composer to clear the BottomNav (px). Defaults to
+   * 64 (the nav height). Surfaces with no BottomNav — e.g. onboarding — pass 0. */
+  bottomInset?: number;
 
   // Caller-owned refs so the caller's scroll/observer effects keep working.
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -68,6 +71,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       hasPortfolio,
       source,
       composerBg,
+      bottomInset = 64,
       scrollContainerRef,
       sentinelRef,
       bottomRef,
@@ -604,7 +608,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               flexShrink: 0,
               padding: keyboardOpen
                 ? "0 0 env(safe-area-inset-bottom)"
-                : "0 0 calc(64px + env(safe-area-inset-bottom))",
+                : `0 0 calc(${bottomInset}px + env(safe-area-inset-bottom))`,
             }}
           >
             {/* Image previews */}
