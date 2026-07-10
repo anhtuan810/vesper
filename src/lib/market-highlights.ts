@@ -56,7 +56,9 @@ export async function fetchMarketHighlights(assets: Asset[]): Promise<{
   );
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    // Haiku (was claude-sonnet-4-6, 2026-07 cost pass): this call runs once per
+    // user per day from the cron, so it's the largest fixed Anthropic line item.
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
     system: `You filter daily financial news for a personal portfolio. You have access to web_search.
 1. Search for major financial market news from the last 24 hours relevant to the holdings provided.
@@ -67,11 +69,11 @@ Schema: [{ "title": string, "detail": string, "impact_eur": number | null, "symb
 5. If nothing directly relevant, return [].
 
 ${ADVICE_BOUNDARY}`,
-    // web_search_20260209 adds dynamic filtering: the model filters search
-    // results before they enter the context window, cutting input tokens.
-    // max_uses caps searches per call so one daily run can't fan out into an
-    // unbounded, separately-billed search count (mirrors market-story-cache.ts).
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+    // Basic web_search variant — the _20260209 (dynamic-filtering) variant is
+    // not supported on Haiku-tier models and would 400 the call. max_uses caps
+    // searches per call (each is separately billed) so one daily run can't fan
+    // out into an unbounded search count; 2 is enough for a headline sweep.
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
     messages: [{ role: "user", content: `Holdings:\n${holdingsLines}\n\nToday: ${today}` }],
   });
 

@@ -1,6 +1,7 @@
-// Server-side tool-calling chat loop (flag-gated). Claude converses over the recent
-// thread and calls deterministic tools for every figure and every write; the loop
-// executes tools server-side and feeds results back until a final text message.
+// Server-side tool-calling chat loop — the only chat engine. Claude converses
+// over the recent thread and calls deterministic tools for every figure and every
+// write; the loop executes tools server-side and feeds results back until a final
+// text message.
 // Reuses the existing rate limit, history window, image input, cards, and — for
 // writes — the proven mutation path. The big tag rulebook is gone.
 
@@ -12,7 +13,6 @@ import { getUsdRates } from "@/lib/fx";
 import { type DisplayCurrency } from "@/lib/money";
 import { validateMonetaryNarration } from "@/lib/narrate/guardrail";
 import { stripTags, timestampedPair } from "@/lib/chat-helpers";
-import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 import { generateMarketContext } from "@/lib/market-context";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
@@ -77,6 +77,9 @@ export interface AgentChatInput {
   recentActivity?: string;
   displayCurrency: DisplayCurrency;
   used: number;
+  /** This user's daily chat allowance (the demo account runs tighter than a
+   *  regular user), so the returned `remaining` matches the enforced limit. */
+  dailyLimit: number;
   profile: Record<string, unknown>;
   userName?: string;
   fingerprint: string | null;
@@ -179,6 +182,9 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   let chips: string[] | null = null;
   let commit: CommitOutcome | null = null;
   let finalText = "";
+  // True when the loop exhausted its round budget while the model still wanted
+  // tools — the turn is unfinished, not failed, and the reply must say so.
+  let stoppedAtRoundtripCap = true;
 
   for (let round = 0; round < AGENT_MAX_TOOL_ROUNDTRIPS; round++) {
     let resp: Anthropic.Messages.Message;
@@ -195,7 +201,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       resp = await anthropic.messages.create({ model: MODEL, max_tokens: 8000, system: systemPrompt, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
-      return { message: "Couldn't reach the assistant. Please try again.", remaining: CHAT_DAILY_LIMIT - input.used };
+      return { message: "Couldn't reach the assistant. Please try again.", remaining: input.dailyLimit - input.used };
     }
 
     messages.push({ role: "assistant", content: resp.content });
@@ -208,6 +214,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
     const toolUses = resp.content.filter((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (toolUses.length === 0) {
       finalText = textFrom(resp.content);
+      stoppedAtRoundtripCap = false;
       break;
     }
 
@@ -229,7 +236,14 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
     messages.push({ role: "user", content: toolResults });
   }
 
-  if (!finalText) finalText = "Here's what I found.";
+  // Round budget exhausted mid-task: hand off explicitly instead of failing
+  // silently — any work already done (including a commit) is saved, and the next
+  // turn resumes with the thread and recent-activity context intact.
+  if (stoppedAtRoundtripCap) {
+    finalText = "That needed more steps than one reply allows, so I paused partway. Say \"continue\" and I'll pick up where I left off.";
+  } else if (!finalText) {
+    finalText = "Here's what I found.";
+  }
 
   // Numeric guardrail, defense-in-depth: if the prose asserts a MONEY/percent
   // figure no tool returned, drop the prose (the card, if any, carries the
@@ -304,7 +318,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
     scenarioResult: card,
     suggested_replies: chips,
     assets: updatedAssets,
-    remaining: CHAT_DAILY_LIMIT - input.used,
+    remaining: input.dailyLimit - input.used,
     // A past-dated add triggers a background history rebuild (backfillSnapshots),
     // which is what makes the net-worth chart lag the reply. Signal it so the
     // client shows a "building" indicator and auto-refreshes when it lands.

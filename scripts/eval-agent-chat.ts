@@ -1,4 +1,4 @@
-// LIVE agent-loop eval — the tool-calling engine's counterpart to eval-chat.ts.
+// LIVE agent-loop eval — the behaviour eval for the chat engine.
 //
 // Runs the REAL agent loop (production AGENT_SYSTEM prompt + AGENT_TOOLS schemas,
 // CHAT_MODEL) against the live model, but with the tool executor STUBBED: every
@@ -13,11 +13,8 @@
 //   • "read, don't mutate"         → asserts a read/scenario tool, NO commit
 // A commit_mutation on a read/scenario/guardrail turn is the real failure.
 //
-// This is the measurement that justifies flipping CHAT_AGENT_LOOP=on: same wild
-// scenarios as the tag eval, scored on the agent's tool decisions. Where the tag
-// flow surfaces value-mode/edits via <propose_change>, the agent surfaces them via
-// propose_mutation; direct tradeable adds commit straight through — the
-// expectations below encode that contract.
+// Value-mode adds and edits surface via propose_mutation; direct tradeable adds
+// commit straight through — the expectations below encode that contract.
 //
 // Needs ANTHROPIC_API_KEY (a few cents/run, mildly non-deterministic). Skips
 // without it. Run: ANTHROPIC_API_KEY=sk-... npx tsx scripts/eval-agent-chat.ts
@@ -35,8 +32,7 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const anthropic = new Anthropic();
 const MODEL = CHAT_MODEL;
 
-// A held portfolio for edit/correction/remove/read/scenario cases. Mirrors the
-// tag eval's HELD so the two engines are measured on the same ground truth.
+// A held portfolio for edit/correction/remove/read/scenario cases.
 const HELD = [
   { name: "NVIDIA", type: "stocks", symbol: "NVDA", value: "€50,000", units: 100 },
   { name: "Apple", type: "stocks", symbol: "AAPL", value: "€30,000", units: 160 },
@@ -355,7 +351,7 @@ async function run(): Promise<void> {
       // Seed the thread so the scenario under test is a real follow-up turn, not
       // message #1. Held cases open with the user greeting + an assistant line that
       // already read the portfolio (so the model knows what's held); onboarding
-      // cases open empty, mirroring the tag eval's priming.
+      // cases open empty.
       const seed: Anthropic.Messages.MessageParam[] = c.held
         ? [
             { role: "user", content: "Hi" },

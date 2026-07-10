@@ -81,44 +81,48 @@ const CATEGORY_LABEL: Record<string, string> = { property: "Property", markets: 
 // "owned outright", so the details a class needs must be visible in the schema.
 // The schema stays open (additionalProperties is not closed) so the rarer write
 // fields it doesn't enumerate (value_delta, sell_date, …) still pass through.
+//
+// This one object is embedded in BOTH propose_mutation and commit_mutation, so
+// every description below is paid twice on every chat call — keep them terse
+// (the fuller behavioural rules live once, in AGENT_SYSTEM).
 const CHANGE_ITEM_SCHEMA = {
   type: "object",
-  description: "One portfolio change. Always include `name` — for a listed security it may equal the ticker (e.g. \"AAPL\"), but it must never be empty.",
+  description: "One portfolio change. `name` is required and never empty (a listed security's name may equal its ticker).",
   properties: {
     action: { type: "string", enum: ["add", "edit", "remove"] },
-    name: { type: "string", description: "REQUIRED. The position's display name — a company/asset name or its ticker (e.g. \"Apple\", \"AAPL\", \"Bitcoin\"). Never empty." },
+    name: { type: "string", description: "REQUIRED, never empty: display name or ticker (e.g. \"Apple\", \"AAPL\", \"Bitcoin\")." },
     new_name: { type: "string", description: "For a rename edit only." },
-    type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bonds", "pension", "real_estate", "other"], description: "Asset type; use \"stocks\" for a listed equity, \"bonds\" for a bond." },
-    symbol: { type: "string", description: "Market ticker for a tradeable (e.g. AAPL, BTC, VWCE.DE)." },
+    type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bonds", "pension", "real_estate", "other"], description: "Use \"stocks\" for a listed equity." },
+    symbol: { type: "string", description: "Market ticker (e.g. AAPL, BTC, VWCE.DE)." },
     units: { type: "number", description: "Quantity held (shares / coins / oz)." },
-    value: { type: "number", description: "Monetary amount: the position's current value (a value-mode add or a set). For real_estate, the property's current market value." },
+    value: { type: "number", description: "Current monetary value (value-mode add or set). For real_estate, current market value." },
     currency: { type: "string", enum: ["EUR", "USD", "GBP"] },
-    buy_price: { type: "number", description: "Purchase price. For real_estate, the price paid at acquisition (used to index an estimated current value when no value is given)." },
-    buy_date: { type: "string", description: "Acquisition date/month/year or a relative phrase; omit if unknown." },
+    buy_price: { type: "number", description: "Purchase price. For real_estate, price paid at acquisition." },
+    buy_date: { type: "string", description: "Acquisition date/month/year or relative phrase; omit if unknown." },
     removal_reason: { type: "string", enum: ["sold", "mistake"] },
-    correction: { type: "boolean", description: "TRUE when fixing data the user entered WRONG (wrong value/units/name/date, a typo, a duplicate) rather than recording a real event. Applied silently: the data is fixed, no journal entry is written, and the history graph is redrawn as if the corrected figure had always been true. On an edit, pass the corrected ABSOLUTE figure. A full remove of a never-owned entry uses removal_reason \"mistake\" instead." },
-    address: { type: "string", description: "Street address for a real-estate add/edit." },
+    correction: { type: "boolean", description: "TRUE when fixing wrongly-entered data (typo, duplicate, wrong figure/date) rather than recording a real event — fixed silently, no journal entry, history redrawn. On an edit pass the corrected ABSOLUTE figure. A never-owned entry is a remove with removal_reason \"mistake\"." },
+    address: { type: "string", description: "Street address (real-estate add/edit)." },
     country: { type: "string" },
     // ── Real-estate / mortgage ──
-    mortgage_balance: { type: "number", description: "real_estate ONLY, REQUIRED on a property add: the outstanding mortgage balance, in the property's currency. Set 0 ONLY when the user confirms the property is owned free and clear. NEVER omit this on a property add — an omitted balance is silently recorded as \"owned outright\", which is the wrong default when there is a mortgage." },
-    mortgage_rate: { type: "number", description: "Annual mortgage interest rate as a percent (e.g. 3.5 for 3.5%). REQUIRED on a property add whenever mortgage_balance > 0 (pass 0 for an interest-free loan). Also reused as a pension pot's annual growth assumption." },
-    monthly_payment: { type: "number", description: "Monthly mortgage payment, in the property's currency. REQUIRED on a property add whenever mortgage_balance > 0." },
-    mortgage_type: { type: "string", enum: ["annuity", "linear", "interest_only"], description: "Mortgage repayment structure. REQUIRED on a property add whenever mortgage_balance > 0." },
-    mortgage_start_date: { type: "string", description: "When the mortgage started (year, year-month, or full date)." },
-    mortgage_end_date: { type: "string", description: "When the mortgage is due to be repaid (year, year-month, or full date). For an interest_only mortgage this is what yields a payoff date, so capture it when known." },
+    mortgage_balance: { type: "number", description: "real_estate add: REQUIRED — outstanding balance in the property's currency; 0 ONLY when confirmed owned free and clear. Never omit (omitted records as owned outright)." },
+    mortgage_rate: { type: "number", description: "Annual mortgage rate in % (0 if interest-free). REQUIRED when mortgage_balance > 0. Also reused as a DC pension pot's growth assumption." },
+    monthly_payment: { type: "number", description: "Monthly mortgage payment. REQUIRED when mortgage_balance > 0." },
+    mortgage_type: { type: "string", enum: ["annuity", "linear", "interest_only"], description: "REQUIRED when mortgage_balance > 0." },
+    mortgage_start_date: { type: "string", description: "Mortgage start (year, year-month, or date)." },
+    mortgage_end_date: { type: "string", description: "Mortgage payoff date; capture it for interest_only." },
     property_type: { type: "string", description: "e.g. apartment, house, land." },
-    size_sqm: { type: "number", description: "Floor area in square metres." },
+    size_sqm: { type: "number", description: "Floor area in m²." },
     // ── Pension ──
-    pension_kind: { type: "string", enum: ["dc", "db", "state"], description: "Pension shape: dc = workplace/private pot (owned balance), db = company defined-benefit (income), state = State pension (income)." },
-    annual_income: { type: "number", description: "For a db/state pension: the annual income it will pay." },
-    monthly_contribution: { type: "number", description: "For a dc pension pot: monthly amount paid in." },
-    access_age: { type: "integer", description: "Age at which the pension can be accessed." },
-    pension_provider: { type: "string", description: "Pension provider or scheme name." },
+    pension_kind: { type: "string", enum: ["dc", "db", "state"], description: "dc = owned pot, db = defined-benefit income, state = State pension income." },
+    annual_income: { type: "number", description: "db/state pension: annual income it pays." },
+    monthly_contribution: { type: "number", description: "dc pot: monthly amount paid in." },
+    access_age: { type: "integer", description: "Age the pension unlocks." },
+    pension_provider: { type: "string", description: "Provider or scheme name." },
     // ── Bond ──
-    coupon_rate: { type: "number", description: "Bond annual coupon rate as a percent." },
-    maturity_date: { type: "string", description: "Bond maturity date (year, year-month, or full date)." },
-    issuer: { type: "string", description: "Bond issuer." },
-    isin: { type: "string", description: "Bond ISIN." },
+    coupon_rate: { type: "number", description: "Annual coupon %." },
+    maturity_date: { type: "string", description: "Maturity date." },
+    issuer: { type: "string", description: "Issuer." },
+    isin: { type: "string", description: "ISIN." },
   },
   required: ["action", "name"],
 };
@@ -126,7 +130,7 @@ const CHANGE_ITEM_SCHEMA = {
 // ── Tool schemas (given to Claude) ─────────────────────────────────────────────
 export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
   { name: "get_net_worth", description: "The user's current net worth and top-line vitals. Use before relating any figure to their net worth.", input_schema: { type: "object", properties: {} } },
-  { name: "get_holdings", description: "List the user's current holdings with per-position detail: name, type, value, ticker symbol, units held, acquisition date, cost basis, and gain (amount and %). Use it to answer how much of something they hold, when they bought it, what they paid, and how a position has performed.", input_schema: { type: "object", properties: {} } },
+  { name: "get_holdings", description: "List current holdings with per-position detail (name, type, value, symbol, units, acquisition date, cost basis, gain). Use for what/how much they hold, when they bought, what they paid, and per-position performance.", input_schema: { type: "object", properties: {} } },
   { name: "get_vitals", description: "Allocation by category, single-name concentration, and mortgage LTV.", input_schema: { type: "object", properties: {} } },
   {
     name: "present_scenario",
@@ -183,17 +187,17 @@ export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
   { name: "resolve_symbol", description: "Resolve a free-text asset name/ticker to a market symbol.", input_schema: { type: "object", properties: { hint: { type: "string" } }, required: ["hint"] } },
   {
     name: "propose_mutation",
-    description: "Resolve a portfolio change (add/edit/remove) into a confirmable proposal. Does NOT write — surfaces confirm chips. Call this for any stated completed action before committing.",
+    description: "Resolve a portfolio change (add/edit/remove) into a confirmable proposal — does NOT write; surfaces confirm chips. Call before committing any stated completed action.",
     input_schema: { type: "object", properties: { changes: { type: "array", items: CHANGE_ITEM_SCHEMA } }, required: ["changes"] },
   },
   {
     name: "commit_mutation",
-    description: "Apply a portfolio change to the database. Every change MUST carry a non-empty `name` (a rowless name is dropped). ONLY call after the user has explicitly confirmed a prior propose_mutation — except a direct tradeable add / screenshot import, which commits without a proposal.",
+    description: "Apply portfolio changes to the database (a change with an empty `name` is dropped). ONLY call after explicit user confirmation of a prior propose_mutation — except a direct tradeable add / file import, which commits without a proposal.",
     input_schema: { type: "object", properties: { changes: { type: "array", items: CHANGE_ITEM_SCHEMA }, contextNote: { type: "string" } }, required: ["changes"] },
   },
   {
     name: "set_import_acquisition_date",
-    description: "After a screenshot/file/CSV import, apply the ONE batch acquisition date the user just gave to EVERY imported position that still has no date. Call this exactly once with the user's answer verbatim (a year, a month-year, a full date, a relative phrase like \"2 years ago\", or \"just track from now\"). It stamps all still-undated holdings in a single deterministic step — do NOT enumerate positions or issue per-position edits yourself. It returns how many were dated; narrate from that.",
+    description: "After a file import, stamp the user's ONE batch acquisition-date answer (verbatim — year, month-year, date, relative phrase, or \"just track from now\") onto every imported position still lacking a date. Call exactly once; never issue per-position edits for this. Returns how many were dated — narrate from that.",
     input_schema: { type: "object", properties: { date: { type: "string", description: "The user's acquisition-date answer, verbatim." } }, required: ["date"] },
   },
 ];

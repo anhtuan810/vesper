@@ -138,9 +138,9 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
 
   // Relative phrases — "6 months ago", "about 4 months ago", "a year ago",
   // "last month", "3 weeks ago", "yesterday", "last March". The model passes the
-  // user's words through VERBATIM (see prompt-blocks: "Pass every date phrase
-  // through verbatim. Deterministic code resolves it"), so turning these into a
-  // stored date is THIS module's job. Without it, a natural answer like "about
+  // user's words through VERBATIM (the agent prompt/tools say: pass every date
+  // phrase through verbatim; deterministic code resolves it), so turning these
+  // into a stored date is THIS module's job. Without it, a natural answer like "about
   // 6 months ago" resolved to undefined and the acquisition date was silently
   // dropped — leaving the position tracked from today: no net-worth history
   // backfill, no journal entry at the purchase date, no market-event context.
