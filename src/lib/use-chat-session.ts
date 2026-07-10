@@ -216,9 +216,12 @@ interface Options {
   userId: string | undefined;
   onPortfolioUpdate?: () => void;
   onNewMessage?: () => void;
+  /** Extra fields merged into every /api/chat request body — read at send time, so
+   *  callers can attach live context (e.g. the onboarding scope). */
+  extraPayload?: () => Record<string, unknown>;
 }
 
-export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Options) {
+export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraPayload }: Options) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -258,8 +261,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
   // Use refs for callbacks so send() doesn't recreate when parent re-renders
   const onPortfolioUpdateRef = useRef(onPortfolioUpdate);
   const onNewMessageRef = useRef(onNewMessage);
+  const extraPayloadRef = useRef(extraPayload);
   useEffect(() => { onPortfolioUpdateRef.current = onPortfolioUpdate; }, [onPortfolioUpdate]);
   useEffect(() => { onNewMessageRef.current = onNewMessage; }, [onNewMessage]);
+  useEffect(() => { extraPayloadRef.current = extraPayload; }, [extraPayload]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
@@ -565,7 +570,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, fromChip: false }),
+        body: JSON.stringify({ ...payload, fromChip: false, ...(extraPayloadRef.current?.() ?? {}) }),
         timeoutMs: 60000,
       });
       data = await res.json();
@@ -736,7 +741,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Opti
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, fromChip: true }),
+        body: JSON.stringify({ message: trimmed, fromChip: true, ...(extraPayloadRef.current?.() ?? {}) }),
         timeoutMs: 60000,
       });
       data = await res.json();

@@ -4,18 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
-import { useUser, useDisplayCurrencyState } from "@/lib/hooks";
+import { useUser } from "@/lib/hooks";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
-import { useChatSession, getChatSuggestions } from "@/lib/use-chat-session";
+import { useChatSession } from "@/lib/use-chat-session";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
-// The gated onboarding flow is the REAL chat, framed for setting up a portfolio:
-// the user types freely or drops a screenshot, and the assistant collects each
-// asset in full (the existing before-change propose/commit intake — real-estate
-// mortgage detail, holdings from a screenshot, etc.), one asset at a time, then
-// asks what else they own. Confirmed assets ARE the progress. Completion flips the
-// flag at "Done" (never at the end of a price/history build), and Done-with-no-data
-// issues a session pass so the user can peek at the empty app.
+// The gated onboarding flow: the user CHOOSES an asset type first, then the chat
+// guides them through adding it — free-form typing or a screenshot, the existing
+// before-change intake (real-estate mortgage detail, holdings from a statement, …).
+// The chat is scoped: it does asset setup only and stays on the chosen asset (it
+// won't run scenarios or answer off-topic questions), so the user is guided rather
+// than dropped into an open assistant. They stay in onboarding until they hit Done
+// (the middleware gate enforces this server-side).
 
 interface AddedAsset {
   id: string;
@@ -24,17 +24,33 @@ interface AddedAsset {
 }
 
 const TYPE_EMOJI: Record<string, string> = {
-  real_estate: "🏠", stocks: "📈", etf: "📈", crypto: "🪙", gold: "🪙",
-  cash: "💶", pension: "🏦", bonds: "📜", other: "•",
+  real_estate: "🏠", stocks: "📈", etf: "📈", crypto: "🪙", gold: "🥇",
+  cash: "💶", pension: "🏦", bonds: "📜", other: "💠",
 };
+
+// The asset types the user can pick, with the kickoff message each one sends so the
+// assistant opens with guidance for that specific asset.
+const PICK_TYPES: Array<{ key: string; label: string; kickoff: string }> = [
+  { key: "real_estate", label: "Property", kickoff: "I want to add a property." },
+  { key: "stocks", label: "Stocks & funds", kickoff: "I want to add stocks or funds." },
+  { key: "cash", label: "Cash", kickoff: "I want to add cash or savings." },
+  { key: "crypto", label: "Crypto", kickoff: "I want to add crypto." },
+  { key: "pension", label: "Pension", kickoff: "I want to add a pension." },
+  { key: "gold", label: "Gold", kickoff: "I want to add gold." },
+  { key: "bonds", label: "Bonds", kickoff: "I want to add bonds." },
+  { key: "other", label: "Other", kickoff: "I want to add another asset." },
+];
 
 export default function OnboardingPage() {
   const { user, loading: userLoading } = useUser();
-  const { currency } = useDisplayCurrencyState();
   const userId = user?.id;
 
   const [assets, setAssets] = useState<AddedAsset[] | null>(null); // null = loading
   const [busy, setBusy] = useState(false);
+  const [scope, setScope] = useState<string | null>(null);
+  // The scope the chat requests are tagged with — read at send time so a tap takes
+  // effect on the very next message.
+  const scopeRef = useRef<string | null>(null);
   const startedRef = useRef(false);
 
   const reload = useCallback(async () => {
@@ -58,15 +74,22 @@ export default function OnboardingPage() {
     try { track("onboarding_started"); } catch { /* best effort */ }
   }, []);
 
-  // The real chat session. onPortfolioUpdate fires whenever the assistant commits a
-  // change, so the added-list stays in sync as assets land.
-  const session = useChatSession({ userId, onPortfolioUpdate: reload });
+  // The real chat, but scoped: every turn carries { onboarding, onboardingAsset } so
+  // the assistant stays on asset setup and on the chosen type. onPortfolioUpdate
+  // keeps the added-list in sync as assets land.
+  const session = useChatSession({
+    userId,
+    onPortfolioUpdate: reload,
+    extraPayload: () => ({ onboarding: true, onboardingAsset: scopeRef.current ?? undefined }),
+  });
   const { messages, thinking } = session;
 
-  // Frame the chat as onboarding throughout (asset-add suggestions, "tell me what
-  // you own" empty copy) rather than flipping to portfolio-Q suggestions after the
-  // first add.
-  const chatSuggestions = getChatSuggestions(currency, false);
+  const pickType = useCallback((t: (typeof PICK_TYPES)[number]) => {
+    scopeRef.current = t.key;
+    setScope(t.key);
+    try { track("onboarding_step", { step: "type_chosen", asset_type: t.key }); } catch { /* best effort */ }
+    session.sendText(t.kickoff);
+  }, [session]);
 
   // ── Chat scaffolding (mirrors the /chat route) ──────────────────────────────
   const threadRef = useRef<ChatThreadHandle>(null);
@@ -85,7 +108,6 @@ export default function OnboardingPage() {
     }
   }, [messages, thinking]);
 
-  // Lock body scroll so the iOS keyboard can't slide content under the status bar.
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -95,8 +117,6 @@ export default function OnboardingPage() {
     };
   }, []);
 
-  // Remove-last: drop the most recently added asset (a full erase — a mistake, not a
-  // sale). Only committed assets are on record, so this cleanly rewinds the list.
   const removeLast = useCallback(async () => {
     if (!assets || assets.length === 0 || busy) return;
     const last = assets[assets.length - 1];
@@ -114,8 +134,6 @@ export default function OnboardingPage() {
     }
   }, [assets, busy, reload]);
 
-  // Done: flip the flag (with assets) or issue the empty-exit pass (with none), then
-  // hard-navigate so the middleware re-evaluates with the fresh cookie.
   const done = useCallback(async () => {
     if (busy) return;
     setBusy(true);
@@ -129,7 +147,7 @@ export default function OnboardingPage() {
         await apiFetch("/api/onboarding/skip", { method: "POST" });
       }
     } catch {
-      /* navigate regardless; a failed flag write just lands them back here next cold open */
+      /* navigate regardless */
     }
     window.location.assign("/");
   }, [assets, busy]);
@@ -149,7 +167,7 @@ export default function OnboardingPage() {
       <div className="onb-topbar">
         <div className="onb-brandline">
           <VolnarLogo size={26} />
-          <span className="onb-eyebrow">Setting up your portfolio</span>
+          <span className="onb-eyebrow">Set up your portfolio</span>
         </div>
         <button className="onb-done-btn" onClick={done} disabled={busy}>
           {hasAssets ? "Done" : "Skip for now"}
@@ -172,11 +190,27 @@ export default function OnboardingPage() {
         </div>
       )}
 
+      <div className="onb-picker">
+        <span className="onb-picker-label">{hasAssets ? "Add another" : "What would you like to add?"}</span>
+        <div className="onb-picker-chips">
+          {PICK_TYPES.map((t) => (
+            <button
+              key={t.key}
+              className={`onb-type${scope === t.key ? " onb-type-on" : ""}`}
+              onClick={() => pickType(t)}
+              disabled={busy}
+            >
+              <span aria-hidden>{TYPE_EMOJI[t.key] ?? "•"}</span> {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ChatThread
         variant="page"
         session={session}
         seedMessage={null}
-        chatSuggestions={chatSuggestions}
+        chatSuggestions={[]}
         hasPortfolio={false}
         bottomInset={0}
         scrollContainerRef={scrollContainerRef}
@@ -246,6 +280,27 @@ export default function OnboardingPage() {
           text-align: center; padding: 0; flex-shrink: 0;
         }
         .onb-chip-x:disabled { opacity: 0.5; cursor: default; }
+        .onb-picker { flex-shrink: 0; padding-bottom: var(--space-2); }
+        .onb-picker-label {
+          display: block; font-family: var(--font-ui); font-size: var(--fs-caption);
+          color: var(--text-dim); margin-bottom: 6px;
+        }
+        .onb-picker-chips {
+          display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: 2px;
+          scrollbar-width: none;
+        }
+        .onb-picker-chips::-webkit-scrollbar { display: none; }
+        .onb-type {
+          display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+          background: var(--surface); color: var(--text);
+          border: 0.5px solid var(--border-strong); border-radius: var(--radius-pill);
+          padding: 8px 13px; min-height: 38px; cursor: pointer; flex-shrink: 0;
+          font-family: var(--font-ui); font-size: var(--fs-caption);
+          transition: border-color 0.15s, background 0.12s;
+        }
+        .onb-type:hover { border-color: var(--accent); }
+        .onb-type-on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+        .onb-type:disabled { opacity: 0.5; cursor: default; }
       `}</style>
     </div>
   );

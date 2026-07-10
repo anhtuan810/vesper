@@ -535,7 +535,11 @@ export async function POST(req: NextRequest) {
     const demoGate = await demoExpiredGate(createServerSupabase(), userId);
     if (demoGate) return demoGate;
 
-    const { message, images: rawImages, pdfs: rawPdfs, csvText: rawCsvText, scenarioHandoff, scenarioConfirm, fromChip } = await req.json();
+    const { message, images: rawImages, pdfs: rawPdfs, csvText: rawCsvText, scenarioHandoff, scenarioConfirm, fromChip, onboarding: rawOnboarding, onboardingAsset: rawOnboardingAsset } = await req.json();
+    // First-run onboarding scope: keep the assistant on asset setup only, focused on
+    // the chosen asset. Sanitised here so a client can't inject arbitrary prompt text.
+    const onboarding = rawOnboarding === true;
+    const onboardingAsset = typeof rawOnboardingAsset === "string" ? rawOnboardingAsset.slice(0, 32) : null;
 
     // Scenario-narration handoff — handled before the message/mutation flow.
     if (scenarioHandoff) {
@@ -696,6 +700,8 @@ export async function POST(req: NextRequest) {
         userName,
         fingerprint: userData?.fingerprint ?? null,
         isNewUser,
+        onboarding,
+        onboardingAsset,
       });
       return NextResponse.json(result);
     }

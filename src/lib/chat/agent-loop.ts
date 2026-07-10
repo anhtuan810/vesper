@@ -81,6 +81,33 @@ export interface AgentChatInput {
   userName?: string;
   fingerprint: string | null;
   isNewUser: boolean;
+  /** First-run onboarding: keep the assistant strictly on adding assets (no
+   *  scenarios, no general Q&A), so it can't wander out of the guided setup. */
+  onboarding?: boolean;
+  /** The asset type the user chose to add right now (real_estate | stocks | cash |
+   *  crypto | pension | gold | bonds | other), so the scope can name it. */
+  onboardingAsset?: string | null;
+}
+
+// Asset-type → human label for the onboarding scope block.
+const ONBOARDING_ASSET_LABELS: Record<string, string> = {
+  real_estate: "a property", stocks: "stocks or funds", etf: "stocks or funds",
+  brokerage: "stocks or funds", cash: "cash or savings", crypto: "crypto",
+  pension: "a pension", gold: "gold", bonds: "bonds", other: "another asset",
+};
+
+// Appended to AGENT_SYSTEM during first-run onboarding so the assistant stays on
+// rails: it does portfolio setup only, scoped to the asset the user chose, and
+// redirects anything off-topic instead of answering it.
+function onboardingScopeBlock(assetType?: string | null): string {
+  const label = (assetType && ONBOARDING_ASSET_LABELS[assetType]) || "your assets";
+  return `ONBOARDING MODE — STAY ON RAILS (this overrides anything above that would broaden your scope):
+The user is in first-run setup, adding their assets one at a time. Right now they are adding: ${label}.
+- Do ONLY portfolio setup: help them record assets, nothing else.
+- Do NOT run scenarios or projections, do NOT use any what-if/scenario tool, do NOT answer general questions about markets, the economy, companies, or how the app works, and do NOT offer analysis, opinions, or unsolicited commentary.
+- Focus on the asset they are adding (${label}): collect everything needed for it — through conversation or a screenshot — then confirm and save it. If they clearly switch to a different asset, help add that one instead.
+- If the user asks anything off-topic, reply in ONE short sentence: "Let's finish setting up your portfolio first — I can help with that once you're done." Then keep helping them add assets.
+- After an asset is saved, confirm it in one short line and invite them to add another or tap Done. Keep every reply short.`;
 }
 
 export interface AgentChatResult {
@@ -139,6 +166,13 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
 
   const messages: Anthropic.Messages.MessageParam[] = [...history, { role: "user", content: userContent }];
 
+  // During first-run onboarding, append the scope block so the assistant does asset
+  // setup only (no scenarios / general Q&A) and stays on the chosen asset. Normal
+  // chat is untouched, so its cached system prefix is unchanged.
+  const systemPrompt = input.onboarding
+    ? `${AGENT_SYSTEM}\n\n${onboardingScopeBlock(input.onboardingAsset)}`
+    : AGENT_SYSTEM;
+
   // Accumulated across tool round-trips.
   const figures: string[] = [];
   let card: ScenarioResult | null = null;
@@ -158,7 +192,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       // 1500). A big import (20+ rows, all fields) can approach 4000, so give it
       // headroom. Final-text rounds stay far under this — max_tokens is a ceiling,
       // not a target, so quiet rounds cost nothing extra.
-      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 8000, system: AGENT_SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
+      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 8000, system: systemPrompt, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
       return { message: "Couldn't reach the assistant. Please try again.", remaining: CHAT_DAILY_LIMIT - input.used };
