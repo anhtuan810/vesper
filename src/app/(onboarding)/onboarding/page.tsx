@@ -256,9 +256,12 @@ export default function OnboardingPage() {
             <span className="onb-collect-label">
               Adding <span aria-hidden>{TYPE_EMOJI[activeType] ?? "•"}</span> {LABEL_OF[activeType] ?? "asset"}
             </span>
-            <button className="onb-discard" onClick={discard} disabled={busy}>
-              {ongoing.length > 0 ? "Discard" : "Cancel"}
-            </button>
+            {/* Cancel exists only while nothing has been saved yet. Once the asset
+                is in, it's done — no discard here; remove-last on the menu is the
+                undo for a saved asset. */}
+            {ongoing.length === 0 && (
+              <button className="onb-discard" onClick={discard} disabled={busy}>Cancel</button>
+            )}
           </div>
           {ongoing.length > 0 && (
             <div className="onb-saved-bar">
