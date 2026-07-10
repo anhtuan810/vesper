@@ -371,6 +371,18 @@ export default function OnboardingPage() {
         .onb-tile-label { font-family: var(--font-ui); font-size: var(--fs-body); color: var(--text); font-weight: 500; }
         .onb-pick-hint { font-family: var(--font-ui); font-size: var(--fs-meta); color: var(--text-dim); margin: var(--space-4) 0 0; }
 
+        /* Wider screens: the same menu-first principle, with desktop presence —
+           one row-pair of tiles instead of a tall phone stack, more air above. */
+        @media (min-width: 640px) {
+          .onb-grid { grid-template-columns: repeat(4, 1fr); }
+          .onb-tile { min-height: 104px; }
+        }
+        @media (min-width: 1024px) {
+          .onb-pick { padding-top: 10vh; }
+          .onb-pick-title { font-size: var(--fs-hero, 34px); }
+          .onb-tile-emoji { font-size: 28px; }
+        }
+
         /* Focused collect bar */
         .onb-collect-bar {
           flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;

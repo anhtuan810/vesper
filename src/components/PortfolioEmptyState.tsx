@@ -87,6 +87,18 @@ export function PortfolioEmptyState() {
           color: var(--text-faint); line-height: var(--lh-body);
           margin: var(--space-4) 0 0;
         }
+
+        /* Desktop: same single-option principle, presented as a centered landing —
+           the block sits mid-viewport, text centered, the button stays the one
+           big action. Mobile keeps its left-aligned column untouched. */
+        @media (min-width: 1024px) {
+          .pes-wrap {
+            max-width: 520px; min-height: 62vh;
+            align-items: center; justify-content: center; text-align: center;
+          }
+          .pes-title { font-size: var(--fs-hero, 38px); }
+          .pes-btn { max-width: 380px; }
+        }
       `}</style>
     </div>
   );
