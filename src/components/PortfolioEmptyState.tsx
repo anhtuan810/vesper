@@ -61,7 +61,7 @@ export function PortfolioEmptyState() {
           font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: 500;
         }
         .pes-title {
-          font-family: var(--font-display); font-style: italic; font-weight: 400;
+          font-family: var(--font-display); font-weight: 500;
           font-size: var(--fs-hero, var(--fs-title)); line-height: var(--lh-snug);
           color: var(--hero); letter-spacing: var(--tracking-title);
           margin: var(--space-4) 0 0;

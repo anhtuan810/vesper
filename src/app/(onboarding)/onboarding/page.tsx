@@ -8,6 +8,7 @@ import { useUser } from "@/lib/hooks";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { useChatSession } from "@/lib/use-chat-session";
 import { VolnarLogo } from "@/components/VolnarLogo";
+import { AssetClassIcon } from "@/components/icons/AssetClassIcons";
 
 // The gated onboarding flow, one asset at a time. It opens on a clean "pick an asset"
 // menu — every class listed, no chat box. Choosing a class starts a FOCUSED, scoped
@@ -23,20 +24,15 @@ interface AddedAsset {
   type: string;
 }
 
-const TYPE_EMOJI: Record<string, string> = {
-  real_estate: "🏠", stocks: "📈", etf: "📈", crypto: "🪙", gold: "🥇",
-  cash: "💶", pension: "🏦", bonds: "📜", other: "💠",
-};
-
-const PICK_TYPES: Array<{ key: string; label: string; kickoff: string }> = [
-  { key: "real_estate", label: "Property", kickoff: "I want to add a property." },
-  { key: "stocks", label: "Stocks & funds", kickoff: "I want to add stocks or funds." },
-  { key: "cash", label: "Cash & savings", kickoff: "I want to add cash or savings." },
-  { key: "crypto", label: "Crypto", kickoff: "I want to add crypto." },
-  { key: "pension", label: "Pension", kickoff: "I want to add a pension." },
-  { key: "gold", label: "Gold", kickoff: "I want to add gold." },
-  { key: "bonds", label: "Bonds", kickoff: "I want to add bonds." },
-  { key: "other", label: "Something else", kickoff: "I want to add another asset." },
+const PICK_TYPES: Array<{ key: string; label: string; hint: string; kickoff: string }> = [
+  { key: "real_estate", label: "Property", hint: "Home, rental, land", kickoff: "I want to add a property." },
+  { key: "stocks", label: "Stocks & funds", hint: "Shares, ETFs, broker positions", kickoff: "I want to add stocks or funds." },
+  { key: "cash", label: "Cash & savings", hint: "Accounts, deposits", kickoff: "I want to add cash or savings." },
+  { key: "crypto", label: "Crypto", hint: "Coins, exchange holdings", kickoff: "I want to add crypto." },
+  { key: "pension", label: "Pension", hint: "Workplace, private or state", kickoff: "I want to add a pension." },
+  { key: "gold", label: "Gold", hint: "Bullion, coins", kickoff: "I want to add gold." },
+  { key: "bonds", label: "Bonds", hint: "Government, corporate", kickoff: "I want to add bonds." },
+  { key: "other", label: "Something else", hint: "Anything of value", kickoff: "I want to add another asset." },
 ];
 
 const LABEL_OF: Record<string, string> = Object.fromEntries(PICK_TYPES.map((t) => [t.key, t.label]));
@@ -227,7 +223,8 @@ export default function OnboardingPage() {
               <div className="onb-added-chips">
                 {assets.map((a, i) => (
                   <span key={a.id} className="onb-chip">
-                    <span aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span> {a.name}
+                    <span className="onb-chip-ic"><AssetClassIcon type={a.type} size={13} strokeWidth={1.9} /></span>
+                    {a.name}
                     {i === assets.length - 1 && (
                       <button className="onb-chip-x" onClick={removeLast} disabled={busy} aria-label={`Remove ${a.name}`}>✕</button>
                     )}
@@ -240,8 +237,9 @@ export default function OnboardingPage() {
           <div className="onb-grid">
             {PICK_TYPES.map((t) => (
               <button key={t.key} className="onb-tile" onClick={() => pickType(t)} disabled={busy}>
-                <span className="onb-tile-emoji" aria-hidden>{TYPE_EMOJI[t.key] ?? "•"}</span>
+                <span className="onb-tile-ic"><AssetClassIcon type={t.key} /></span>
                 <span className="onb-tile-label">{t.label}</span>
+                <span className="onb-tile-hint">{t.hint}</span>
               </button>
             ))}
           </div>
@@ -254,7 +252,8 @@ export default function OnboardingPage() {
         <>
           <div className="onb-collect-bar">
             <span className="onb-collect-label">
-              Adding <span aria-hidden>{TYPE_EMOJI[activeType] ?? "•"}</span> {LABEL_OF[activeType] ?? "asset"}
+              <span className="onb-collect-ic"><AssetClassIcon type={activeType} size={14} strokeWidth={1.9} /></span>
+              Adding {LABEL_OF[activeType] ?? "asset"}
             </span>
             {/* Cancel exists only while nothing has been saved yet. Once the asset
                 is in, it's done — no discard here; remove-last on the menu is the
@@ -345,6 +344,7 @@ export default function OnboardingPage() {
           border-radius: var(--radius-pill); padding: 4px 10px;
           font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text);
         }
+        .onb-chip-ic { display: inline-flex; color: var(--accent-text, var(--accent)); flex-shrink: 0; }
         .onb-chip-x {
           background: var(--text-faint); color: var(--bg); border: none; cursor: pointer;
           width: 16px; height: 16px; border-radius: 50%; font-size: 10px; line-height: 16px;
@@ -352,35 +352,41 @@ export default function OnboardingPage() {
         }
         .onb-chip-x:disabled { opacity: 0.5; cursor: default; }
         .onb-pick-title {
-          font-family: var(--font-display); font-style: italic; font-weight: 400;
+          font-family: var(--font-display); font-weight: 500;
           font-size: var(--fs-title); color: var(--hero); line-height: var(--lh-snug);
           letter-spacing: var(--tracking-title); margin: 0 0 var(--space-4);
         }
         .onb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
         .onb-tile {
-          display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
-          background: var(--surface); border: 0.5px solid var(--border-strong);
+          display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+          background: var(--surface); border: 0.5px solid var(--border);
           border-radius: var(--radius-lg); padding: var(--space-4);
-          cursor: pointer; min-height: 88px; text-align: left;
-          transition: border-color 0.15s, background 0.12s, transform 0.1s;
+          cursor: pointer; min-height: 116px; text-align: left;
+          box-shadow: var(--shadow-soft);
+          transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
         }
-        .onb-tile:hover { border-color: var(--accent); }
+        .onb-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
         .onb-tile:active { transform: scale(0.98); }
         .onb-tile:disabled { opacity: 0.5; cursor: default; }
-        .onb-tile-emoji { font-size: 24px; }
+        .onb-tile-ic {
+          width: 38px; height: 38px; border-radius: var(--radius-md);
+          background: var(--accent-soft); color: var(--accent-text, var(--accent));
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 8px; flex-shrink: 0;
+        }
         .onb-tile-label { font-family: var(--font-ui); font-size: var(--fs-body); color: var(--text); font-weight: 500; }
+        .onb-tile-hint { font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-faint); line-height: var(--lh-snug); }
         .onb-pick-hint { font-family: var(--font-ui); font-size: var(--fs-meta); color: var(--text-dim); margin: var(--space-4) 0 0; }
 
         /* Wider screens: the same menu-first principle, with desktop presence —
            one row-pair of tiles instead of a tall phone stack, more air above. */
         @media (min-width: 640px) {
           .onb-grid { grid-template-columns: repeat(4, 1fr); }
-          .onb-tile { min-height: 104px; }
         }
         @media (min-width: 1024px) {
           .onb-pick { padding-top: 10vh; }
           .onb-pick-title { font-size: var(--fs-hero, 34px); }
-          .onb-tile-emoji { font-size: 28px; }
+          .onb-tile { min-height: 128px; }
         }
 
         /* Focused collect bar */
@@ -396,9 +402,11 @@ export default function OnboardingPage() {
         .onb-discard { color: var(--negative, var(--text-faint)); flex-shrink: 0; }
         .onb-back:disabled, .onb-discard:disabled { opacity: 0.5; cursor: default; }
         .onb-collect-label {
+          display: inline-flex; align-items: center; gap: 6px;
           font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-dim);
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
         }
+        .onb-collect-ic { display: inline-flex; color: var(--accent-text, var(--accent)); flex-shrink: 0; }
         /* "Saved — add another" bar: appears only once this asset is finished */
         .onb-saved-bar {
           flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
