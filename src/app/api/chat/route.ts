@@ -2,11 +2,11 @@ import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase, getAuthUser } from "@/lib/supabase";
 import { entitledGate } from "@/lib/require-entitled";
-import { demoExpiredGate } from "@/lib/demo-session";
+import { getDemoSessionStatus, type DemoSessionStatus } from "@/lib/demo-session";
 import { isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
 import { validateEnv } from "@/lib/env";
 import {
-  CHAT_DAILY_LIMIT, DEMO_ACCOUNT_ID_PREFIX, DEMO_CHAT_DAILY_LIMIT,
+  CHAT_DAILY_LIMIT, DEMO_CHAT_DAILY_LIMIT,
   CHAT_MAX_IMAGES, CHAT_MAX_PDFS, CHAT_PDF_MAX_MB, CHAT_REQUEST_MAX_BASE64, CHAT_CSV_MAX_TEXT_LEN,
 } from "@/lib/constants";
 import { ALLOWED_IMAGE_TYPES, stripTags, timestampedPair } from "@/lib/chat-helpers";
@@ -16,17 +16,20 @@ import { runAgentChat } from "@/lib/chat/agent-loop";
 
 validateEnv();
 
-// Per-user daily chat allowance. The shared demo account runs on a tighter
-// budget than a paying user — every demo visitor draws on the same bucket.
-function chatDailyLimitFor(userId: string): number {
-  return userId.startsWith(DEMO_ACCOUNT_ID_PREFIX) ? DEMO_CHAT_DAILY_LIMIT : CHAT_DAILY_LIMIT;
+// The graceful demo cap-hit response. Quiet, editorial tone (the client renders
+// `message` and swaps the composer for the same line with a sign-up action).
+function demoLimitResponse(): NextResponse {
+  return NextResponse.json(
+    { demoLimitReached: true, message: "Demo session ended. Start your own portfolio.", assets: null, remaining: 0 },
+    { status: 429 },
+  );
 }
 
 // Scenario → chat narration handoff. Narrates already-computed figures under the
 // numeric guardrail (Claude produces no numbers of its own) and writes the turn.
 // Self-contained: shares auth + rate limit but never enters the agent loop.
 // No portfolio mutation occurs.
-async function handleScenarioNarration(userId: string, raw: unknown): Promise<NextResponse> {
+async function handleScenarioNarration(userId: string, raw: unknown, demo: DemoSessionStatus): Promise<NextResponse> {
   const h = raw as Partial<ScenarioHandoff>;
   if (
     !h ||
@@ -39,7 +42,7 @@ async function handleScenarioNarration(userId: string, raw: unknown): Promise<Ne
   }
 
   const supabase = createServerSupabase();
-  const dailyLimit = chatDailyLimitFor(userId);
+  const dailyLimit = demo.isDemo ? DEMO_CHAT_DAILY_LIMIT : CHAT_DAILY_LIMIT;
   const today = new Date().toISOString().slice(0, 10);
   const { data: newCount, error: rpcError } = await supabase.rpc("increment_rate_limit", {
     p_user_id: userId,
@@ -50,6 +53,7 @@ async function handleScenarioNarration(userId: string, raw: unknown): Promise<Ne
     return NextResponse.json({ message: "Couldn't reach the assistant. Please try again." }, { status: 500 });
   }
   if ((newCount as number) > dailyLimit) {
+    if (demo.isDemo) return demoLimitResponse();
     return NextResponse.json(
       { message: `You've reached today's message limit (${dailyLimit}). Come back tomorrow!`, assets: null, remaining: 0 },
       { status: 429 },
@@ -83,9 +87,10 @@ export async function POST(req: NextRequest) {
 
     // Per-visitor demo accounts expire one hour after creation, enforced per user
     // and server-side. Wall an expired demo turn here, before any read, write, or
-    // rate-limit increment — nothing is mutated on an expired demo turn.
-    const demoGate = await demoExpiredGate(createServerSupabase(), userId);
-    if (demoGate) return demoGate;
+    // rate-limit increment — nothing is mutated on an expired demo turn. The same
+    // lookup identifies a live demo session, which chats on a tighter allowance.
+    const demo = await getDemoSessionStatus(createServerSupabase(), userId);
+    if (demo.expired) return NextResponse.json({ demoExpired: true }, { status: 403 });
 
     const { message, images: rawImages, pdfs: rawPdfs, csvText: rawCsvText, scenarioHandoff, onboarding: rawOnboarding, onboardingAsset: rawOnboardingAsset } = await req.json();
     // First-run onboarding scope: keep the assistant on asset setup only, focused on
@@ -95,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     // Scenario-narration handoff — handled before the message flow.
     if (scenarioHandoff) {
-      return await handleScenarioNarration(userId, scenarioHandoff);
+      return await handleScenarioNarration(userId, scenarioHandoff, demo);
     }
 
     // Normalise: accept array (new) or single object (old clients)
@@ -159,7 +164,10 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerSupabase();
 
-    const dailyLimit = chatDailyLimitFor(userId);
+    // A demo session chats on a tighter allowance. The rate-limit bucket is
+    // daily, but a demo account lives at most one hour, so this is effectively
+    // a session-lifetime cap.
+    const dailyLimit = demo.isDemo ? DEMO_CHAT_DAILY_LIMIT : CHAT_DAILY_LIMIT;
     const today = new Date().toISOString().slice(0, 10);
 
     const { data: newCount, error: rpcError } = await supabase.rpc("increment_rate_limit", {
@@ -173,6 +181,7 @@ export async function POST(req: NextRequest) {
     }
 
     if ((newCount as number) > dailyLimit) {
+      if (demo.isDemo) return demoLimitResponse();
       return NextResponse.json({
         message: `You've reached today's message limit (${dailyLimit}). Come back tomorrow!`,
         assets: null,

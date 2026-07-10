@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabase } from "@/lib/supabase";
 import { seedDemoUser } from "@/lib/demo-seed";
-import { DEMO_SESSION_TTL_MS } from "@/lib/demo-session";
+import { DEMO_SESSION_TTL_MS, clientIpFrom, demoMintAllowed } from "@/lib/demo-session";
 
 // Native-app counterpart of /demo (App Review / public demo entry). The web route
 // signs the demo user in via cookies, which can't cross into the bundled app's
@@ -18,7 +18,7 @@ import { DEMO_SESSION_TTL_MS } from "@/lib/demo-session";
 //     is exactly what the shipped App Store build calls. Kept as the default so the
 //     released app's demo button keeps working in production until the per-visitor
 //     demo is switched on. Inert (404) when no credentials are configured.
-export async function POST() {
+export async function POST(req: NextRequest) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -28,6 +28,16 @@ export async function POST() {
   // ── Per-visitor ephemeral demo ──────────────────────────────────────────────
   if (process.env.DEMO_ENABLED === "true") {
     try {
+      // Minting guard: every entry creates a fresh anonymous account with its
+      // own chat allowance, so cap sessions per IP per hour BEFORE any account
+      // exists. Fails open until the demo_ip_limits migration is applied.
+      if (!(await demoMintAllowed(createServerSupabase(), clientIpFrom(req.headers)))) {
+        return NextResponse.json(
+          { error: "demo_busy", message: "Demo is busy right now — try again later." },
+          { status: 429 },
+        );
+      }
+
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error || !data.user || !data.session) {
         return NextResponse.json({ error: "Demo unavailable" }, { status: 503 });

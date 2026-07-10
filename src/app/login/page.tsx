@@ -59,6 +59,9 @@ function LoginInner() {
     if (!n && deadline != null && Date.now() >= deadline) setCookieSpent(true);
   }, []);
   const demoSpent = params.get("demo") === "expired" || cookieSpent;
+  // The /demo route hit the per-IP minting cap and bounced back here — say so
+  // quietly instead of offering a button that would just bounce again.
+  const demoBusy = params.get("demo") === "busy";
 
   const callbackUrl = (typeof window !== "undefined")
     ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
@@ -271,10 +274,11 @@ function LoginInner() {
           .demo-cta:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
         `}</style>
 
-        {demoSpent ? (
-          // The trial is once per browser — offering the button again would be
-          // a dead loop (the /demo route just bounces back here). Say what
-          // happened and point at the real next step instead.
+        {demoSpent || demoBusy ? (
+          // Spent: the trial is once per browser — offering the button again
+          // would be a dead loop (the /demo route just bounces back here).
+          // Busy: the per-IP minting cap is reached for this hour. Either way,
+          // say what happened and point at the real next step instead.
           <div
             style={{
               marginTop: 20,
@@ -288,8 +292,9 @@ function LoginInner() {
               textAlign: "center",
             }}
           >
-            Your demo session has ended — the demo gives each visitor one hour.
-            To keep going, create an account above: the first 7 days are free.
+            {demoSpent
+              ? "Your demo session has ended — the demo gives each visitor one hour. To keep going, create an account above: the first 7 days are free."
+              : "The demo is busy right now — try again in a little while, or create an account above: the first 7 days are free."}
           </div>
         ) : (
         <>
@@ -316,7 +321,16 @@ function LoginInner() {
             // app — fetch the demo session tokens and adopt them instead.
             try {
               const res = await apiFetch("/api/demo-session", { method: "POST" });
-              if (!res.ok) throw new Error();
+              if (!res.ok) {
+                // Per-IP minting cap (429) carries its own quiet message.
+                if (res.status === 429) {
+                  const body = await res.json().catch(() => null);
+                  setPreparingDemo(false);
+                  setError(body?.message || "Demo is busy right now — try again later.");
+                  return;
+                }
+                throw new Error();
+              }
               const { access_token, refresh_token, expires_at } = await res.json();
               const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
               if (sessionError) throw new Error();

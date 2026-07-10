@@ -13,6 +13,7 @@ import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
 import { ScenarioResultCard } from "@/components/scenario/cards/ScenarioResultCard";
 import { Chip } from "@/components/chat/Chip";
 import { useSubscription } from "@/components/SubscriptionProvider";
+import { useSignOut } from "@/lib/hooks";
 import { classifyChip, cheapHash } from "@/lib/chip-telemetry";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 import { isNative } from "@/lib/platform";
@@ -88,7 +89,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       messages, input, setInput, loading, thinking, processingKind, remaining,
       imagePreviews, imageData, canSend, send, sendText, sendScenario, removeImage, handlePaste, handleFile,
       pdfData, csvData, attachmentError, removePdf, removeCsv,
-      isLoadingMore,
+      isLoadingMore, demoEnded,
     } = session;
 
     // A seeded chip with a pre-computed scenario handoff dispatches deterministic
@@ -302,6 +303,45 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           </div>
         )}
       </>
+    );
+
+    // Once the demo session is over (out of messages, or past its hour), the
+    // composer swaps to this quiet line instead of a dead input. The action
+    // signs out of the anonymous session and lands on /login, where a real
+    // account (with its 7-day trial) can be created — the same path the
+    // expiry wall takes.
+    const signOut = useSignOut();
+    const demoEndedNotice = (
+      <div
+        style={{
+          background: "var(--surface)",
+          border: "0.5px solid var(--border)",
+          borderRadius: "var(--radius-xl)",
+          padding: "14px 16px",
+          textAlign: "center",
+          fontFamily: "var(--font-ui)",
+          fontSize: "var(--fs-body)",
+          color: "var(--text-dim)",
+        }}
+      >
+        Demo session ended.{" "}
+        <button
+          onClick={signOut}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            font: "inherit",
+            color: "var(--accent)",
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+          }}
+        >
+          Start your own portfolio
+        </button>
+        .
+      </div>
     );
 
     // Muted point-of-use disclaimer rendered directly beneath the composer input.
@@ -651,7 +691,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
 
             {counters}
 
-            {/* Input pill */}
+            {/* Input pill — or the quiet sign-up line once the demo is over */}
+            {demoEnded ? demoEndedNotice : (
             <div
               style={{
                 background: "var(--surface)",
@@ -772,6 +813,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
                 </svg>
               </button>
             </div>
+            )}
             {disclaimer}
           </div>
         </>
@@ -820,7 +862,8 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         >
           {counters}
 
-          {/* Input pill */}
+          {/* Input pill — or the quiet sign-up line once the demo is over */}
+          {demoEnded ? demoEndedNotice : (
           <div
             style={{
               position: "relative",
@@ -933,6 +976,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
               </svg>
             </button>
           </div>
+          )}
           {disclaimer}
         </div>
       </>

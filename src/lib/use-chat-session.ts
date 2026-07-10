@@ -84,6 +84,10 @@ interface ChatResponse {
   /** A past-dated add kicked off a background net-worth history rebuild; the
    * client shows a "building" indicator and auto-refreshes until it lands. */
   building?: boolean;
+  /** Demo session past its hour — the server walled the turn (403). */
+  demoExpired?: boolean;
+  /** Demo session spent its message allowance — the server refused the turn (429). */
+  demoLimitReached?: boolean;
 }
 
 const ROUND_AMOUNT: Record<DisplayCurrency, number> = {
@@ -235,6 +239,9 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   // moment the reply lands or the wait ends.
   const [processingKind, setProcessingKind] = useState<ProcessingKind | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
+  // The demo session is over — either past its hour (403 demoExpired) or out of
+  // messages (429 demoLimitReached). The composer swaps to a quiet sign-up line.
+  const [demoEnded, setDemoEnded] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageData, setImageData] = useState<Array<{ base64: string; mediaType: string }>>([]);
   const [pdfData, setPdfData] = useState<Array<{ name: string; base64: string }>>([]);
@@ -600,6 +607,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
         if (typeof data?.remaining === "number") setRemaining(data.remaining);
+        if (data?.demoExpired || data?.demoLimitReached) setDemoEnded(true);
         // Restore the composer so the user's text isn't lost and can be retried,
         // and drop the orphaned optimistic user bubble.
         setInput(text);
@@ -707,6 +715,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       data = await res.json();
       setThinking(false);
       if (!res.ok) {
+        if (data?.demoExpired || data?.demoLimitReached) setDemoEnded(true);
         setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: data.message || "Something went wrong. Please try again." }]);
         return;
       }
@@ -770,6 +779,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
         if (typeof data?.remaining === "number") setRemaining(data.remaining);
+        if (data?.demoExpired || data?.demoLimitReached) setDemoEnded(true);
         // Restore the composer so the chip text isn't lost, and drop the
         // orphaned optimistic user bubble.
         setInput(trimmed);
@@ -876,7 +886,8 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     pdfData,
     csvData,
     attachmentError,
-    canSend: !loading && !!(input.trim() || imageData.length || pdfData.length || csvData.length) && (remaining === null || remaining > 0),
+    demoEnded,
+    canSend: !loading && !demoEnded && !!(input.trim() || imageData.length || pdfData.length || csvData.length) && (remaining === null || remaining > 0),
     send,
     sendText,
     sendScenario,

@@ -174,11 +174,14 @@ Cache for the **Decision Verdict** (`src/lib/scenario/decision-verdict.ts` → `
 - `verdict_key` (text, PK), `computed_on` (date — freshness check vs today, UTC), `payload` (jsonb — the `VerdictData`), `updated_at` (timestamptz).
 
 ### demo_users
-Per-visitor ephemeral demo accounts (only minted when `DEMO_ENABLED === "true"`). One row per anonymous Supabase user written with the service role on demo entry (`/demo` web, `/api/demo-session` native); `created_at` starts the hard one-hour session clock (`demoExpiredGate`), and the reap-demo cron deletes rows past TTL + grace. Service-role only: RLS enabled, no policies. Migrations `20260622_demo_users.sql` (table) and `20260628_demo_visitor_trial.sql` (adds `visitor_id`).
+Per-visitor ephemeral demo accounts (only minted when `DEMO_ENABLED === "true"`). One row per anonymous Supabase user written with the service role on demo entry (`/demo` web, `/api/demo-session` native); `created_at` starts the hard one-hour session clock (`demoExpiredGate`), and the reap-demo cron deletes rows past TTL + grace. Having a row here is also what puts a user on the demo chat allowance (`DEMO_CHAT_DAILY_LIMIT` = 20 messages; with the one-hour TTL the daily bucket is effectively a session-lifetime cap) — `getDemoSessionStatus` in `src/lib/demo-session.ts` serves both the expiry gate and the cap from one lookup. Service-role only: RLS enabled, no policies. Migrations `20260622_demo_users.sql` (table) and `20260628_demo_visitor_trial.sql` (adds `visitor_id`).
 - `user_id` (uuid, PK, FK → users ON DELETE CASCADE), `created_at`, `visitor_id` (uuid, nullable — links the anon user to its browser; null for native, which keeps the per-user clock).
 
 ### demo_visitors
 Anchors the per-visitor demo trial to the **browser** so re-entering the demo (e.g. after bailing out of Subscribe) never resets the clock. A persistent httpOnly `demo_visitor` cookie (UUID, 7-day life) survives sign-out; `first_seen` records the browser's first entry and the trial deadline is `first_seen + TTL` for every re-entry. `demoExpiredGate` enforces that same deadline server-side for users with a `visitor_id`. A long-lived tombstone — pruned by the reaper only well past the cookie's life (`DEMO_VISITOR_RETENTION_MS`), so the lockout outlives the per-user data cleanup. Service-role only: RLS enabled, no policies. Migration `20260628_demo_visitor_trial.sql`.
+
+### demo_ip_limits
+Server-side stop for demo-session **minting abuse**: the visitor cookie only binds honest browsers, so without this a cookie-less script could mint unlimited per-visitor demo accounts — each with its own chat allowance, i.e. an Anthropic-spend amplifier. One row per (`sha256(ip)`, UTC `hour` bucket "YYYY-MM-DDTHH") — no raw IP is ever stored — incremented atomically by `increment_demo_ip_limit` (same hardening as `increment_rate_limit`: security invoker, pinned search_path, service-role-only EXECUTE). Both mint points check it BEFORE any account exists (`demoMintAllowed` in `src/lib/demo-session.ts`): `/demo` (web) redirects to `/login?demo=busy`, `POST /api/demo-session` (native) returns 429 `{ error: "demo_busy" }`; the cap is `DEMO_SESSION_IP_HOURLY_LIMIT` = 3 per IP per fixed hour window. **Fails open** until the migration is applied (the demo works, just unthrottled) — safe to deploy first; apply wherever `DEMO_ENABLED=true`. Spent hour buckets are pruned by the reap-demo cron after ~2 days. Service-role only: RLS enabled, no policies. Migration `20260711_demo_ip_limits.sql`.
 - `visitor_id` (uuid, PK), `first_seen` (timestamptz).
 
 ## Cron Jobs
@@ -488,7 +491,7 @@ Three layers, mirroring how the chat works. Replaces the former "No tests" debt.
 
 - **Per-commit CI** (`.github/workflows/ci.yml`) — on every push to `main` and every PR: `npm run typecheck` (full `tsc --noEmit`) then `npm test`. `npm test` runs `scripts/run-tests.mjs`, which executes every `scripts/verify-*.ts` (pure, hermetic — no network / DB / LLM / secrets) and fails on any; new `verify-<name>.ts` files are picked up automatically. Covers acquisition-date parsing, chip sanitisation, tag extraction, the add/edit/remove + pension validators, net-worth-context presentation, plus the existing scenario / projection / cost-basis engines.
 - **Model eval** (`.github/workflows/chat-eval.yml`, **manual-trigger only**; no schedule, so it never spends tokens on its own). `scripts/eval-agent-chat.ts` (24 cases) runs the real agent loop against the real `CHAT_MODEL` with the production prompt + tool schemas and a stubbed tool executor, asserting the model's **decision only** (no DB / prices / auth) — which **tool calls** it makes (commit vs propose vs read vs scenario vs decline) — on robust safety invariants ("never silently mutate", "commit when complete") rather than brittle wording. (The tag flow's `eval-chat.ts` was deleted with the tag engine in the 2026-07 cost pass.) Needs the `ANTHROPIC_API_KEY` repo secret, skips cleanly without it, and stays off per-commit CI (token cost + non-determinism). Scenarios span batch list-adds, ambiguous listings/venues, single-add corner cases, edits/corrections/buy-more, removes, real estate, pension, cash/bonds, what-ifs, guardrails (advice boundary, no-live-prices, prompt injection, off-topic) and read-not-add traps.
-- **Demo read eval** (`scripts/eval-chat-demo.ts`, `.github/workflows/demo-eval.yml`) — **manual-trigger only**, **read-only**. Signs into the shared demo account (which reseeds the deterministic "Alex" portfolio), asks 8 questions through the real `/api/chat`, and asserts the answers contain the known seeded values (40 NVIDIA, 0.07 BTC, €26k cash, €34k pension, Amsterdam+Rotterdam, EUR, net worth ~€368k). Exercises the full path auth→DB→model→answer. Targets the **deployed** app (`APP_BASE_URL`, default `https://app.volnar.nl`; the server holds the demo creds + Anthropic key), so it **lags a fix until Vercel redeploys**. Uses ~8 of the demo account's 20 daily chat calls (`DEMO_CHAT_DAILY_LIMIT`; regular users get 50) and **skips (never fails) on a 429**; only asks questions, never writes, so it cannot corrupt the shared account.
+- **Demo read eval** (`scripts/eval-chat-demo.ts`, `.github/workflows/demo-eval.yml`) — **manual-trigger only**, **read-only**. Signs into the shared demo account (which reseeds the deterministic "Alex" portfolio), asks 8 questions through the real `/api/chat`, and asserts the answers contain the known seeded values (40 NVIDIA, 0.07 BTC, €26k cash, €34k pension, Amsterdam+Rotterdam, EUR, net worth ~€368k). Exercises the full path auth→DB→model→answer. Targets the **deployed** app (`APP_BASE_URL`, default `https://app.volnar.nl`; the server holds the demo creds + Anthropic key), so it **lags a fix until Vercel redeploys**. Uses ~8 of the shared demo account's 50 daily chat calls (the 20-message `DEMO_CHAT_DAILY_LIMIT` applies to per-visitor demo sessions, not this account) and **skips (never fails) on a 429**; only asks questions, never writes, so it cannot corrupt the shared account.
 
 ## Mobile Foldable Vitals & Profile (2026-07)
 
@@ -876,6 +879,28 @@ first menu → finally hardened to a focused one-asset loop (finish or discard, 
 mid-asset switching) with a navigation-locked zero-asset dashboard. The deleted
 detours (a reusable `AssetCollector` component, an `AddAssetSheet`, a headless
 `/api/assets/parse` vision endpoint) are in git history at `ff2a96f` if ever needed.
+
+## Session log — 2026-07-10 (per-visitor demo hardening)
+
+Prepared the switch from the legacy shared-account demo to per-visitor demo
+sessions (the flip itself is still `DEMO_ENABLED`, gated on a matching binary):
+
+- **Demo chat cap is now per-visitor.** A user with a `demo_users` row chats on
+  `DEMO_CHAT_DAILY_LIMIT` (20); the same daily rate-limit bucket is reused — a
+  session lives at most an hour, so it's a session-lifetime cap in practice. The
+  previous hardcoded prefix match on the legacy shared account is gone (that
+  account is the seed template, not what visitors chat from, and reverts to the
+  regular 50/day). `getDemoSessionStatus` serves the expiry gate and the cap
+  from one `demo_users` lookup; `demoExpiredGate` is unchanged behaviourally.
+- **Minting abuse stop**: both demo entry points check a per-IP cap (3/hour,
+  `demo_ip_limits` + `increment_demo_ip_limit`, sha256(ip), fails open until the
+  migration is applied) before creating any account. Web bounces to
+  `/login?demo=busy`; native gets 429 `{ error: "demo_busy" }`.
+- **Graceful exhaustion**: a demo turn past the cap returns 429
+  `{ demoLimitReached: true }` with "Demo session ended. Start your own
+  portfolio." — the composer swaps to that quiet line (sign-out → /login
+  sign-up action, same path as the expiry wall) instead of a dead input; the
+  same swap trips on 403 `demoExpired`.
 
 ## Session log — 2026-07-10 (Anthropic cost-reduction pass)
 
