@@ -103,6 +103,26 @@ export default function OnboardingPage() {
     setActiveType(null);
   }, [reset]);
 
+  // Remove-last, from the menu: drop the most recently confirmed asset (a full
+  // erase — it was a mistake, not a sale). The user then re-picks its class to
+  // re-enter it.
+  const removeLast = useCallback(async () => {
+    if (!assets || assets.length === 0 || busy) return;
+    const last = assets[assets.length - 1];
+    setBusy(true);
+    try { track("onboarding_step", { step: "removed", asset_type: last.type }); } catch { /* best effort */ }
+    try {
+      await apiFetch("/api/assets/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changes: [{ action: "remove", name: last.name, removal_reason: "mistake" }] }),
+      });
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+  }, [assets, busy, reload]);
+
   // Discard the in-progress asset: delete anything added since it began, then return
   // to the menu. (Only confirmed assets are ever written, so this cleanly rewinds.)
   const discard = useCallback(async () => {
@@ -205,9 +225,12 @@ export default function OnboardingPage() {
             <div className="onb-added">
               <span className="onb-added-label">Added</span>
               <div className="onb-added-chips">
-                {assets.map((a) => (
+                {assets.map((a, i) => (
                   <span key={a.id} className="onb-chip">
                     <span aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span> {a.name}
+                    {i === assets.length - 1 && (
+                      <button className="onb-chip-x" onClick={removeLast} disabled={busy} aria-label={`Remove ${a.name}`}>✕</button>
+                    )}
                   </span>
                 ))}
               </div>
@@ -319,6 +342,12 @@ export default function OnboardingPage() {
           border-radius: var(--radius-pill); padding: 4px 10px;
           font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text);
         }
+        .onb-chip-x {
+          background: var(--text-faint); color: var(--bg); border: none; cursor: pointer;
+          width: 16px; height: 16px; border-radius: 50%; font-size: 10px; line-height: 16px;
+          text-align: center; padding: 0; flex-shrink: 0;
+        }
+        .onb-chip-x:disabled { opacity: 0.5; cursor: default; }
         .onb-pick-title {
           font-family: var(--font-display); font-style: italic; font-weight: 400;
           font-size: var(--fs-title); color: var(--hero); line-height: var(--lh-snug);

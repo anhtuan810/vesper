@@ -807,6 +807,84 @@ button. `/demo` signs in and reseeds the whole demo account before redirecting
   shift/alt or non-primary button) get no veil since this page never swaps
   documents. The login page already had its own cover (`preparingDemo`).
 
+## Gated Onboarding (2026-07-10)
+
+New users are locked into a guided, chat-driven setup until they add at least one
+asset or explicitly skip. Server-authoritative — a URL edit cannot bypass it.
+
+**The flag.** `users.onboarding_completed_at timestamptz` (migration
+`20260710_users_onboarding_completed_at.sql`), NULL until the user hits Done. The
+migration backfills every existing user to complete, so only signups created after
+it runs are ever gated. The gate is on the FLAG, never on "has data": a user who
+later sells everything stays in the app. The flag is set at Done in collection —
+never at the end of a price/history build, so a pricing hiccup can never trap
+anyone.
+
+**The gate** lives in `src/middleware.ts`, after the login redirect: authenticated +
+non-anonymous (demo users are exempt) + non-public + flag NULL → redirect to
+`/onboarding`. It FAILS OPEN when the column is missing or the read errors, so
+deploying before the migration walls no one. Two signed cookies (HMAC via Web
+Crypto, `src/lib/onboarding-pass.ts`; secret `ONBOARDING_PASS_SECRET`, falls back to
+the service-role key):
+- `vn_onboarded` — user-bound fast-path marker so completed users skip the
+  per-navigation DB read. The DB flag stays the source of truth.
+- `vn_onb_pass` — the "Done with no data" empty-exit pass, bound to the auth
+  `session_id` (JWT claim) so it dies on a real re-auth, and a session cookie so a
+  cold open with a NULL flag drops the user back into onboarding. No DB write.
+A completed user is auto-bounced off `/onboarding` unless they arrive with
+`?add=1` (the empty-state button), which lets them re-enter the guided flow on
+purpose.
+
+**The flow** (`src/app/(onboarding)/onboarding/page.tsx`, bare `(onboarding)` route
+group — no app chrome; `BottomNav` also self-hides on `/onboarding`):
+- Opens on a menu listing every asset class as a grid — no chat box.
+- Picking a class starts a FOCUSED chat for that single asset: the real chat
+  (`ChatThread` + `useChatSession`, `skipHistory` so no old transcript ever shows),
+  with every turn tagged `{ onboarding, onboardingAsset }`. The agent loop appends
+  an ONBOARDING scope block to its system prompt: asset setup only — no scenarios,
+  no general Q&A — stay on the chosen asset, redirect off-topic asks in one line.
+  Normal in-app chat is untouched (its cached system prefix is unchanged).
+- Mid-asset there is no way back to the menu: the exits are Cancel/Discard (deletes
+  anything this asset session added — a baseline diff of asset ids — then returns
+  to the menu) or finishing, which surfaces a "✓ added — Add another ›" bar. The
+  menu's Added strip also offers remove-last on the most recent asset.
+- Done (assets > 0) → `POST /api/onboarding/complete` (service-role, read-first
+  idempotent, ai-consent pattern) → dashboard. Skip (0 assets) →
+  `POST /api/onboarding/skip` issues the pass → the empty dashboard.
+
+**Zero-asset dashboard** (`PortfolioEmptyState`): one big "Add your first asset"
+button → `/onboarding?add=1`. While it is mounted it hides ALL navigation (mobile
+tab bar, desktop nav tabs + chat rail — rules live inside the component so they die
+with it); the account button stays for sign-out. Applies to pass-holders AND
+completed zero-asset users (owner call, 2026-07-10).
+
+**Writes** go through `POST /api/assets/create`, which wraps
+`applyPortfolioChanges` — the same gates/price/geo resolution + paired add-mutation
+as the chat path — and schedules `writeSnapshot`/`backfillSnapshots`/
+`generateMarketSwings` in the background (`after()`), so onboarding never waits on
+pricing. Onboarding remove-last/discard use it with `removal_reason: "mistake"`
+(full erase).
+
+**Instrumentation** rides Vercel Analytics: `onboarding_started`,
+`onboarding_step` ({step: type_chosen | discarded | removed, asset_type}),
+`onboarding_completed` ({assets}), `onboarding_skipped`. Flat, PII-free props.
+
+Naming caution: the pre-existing "onboarding" concepts in chat code
+(`buildOnboardingPrompt`, `ONBOARDING_CLASS_SEEDS`, `isNewUser`) refer to the
+zero-asset CHAT experience, not this gated flow — they are unrelated despite the
+shared word.
+
+## Session log — 2026-07-10 (gated onboarding)
+
+Built the gated onboarding end-to-end (see the feature section above). The shape it
+converged to, after live testing rounds with the owner: a scripted field-by-field
+collector felt like an interrogation → replaced with the real chat → the full
+assistant was then too free → scoped via a system-prompt block + a pick-the-class-
+first menu → finally hardened to a focused one-asset loop (finish or discard, no
+mid-asset switching) with a navigation-locked zero-asset dashboard. The deleted
+detours (a reusable `AssetCollector` component, an `AddAssetSheet`, a headless
+`/api/assets/parse` vision endpoint) are in git history at `ff2a96f` if ever needed.
+
 ## Session log — 2026-07-02 (Pulse family → account panel → the first 60 seconds)
 
 One session, seventeen commits on `main`; every item has a full section above.
@@ -1092,3 +1170,6 @@ pre-existing lint errors on `main`).
 - **HEIC images fail to decode client-side**. `compressImageFile` uses a canvas, which can't decode HEIC in most webviews, so a raw HEIC lands on the "Couldn't read that image" path. iOS usually transcodes to JPEG for web pickers and broker *screenshots* are PNG, so this is an edge case — a graceful failure, not a crash. A HEIC→JPEG decode step would close it.
 - **Post-add "building" indicator is mobile-only** (2026-07-06). The chip renders on the mobile net-worth hero (`NetWorthHero`); the desktop Overview (`OverviewContent`) auto-refreshes on the same `bumpPortfolioRevision()` ticks but shows no chip. The chat-thread line appears on both. Deferred — the primary surface is iOS.
 - **No server-side de-duplication of adds** (2026-07-06). Keeping the user's message on an interrupted send (see "Session log — 2026-07-06") removes the main reason people re-ask, but a user who does re-add the same holding still gets two positions — the commit path accepts both. A dedupe guard on commit (same symbol/name + recent occurred_at) would be the belt-and-suspenders follow-up.
+- **Zero-asset nav lock is CSS + tab-hiding, not a server gate** (2026-07-10). With an empty portfolio the tab bars/chat rail are hidden, but a typed URL (`/vitals`, `/chat`) still loads — those pages just show their own empty states. Server-gating app pages on "has data" was deliberately NOT done (the onboarding gate is on the flag, never on data); accepted.
+- **Onboarding gating is web-only** (2026-07-10). The native (Capacitor) build ships no middleware and its released binary predates the flow, so iOS users — new or existing — never see the gate or the guided setup. A client-side guard in a future binary would be the native counterpart.
+- **"Skip for now" wording on guided re-entry** (2026-07-10). An already-onboarded user who re-enters the guided flow via `?add=1` with zero assets sees "Skip for now" (and fires `onboarding_skipped`) when backing out, though for them it's just "back to the app". Cosmetic + a little telemetry noise; `onboarding_started` similarly fires on re-entries.
