@@ -312,9 +312,16 @@ export async function executeAgentTool(name: string, input: Record<string, unkno
     case "get_vitals": {
       const r = computeReadout(ctx.currentAssets as unknown as ScenarioAsset[], ctx.usdRates, ctx.now);
       const allocation = r.allocationByCategory.map((s) => ({ category: CATEGORY_LABEL[s.category] ?? s.category, share: pct(s.pct) }));
+      // Every figure handed to the model MUST also be allowlisted — the narration
+      // guardrail rejects any money/percent token it wasn't given, and a reply
+      // quoting an un-allowlisted figure degrades to a bare "Here's what I found."
+      // Concentration/LTV were missing here (get_net_worth had them), which killed
+      // every diversification answer that mentioned the concentration figure.
+      const concentration = r.topSingleNameConcentrationPct != null ? pct(r.topSingleNameConcentrationPct) : null;
+      const ltv = r.leverage ? pct(r.leverage.ltvPct) : null;
       return {
-        forModel: { netWorth: m(r.netWorthUsd), allocation, singleNameConcentration: r.topSingleNameConcentrationPct != null ? pct(r.topSingleNameConcentrationPct) : null, mortgageLtv: r.leverage ? pct(r.leverage.ltvPct) : null },
-        figures: [m(r.netWorthUsd), ...allocation.map((a) => a.share)],
+        forModel: { netWorth: m(r.netWorthUsd), allocation, singleNameConcentration: concentration, topSingleName: r.topSingleName, mortgageLtv: ltv },
+        figures: [m(r.netWorthUsd), ...allocation.map((a) => a.share), ...(concentration ? [concentration] : []), ...(ltv ? [ltv] : [])],
       };
     }
 
