@@ -215,7 +215,10 @@ function currentNetWorthUsd(ctx: ToolContext): number {
 // the answer to the user's total without a special rule.
 function netWorthFraming(ctx: ToolContext, m: (usd: number) => string) {
   const nwUsd = currentNetWorthUsd(ctx);
-  return { netWorthUsd: nwUsd, currentNetWorth: m(nwUsd) };
+  // Only the formatted string is narrated; the raw USD float was dead weight in
+  // every scenario tool_result (and a stray unformatted/USD number the model
+  // could echo for a EUR/GBP user). No consumer reads frame.netWorthUsd.
+  return { currentNetWorth: m(nwUsd) };
 }
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
