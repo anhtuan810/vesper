@@ -51,8 +51,9 @@ export default function OnboardingPage() {
   const [activeType, setActiveType] = useState<string | null>(null);
   const scopeRef = useRef<string | null>(null);
   // Asset ids present when the current focused asset began — anything added since is
-  // "the ongoing asset", which Discard removes.
-  const baselineRef = useRef<Set<string>>(new Set());
+  // "the ongoing asset": it gates the "Add another" affordance and is what Discard
+  // removes. State (not a ref) because the render derives from it.
+  const [baseline, setBaseline] = useState<Set<string>>(() => new Set());
   const startedRef = useRef(false);
 
   const reload = useCallback(async () => {
@@ -88,7 +89,7 @@ export default function OnboardingPage() {
   // the chat, and open with a guided kickoff for that class.
   const pickType = useCallback((t: (typeof PICK_TYPES)[number]) => {
     reset();
-    baselineRef.current = new Set((assets ?? []).map((a) => a.id));
+    setBaseline(new Set((assets ?? []).map((a) => a.id)));
     scopeRef.current = t.key;
     setActiveType(t.key);
     try { track("onboarding_step", { step: "type_chosen", asset_type: t.key }); } catch { /* best effort */ }
@@ -107,7 +108,7 @@ export default function OnboardingPage() {
   const discard = useCallback(async () => {
     if (busy) return;
     setBusy(true);
-    const ongoing = (assets ?? []).filter((a) => !baselineRef.current.has(a.id));
+    const ongoing = (assets ?? []).filter((a) => !baseline.has(a.id));
     try {
       if (ongoing.length > 0) {
         try { track("onboarding_step", { step: "discarded", asset_type: activeType ?? "unknown", count: ongoing.length }); } catch { /* best effort */ }
@@ -124,7 +125,7 @@ export default function OnboardingPage() {
       setActiveType(null);
       setBusy(false);
     }
-  }, [assets, activeType, busy, reload, reset]);
+  }, [assets, activeType, baseline, busy, reload, reset]);
 
   const done = useCallback(async () => {
     if (busy) return;
@@ -180,6 +181,10 @@ export default function OnboardingPage() {
 
   const hasAssets = assets.length > 0;
   const collecting = activeType !== null;
+  // Assets saved since this focused collection began. Zero = still mid-asset (the
+  // only exits are finishing it or Discard); non-zero = finished, so the "Add
+  // another" affordance appears.
+  const ongoing = collecting ? assets.filter((a) => !baseline.has(a.id)) : [];
 
   return (
     <div className="onb-shell">
@@ -220,15 +225,26 @@ export default function OnboardingPage() {
           {hasAssets && <p className="onb-pick-hint">Or tap <strong>Done</strong> when you&apos;re finished.</p>}
         </div>
       ) : (
-        // ── Focused collection of one asset. No class switching. ────────────────
+        // ── Focused collection of one asset. No class switching, and no way back
+        //    mid-asset: the user finishes it (then "Add another" appears) or
+        //    discards it. ─────────────────────────────────────────────────────────
         <>
           <div className="onb-collect-bar">
-            <button className="onb-back" onClick={backToMenu} disabled={busy}>‹ Add another</button>
             <span className="onb-collect-label">
               Adding <span aria-hidden>{TYPE_EMOJI[activeType] ?? "•"}</span> {LABEL_OF[activeType] ?? "asset"}
             </span>
-            <button className="onb-discard" onClick={discard} disabled={busy}>Discard</button>
+            <button className="onb-discard" onClick={discard} disabled={busy}>
+              {ongoing.length > 0 ? "Discard" : "Cancel"}
+            </button>
           </div>
+          {ongoing.length > 0 && (
+            <div className="onb-saved-bar">
+              <span className="onb-saved-text">
+                ✓ {ongoing.length === 1 ? `${ongoing[0].name} added` : `${ongoing.length} positions added`}
+              </span>
+              <button className="onb-back" onClick={backToMenu} disabled={busy}>Add another ›</button>
+            </div>
+          )}
           <ChatThread
             variant="page"
             session={session}
@@ -332,11 +348,22 @@ export default function OnboardingPage() {
           background: none; border: none; cursor: pointer; padding: 6px 2px;
           font-family: var(--font-ui); font-size: var(--fs-meta);
         }
-        .onb-back { color: var(--accent-text, var(--accent)); font-weight: 500; }
-        .onb-discard { color: var(--negative, var(--text-faint)); }
+        .onb-back { color: var(--accent-text, var(--accent)); font-weight: 600; flex-shrink: 0; }
+        .onb-discard { color: var(--negative, var(--text-faint)); flex-shrink: 0; }
         .onb-back:disabled, .onb-discard:disabled { opacity: 0.5; cursor: default; }
         .onb-collect-label {
           font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-dim);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+        }
+        /* "Saved — add another" bar: appears only once this asset is finished */
+        .onb-saved-bar {
+          flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+          gap: var(--space-2); padding: 8px 12px; margin-bottom: var(--space-2);
+          background: var(--accent-soft); border: 0.5px solid var(--accent);
+          border-radius: var(--radius-lg);
+        }
+        .onb-saved-text {
+          font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--accent-text);
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
         }
       `}</style>
