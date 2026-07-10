@@ -219,9 +219,13 @@ interface Options {
   /** Extra fields merged into every /api/chat request body — read at send time, so
    *  callers can attach live context (e.g. the onboarding scope). */
   extraPayload?: () => Record<string, unknown>;
+  /** Start with an empty thread and don't load or persist history. Used by the
+   *  onboarding flow so it always opens clean (no old transcript), matching the
+   *  "no transcript restore" rule. Turns still save server-side via /api/chat. */
+  skipHistory?: boolean;
 }
 
-export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraPayload }: Options) {
+export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraPayload, skipHistory }: Options) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -268,7 +272,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || skipHistory) return;
 
     const key = chatHistoryCacheKey(userId);
     const controller = new AbortController();
@@ -361,11 +365,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     }
 
     return () => { cancelled = true; controller.abort(); if (pollTimer) clearTimeout(pollTimer); };
-  }, [userId]);
+  }, [userId, skipHistory]);
 
   // Write only the latest CHAT_LOAD_LIMIT messages to localStorage — older paginated history stays out of the cache.
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || skipHistory) return;
     // Never overwrite a good cache with an EMPTY thread. On the userId
     // undefined→defined commit (cold start, or a second session's first mount)
     // this effect runs in the same flush as the load effect while `messages` is
@@ -378,7 +382,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       const stripped = latest.map(({ id, localId, from, text, suggestedReplies, scenarioResult }) => ({ id, localId, from, text, suggestedReplies, scenarioResult }));
       localStorage.setItem(chatHistoryCacheKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
     } catch {}
-  }, [messages, userId]);
+  }, [messages, userId, skipHistory]);
 
   const loadMore = useCallback(async () => {
     if (!userId || loadMoreInFlight.current || !hasMore) return;

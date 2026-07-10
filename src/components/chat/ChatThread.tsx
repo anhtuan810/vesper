@@ -53,6 +53,10 @@ interface ChatThreadProps {
   /** Space reserved below the page composer to clear the BottomNav (px). Defaults to
    * 64 (the nav height). Surfaces with no BottomNav — e.g. onboarding — pass 0. */
   bottomInset?: number;
+  /** Anchor a short thread to the BOTTOM of the scroll area (just above the
+   * composer) instead of the top. Used by onboarding so a few messages don't float
+   * at the top of a tall screen. */
+  bottomAlign?: boolean;
 
   // Caller-owned refs so the caller's scroll/observer effects keep working.
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -72,6 +76,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       source,
       composerBg,
       bottomInset = 64,
+      bottomAlign = false,
       scrollContainerRef,
       sentinelRef,
       bottomRef,
@@ -363,7 +368,10 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
         onScroll={onScroll}
         style={scrollStyle}
       >
-        <div ref={sentinelRef} />
+        {/* marginTop:auto pushes a short thread to the bottom (just above the
+            composer); it collapses to 0 once the thread overflows, so scrolling to
+            older messages still works. */}
+        <div ref={sentinelRef} style={bottomAlign ? { marginTop: "auto" } : undefined} />
         {isLoadingMore && (
           <div
             className="text-center text-faint"

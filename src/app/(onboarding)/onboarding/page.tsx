@@ -9,13 +9,11 @@ import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread"
 import { useChatSession } from "@/lib/use-chat-session";
 import { VolnarLogo } from "@/components/VolnarLogo";
 
-// The gated onboarding flow: the user CHOOSES an asset type first, then the chat
-// guides them through adding it — free-form typing or a screenshot, the existing
-// before-change intake (real-estate mortgage detail, holdings from a statement, …).
-// The chat is scoped: it does asset setup only and stays on the chosen asset (it
-// won't run scenarios or answer off-topic questions), so the user is guided rather
-// than dropped into an open assistant. They stay in onboarding until they hit Done
-// (the middleware gate enforces this server-side).
+// The gated onboarding flow. It opens on a clean "pick an asset" screen — every
+// asset class listed, no chat box (nothing to type yet). Choosing a type starts a
+// guided, scoped chat for that asset (free-form typing or a screenshot, the existing
+// before-change intake); the chat stays on asset setup and won't wander. The user
+// stays inside onboarding until they hit Done (the middleware gate enforces this).
 
 interface AddedAsset {
   id: string;
@@ -28,17 +26,15 @@ const TYPE_EMOJI: Record<string, string> = {
   cash: "💶", pension: "🏦", bonds: "📜", other: "💠",
 };
 
-// The asset types the user can pick, with the kickoff message each one sends so the
-// assistant opens with guidance for that specific asset.
 const PICK_TYPES: Array<{ key: string; label: string; kickoff: string }> = [
   { key: "real_estate", label: "Property", kickoff: "I want to add a property." },
   { key: "stocks", label: "Stocks & funds", kickoff: "I want to add stocks or funds." },
-  { key: "cash", label: "Cash", kickoff: "I want to add cash or savings." },
+  { key: "cash", label: "Cash & savings", kickoff: "I want to add cash or savings." },
   { key: "crypto", label: "Crypto", kickoff: "I want to add crypto." },
   { key: "pension", label: "Pension", kickoff: "I want to add a pension." },
   { key: "gold", label: "Gold", kickoff: "I want to add gold." },
   { key: "bonds", label: "Bonds", kickoff: "I want to add bonds." },
-  { key: "other", label: "Other", kickoff: "I want to add another asset." },
+  { key: "other", label: "Something else", kickoff: "I want to add another asset." },
 ];
 
 export default function OnboardingPage() {
@@ -48,8 +44,6 @@ export default function OnboardingPage() {
   const [assets, setAssets] = useState<AddedAsset[] | null>(null); // null = loading
   const [busy, setBusy] = useState(false);
   const [scope, setScope] = useState<string | null>(null);
-  // The scope the chat requests are tagged with — read at send time so a tap takes
-  // effect on the very next message.
   const scopeRef = useRef<string | null>(null);
   const startedRef = useRef(false);
 
@@ -74,15 +68,16 @@ export default function OnboardingPage() {
     try { track("onboarding_started"); } catch { /* best effort */ }
   }, []);
 
-  // The real chat, but scoped: every turn carries { onboarding, onboardingAsset } so
-  // the assistant stays on asset setup and on the chosen type. onPortfolioUpdate
-  // keeps the added-list in sync as assets land.
+  // The real chat, scoped to onboarding and to the chosen asset, and started CLEAN
+  // (skipHistory) so no old transcript shows.
   const session = useChatSession({
     userId,
     onPortfolioUpdate: reload,
+    skipHistory: true,
     extraPayload: () => ({ onboarding: true, onboardingAsset: scopeRef.current ?? undefined }),
   });
   const { messages, thinking } = session;
+  const hasMessages = messages.length > 0;
 
   const pickType = useCallback((t: (typeof PICK_TYPES)[number]) => {
     scopeRef.current = t.key;
@@ -91,7 +86,7 @@ export default function OnboardingPage() {
     session.sendText(t.kickoff);
   }, [session]);
 
-  // ── Chat scaffolding (mirrors the /chat route) ──────────────────────────────
+  // ── Chat scaffolding ────────────────────────────────────────────────────────
   const threadRef = useRef<ChatThreadHandle>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -162,6 +157,22 @@ export default function OnboardingPage() {
 
   const hasAssets = assets.length > 0;
 
+  const addedStrip = hasAssets ? (
+    <div className="onb-added">
+      <span className="onb-added-label">Added</span>
+      <div className="onb-added-chips">
+        {assets.map((a, i) => (
+          <span key={a.id} className="onb-chip">
+            <span aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span> {a.name}
+            {i === assets.length - 1 && (
+              <button className="onb-chip-x" onClick={removeLast} disabled={busy} aria-label={`Remove ${a.name}`}>✕</button>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="onb-shell">
       <div className="onb-topbar">
@@ -174,51 +185,55 @@ export default function OnboardingPage() {
         </button>
       </div>
 
-      {hasAssets && (
-        <div className="onb-added">
-          <span className="onb-added-label">Added</span>
-          <div className="onb-added-chips">
-            {assets.map((a, i) => (
-              <span key={a.id} className="onb-chip">
-                <span aria-hidden>{TYPE_EMOJI[a.type] ?? "•"}</span> {a.name}
-                {i === assets.length - 1 && (
-                  <button className="onb-chip-x" onClick={removeLast} disabled={busy} aria-label={`Remove ${a.name}`}>✕</button>
-                )}
-              </span>
+      {addedStrip}
+
+      {!hasMessages ? (
+        // ── Clean start: pick an asset. Every class listed, no chat box. ────────
+        <div className="onb-pick">
+          <h2 className="onb-pick-title">{hasAssets ? "Add another asset" : "What would you like to add?"}</h2>
+          <div className="onb-grid">
+            {PICK_TYPES.map((t) => (
+              <button key={t.key} className="onb-tile" onClick={() => pickType(t)} disabled={busy}>
+                <span className="onb-tile-emoji" aria-hidden>{TYPE_EMOJI[t.key] ?? "•"}</span>
+                <span className="onb-tile-label">{t.label}</span>
+              </button>
             ))}
           </div>
+          {hasAssets && <p className="onb-pick-hint">Or tap <strong>Done</strong> when you&apos;re finished.</p>}
         </div>
+      ) : (
+        // ── Guided chat, scoped to the chosen asset. ──────────────────────────
+        <>
+          <div className="onb-picker">
+            <div className="onb-picker-chips">
+              {PICK_TYPES.map((t) => (
+                <button
+                  key={t.key}
+                  className={`onb-type${scope === t.key ? " onb-type-on" : ""}`}
+                  onClick={() => pickType(t)}
+                  disabled={busy}
+                >
+                  <span aria-hidden>{TYPE_EMOJI[t.key] ?? "•"}</span> {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ChatThread
+            variant="page"
+            session={session}
+            seedMessage={null}
+            chatSuggestions={[]}
+            hasPortfolio={false}
+            bottomInset={0}
+            bottomAlign
+            scrollContainerRef={scrollContainerRef}
+            sentinelRef={sentinelRef}
+            bottomRef={bottomRef}
+            onScroll={() => {}}
+            ref={threadRef}
+          />
+        </>
       )}
-
-      <div className="onb-picker">
-        <span className="onb-picker-label">{hasAssets ? "Add another" : "What would you like to add?"}</span>
-        <div className="onb-picker-chips">
-          {PICK_TYPES.map((t) => (
-            <button
-              key={t.key}
-              className={`onb-type${scope === t.key ? " onb-type-on" : ""}`}
-              onClick={() => pickType(t)}
-              disabled={busy}
-            >
-              <span aria-hidden>{TYPE_EMOJI[t.key] ?? "•"}</span> {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ChatThread
-        variant="page"
-        session={session}
-        seedMessage={null}
-        chatSuggestions={[]}
-        hasPortfolio={false}
-        bottomInset={0}
-        scrollContainerRef={scrollContainerRef}
-        sentinelRef={sentinelRef}
-        bottomRef={bottomRef}
-        onScroll={() => {}}
-        ref={threadRef}
-      />
 
       <style>{`
         .chat-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 2px; }
@@ -280,11 +295,36 @@ export default function OnboardingPage() {
           text-align: center; padding: 0; flex-shrink: 0;
         }
         .onb-chip-x:disabled { opacity: 0.5; cursor: default; }
-        .onb-picker { flex-shrink: 0; padding-bottom: var(--space-2); }
-        .onb-picker-label {
-          display: block; font-family: var(--font-ui); font-size: var(--fs-caption);
-          color: var(--text-dim); margin-bottom: 6px;
+
+        /* Clean start: full grid of every asset class */
+        .onb-pick { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--space-4); }
+        .onb-pick-title {
+          font-family: var(--font-display); font-style: italic; font-weight: 400;
+          font-size: var(--fs-title); color: var(--hero); line-height: var(--lh-snug);
+          letter-spacing: var(--tracking-title); margin: 0 0 var(--space-4);
         }
+        .onb-grid {
+          display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3);
+        }
+        .onb-tile {
+          display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+          background: var(--surface); border: 0.5px solid var(--border-strong);
+          border-radius: var(--radius-lg); padding: var(--space-4);
+          cursor: pointer; min-height: 88px; text-align: left;
+          transition: border-color 0.15s, background 0.12s, transform 0.1s;
+        }
+        .onb-tile:hover { border-color: var(--accent); }
+        .onb-tile:active { transform: scale(0.98); }
+        .onb-tile:disabled { opacity: 0.5; cursor: default; }
+        .onb-tile-emoji { font-size: 24px; }
+        .onb-tile-label { font-family: var(--font-ui); font-size: var(--fs-body); color: var(--text); font-weight: 500; }
+        .onb-pick-hint {
+          font-family: var(--font-ui); font-size: var(--fs-meta); color: var(--text-dim);
+          margin: var(--space-4) 0 0;
+        }
+
+        /* Active chat: compact switch bar */
+        .onb-picker { flex-shrink: 0; padding-bottom: var(--space-2); }
         .onb-picker-chips {
           display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: 2px;
           scrollbar-width: none;
@@ -294,7 +334,7 @@ export default function OnboardingPage() {
           display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
           background: var(--surface); color: var(--text);
           border: 0.5px solid var(--border-strong); border-radius: var(--radius-pill);
-          padding: 8px 13px; min-height: 38px; cursor: pointer; flex-shrink: 0;
+          padding: 7px 12px; min-height: 36px; cursor: pointer; flex-shrink: 0;
           font-family: var(--font-ui); font-size: var(--fs-caption);
           transition: border-color 0.15s, background 0.12s;
         }
