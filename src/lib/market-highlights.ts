@@ -69,7 +69,9 @@ Schema: [{ "title": string, "detail": string, "impact_eur": number | null, "symb
 ${ADVICE_BOUNDARY}`,
     // web_search_20260209 adds dynamic filtering: the model filters search
     // results before they enter the context window, cutting input tokens.
-    tools: [{ type: "web_search_20260209", name: "web_search" }],
+    // max_uses caps searches per call so one daily run can't fan out into an
+    // unbounded, separately-billed search count (mirrors market-story-cache.ts).
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
     messages: [{ role: "user", content: `Holdings:\n${holdingsLines}\n\nToday: ${today}` }],
   });
 
