@@ -5,8 +5,9 @@ import { LockIcon } from "@/components/icons/EmptyStateIcons";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 
 // Zero-asset landing. Adding assets goes through the guided setup (one asset at a
-// time), so this screen has a single job: start it. No free-form composer — the one
-// clear action is the button, which opens the guided flow.
+// time), so this screen has a single job: start it. No free-form composer, and no
+// navigation away: while this is mounted the tab bars and the desktop chat rail are
+// hidden (style block below), so the ONE visible option is the add button.
 export function PortfolioEmptyState() {
   const router = useRouter();
 
@@ -17,6 +18,16 @@ export function PortfolioEmptyState() {
 
   return (
     <div className="pes-wrap">
+      {/* While the portfolio is empty there is nowhere useful to go — hide the
+          mobile tab bar and the desktop nav tabs + chat rail so setting up is the
+          only path. These rules live and die with this component's mount, so the
+          moment the first asset lands (empty state unmounts) navigation returns. */}
+      <style>{`
+        .kb-hide-nav { display: none !important; }
+        .vhome .vh-tabs { display: none !important; }
+        .vhome .vh-rail { display: none !important; }
+        .vhome .vh-shell { grid-template-columns: minmax(0, 1fr) !important; }
+      `}</style>
       {/* Privacy reassurance */}
       <div className="pes-pill">
         <LockIcon size={14} />
