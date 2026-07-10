@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   const now = new Date().toISOString();
 
-  const [portfolioRes, insightRes, marketRes, snapshotsRes, mutationsRes] = await Promise.all([
+  const [portfolioRes, insightRes, marketRes, snapshotsRes, mutationsRes, demoEntRes] = await Promise.all([
     supabase
       .from("highlights")
       .select("title, detail")
@@ -60,7 +60,32 @@ export async function GET(request: NextRequest) {
       .select("*")
       .eq("user_id", user.id)
       .order("occurred_at", { ascending: false, nullsFirst: false }),
+
+    // Demo detection (layer 2 of the guard below) — runs in the same parallel
+    // wave, so real users pay no extra latency for it.
+    supabase
+      .from("entitlements")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .eq("product_id", "demo")
+      .limit(1)
+      .maybeSingle(),
   ]);
+
+  // Same two-layer demo guard as backfillSnapshots (src/lib/snapshot.ts): the
+  // shared demo account by env id with no db dependency, then the per-visitor
+  // demo by its product_id="demo" entitlement — FAIL-SAFE, an errored read is
+  // treated as demo. A demo account's snapshot history is hand-authored by the
+  // seed and already reaches the present; backfillSnapshots (correctly) refuses
+  // to reconstruct it, so flagging `building` here would spin the client's
+  // watch forever with nothing ever landing to clear it. Demo therefore never
+  // reports building and never kicks the backfill. (A wrongly-skipped kick for
+  // a real user on a transient entitlement-read error self-heals on the next
+  // dashboard load; a wrongly-shown endless spinner on demo does not.)
+  const isDemo =
+    (!!process.env.DEMO_USER_ID && user.id === process.env.DEMO_USER_ID) ||
+    demoEntRes.error !== null ||
+    demoEntRes.data !== null;
 
   const snapshots = snapshotsRes.data ?? [];
 
@@ -85,8 +110,8 @@ export async function GET(request: NextRequest) {
   // a chat add and polls /api/snapshots until they land (watchPortfolioBuild). This
   // gate keeps a today-only new user from seeing the spinner churn the whole watch
   // window with nothing to fill in. The chart paints immediately either way.
-  if (!hasHistory) after(() => backfillSnapshots(user.id));
-  const building = !hasHistory && hasPastBasis;
+  if (!hasHistory && !isDemo) after(() => backfillSnapshots(user.id));
+  const building = !hasHistory && hasPastBasis && !isDemo;
 
   const portfolioCards = (portfolioRes.data ?? [])
     .map((r) => ({ title: r.title ?? "", detail: r.detail ?? "" }))

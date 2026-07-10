@@ -21,7 +21,12 @@ import { serializeMarketDetail } from "@/lib/market-highlights";
 // History spans ~5 years (2021-01 → today) as monthly snapshots whose category
 // breakdown evolves with the holdings (cash + ETF → +home 2021 → +crypto → +rental
 // 2022 → +stocks → today), so the net-worth chart's All/3Y ranges and the Vitals
-// real-growth series both tell a genuine multi-year growth story.
+// real-growth series both tell a genuine multi-year growth story. The series END
+// is RELATIVE to the reseed moment, never a hardcoded date: after the last fixed
+// anchor, monthly + recent rows carry its values forward (small bounded drift) up
+// to — but never including — today, so a reseed at ANY future date always leaves
+// rows inside dashboard-init's trailing 30-day window and the demo never shows
+// the "building your history" indicator or an empty 1M chart.
 //
 // The mutation invariant holds for seeded data: each seeded asset has a matching
 // "add" mutation recording how it entered the portfolio. A handful of those
@@ -268,12 +273,27 @@ const SNAPSHOT_ANCHORS: Array<[string, CategoryValues]> = [
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-function snapshotRows(userId: string): Array<Record<string, unknown>> {
+// Bounded, deterministic per-row wobble for the post-anchor extension rows: the
+// newest anchor's values are carried forward with a little life in them instead
+// of a dead-flat line. Sine-based so it is reproducible on every reseed and can
+// NEVER walk away from the anchor — the newest extension row's liquid sleeve
+// (etf + stocks + crypto) stays within ~±1k of the anchor's €90.7k, preserving
+// the INVARIANT above no matter how far past the last anchor the reseed happens.
+const EXTENSION_DRIFT_AMP: CategoryValues = {
+  real_estate: 0, etf: 350, stocks: 500, crypto: 220, pension: 150, cash: 120,
+};
+const extensionDrift = (step: number, cat: keyof CategoryValues): number =>
+  Math.round(Math.sin(step * 2.399 + SNAPSHOT_CATEGORIES.indexOf(cat)) * EXTENSION_DRIFT_AMP[cat]);
+
+// Exported for the verify-demo-seed-snapshots behaviour suite; `nowMs` exists
+// only so the suite can reseed "as of" arbitrary future dates. Production
+// callers never pass it.
+export function snapshotRows(userId: string, nowMs: number = Date.now()): Array<Record<string, unknown>> {
   const anchorTimes = SNAPSHOT_ANCHORS.map(([d]) => Date.parse(`${d}T00:00:00Z`));
   const rows: Array<Record<string, unknown>> = [];
 
   const cursor = new Date("2021-01-01T00:00:00Z");
-  const end = Date.parse("2026-06-01T00:00:00Z");
+  const end = anchorTimes[anchorTimes.length - 1];
 
   while (cursor.getTime() <= end) {
     const t = cursor.getTime();
@@ -305,6 +325,56 @@ function snapshotRows(userId: string): Array<Record<string, unknown>> {
 
     cursor.setUTCMonth(cursor.getUTCMonth() + 1);
   }
+
+  // ── Relative extension: carry the newest anchor forward to the present ─────
+  // The fixed anchors end at a date that today inevitably drifts past; without
+  // these rows a late-enough reseed leaves the trailing 30-day window empty, so
+  // dashboard-init reports building:true forever (backfillSnapshots correctly
+  // refuses to touch demo accounts, so nothing ever lands to clear it) and the
+  // 1M chart is an empty window plus the live tip. Emit monthly rows from the
+  // month after the last anchor through the most recent month boundary, plus a
+  // couple of recent in-window points — all carrying the newest anchor's values
+  // with the bounded wobble above. Never a row dated today: the live tip owns it.
+  const asOfIso = new Date(nowMs).toISOString().slice(0, 10);
+  const lastAnchorIso = SNAPSHOT_ANCHORS[SNAPSHOT_ANCHORS.length - 1][0];
+  const newest = SNAPSHOT_ANCHORS[SNAPSHOT_ANCHORS.length - 1][1];
+
+  const candidates: string[] = [];
+  const monthCursor = new Date(`${lastAnchorIso}T00:00:00Z`);
+  monthCursor.setUTCMonth(monthCursor.getUTCMonth() + 1);
+  const boundary = new Date(nowMs);
+  boundary.setUTCDate(1);
+  const boundaryIso = boundary.toISOString().slice(0, 10);
+  while (monthCursor.toISOString().slice(0, 10) <= boundaryIso) {
+    candidates.push(monthCursor.toISOString().slice(0, 10));
+    monthCursor.setUTCMonth(monthCursor.getUTCMonth() + 1);
+  }
+  for (const n of [21, 7]) {
+    candidates.push(new Date(nowMs - n * 86_400_000).toISOString().slice(0, 10));
+  }
+
+  // Dedupe (a recent point can land on a month boundary), keep strictly between
+  // the last fixed anchor and today, and restore date order before inserting.
+  const extensionDates = [...new Set(candidates)]
+    .filter((d) => d > lastAnchorIso && d < asOfIso)
+    .sort();
+
+  extensionDates.forEach((date, i) => {
+    const breakdown: Record<string, number> = {};
+    let total = 0;
+    for (const cat of SNAPSHOT_CATEGORIES) {
+      const v = newest[cat] + extensionDrift(i + 1, cat);
+      if (v > 0) breakdown[cat] = v;
+      total += v;
+    }
+    rows.push({
+      user_id: userId,
+      date,
+      total_value: total,
+      breakdown,
+      native_breakdown: { EUR: total },
+    });
+  });
 
   return rows;
 }
