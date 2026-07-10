@@ -42,6 +42,12 @@
   market entries — the feature is currently OFF behind `MARKET_STORIES_ENABLED`, so do
   NOT apply this migration to re-enable it on its own; turning it on needs the flag
   **and** the migration, see the dedicated bullet above).
+  `users_onboarding_completed_at` (adds the `users.onboarding_completed_at` flag that
+  drives the gated onboarding — apply in production. Until it is applied the middleware
+  gate FAILS OPEN: the column read errors, is treated as "complete", and NO ONE is
+  walled — so it's safe to deploy first. The migration also backfills every existing
+  user to complete, so applying it only ever gates genuinely-new signups; it never
+  sends an existing user into onboarding.)
   See `docs/technical-decisions.md` → Supabase Tables for the schema of each.
 - **The maintainer is non-technical and does not write or run code.** Claude makes
   all code changes, runs all commands (git, build, tests), and explains decisions

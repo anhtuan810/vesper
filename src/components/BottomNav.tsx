@@ -91,7 +91,14 @@ export function BottomNav() {
 
   // /overview is a self-contained full-screen port with its own top nav and its
   // own docked composer at the bottom — the app tab bar would double up with it.
-  if (pathname === "/login" || pathname.startsWith("/marketing") || pathname.startsWith("/overview")) return null;
+  // /onboarding is the gated, chat-only first-run flow: no app nav renders there.
+  if (
+    pathname === "/login" ||
+    pathname.startsWith("/marketing") ||
+    pathname.startsWith("/overview") ||
+    pathname.startsWith("/onboarding")
+  )
+    return null;
 
   const chatHref = assetId ? `/chat?seed=asset&key=${assetId}` : "/chat";
 

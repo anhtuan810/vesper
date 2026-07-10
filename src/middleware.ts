@@ -1,5 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  ONBOARDING_COOKIES,
+  ONBOARDING_COOKIE_OPTIONS,
+  onboardedMatchesUser,
+  passMatchesSession,
+  signOnboarded,
+  sessionIdFromAccessToken,
+} from "@/lib/onboarding-pass";
 
 // The native app's bundled UI runs at these WKWebView origins and calls the
 // API cross-origin with a Bearer token (no cookies, so no CSRF surface — see
@@ -127,6 +135,78 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // ── Gated onboarding ────────────────────────────────────────────────────────
+  // A user who has never finished onboarding is redirected to /onboarding from any
+  // app page, and can't reach the app by editing the URL (the flag lives in the DB —
+  // server-authoritative). Demo (anonymous) users are exempt (they carry seeded
+  // data), as are the public paths handled above. `/onboarding` itself, `/api/*`,
+  // and `/auth/*` are already outside this branch (matcher + isPublic), so the only
+  // path this block gates is the app proper.
+  const path = request.nextUrl.pathname;
+  const onOnboarding = path === "/onboarding" || path.startsWith("/onboarding/");
+  if (user && !isDemoSession && !isPublic) {
+    // Fast path: a valid signed "onboarded" marker means done — skip the DB read.
+    const onboardedCookie = request.cookies.get(ONBOARDING_COOKIES.ONBOARDED_COOKIE)?.value;
+    let completed = onboardedCookie ? await onboardedMatchesUser(onboardedCookie, user.id) : false;
+
+    if (!completed) {
+      // Consult the flag. 'unknown' (column missing pre-migration, or a transient
+      // read error) FAILS OPEN — never wall production before the migration runs.
+      let status: "completed" | "incomplete" | "unknown" = "unknown";
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("onboarding_completed_at")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (!error && data) {
+          status =
+            (data as { onboarding_completed_at?: string | null }).onboarding_completed_at != null
+              ? "completed"
+              : "incomplete";
+        }
+      } catch {
+        /* fail open — leave status 'unknown' */
+      }
+
+      if (status === "completed") {
+        completed = true;
+        // Cache the result so the next navigation skips the DB read.
+        supabaseResponse.cookies.set(
+          ONBOARDING_COOKIES.ONBOARDED_COOKIE,
+          await signOnboarded(user.id),
+          ONBOARDING_COOKIE_OPTIONS,
+        );
+      } else if (status === "incomplete") {
+        // A genuinely-unfinished user may still hold a valid empty-exit pass
+        // (Done-with-no-data), which the gate honors in addition to the flag.
+        const passCookie = request.cookies.get(ONBOARDING_COOKIES.PASS_COOKIE)?.value;
+        let hasPass = false;
+        if (passCookie) {
+          const { data: sess } = await supabase.auth.getSession();
+          const sessionId = sessionIdFromAccessToken(sess.session?.access_token);
+          hasPass = await passMatchesSession(passCookie, sessionId);
+        }
+        if (!hasPass && !onOnboarding) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/onboarding";
+          url.search = "";
+          return NextResponse.redirect(url);
+        }
+      }
+      // status 'unknown' -> fail open (fall through)
+    }
+
+    // A finished user never sees /onboarding again — even if they later sell
+    // everything and sit at zero assets.
+    if (completed && onOnboarding) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

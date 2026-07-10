@@ -151,6 +151,9 @@ export interface UserRow {
   display_currency: DisplayCurrency;
   theme: "light" | "dark";
   last_backfill_at?: string | null;
+  // Null until the user finishes the gated onboarding flow (see the middleware
+  // gate + POST /api/onboarding/complete). Gate on this flag, never on "has data".
+  onboarding_completed_at?: string | null;
 }
 
 // ── Other types ────────────────────────────────────────────────────────────────

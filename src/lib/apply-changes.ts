@@ -53,7 +53,7 @@ type CurrentAsset = {
   pension_provider?: string | null;
 };
 
-type PortfolioChange = {
+export type PortfolioChange = {
   action: "add" | "edit" | "remove";
   name: string;
   new_name?: string;

@@ -232,7 +232,27 @@ export function PortfolioEmptyState() {
         {DISCLAIMER_TEXT}
       </p>
 
-      {/* ─── Section 2: Multimodal input — the primary action, first thing in view ─ */}
+      {/* Primary path back into the guided flow. For a visitor who chose "Done with
+          no data" (peeking at the empty app on a temporary pass), this returns them
+          to /onboarding to add their first asset step by step. */}
+      <button
+        className="es-add-first"
+        onClick={() => router.push("/onboarding")}
+        style={{
+          marginTop: 18,
+          width: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          background: "var(--accent)", color: "var(--bg)",
+          border: "none", borderRadius: "var(--radius-lg)",
+          padding: "var(--space-4) var(--space-5)", minHeight: 52,
+          fontFamily: "var(--font-ui)", fontSize: "var(--fs-body)", fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Add your first asset
+      </button>
+
+      {/* ─── Section 2: Multimodal input — a faster, free-form alternative ───────── */}
 
       <div
         className="es-input-wrap"
