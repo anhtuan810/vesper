@@ -311,7 +311,14 @@ export async function executeAgentTool(name: string, input: Record<string, unkno
         }
         return h;
       });
-      return { forModel: { holdings, count: holdings.length }, figures };
+      // Also hand over the portfolio total. A "what do I own" narration reaches
+      // for a closing total, and without one RETURNED the model sums the rows
+      // itself — a figure no tool produced, which the guardrail rightly rejects
+      // (and used to erase the whole reply over). netWorth is the one true
+      // total (equity-aware, mortgage netted), same math as get_net_worth.
+      const nw = m(computeReadout(ctx.currentAssets as unknown as ScenarioAsset[], ctx.usdRates, ctx.now).netWorthUsd);
+      figures.push(nw);
+      return { forModel: { holdings, count: holdings.length, netWorth: nw }, figures };
     }
 
     case "get_vitals": {

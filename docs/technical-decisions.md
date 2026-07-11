@@ -1177,13 +1177,26 @@ pre-existing lint errors on `main`).
   those numbers — could you rephrase the question?" repeatedly. Now
   `validateMonetaryNarration` checks only money/percent tokens, and the no-card
   fallback is neutral, never an interrogative. See `narrate/guardrail.ts`.
-  **Update (2026-07-11):** the chat check now validates against
-  `withPercentTolerance(figures)` — each tool percent also admits its
-  comma-decimal twin and its correctly rounded integer ("62.5%" → "62,5%",
-  "63%"), the two legitimate same-number rewrites that still nuked whole replies
-  to a bare "Here's what I found."; money amounts remain verbatim-only, and the
-  Sentry event now carries the offending tokens so a trip is diagnosable
-  (`scripts/verify-guardrail-tolerance.ts` covers the contract).
+  **Update (2026-07-11):** the guardrail was still erasing virtually every
+  figure-bearing chat reply ("How diversified am I?" → a dead "Here's what I
+  found."), because it demanded byte-identical figures while `formatMoney`
+  emits Dutch-style grouping for every display currency ("€399.852") and the
+  model narrating in English legitimately writes the same amount as
+  "€399,852" — plus rounded percents ("62.5%" → "63%") and self-summed totals.
+  Five-part fix, all deterministic: (1) figures now compare by **canonical
+  numeric form** (separator convention ignored, digits decisive — "€1.50" still
+  ≠ "€150"), in both `validateNarration` and `validateMonetaryNarration`;
+  (2) the chat check runs against `withPercentTolerance(figures)`, which also
+  admits each percent's correctly rounded integer; (3) `get_holdings` returns
+  (and allowlists) `netWorth`, so a closing "altogether" total is a tool figure
+  instead of model arithmetic; (4) the system prompt spells out
+  verbatim-figures-only and no-arithmetic, warning the reply is discarded
+  otherwise; (5) when the guardrail still trips (or the model returns no text),
+  the reply falls back to **deterministic verified-figure lines** rendered from
+  the last read tool's result (`src/lib/chat/figure-fallback.ts`) — never again
+  a bare "Here's what I found." with nothing behind it. The Sentry event now
+  carries the offending tokens so any future trip names its cause.
+  (`scripts/verify-guardrail-tolerance.ts` covers the whole contract.)
 - **Post-add rebuild is visible and self-refreshing.** A past-dated add rebuilds the
   net-worth history (`backfillSnapshots`) and generates the new holdings' market
   notes in a background `after()` job, so the chart/journal lagged the reply and the

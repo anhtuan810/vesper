@@ -20,6 +20,7 @@ import { generateMarketSwings } from "@/lib/diary-market-moves";
 import { generateInsight } from "@/lib/insight-generator";
 import { extractProfileUpdate } from "@/lib/profile-extractor";
 import { AGENT_TOOLS, executeAgentTool, type ToolContext, type CommitOutcome } from "@/lib/chat/agent-tools";
+import { figureLines, READ_TOOLS } from "@/lib/chat/figure-fallback";
 import { AGENT_MAX_TOOL_ROUNDTRIPS, CHAT_MODEL } from "@/lib/chat/agent-config";
 import type { ScenarioResult } from "@/lib/scenario/result";
 
@@ -30,7 +31,8 @@ export const AGENT_SYSTEM = `You are Volnar's portfolio assistant. Converse natu
 
 FORMATTING: make replies scan — **bold** every concrete figure (amounts, percentages, dates) and every position/asset name you mention, *italics* sparingly for a word of emphasis. No other markdown: no headers, no code blocks, no tables, no links.
 
-You reason over the conversation, but you NEVER compute a figure yourself and you NEVER change the portfolio yourself. Call tools for every number and every write, and state only numbers a tool returned (verbatim).
+You reason over the conversation, but you NEVER compute a figure yourself and you NEVER change the portfolio yourself. Call tools for every number and every write, and state only numbers a tool returned THIS turn.
+FIGURES ARE VERBATIM-ONLY: copy each one character-for-character as the tool returned it — same digits, same separators (they are pre-formatted for the user's locale; never re-punctuate "€12.345" into "€12,345"), same decimals. Never add, subtract, total, average, round a money amount, or convert figures yourself — if you want a total or a derived number, use the one the tool returned (get_holdings and get_vitals both return netWorth) or call the tool that has it. Any number in your reply that no tool returned causes the ENTIRE reply to be discarded unseen — when unsure, describe without the number.
 
 Reading the portfolio: get_net_worth, get_holdings, get_vitals.
 What-ifs (read-only, never mutate): present_scenario (rearrange current holdings), future_projection (project forward or solve for a contribution), counterfactual (a HELD tradeable's contribution), hypothetical_buy (standalone growth of a past purchase of any asset, held or not).
@@ -201,6 +203,9 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   let chips: string[] | null = null;
   let commit: CommitOutcome | null = null;
   let finalText = "";
+  // Last successful portfolio-read result, kept so a discarded/empty narration
+  // can fall back to rendering the verified figures instead of a dead line.
+  let lastRead: { tool: string; data: Record<string, unknown> } | null = null;
   // True when the loop exhausted its round budget while the model still wanted
   // tools — the turn is unfinished, not failed, and the reply must say so.
   let stoppedAtRoundtripCap = true;
@@ -247,6 +252,9 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
         outcome = { forModel: { error: "That calculation failed — try a different phrasing?" } };
       }
       if (outcome.figures) figures.push(...outcome.figures);
+      if (READ_TOOLS.has(tu.name) && outcome.forModel && typeof outcome.forModel === "object" && !("error" in (outcome.forModel as Record<string, unknown>))) {
+        lastRead = { tool: tu.name, data: outcome.forModel as Record<string, unknown> };
+      }
       if (outcome.card) card = outcome.card;
       if (outcome.proposal) chips = outcome.proposal.chips;
       if (outcome.commit) commit = mergeCommits(commit, outcome.commit);
@@ -258,10 +266,14 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   // Round budget exhausted mid-task: hand off explicitly instead of failing
   // silently — any work already done (including a commit) is saved, and the next
   // turn resumes with the thread and recent-activity context intact.
+  // Verified-figure fallback: deterministic lines rendered straight from the
+  // last read tool's own result, so a missing or discarded narration still
+  // answers with real numbers instead of a dead "Here's what I found."
+  const verifiedLines = lastRead ? figureLines(lastRead.tool, lastRead.data) : "";
   if (stoppedAtRoundtripCap) {
     finalText = "That needed more steps than one reply allows, so I paused partway. Say \"continue\" and I'll pick up where I left off.";
   } else if (!finalText) {
-    finalText = "Here's what I found.";
+    finalText = verifiedLines ? `Here's what I found.\n${verifiedLines}` : "Here's what I found.";
   }
 
   // Numeric guardrail, defense-in-depth: if the prose asserts a MONEY/percent
@@ -279,7 +291,11 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   const offending = figures.length > 0 ? offendingMonetaryTokens(finalText, withPercentTolerance(figures)) : [];
   if (offending.length > 0) {
     Sentry.captureMessage("agent narration failed numeric guardrail", { level: "warning", extra: { offending } });
-    finalText = card ? "Here are the figures from the calculation:" : "Here's what I found.";
+    finalText = card
+      ? "Here are the figures from the calculation:"
+      : verifiedLines
+        ? `Here's what the numbers say — exactly as calculated:\n${verifiedLines}`
+        : "Here's what I found.";
   }
 
   // ── Post-commit side effects (the proven background jobs) ───────────────────
