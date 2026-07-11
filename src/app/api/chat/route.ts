@@ -110,7 +110,8 @@ export async function POST(req: NextRequest) {
     const gate = await entitledGate(createServerSupabase(), userId);
     if (gate) return gate;
 
-    // Per-visitor demo accounts expire one hour after creation, enforced per user
+    // Per-visitor demo accounts expire DEMO_SESSION_TTL_MS after creation (30
+    // minutes as of 2026-07-11), enforced per user
     // and server-side. Wall an expired demo turn here, before any read, write, or
     // rate-limit increment — nothing is mutated on an expired demo turn. The same
     // lookup identifies a live demo session, which chats on a tighter allowance.
@@ -190,7 +191,7 @@ export async function POST(req: NextRequest) {
     const supabase = createServerSupabase();
 
     // A demo session chats on a tighter allowance. The rate-limit bucket is
-    // daily, but a demo account lives at most one hour, so this is effectively
+    // daily, but a demo account lives at most 30 minutes, so this is effectively
     // a session-lifetime cap.
     const dailyLimit = demo.isDemo ? DEMO_CHAT_DAILY_LIMIT : CHAT_DAILY_LIMIT;
     const today = new Date().toISOString().slice(0, 10);

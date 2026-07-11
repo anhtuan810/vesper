@@ -115,7 +115,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     // reports remaining=0 on the last allowed reply and the client then blocks
     // further sends, so the 429 that flips demoEnded never fires in a continuous
     // session — without this, exhaustion showed the real-account daily-limit
-    // copy (factually wrong: the anonymous session is reaped within the hour)
+    // copy (factually wrong: the anonymous session is reaped within minutes)
     // and the sign-up call-to-action this wall exists for never appeared.
     const demoWalled = demoEnded || (isDemo && remaining === 0);
 
@@ -313,7 +313,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       </>
     );
 
-    // Once the demo session is over (out of messages, or past its hour), the
+    // Once the demo session is over (out of messages, or past its window), the
     // composer swaps to this quiet line instead of a dead input. The action
     // signs out of the anonymous session and lands on /login, where a real
     // account (with its 7-day trial) can be created — the same path the

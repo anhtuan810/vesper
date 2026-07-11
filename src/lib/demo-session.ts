@@ -1,4 +1,4 @@
-// Server-side enforcement of the per-visitor demo session's hard one-hour life.
+// Server-side enforcement of the per-visitor demo session's hard 30-minute life.
 // Each demo entry mints a fresh anonymous Supabase user and records its
 // demo_users row; from that row's created_at the account is usable for exactly
 // DEMO_SESSION_TTL_MS, computed per user. The chat route and the mechanical
@@ -9,8 +9,10 @@
 import { NextResponse } from "next/server";
 import type { createServerSupabase } from "@/lib/supabase";
 
-// Hard demo session length — one hour from the demo_users row's created_at.
-export const DEMO_SESSION_TTL_MS = 60 * 60 * 1000;
+// Hard demo session length — 30 minutes from the demo_users row's created_at
+// (owner call 2026-07-11; was one hour). The client wall/countdown reads the
+// deadline from the demo_expires_at cookie, so the binary needs no change.
+export const DEMO_SESSION_TTL_MS = 30 * 60 * 1000;
 
 // The reaper waits this much past expiry before wiping an account, so a turn that
 // lands right at the boundary is walled (demoExpired) rather than served against a
@@ -33,13 +35,13 @@ type ServiceClient = ReturnType<typeof createServerSupabase>;
 export interface DemoSessionStatus {
   /** True when userId has a demo_users row — a per-visitor demo account. */
   isDemo: boolean;
-  /** True when that demo account's hour has elapsed. Always false for real users. */
+  /** True when that demo account's session window has elapsed. Always false for real users. */
   expired: boolean;
 }
 
-// Looks up whether `userId` is a per-visitor demo account and whether its hour
-// has elapsed — one demo_users read, shared by the 403 gate and the demo chat
-// cap. Fails open ({ isDemo:false, expired:false }) on any lookup error so a
+// Looks up whether `userId` is a per-visitor demo account and whether its
+// session window has elapsed — one demo_users read, shared by the 403 gate and
+// the demo chat cap. Fails open ({ isDemo:false, expired:false }) on any lookup error so a
 // transient hiccup can never wall or down-limit a real user.
 export async function getDemoSessionStatus(
   supabase: ServiceClient,
@@ -87,9 +89,10 @@ export async function getDemoSessionStatus(
 }
 
 // Returns a 403 { demoExpired: true } response when `userId` belongs to a demo
-// account whose hour has elapsed, or null when the request may proceed — i.e. the
-// user is not a demo account, or is still inside its hour. Fails open: a lookup
-// error returns null so a transient hiccup can never wall a real user.
+// account whose session window has elapsed, or null when the request may
+// proceed — i.e. the user is not a demo account, or is still inside its window.
+// Fails open: a lookup error returns null so a transient hiccup can never wall
+// a real user.
 export async function demoExpiredGate(
   supabase: ServiceClient,
   userId: string,

@@ -11,7 +11,7 @@
   (`/demo`, `/api/demo-session`) fall back to the existing shared-account demo, so
   the released App Store build's demo button keeps working. When it's on, each
   visitor session is capped at 20 chat messages (`DEMO_CHAT_DAILY_LIMIT` — the
-  session lives at most an hour, so the daily bucket is a session-lifetime cap)
+  session lives at most 30 minutes, so the daily bucket is a session-lifetime cap)
   and minting is capped at 3 sessions per IP per hour (`demo_ip_limits`
   migration; the guard fails open until it's applied).
 - **Do NOT set `DEMO_ENABLED=true` in production until a matching App Store binary

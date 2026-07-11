@@ -293,7 +293,7 @@ function LoginInner() {
             }}
           >
             {demoSpent
-              ? "Your demo session has ended — the demo gives each visitor one hour. To keep going, create an account above: the first 7 days are free."
+              ? "Your demo session has ended — the demo gives each visitor 30 minutes. To keep going, create an account above: the first 7 days are free."
               : "The demo is busy right now — try again in a little while, or create an account above: the first 7 days are free."}
           </div>
         ) : (

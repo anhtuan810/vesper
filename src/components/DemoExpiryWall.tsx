@@ -29,7 +29,7 @@ export function readDemoExpiry(): number | null {
 }
 
 // The wall for an ended demo session. Shows only on a demo account (the isDemo
-// entitlement signal) once the hour is up — detected either when a demo API call
+// entitlement signal) once its window is up — detected either when a demo API call
 // returns demoExpired (DEMO_EXPIRED_EVENT) or when the local clock passes the
 // stored deadline on mount/interval. The single action signs out of the anonymous
 // session; the visitor lands on /login to create a real account, where the
@@ -40,7 +40,7 @@ export function DemoExpiryWall() {
   const signOut = useSignOut();
   const isDemo = !!data?.isDemo;
 
-  // Seed from the stored deadline so a session resumed after its hour walls at
+  // Seed from the stored deadline so a session resumed after its window walls at
   // once; the render still gates on isDemo, so a stale value can't show anything.
   const [expired, setExpired] = useState<boolean>(() => {
     const deadline = readDemoExpiry();
