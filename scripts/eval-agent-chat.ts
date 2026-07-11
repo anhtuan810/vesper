@@ -41,10 +41,10 @@ const HELD = [
 ];
 
 // Genuinely ambiguous hints — share classes the real resolver flags (e.g. Google
-// → GOOGL/GOOG). Note the real resolver does NOT flag bare ETF/dual-listed tickers
-// like ASML or VWCE as ambiguous; it resolves them to a single symbol. So the
-// venue-discipline test (A2) deliberately relies on the model's OWN judgment from
-// the system prompt to ask which listing — not on a stubbed clarification signal.
+// → GOOGL/GOOG). The real resolver does NOT flag bare ETF/dual-listed tickers
+// like ASML or VWCE: since the venue rule inverted (the system resolves the
+// currency-matched listing automatically and the model must NOT ask which
+// exchange), A2 asserts those commit as-is with no venue question.
 const AMBIGUOUS = /^(google|alphabet)$/i;
 
 interface ToolCall {
@@ -54,15 +54,35 @@ interface ToolCall {
 
 // Deterministic stand-in for executeAgentTool: no DB, prices, or auth. Returns
 // the same SHAPE the real tools return (the keys the system prompt reasons over)
-// so the loop continues naturally to a final text turn.
-function stubExecute(name: string, input: Record<string, unknown>): Record<string, unknown> {
-  switch (name) {
+// so the loop continues naturally to a final text turn. Scenario-aware via
+// `held`: an onboarding case sees an EMPTY portfolio (what the real
+// get_holdings returns for a new user), a held case sees HELD **including
+// units** — the real tool returns units, and a stub without them made the
+// model rightly ask "how many do you hold now?" on buy-more turns, failing
+// B5/C2 against behaviour that was correct for the data it was shown.
+function makeStubExecute(held: boolean) {
+  return function stubExecute(name: string, input: Record<string, unknown>): Record<string, unknown> {
+    switch (name) {
     case "get_net_worth":
-      return { netWorth: "€345,000", topConcentration: "14.5%", topSingleName: "NVIDIA", ltv: "40.8%" };
+      return held
+        ? { netWorth: "€345,000", topConcentration: "14.5%", topSingleName: "NVIDIA", ltv: "40.8%" }
+        : { netWorth: "€0", topConcentration: null, topSingleName: null, ltv: null };
     case "get_holdings":
-      return { holdings: HELD.map((h) => ({ name: h.name, type: h.type, value: h.value })), count: HELD.length };
+      return held
+        ? {
+            holdings: HELD.map((h) => ({
+              name: h.name, type: h.type, value: h.value,
+              ...(h.units != null ? { units: String(h.units) } : {}),
+              ...(h.symbol ? { symbol: h.symbol } : {}),
+            })),
+            count: HELD.length,
+            netWorth: "€345,000",
+          }
+        : { holdings: [], count: 0, netWorth: "€0" };
     case "get_vitals":
-      return { netWorth: "€345,000", allocation: [{ category: "Public markets", share: "29.0%" }, { category: "Property", share: "71.0%" }], singleNameConcentration: "14.5%", mortgageLtv: "40.8%" };
+      return held
+        ? { netWorth: "€345,000", allocation: [{ category: "Public markets", share: "29.0%" }, { category: "Property", share: "71.0%" }], singleNameConcentration: "14.5%", mortgageLtv: "40.8%" }
+        : { netWorth: "€0", allocation: [], singleNameConcentration: null, topSingleName: null, mortgageLtv: null };
     case "present_scenario":
       return { scenarioNetWorth: "€300,000", deltaVsNow: "−€45,000", concentration: { from: "14.5%", to: "0.0%" }, currentNetWorth: "€345,000" };
     case "future_projection":
@@ -74,6 +94,7 @@ function stubExecute(name: string, input: Record<string, unknown>): Record<strin
     case "hypothetical_buy":
       return { input: "€5,000 in NVIDIA", buyDate: "2020-01-02", valueToday: "€48,000", gain: "+€43,000", multiple: "9.6x", currentNetWorth: "€345,000", valueVsNetWorth: "13.9%", exceedsNetWorth: false, standaloneGrowth: true };
     case "resolve_asset": {
+      if (!held) return { needsClarification: true, message: "No held position matches that." };
       const q = String(input.query ?? "").toLowerCase();
       const hit = HELD.find((h) => h.name.toLowerCase().includes(q) || (h.symbol ?? "").toLowerCase() === q);
       return hit ? { resolved: hit.name } : { needsClarification: true, message: "No held position matches that." };
@@ -89,7 +110,8 @@ function stubExecute(name: string, input: Record<string, unknown>): Record<strin
       return { committed: true };
     default:
       return { error: `Unknown tool: ${name}` };
-  }
+    }
+  };
 }
 
 // Run one scenario through the real loop shape (mirrors runAgentChat's control
@@ -98,6 +120,7 @@ function stubExecute(name: string, input: Record<string, unknown>): Record<strin
 async function runScenario(
   system: string,
   seedMessages: Anthropic.Messages.MessageParam[],
+  stubExecute: (name: string, input: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<{ calls: ToolCall[]; finalText: string }> {
   const messages = [...seedMessages];
   const calls: ToolCall[] = [];
@@ -180,14 +203,13 @@ const cases: EvalCase[] = [
     expect: (c) => committed(c) && everyCommitChangeNamed(c) && /apple|aapl/.test(commitText(c)) && /micro|msft/.test(commitText(c)) && /tesla|tsla/.test(commitText(c)),
   },
   {
-    name: "A2 mixed batch w/ ambiguous listings → asks, doesn't silently commit the ambiguous ones",
+    name: "A2 mixed batch incl. bare UCITS/dual-listed tickers → commits all three as-is, no venue question",
     held: false,
     message: "Add 10 NVDA, 5 ASML and 200 VWCE, just track from now",
-    // ASML (dual-listed) and VWCE (bare UCITS ETF ticker) have a venue the model
-    // must ELICIT, not guess — the system prompt's venue-discipline rule. It may
-    // commit NVDA (plainly US); the invariant is it does NOT commit ASML or VWCE
-    // without asking which exchange first.
-    expect: (c) => !/asml|vwce/.test(commitText(c)),
+    // The venue rule INVERTED (2026-06): the system resolves the currency-matched
+    // listing automatically and the model must NOT ask which exchange — asking
+    // was the old contract and is now the failure. All three commit, each named.
+    expect: (c) => committed(c) && everyCommitChangeNamed(c) && /nvda/.test(commitText(c)) && /asml/.test(commitText(c)) && /vwce/.test(commitText(c)),
   },
   {
     name: "A4 batch: names without quantities → asks sizing, no commit",
@@ -363,7 +385,7 @@ async function run(): Promise<void> {
             { role: "assistant", content: "Tell me what you own — words, a screenshot, a photo. Whatever's easiest. Nothing leaves this conversation." },
             { role: "user", content: c.message },
           ];
-      const { calls, finalText } = await runScenario(AGENT_SYSTEM, seed);
+      const { calls, finalText } = await runScenario(AGENT_SYSTEM, seed, makeStubExecute(c.held));
       const ok = c.expect(calls, finalText);
       if (!ok) failures++;
       const trace = calls.map((x) => x.name).join(" → ") || "(no tools)";
