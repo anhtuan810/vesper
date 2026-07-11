@@ -50,14 +50,16 @@
   user to complete, so applying it only ever gates genuinely-new signups; it never
   sends an existing user into onboarding.)
   See `docs/technical-decisions.md` → Supabase Tables for the schema of each.
-- **Live-API testing is REMOVED (2026-07-11, owner decision — cost).** Never run,
-  recreate, or wire up any test/eval that calls the real Anthropic API or sends
-  chat messages to a deployed app (whose server spends the production key). The
-  live evals (`scripts/eval-agent-chat.ts`, `scripts/eval-chat-demo.ts`, their
-  `chat-eval.yml`/`demo-eval.yml` workflows and `eval:agent`/`eval:demo` npm
-  scripts) were deleted; restoring them — or adding anything similar — needs the
-  owner's explicit go-ahead first. All routine verification is hermetic and free:
-  `npm test` (scripts/verify-*.ts), `npm run typecheck`, `eslint`, `next build`.
+- **Live-API testing is OWNER-GATED (2026-07-11, cost).** The live model eval
+  (`scripts/eval-agent-chat.ts` + `chat-eval.yml`, scenario cases against the
+  real `CHAT_MODEL`; needs the `ANTHROPIC_API_KEY` repo secret) exists but runs
+  ONLY when the owner explicitly asks for a run — manual `workflow_dispatch`,
+  no schedule, never in per-commit CI, never run casually while iterating.
+  The demo read eval (`eval-chat-demo.ts`/`demo-eval.yml`, which spent the
+  production server's key through the deployed app) stays REMOVED; anything
+  similar needs the owner's explicit go-ahead first. All routine verification
+  is hermetic and free: `npm test` (scripts/verify-*.ts), `npm run typecheck`,
+  `eslint`, `next build`.
 - **The maintainer is non-technical and does not write or run code.** Claude makes
   all code changes, runs all commands (git, build, tests), and explains decisions
   in plain language rather than handing over steps to run.

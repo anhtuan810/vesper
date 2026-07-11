@@ -487,15 +487,16 @@ A full audit of the chat write/read path (the app's primary surface) and its UI.
 
 ## Automated Testing & Chat Behaviour Evals (2026-06)
 
-Originally three layers; the two LIVE layers were **removed on 2026-07-11
-(owner decision — every run spent real Anthropic tokens)**. What remains is the
-hermetic per-commit layer. Do not recreate a live-API test — or anything that
-sends chat messages to a deployed app, whose server spends the production key —
-without the owner's explicit go-ahead; restoring the old evals means reverting
-their removal commit.
+Originally three layers. On 2026-07-11 the two LIVE layers were removed (owner
+decision — every run spends real Anthropic tokens), then the **model eval was
+restored the same day at the owner's request** as an OWNER-GATED check: it runs
+only when the owner explicitly asks (manual `workflow_dispatch`, no schedule,
+never per-commit). The demo read eval stays removed — it spent the production
+server's key through the deployed app. Do not add any other live-API test
+without the owner's explicit go-ahead.
 
 - **Per-commit CI** (`.github/workflows/ci.yml`) — on every push to `main` and every PR: `npm run typecheck` (full `tsc --noEmit`) then `npm test`. `npm test` runs `scripts/run-tests.mjs`, which executes every `scripts/verify-*.ts` (pure, hermetic — no network / DB / LLM / secrets) and fails on any; new `verify-<name>.ts` files are picked up automatically. Covers acquisition-date parsing, chip sanitisation, tag extraction, the add/edit/remove + pension validators, net-worth-context presentation, plus the existing scenario / projection / cost-basis engines.
-- **Model eval + demo read eval — REMOVED (2026-07-11).** `scripts/eval-agent-chat.ts` (agent-loop decisions against the live `CHAT_MODEL`) and `scripts/eval-chat-demo.ts` (read-only Q&A through the deployed `/api/chat`), with their `chat-eval.yml`/`demo-eval.yml` manual workflows and `eval:agent`/`eval:demo` npm scripts. Both spent real Anthropic tokens per run — the model eval directly, the demo eval via the deployed server's key — and the owner has ruled out live-API testing entirely. Deleted in full; revert the removal commit only with the owner's explicit go-ahead.
+- **Model eval** (`scripts/eval-agent-chat.ts` + `.github/workflows/chat-eval.yml`, **owner-gated**): runs the real agent loop (production `AGENT_SYSTEM` + `AGENT_TOOLS`, `CHAT_MODEL`) with a stubbed tool executor and asserts the model's DECISIONS (commit vs propose vs read vs scenario vs decline) over ~24 wild scenarios. Needs the `ANTHROPIC_API_KEY` repo secret; skips green without it. Run ONLY on the owner's explicit ask. The **demo read eval** (`eval-chat-demo.ts` + `demo-eval.yml`) stays REMOVED (2026-07-11) — it spent the deployed server's production key; revert its removal commit only with the owner's go-ahead.
 
 ## Mobile Foldable Vitals & Profile (2026-07)
 
