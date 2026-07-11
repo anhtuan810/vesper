@@ -73,22 +73,38 @@ const ATTACHMENT_PLACEHOLDERS = new Set([
   "Screenshot uploaded", "Screenshots uploaded", "File uploaded", "Files uploaded",
 ]);
 
+// Counts the user turns in a thread that match the sent text (or, for an
+// attachment-only turn, any known placeholder). Used to disambiguate CONSECUTIVE
+// DUPLICATE sends in threadHasReply below.
+function countMatchingUserTurns(msgs: ChatMessage[], sentText: string | null): number {
+  const isPlaceholder = !sentText || ATTACHMENT_PLACEHOLDERS.has(sentText.trim());
+  const matches = (t: string) => (isPlaceholder ? ATTACHMENT_PLACEHOLDERS.has(t) : t === sentText!.trim());
+  return msgs.filter((m) => m.from === "user" && matches(m.text.trim())).length;
+}
+
 // True when a DB snapshot shows the pending turn answered: the thread tail is an
 // assistant reply and the final user row matches what was sent. Matching on the
 // TEXT (not on "the newest DB id changed") matters: live-sent turns never carry
 // DB ids, so an id captured from the last DB *load* can be several turns stale —
 // an id-inequality check then adopts a snapshot that predates the pending turn,
 // dropping the user's message mid-wait (the exact vanish-and-re-add regression).
-function threadHasReply(mapped: ChatMessage[], sentText: string | null): boolean {
+//
+// `minMatches` guards the OTHER direction of the same regression: when the
+// pending text is identical to the immediately preceding, already-answered turn
+// ("yes" answering two intake questions in a row), the tail check alone matches
+// the OLD turn on the very first poll and adopts a stale snapshot — vanishing
+// the pending message and hiding its late reply. Callers pass how many matching
+// user turns the client thread holds (pending included); only a snapshot that
+// actually contains the NEW row can reach that count.
+function threadHasReply(mapped: ChatMessage[], sentText: string | null, minMatches = 1): boolean {
   if (mapped.length === 0 || mapped[mapped.length - 1].from !== "assistant") return false;
   const lastUser = [...mapped].reverse().find((m) => m.from === "user");
   if (!lastUser) return false;
   const dbText = lastUser.text.trim();
-  if (!sentText || ATTACHMENT_PLACEHOLDERS.has(sentText.trim())) {
-    // Attachment-only turn — the server stores its own placeholder for it.
-    return ATTACHMENT_PLACEHOLDERS.has(dbText);
-  }
-  return dbText === sentText.trim();
+  const isPlaceholder = !sentText || ATTACHMENT_PLACEHOLDERS.has(sentText.trim());
+  const tailMatches = isPlaceholder ? ATTACHMENT_PLACEHOLDERS.has(dbText) : dbText === sentText.trim();
+  if (!tailMatches) return false;
+  return countMatchingUserTurns(mapped, sentText) >= Math.max(1, minMatches);
 }
 
 interface ChatResponse {
@@ -294,6 +310,29 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     return () => { mountedRef.current = false; };
   }, []);
 
+  // The server's chat allowance is a per-UTC-date bucket, but `remaining` is
+  // plain state in an app-lifetime provider. iOS keeps the webview in memory
+  // across days, so a composer dead on yesterday's 0 ("back tomorrow") would
+  // stay dead until a force-quit. Stamp the day each server-reported balance
+  // belongs to, and drop the balance when the app comes to the foreground on a
+  // later date — the next send then re-learns the real balance.
+  const remainingDayRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (remaining !== null) remainingDayRef.current = new Date().toISOString().slice(0, 10);
+  }, [remaining]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const today = new Date().toISOString().slice(0, 10);
+      if (remainingDayRef.current && remainingDayRef.current !== today) {
+        remainingDayRef.current = null;
+        setRemaining(null);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
   // Use refs for callbacks so send() doesn't recreate when parent re-renders
   const onPortfolioUpdateRef = useRef(onPortfolioUpdate);
   const onNewMessageRef = useRef(onNewMessage);
@@ -371,6 +410,9 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       setLoading(true);
       setThinking(true);
       const startedAt = Date.now();
+      // Duplicate-send discriminator: the snapshot must hold at least as many
+      // user turns with this text as the cached thread does (pending included).
+      const expectedMatches = countMatchingUserTurns(cached, last?.text ?? null);
       const poll = async () => {
         if (cancelled) return;
         let mapped: ChatMessage[] | null = null;
@@ -379,7 +421,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         if (cancelled) return;
         // Committed = the DB snapshot contains OUR pending turn answered — never
         // "some id changed" (see threadHasReply for why id comparison drops turns).
-        const committed = !!mapped && threadHasReply(mapped, last?.text ?? null);
+        const committed = !!mapped && threadHasReply(mapped, last?.text ?? null, expectedMatches);
         if (committed) {
           setMessages(mapped!);
           setLoading(false);
@@ -560,6 +602,12 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   // pending turn, permanently hiding a reply that lands later.
   const reconcilePendingTurn = useCallback((sentText: string | null) => {
     const startedAt = Date.now();
+    // Duplicate-send discriminator (see threadHasReply): the snapshot must hold
+    // at least as many user turns with this text as the live thread does —
+    // messagesRef includes the optimistic pending bubble by the time a 60s
+    // timeout lands here, so a stale snapshot matching only the PREVIOUS
+    // identical turn can't be adopted.
+    const expectedMatches = countMatchingUserTurns(messagesRef.current, sentText);
     const finish = () => { setLoading(false); sendInFlightRef.current = false; };
     const adopt = (mapped: ChatMessage[]) => {
       if (skipHistory) {
@@ -579,7 +627,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         const d = await r.json();
         if (Array.isArray(d?.messages) && d.messages.length > 0) {
           const mapped = mapDbMessages(d.messages);
-          if (threadHasReply(mapped, sentText)) {
+          if (threadHasReply(mapped, sentText, expectedMatches)) {
             adopt(mapped);
             setThinking(false);
             setProcessingKind(null);
@@ -664,6 +712,16 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     if (csvData.length > 0) {
       payload.csvText = csvData.map((c) => `--- ${c.name} ---\n${c.text}`).join("\n\n");
     }
+    // Keep what's being sent so a REJECTED send can hand it back — a 429/400/500
+    // (or a request that never left the device) must not cost the user their
+    // staged screenshots; re-picking each one from the photo library is exactly
+    // the "keeps their attachments" promise the client-side guard above makes.
+    const sentImages = imageData, sentPreviews = imagePreviews, sentPdfs = pdfData, sentCsvs = csvData;
+    const restoreAttachments = () => {
+      if (sentImages.length) { setImageData(sentImages); setImagePreviews(sentPreviews); }
+      if (sentPdfs.length) setPdfData(sentPdfs);
+      if (sentCsvs.length) setCsvData(sentCsvs);
+    };
     clearImage();
 
     // Only fetch + parse + non-ok handling live in the try/catch. A throw from a
@@ -674,6 +732,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // leave `loading` / the send-guard HELD (composer disabled) so a still-waiting
     // user can't fire a duplicate send; the poll releases them when it resolves.
     let reconciling = false;
+    const sentAt = Date.now();
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
@@ -694,11 +753,32 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         // Restore the composer so the user's text isn't lost and can be retried,
         // and drop the orphaned optimistic user bubble.
         setInput(text);
+        restoreAttachments();
         setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
         setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: errText }]);
         return;
       }
-    } catch {
+    } catch (err) {
+      // A thrown fetch is only "maybe still processing" when the request
+      // plausibly REACHED the server — the 60s client timeout, or a connection
+      // that died mid-flight. An instant rejection (airplane mode, dead Wi-Fi,
+      // DNS failure) never left the device; reconciling those held the composer
+      // locked for four minutes with the typed text already gone, and the
+      // cached user-tail re-entered the same four-minute wait on every reopen.
+      // (An agent turn takes well over 5s server-side before anything persists,
+      // so a sub-5s rejection cannot have a committed reply to reconcile.)
+      const timedOut = err instanceof Error && err.message === "Request timed out";
+      const neverLeft = !timedOut &&
+        ((typeof navigator !== "undefined" && navigator.onLine === false) || Date.now() - sentAt < 5000);
+      if (neverLeft) {
+        setThinking(false);
+        setProcessingKind(null);
+        setInput(text);
+        restoreAttachments();
+        setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
+        setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: "No connection — check your internet and try again." }]);
+        return;
+      }
       // NEVER yank the message the user typed (deleting it here is exactly what
       // made a question vanish on a tab switch and pushed users to re-ask — and
       // re-add the same holding). Reconcile instead; see reconcilePendingTurn.
@@ -811,6 +891,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // Set when the catch hands off to the reconcile poll — the finally must then
     // leave `loading` / the send-guard held until the poll resolves.
     let reconciling = false;
+    const sentAt = Date.now();
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
@@ -834,8 +915,21 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: errText }]);
         return;
       }
-    } catch {
-      // Same rule as send(): a thrown fetch is NOT a definitive failure — a
+    } catch (err) {
+      // Same rules as send(). An instant rejection (offline, DNS failure) never
+      // left the device — restore the chip text and fail fast instead of
+      // holding the composer through a four-minute reconcile.
+      const timedOut = err instanceof Error && err.message === "Request timed out";
+      const neverLeft = !timedOut &&
+        ((typeof navigator !== "undefined" && navigator.onLine === false) || Date.now() - sentAt < 5000);
+      if (neverLeft) {
+        setThinking(false);
+        setInput(trimmed);
+        setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
+        setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: "No connection — check your internet and try again." }]);
+        return;
+      }
+      // A thrown fetch past that point is NOT a definitive failure — a
       // "Confirm and save" chip on a big import can run past the client timeout
       // while the server finishes and persists the commit. Deleting the bubble
       // and showing "Connection issue" hid a reply that actually landed and
@@ -876,7 +970,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   // guardrailed assistant narration into this single thread. No portfolio
   // mutation occurs (the route never enters the mutation flow).
   const sendScenario = useCallback(async (h: ScenarioHandoff) => {
-    if (loading || !userId) return;
+    // Same gates as sendText(): scenario chips stay tappable in the rendered
+    // thread after the daily limit / demo end, and firing anyway just burns a
+    // request into a guaranteed 429.
+    if (loading || !userId || remaining === 0 || demoEnded) return;
     // Synchronous double-send guard (see sendInFlightRef).
     if (sendInFlightRef.current) return;
     sendInFlightRef.current = true;
@@ -902,6 +999,10 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         const errText = res.status === 401
           ? "Session expired. Please refresh the page."
           : data.message || "Something went wrong. Please try again.";
+        // Mirror the other send paths so a demo session at its cap swaps the
+        // composer to the sign-up wall instead of an inert error bubble.
+        if (typeof data?.remaining === "number") setRemaining(data.remaining);
+        if (data?.demoExpired || data?.demoLimitReached) setDemoEnded(true);
         setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: errText }]);
         return;
       }
@@ -919,7 +1020,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     setMessages((prev) => [...prev, ...newMsgs]);
     if (typeof data.remaining === "number") setRemaining(data.remaining);
     onNewMessageRef.current?.();
-  }, [loading, userId]);
+  }, [loading, userId, remaining, demoEnded]);
 
   return {
     messages,

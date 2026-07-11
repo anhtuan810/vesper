@@ -10,6 +10,7 @@ import {
   CHAT_MAX_IMAGES, CHAT_MAX_PDFS, CHAT_PDF_MAX_MB, CHAT_REQUEST_MAX_BASE64, CHAT_CSV_MAX_TEXT_LEN,
 } from "@/lib/constants";
 import { ALLOWED_IMAGE_TYPES, stripTags, timestampedPair } from "@/lib/chat-helpers";
+import { priceHoldingsLive } from "@/lib/prices-server";
 import { narrateScenario } from "@/lib/scenario/narrate";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 import { runAgentChat } from "@/lib/chat/agent-loop";
@@ -241,7 +242,17 @@ export async function POST(req: NextRequest) {
         .limit(12),
     ]);
 
-    const currentAssets = assets || [];
+    // Live-price the loaded holdings before ANY figure is computed. Stored
+    // tradeable values are written at add/edit time and drift with the market;
+    // the dashboard live-prices client-side, so without this step every chat
+    // figure (net worth, per-position values, allocation, scenario baselines)
+    // could contradict the very screen the user is looking at. Restores the
+    // legacy engine's priceHoldingsLive step (lost with its removal in the
+    // 2026-07 cost pass); quotes are cached server-side (PRICE_CACHE_TTL_MS),
+    // so the warm-path cost per turn is negligible.
+    const currentAssets = await priceHoldingsLive(
+      (assets || []) as Array<Record<string, unknown> & { symbol?: string | null; units?: number | null; value: number; currency: string; country?: string | null }>,
+    );
     const profile = userData?.profile || {};
     const userName = userData?.name || undefined;
     const displayCurrency: DisplayCurrency = isSupportedCurrency(userData?.display_currency)
@@ -292,7 +303,26 @@ export async function POST(req: NextRequest) {
       onboarding,
       onboardingAsset,
     });
-    return NextResponse.json(result);
+    // A turn the model never answered shouldn't spend allowance — on the demo's
+    // 20-message budget an upstream outage would otherwise eat the whole trial
+    // in error bubbles. Best-effort compensating decrement (the increment RPC
+    // has no inverse; a lost race costs at most one message either way).
+    const { modelUnavailable, ...clientResult } = result;
+    if (modelUnavailable) {
+      try {
+        const { data: rl } = await supabase
+          .from("rate_limits").select("count")
+          .eq("user_id", userId).eq("bucket", "chat").eq("date", today).maybeSingle();
+        if (rl && typeof rl.count === "number" && rl.count > 0) {
+          await supabase
+            .from("rate_limits").update({ count: rl.count - 1 })
+            .eq("user_id", userId).eq("bucket", "chat").eq("date", today);
+          // The refunded turn is no longer spent — report the corrected balance.
+          clientResult.remaining = result.remaining + 1;
+        }
+      } catch { /* refund is best-effort */ }
+    }
+    return NextResponse.json(clientResult);
   } catch (err) {
     console.error("[/api/chat] unhandled error:", err);
     Sentry.captureException(err, { tags: { route: "POST /api/chat" } });

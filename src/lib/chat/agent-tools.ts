@@ -14,8 +14,10 @@ import { assemblePresent } from "@/lib/scenario/present-assemble";
 import { assembleProject } from "@/lib/scenario/project-assemble";
 import { assembleCounterfactual } from "@/lib/scenario/counterfactual-assemble";
 import { hypotheticalBuyGrowth, buyPriceUsd } from "@/lib/scenario/hypothetical";
-import { fetchHistoricalSeries } from "@/lib/prices";
+import { fetchHistoricalSeries, fetchHistoricalPrice, normalizePrice } from "@/lib/prices";
 import { getHistoricalUsdRates } from "@/lib/fx";
+import { mapWithConcurrency } from "@/lib/concurrency";
+import { extractMonetaryNumbers } from "@/lib/narrate/guardrail";
 import { parseAcquisitionMonth } from "@/lib/acquisition-date";
 import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
@@ -305,9 +307,12 @@ export async function executeAgentTool(name: string, input: Record<string, unkno
           figures.push(gainAbs);
         }
         if (gainPct != null) {
-          const gp = pct(gainPct);
-          h.gainPct = gp;
-          figures.push(gp);
+          // Same rule as the money gain above: allowlist the UNSIGNED form. The
+          // guardrail's extractor starts at a digit, so "-12.3%" in prose is
+          // extracted as "12.3%" and a signed entry could never match — which
+          // erased every reply quoting a losing position's percentage.
+          h.gainPct = pct(gainPct);
+          figures.push(pct(Math.abs(gainPct)));
         }
         return h;
       });
@@ -744,6 +749,20 @@ async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolCont
   const chips = ["Confirm and save", "No, let me correct it"];
   return {
     forModel: { proposed: lines, ...(geo.resolved.length ? { resolvedAddresses: geo.resolved } : {}), awaitingConfirmation: true },
+    // The proposal lines carry derived figures ("… at USD 213.25 per share =
+    // USD 5,000") that the model is EXPECTED to echo back with the confirm
+    // chips. Allowlist them like every read tool allowlists its own output —
+    // without this, a turn that also ran a read tool (arming the guardrail)
+    // had its confirmation message erased for quoting the proposal's own math.
+    // The lines format amounts with a currency CODE ("USD 5,000"), which the
+    // extractor doesn't capture but a model narration often rewrites into the
+    // symbol form ("$5,000") — so allowlist that symbol form too.
+    figures: lines.flatMap((l) => [
+      ...extractMonetaryNumbers(l),
+      ...[...l.matchAll(/\b(USD|EUR|GBP)\s?(\d[\d.,]*)/g)].map(
+        (mm) => `${SYMBOL[mm[1] as DisplayCurrency] ?? "$"}${mm[2]}`,
+      ),
+    ]),
     proposal: { resolvedText, chips },
   };
 }
@@ -898,30 +917,43 @@ async function setImportAcquisitionDateTool(input: Record<string, unknown>, ctx:
     return { forModel: { trackFromNow: true, dated: 0 } };
   }
 
-  // Holdings still lacking an acquisition date, scoped to rows CREATED RECENTLY —
-  // the import commit happened earlier in this same conversation, so the batch's
-  // rows are at most hours old. The scope matters: "track from now" stores
-  // buy_date = null as a deliberate long-lived state, so an unscoped
-  // "every undated holding" update would stamp the user's batch answer onto an
-  // unrelated position added months ago (and back-stamp its journal mutation),
-  // silently rewriting that position's entire history. Bulk-update in two
-  // queries (all share the same resolved date), not a per-row fan-out.
+  // Holdings still lacking an acquisition date, scoped three ways. (1) Rows
+  // CREATED RECENTLY — the import commit happened earlier in this same
+  // conversation, so the batch's rows are at most hours old. (2) Market-tradeable
+  // classes only: a file import only ever commits tradeables, while cash /
+  // pension / property / "other" rows legitimately live with buy_date NULL
+  // forever — an unscoped update stamped the batch's answer onto (e.g.) the
+  // savings account added minutes earlier in onboarding and back-stamped ITS
+  // journal mutation too, silently rewriting that asset's entire history.
+  // (3) Rows created within minutes of the NEWEST undated tradeable: one import
+  // batch (even split across commit calls in the same turn) inserts together,
+  // so the cluster keeps an older same-session "just track from now" add out of
+  // a batch it never belonged to. "track from now" stores buy_date = null as a
+  // deliberate long-lived state; this scoping is what keeps that promise.
+  // Bulk-update in two queries (all share the same resolved date), not a
+  // per-row fan-out.
   const importWindowStart = new Date(ctx.now.getTime() - 6 * 3600_000).toISOString();
+  const IMPORTABLE_TYPES = ["stocks", "etf", "crypto", "gold", "bonds"];
   const { data: undated, error: selErr } = await ctx.supabase
     .from("assets")
-    .select("id, symbol, type")
+    .select("id, symbol, type, buy_price, created_at")
     .eq("user_id", ctx.userId)
     .is("removed_at", null)
     .is("buy_date", null)
+    .in("type", IMPORTABLE_TYPES)
     .gte("created_at", importWindowStart);
   if (selErr) {
     Sentry.captureException(selErr, { tags: { tool: "set_import_acquisition_date" } });
     return { forModel: { error: "Couldn't apply the date just now — try again in a moment." } };
   }
-  const rows = undated ?? [];
-  if (rows.length === 0) {
+  const candidates = undated ?? [];
+  if (candidates.length === 0) {
     return { forModel: { dated: 0, note: "No recently imported positions are awaiting an acquisition date." } };
   }
+  const newestMs = Math.max(...candidates.map((r) => Date.parse(String(r.created_at))));
+  const rows = Number.isFinite(newestMs)
+    ? candidates.filter((r) => newestMs - Date.parse(String(r.created_at)) <= 10 * 60_000)
+    : candidates;
   const ids = rows.map((r) => String(r.id));
 
   const { error: updErr } = await ctx.supabase.from("assets").update({ buy_date: parsed }).eq("user_id", ctx.userId).in("id", ids);
@@ -949,6 +981,40 @@ async function setImportAcquisitionDateTool(input: Record<string, unknown>, ctx:
     occurredAt: parsed,
     assetType: (mm.asset_type as string | null) ?? null,
   }));
+
+  // Re-derive the cost basis for stamped rows whose basis was auto-derived at
+  // commit time. An import commits with no date, so apply-changes set buy_price
+  // to the LATEST close (its "price at buy_date, or 'now' if unstated" rule) or
+  // left it NULL when the screenshot supplied the row's value — either way the
+  // stored basis says "bought today" while the row now says "bought at
+  // `parsed`", which reads as a ~0% gain on a multi-year holding. Derive the
+  // close at the stamped date for a NULL basis, or for a basis still equal
+  // (±1%) to the latest close (the auto-derived signature); a screenshot-stated
+  // average cost differs from the live close in practice and is left alone.
+  // Same listing symbol as the stored row, so the currency convention matches.
+  // Best-effort per row: a missed derivation leaves the date correct and the
+  // gain diagnosably flat, never a half-applied batch.
+  await mapWithConcurrency(rows, 3, async (r) => {
+    const symbol = (r.symbol as string | null) ?? null;
+    if (!symbol) return;
+    try {
+      const stored = typeof r.buy_price === "number" && r.buy_price > 0 ? r.buy_price : null;
+      if (stored != null) {
+        const latest = await fetchHistoricalPrice(symbol, null);
+        const latestNorm = latest ? normalizePrice(latest.price, latest.currency) : null;
+        if (latestNorm == null || latestNorm <= 0 || Math.abs(stored - latestNorm) / latestNorm > 0.01) {
+          return; // user-stated basis — keep it
+        }
+      }
+      const hist = await fetchHistoricalPrice(symbol, parsed);
+      const derived = hist ? Math.round(normalizePrice(hist.price, hist.currency) * 100) / 100 : null;
+      if (derived != null && derived > 0) {
+        await ctx.supabase.from("assets").update({ buy_price: derived }).eq("user_id", ctx.userId).eq("id", String(r.id));
+      }
+    } catch (err) {
+      Sentry.captureException(err, { tags: { tool: "set_import_acquisition_date", step: "rederive-basis" } });
+    }
+  });
 
   return {
     forModel: { dated: rows.length, date: parsed },

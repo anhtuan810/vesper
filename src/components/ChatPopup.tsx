@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
 import { getChatSuggestions } from "@/lib/use-chat-session";
@@ -62,6 +62,22 @@ export default function ChatPopup({ userId, isOpen, onToggle }: ChatPopupProps) 
   // Set just before a load-more prepend so the scroll-to-bottom below skips that
   // one messages change — otherwise prepending older history yanks to bottom.
   const isLoadMoreUpdate = useRef(false);
+  // Scroll metrics captured just before a load-more prepend, restored below.
+  const savedScrollMetrics = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
+
+  // Restore the reading position after prepending older messages (loadMore).
+  // Chrome/Firefox anchor natively, but WebKit (every iPad browser + desktop
+  // Safari) does not — without this the viewport jumps to the prepended batch
+  // and the sentinel re-enters the observer margin, chain-loading the entire
+  // history. useLayoutEffect runs before paint so there's no visible jump.
+  // (Same pattern as /chat's page.tsx.)
+  useLayoutEffect(() => {
+    const metrics = savedScrollMetrics.current;
+    const container = scrollContainerRef.current;
+    if (!metrics || !container) return;
+    container.scrollTop = container.scrollTop + (container.scrollHeight - metrics.scrollHeight);
+    savedScrollMetrics.current = null;
+  }, [messages]);
 
   useEffect(() => {
     if (isLoadMoreUpdate.current) {
@@ -105,6 +121,10 @@ export default function ChatPopup({ userId, isOpen, onToggle }: ChatPopupProps) 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) {
+          const container = scrollContainerRef.current;
+          if (container) {
+            savedScrollMetrics.current = { scrollHeight: container.scrollHeight, scrollTop: container.scrollTop };
+          }
           isLoadMoreUpdate.current = true;
           loadMore();
         }

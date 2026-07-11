@@ -41,8 +41,10 @@ type CurrentAsset = {
   mortgage_balance?: number | null;
   country?: string | null;
   // Acquisition anchors — needed to scope a history rebuild when this asset is
-  // removed/edited. Present on full asset rows (select *).
+  // removed/edited, and to re-derive an auto-derived cost basis on a date-fill
+  // promotion. Present on full asset rows (select *).
   buy_date?: string | null;
+  buy_price?: number | null;
   created_at?: string | null;
   // Pension fields — present on pension rows; needed to merge + re-validate edits.
   pension_kind?: PensionKind | null;
@@ -405,8 +407,31 @@ export async function applyPortfolioChanges({
           ? currentAssets.find((a) => a.symbol && a.symbol.toLowerCase() === dupSymKey)
           : currentAssets.find((a) => a.name.trim().toLowerCase() === dupNameKey);
         if (change.buy_date && existingDup && !existingDup.buy_date) {
+          // Stamp the date — and re-derive the basis when it was auto-derived at
+          // the original undated add (stored buy_price == latest close, the
+          // "bought today" signature, or no basis at all). Without this the
+          // promoted position keeps today's price as its cost basis at the new
+          // historical date and reads as a ~0% gain over the whole holding
+          // period. A user-stated basis (differs from the live close) is kept.
+          const promo: Record<string, unknown> = { buy_date: change.buy_date };
+          try {
+            if (existingDup.symbol) {
+              const stored = typeof existingDup.buy_price === "number" && existingDup.buy_price > 0 ? existingDup.buy_price : null;
+              let rederive = stored == null;
+              if (stored != null) {
+                const latest = await fetchHistoricalPrice(existingDup.symbol, null);
+                const latestNorm = latest ? normalizePrice(latest.price, latest.currency) : null;
+                rederive = latestNorm != null && latestNorm > 0 && Math.abs(stored - latestNorm) / latestNorm <= 0.01;
+              }
+              if (rederive) {
+                const hist = await fetchHistoricalPrice(existingDup.symbol, change.buy_date);
+                const px = hist ? Math.round(normalizePrice(hist.price, hist.currency) * 100) / 100 : null;
+                if (px != null && px > 0) promo.buy_price = px;
+              }
+            }
+          } catch { /* best effort — the date still lands */ }
           await supabase.from("assets")
-            .update({ buy_date: change.buy_date }).eq("id", existingDup.id).eq("user_id", userId);
+            .update(promo).eq("id", existingDup.id).eq("user_id", userId);
           await supabase.from("mutations")
             .update({ occurred_at: change.buy_date })
             .eq("user_id", userId).eq("asset_id", existingDup.id).eq("action", "add");

@@ -111,6 +111,14 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
     const { data: subscription } = useSubscription();
     const isDemo = !!subscription?.isDemo;
 
+    // A demo session out of messages is WALLED, not "back tomorrow": the server
+    // reports remaining=0 on the last allowed reply and the client then blocks
+    // further sends, so the 429 that flips demoEnded never fires in a continuous
+    // session — without this, exhaustion showed the real-account daily-limit
+    // copy (factually wrong: the anonymous session is reaped within the hour)
+    // and the sign-up call-to-action this wall exists for never appeared.
+    const demoWalled = demoEnded || (isDemo && remaining === 0);
+
     // Composer refs — each variant renders a different element type, so keep a
     // dedicated ref per type and expose focus() to the caller via the handle.
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -692,7 +700,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
             {counters}
 
             {/* Input pill — or the quiet sign-up line once the demo is over */}
-            {demoEnded ? demoEndedNotice : (
+            {demoWalled ? demoEndedNotice : (
             <div
               style={{
                 background: "var(--surface)",
@@ -863,7 +871,7 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
           {counters}
 
           {/* Input pill — or the quiet sign-up line once the demo is over */}
-          {demoEnded ? demoEndedNotice : (
+          {demoWalled ? demoEndedNotice : (
           <div
             style={{
               position: "relative",

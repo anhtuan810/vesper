@@ -874,6 +874,41 @@ Naming caution: the pre-existing "onboarding" concepts in chat code
 zero-asset CHAT experience, not this gated flow — they are unrelated despite the
 shared word.
 
+## Session log — 2026-07-11 (pre-release chat audit fixes)
+
+A deep pre-App-Store-release audit of the chat stack (server + client), fixed in
+one pass. Server: chat reads live-price the loaded holdings again
+(`priceHoldingsLive` in the route — the step was lost with the legacy engine's
+removal, leaving every chat figure frozen at last-write while the dashboard
+showed live values); `set_import_acquisition_date` now scopes to importable
+tradeable types AND the newest insert cluster (an unscoped 6-hour window stamped
+the batch date onto a cash/pension row added earlier in the same onboarding
+session, rewriting its journal history), and re-derives the cost basis at the
+stamped date when the stored basis was auto-derived at "today" (otherwise a
+two-year-old import read as a ~0% gain; the date-fill promotion path in
+apply-changes got the same treatment); `get_holdings` allowlists gain
+percentages UNSIGNED (the signed form never matched the extractor, erasing every
+reply that quoted a losing position); propose_mutation allowlists its own
+proposal figures (incl. the "USD 5,000" → "$5,000" rewrite); the history window
+is forced to start on a user turn (a tag-era assistant row stripping to empty
+could shift it assistant-first, 400-ing every request with no self-heal); the
+numeric guardrail also arms on commit turns (with user-typed "€5k"-style
+shorthand expanded into the allowlist); and a turn the model never answered
+refunds its rate-limit increment (matters most for the demo's 20-message
+budget). Client: an instant network failure (offline/DNS) now fails fast with
+the text and attachments restored instead of a silent 4-minute reconcile hold
+that re-armed on every app open; server-rejected sends restore staged
+attachments; the timeout reconcile disambiguates consecutive duplicate texts
+(two "yes" answers in a row could adopt a stale snapshot and vanish the second
+turn); the demo cap now shows the sign-up wall in-session (previously
+unreachable: the client blocks the 21st send, so the 429 that flipped the wall
+never fired — exhaustion showed "back tomorrow" to a session reaped within the
+hour); sendScenario gained the same limit/demo gates as the other send paths;
+`remaining` un-sticks when the UTC day rolls over in a long-lived webview; and
+ChatPopup + the desktop rail got the /chat page's load-more scroll restoration
+(WebKit has no native scroll anchoring — one upward scroll chain-loaded the
+entire history).
+
 ## Session log — 2026-07-10 (gated onboarding)
 
 Built the gated onboarding end-to-end (see the feature section above). The shape it

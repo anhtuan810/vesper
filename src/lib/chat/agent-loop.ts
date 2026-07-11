@@ -122,6 +122,10 @@ export interface AgentChatResult {
   assets?: unknown;
   remaining: number;
   analyticsEvent?: string;
+  /** The model call itself failed (nothing answered, nothing persisted) — the
+   *  route refunds the turn's rate-limit increment. Stripped before the client
+   *  response. */
+  modelUnavailable?: boolean;
 }
 
 function textFrom(content: Anthropic.Messages.ContentBlock[]): string {
@@ -163,6 +167,12 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   const history: Anthropic.Messages.MessageParam[] = input.recentMessages
     .map((m) => ({ role: m.role as "user" | "assistant", content: stripTags(m.content) }))
     .filter((m) => m.content.length > 0);
+  // The Messages API requires the FIRST message to be role "user" (consecutive
+  // same-role turns merge fine). A tag-era assistant row can strip to empty and
+  // drop out above, shifting the window off pair alignment so it starts with an
+  // assistant turn — which would 400 EVERY request for that user, and since a
+  // failed turn is never persisted the window never advances: chat stays dead.
+  while (history.length > 0 && history[0].role !== "user") history.shift();
 
   const userContent: Anthropic.Messages.ContentBlockParam[] = [];
   for (const img of input.images) {
@@ -201,6 +211,18 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
     ...extractMonetaryNumbers(csvText ? `${baseText}\n${csvText}` : baseText),
     ...history.flatMap((h) => (typeof h.content === "string" ? extractMonetaryNumbers(h.content) : [])),
   ];
+  // Shorthand amounts the user typed ("€5k", "$1.2m") expand to the full figure
+  // the model will echo back ("€5,000") — the raw extraction only captures the
+  // "€5" prefix of the shorthand, so without this the legitimate echo reads as
+  // a fabricated number and the reply is discarded.
+  const SHORTHAND_AMOUNT = /[€$£]\s?\d+(?:[.,]\d+)?\s?[km]\b/gi;
+  for (const src of [baseText, ...history.map((h) => (typeof h.content === "string" ? h.content : ""))]) {
+    for (const match of src.match(SHORTHAND_AMOUNT) ?? []) {
+      const numPart = parseFloat(match.slice(1).replace(",", "."));
+      const mult = /m\b/i.test(match) ? 1_000_000 : 1_000;
+      if (Number.isFinite(numPart)) conversationFigures.push(`${match[0]}${Math.round(numPart * mult)}`);
+    }
+  }
 
   // During first-run onboarding, append the scope block so the assistant does asset
   // setup only (no scenarios / general Q&A) and stays on the chosen asset. Normal
@@ -237,7 +259,11 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       resp = await anthropic.messages.create({ model: MODEL, max_tokens: 8000, system: systemPrompt, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
-      return { message: "Couldn't reach the assistant. Please try again.", remaining: input.dailyLimit - input.used };
+      // modelUnavailable → the route refunds this turn's rate-limit increment:
+      // the user got no answer, so the turn shouldn't spend allowance (on the
+      // demo's 20-message budget an upstream outage would otherwise burn the
+      // whole trial in error bubbles).
+      return { message: "Couldn't reach the assistant. Please try again.", remaining: input.dailyLimit - input.used, modelUnavailable: true };
     }
 
     messages.push({ role: "assistant", content: resp.content });
@@ -300,7 +326,13 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   // twins) — a legitimate "62.5% → 63%" rewrite must not erase the reply; money
   // amounts still have to match a tool figure verbatim. The Sentry event carries
   // the offending tokens, so a trip is diagnosable instead of a bare warning.
-  const offending = figures.length > 0
+  // Armed whenever verified figures exist OR the turn wrote: a commit narration
+  // that invents a self-summed total (e.g. from screenshot pixels) must degrade
+  // to the neutral line, not ship a fabricated bold figure — commit results
+  // carry no figures, so the old figures-only gate skipped exactly those turns.
+  // Pure conversational turns stay ungated: generic prose ("no single position
+  // above 10%") carries rhetorical numbers no allowlist could anticipate.
+  const offending = figures.length > 0 || commit
     ? offendingMonetaryTokens(finalText, withPercentTolerance([...figures, ...conversationFigures]))
     : [];
   if (offending.length > 0) {

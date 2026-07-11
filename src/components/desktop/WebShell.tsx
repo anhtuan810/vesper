@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { ChatThread, type ChatThreadHandle } from "@/components/chat/ChatThread";
@@ -121,6 +121,22 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
   // that update — otherwise paginating older history yanks the rail back to the
   // newest message, making history unreadable (matches ChatPage/ChatPopup).
   const isLoadMoreUpdate = useRef(false);
+  // Scroll metrics captured just before a load-more prepend, restored below.
+  const savedScrollMetrics = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
+
+  // Restore the reading position after prepending older messages (loadMore).
+  // Chrome/Firefox anchor natively, but WebKit (Safari, every iPad browser)
+  // does not — without this the rail jumps to the prepended batch and the
+  // sentinel re-enters the observer margin, chain-loading the entire history.
+  // useLayoutEffect runs before paint so there's no visible jump. (Same
+  // pattern as /chat's page.tsx.)
+  useLayoutEffect(() => {
+    const metrics = savedScrollMetrics.current;
+    const container = scrollContainerRef.current;
+    if (!metrics || !container) return;
+    container.scrollTop = container.scrollTop + (container.scrollHeight - metrics.scrollHeight);
+    savedScrollMetrics.current = null;
+  }, [messages]);
 
   useEffect(() => {
     if (isLoadMoreUpdate.current) {
@@ -143,7 +159,16 @@ export function WebShell({ tab, children }: { tab: WebTab; children: ReactNode }
     const sentinel = sentinelRef.current;
     if (!sentinel || !hasMore) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) { isLoadMoreUpdate.current = true; loadMore(); } },
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore && hasScrolled.current) {
+          const container = scrollContainerRef.current;
+          if (container) {
+            savedScrollMetrics.current = { scrollHeight: container.scrollHeight, scrollTop: container.scrollTop };
+          }
+          isLoadMoreUpdate.current = true;
+          loadMore();
+        }
+      },
       { threshold: 0, rootMargin: "200px 0px 0px 0px" },
     );
     observer.observe(sentinel);
