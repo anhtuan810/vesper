@@ -1,105 +1,424 @@
 "use client";
 
+import type { CSSProperties } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LockIcon } from "@/components/icons/EmptyStateIcons";
+import {
+  LockIcon, ImageIcon, PaperclipIcon, ArrowUpIcon,
+  QuoteIcon, FileSpreadsheetIcon, CameraIcon,
+} from "@/components/icons/EmptyStateIcons";
 import { DISCLAIMER_TEXT } from "@/lib/claude";
 
-// Zero-asset landing. Adding assets goes through the guided setup (one asset at a
-// time), so this screen has a single job: start it. No free-form composer, and no
-// navigation away: while this is mounted the tab bars and the desktop chat rail are
-// hidden (style block below), so the ONE visible option is the add button.
+const pillStyle: CSSProperties = {
+  display: "flex", alignItems: "center", gap: "var(--space-1)",
+  background: "transparent",
+  border: "0.5px solid var(--accent)",
+  borderRadius: "var(--radius-pill)",
+  padding: "var(--space-1) var(--space-row)",
+  color: "var(--accent)",
+  fontFamily: "var(--font-ui)",
+  fontSize: "var(--fs-caption)",
+  cursor: "pointer",
+  minHeight: 44,
+};
+
+function ExampleRow({
+  icon, label, example, onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  example: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="es-example"
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: "var(--space-3)",
+        background: "var(--surface)",
+        border: "0.5px solid var(--border)",
+        borderRadius: "var(--radius-md)",
+        padding: "var(--space-row) var(--space-3)",
+        textAlign: "left",
+        width: "100%",
+        transition: "border-color 0.15s, transform 0.1s",
+      }}
+    >
+      <div style={{
+        width: 32, height: 32, borderRadius: "var(--radius-md)",
+        background: "var(--accent-soft)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0, color: "var(--accent)",
+      }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: "var(--fs-caption)", color: "var(--text-dim)",
+        }}>
+          {label}
+        </div>
+        <div style={{
+          fontFamily: "var(--font-display)",
+          fontStyle: "italic", fontSize: "var(--fs-meta)",
+          color: "var(--accent-deep)", lineHeight: "var(--lh-snug)",
+          marginTop: 1,
+        }}>
+          {example}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export function PortfolioEmptyState() {
   const router = useRouter();
+  const [text, setText] = useState("");
+  const [focused, setFocused] = useState(false);
 
-  // `?add=1` lets an already-onboarded user (who deleted everything) re-enter the
-  // guided flow on purpose; the middleware only auto-bounces completed users off
-  // /onboarding when they arrive WITHOUT it.
-  const start = () => router.push("/onboarding?add=1");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const hasContent = text.trim().length > 0;
+  const showPlaceholder = !focused && !text;
+
+  // Auto-grow textarea: expand to content, cap at 4 lines (~84px)
+  const autoGrow = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const capped = Math.min(el.scrollHeight, 84);
+    el.style.height = capped + "px";
+    el.style.overflowY = el.scrollHeight > 84 ? "auto" : "hidden";
+  }, []);
+
+  useEffect(() => { autoGrow(); }, [text, autoGrow]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+  };
+
+  const handleSend = useCallback(() => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    sessionStorage.setItem("volnar.empty.input", trimmed);
+    router.push("/chat");
+  }, [text, router]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const prefillText = (value: string) => {
+    setText(value);
+    setFocused(true);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  };
+
+  // Read file as base64, stash in sessionStorage, then navigate to chat
+  const handleFileSelected = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      try {
+        sessionStorage.setItem("volnar.empty.image", JSON.stringify({
+          base64: result.split(",")[1],
+          mediaType: file.type,
+        }));
+        sessionStorage.setItem("volnar.chat.autosubmit", "1");
+      } catch {
+        // sessionStorage full — navigate anyway, image will be lost
+      }
+      router.push("/chat");
+    };
+    reader.readAsDataURL(file);
+  }, [router]);
+
+  // Clipboard image → stash and route
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const imageItem = items.find((i) => i.type.startsWith("image/"));
+      if (imageItem) {
+        e.preventDefault();
+        const file = imageItem.getAsFile();
+        if (file) handleFileSelected(file);
+        else router.push("/chat");
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [router, handleFileSelected]);
+
+  // Drag-and-drop anywhere → route to chat
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelected(file);
+    else router.push("/chat");
+  };
 
   return (
-    <div className="pes-wrap">
-      {/* While the portfolio is empty there is nowhere useful to go — hide the
-          mobile tab bar and the desktop nav tabs + chat rail so setting up is the
-          only path. These rules live and die with this component's mount, so the
-          moment the first asset lands (empty state unmounts) navigation returns. */}
+    <div
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      style={{ paddingTop: "var(--space-5)" }}
+    >
       <style>{`
-        .kb-hide-nav { display: none !important; }
-        .vhome .vh-tabs { display: none !important; }
-        .vhome .vh-rail { display: none !important; }
-        .vhome .vh-shell { grid-template-columns: minmax(0, 1fr) !important; }
+        .es-pill { transition: background 0.12s, transform 0.1s; }
+        .es-pill:hover { background: color-mix(in srgb, var(--accent) 7%, transparent) !important; }
+        .es-pill:active { transform: scale(0.97); }
+        .es-example { transition: border-color 0.15s; cursor: pointer; }
+        .es-example:hover { border-color: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+        .es-example:active { transform: scale(0.99); }
+        .es-input-wrap { transition: box-shadow 0.15s, border-color 0.15s; }
+        .es-input-wrap:focus-within { border-color: var(--accent) !important; box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-soft) !important; }
+        .es-send:active { transform: scale(0.94); }
       `}</style>
-      {/* Privacy reassurance */}
-      <div className="pes-pill">
+
+      {/* ─── Section 1: Hero ─────────────────────────────────────────────── */}
+
+      {/* Privacy pill */}
+      <div style={{
+        display: "inline-flex", alignItems: "center", gap: "var(--space-1)",
+        background: "var(--accent-soft)", color: "var(--accent-text)",
+        borderRadius: "var(--radius-pill)", padding: "var(--space-1) var(--space-2)",
+      }}>
         <LockIcon size={14} />
-        <span>Private · stays on your device</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-caption)", fontWeight: 500 }}>
+          Private · stays on your device
+        </span>
       </div>
 
-      <h1 className="pes-title">Let&apos;s set up your portfolio.</h1>
+      {/* Headline */}
+      <h1 style={{
+        fontFamily: "var(--font-display)",
+        fontStyle: "italic", fontWeight: 400,
+        fontSize: "var(--fs-title)", lineHeight: "var(--lh-snug)", color: "var(--hero)",
+        letterSpacing: "var(--tracking-title)",
+        margin: "16px 0 0",
+      }}>
+        Throw anything at me.
+      </h1>
 
-      <p className="pes-sub">
-        Add what you own — property, investments, savings, crypto — and I&apos;ll walk
-        you through it, one thing at a time. It only takes a minute.
+      {/* Sub-headline */}
+      <p style={{
+        fontFamily: "var(--font-ui)",
+        fontSize: "var(--fs-body)", color: "var(--text-dim)", lineHeight: "var(--lh-body)",
+        margin: "6px 0 0",
+      }}>
+        A sentence, a screenshot, a CSV, a photo of a statement — I&apos;ll sort it.
       </p>
 
-      <button className="pes-btn" onClick={start}>
-        Add your first asset
-      </button>
+      {/* Informational-only disclaimer — muted line beneath the opener */}
+      <p style={{
+        fontFamily: "var(--font-ui)",
+        fontSize: "var(--fs-caption)", color: "var(--text-faint)", lineHeight: "var(--lh-body)",
+        margin: "8px 0 0",
+      }}>
+        {DISCLAIMER_TEXT}
+      </p>
 
-      <p className="pes-disclaimer">{DISCLAIMER_TEXT}</p>
+      {/* ─── Section 2: Multimodal input — the primary action, first thing in view ─ */}
 
-      <style>{`
-        .pes-wrap {
-          max-width: 460px; margin: 0 auto;
-          padding: var(--space-6) 0 var(--space-6);
-          display: flex; flex-direction: column; align-items: flex-start;
-          text-align: left;
-        }
-        .pes-pill {
-          display: inline-flex; align-items: center; gap: var(--space-1);
-          background: var(--accent-soft); color: var(--accent-text);
-          border-radius: var(--radius-pill); padding: var(--space-1) var(--space-2);
-          font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: 500;
-        }
-        .pes-title {
-          font-family: var(--font-display); font-weight: 500;
-          font-size: var(--fs-hero, var(--fs-title)); line-height: var(--lh-snug);
-          color: var(--hero); letter-spacing: var(--tracking-title);
-          margin: var(--space-4) 0 0;
-        }
-        .pes-sub {
-          font-family: var(--font-ui); font-size: var(--fs-subhead);
-          color: var(--text-dim); line-height: var(--lh-body);
-          margin: var(--space-3) 0 0;
-        }
-        .pes-btn {
-          margin: var(--space-6) 0 0; width: 100%;
-          display: flex; align-items: center; justify-content: center;
-          background: var(--accent); color: var(--bg);
-          border: none; border-radius: var(--radius-lg);
-          padding: var(--space-4) var(--space-5); min-height: 58px;
-          font-family: var(--font-ui); font-size: var(--fs-subhead); font-weight: 600;
-          cursor: pointer; transition: transform 0.1s, filter 0.15s;
-        }
-        .pes-btn:hover { filter: brightness(1.05); }
-        .pes-btn:active { transform: scale(0.985); }
-        .pes-disclaimer {
-          font-family: var(--font-ui); font-size: var(--fs-caption);
-          color: var(--text-faint); line-height: var(--lh-body);
-          margin: var(--space-4) 0 0;
-        }
+      <div
+        className="es-input-wrap"
+        style={{
+          marginTop: 22,
+          background: "var(--surface)", borderRadius: "var(--radius-xl)",
+          border: "1px solid color-mix(in srgb, var(--accent) 38%, transparent)",
+          boxShadow: "var(--shadow-soft)",
+          padding: "var(--space-3) var(--space-3) var(--space-row)",
+        }}
+      >
+        {/* Placeholder / textarea */}
+        <div style={{ position: "relative" }}>
+          {/* Placeholder overlay — tap to focus */}
+          <div
+            onClick={() => { setFocused(true); requestAnimationFrame(() => textareaRef.current?.focus()); }}
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-subhead)", color: "var(--text-faint)",
+              padding: "6px 6px 10px", lineHeight: "var(--lh-body)",
+              cursor: "text", userSelect: "none",
+              opacity: showPlaceholder ? 1 : 0,
+              pointerEvents: showPlaceholder ? "auto" : "none",
+              position: showPlaceholder ? "relative" : "absolute",
+              inset: 0,
+              transition: "opacity 0.1s",
+            }}
+          >
+            Type, paste, or attach anything…
+          </div>
 
-        /* Desktop: same single-option principle, presented as a centered landing —
-           the block sits mid-viewport, text centered, the button stays the one
-           big action. Mobile keeps its left-aligned column untouched. */
-        @media (min-width: 1024px) {
-          .pes-wrap {
-            max-width: 520px; min-height: 62vh;
-            align-items: center; justify-content: center; text-align: center;
-          }
-          .pes-title { font-size: var(--fs-hero, 38px); }
-          .pes-btn { max-width: 380px; }
-        }
-      `}</style>
+          {/* Actual textarea */}
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={handleTextChange}
+            onFocus={() => setFocused(true)}
+            onBlur={() => { if (!text) setFocused(false); }}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            style={{
+              display: showPlaceholder ? "none" : "block",
+              width: "100%",
+              background: "transparent",
+              border: "none", outline: "none",
+              resize: "none",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-subhead)",
+              color: "var(--accent-deep)", lineHeight: "var(--lh-body)",
+              padding: "6px 6px 4px",
+              minHeight: 23, maxHeight: 92,
+              overflowY: "hidden",
+            }}
+          />
+        </div>
+
+        {/* Action row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-1)", marginTop: "var(--space-1)" }}>
+          {/* Photo pill */}
+          <button
+            className="es-pill"
+            onClick={() => photoInputRef.current?.click()}
+            style={pillStyle}
+            aria-label="Add photo"
+          >
+            <ImageIcon size={14} />
+            Photo
+          </button>
+
+          {/* File pill */}
+          <button
+            className="es-pill"
+            onClick={() => fileInputRef.current?.click()}
+            style={pillStyle}
+            aria-label="Attach file"
+          >
+            <PaperclipIcon size={14} />
+            File
+          </button>
+
+          {/* Spacer */}
+          <div style={{ flex: 1 }} />
+
+          {/* Send button */}
+          <button
+            className="es-send"
+            onClick={handleSend}
+            disabled={!hasContent}
+            style={{
+              width: 32, height: 32, borderRadius: "50%",
+              background: hasContent ? "var(--accent)" : "var(--border-strong)",
+              border: "none",
+              color: hasContent ? "var(--bg)" : "var(--surface)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: hasContent ? "pointer" : "default",
+              transition: "background 0.15s, transform 0.1s",
+              flexShrink: 0,
+            }}
+            aria-label="Send"
+          >
+            <ArrowUpIcon size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Section 3: Examples list ────────────────────────────────────── */}
+
+      <div style={{ marginTop: "var(--space-4)" }}>
+        <p style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: "var(--fs-caption)", color: "var(--text-faint)",
+          margin: "0 0 8px",
+        }}>
+          Try starting with —
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+          {/* Screenshot leads — the fastest path from empty to a real
+              portfolio (one screenshot vs typing ten holdings), so it's the
+              first suggestion a fresh account sees. */}
+          <ExampleRow
+            icon={<ImageIcon size={16} />}
+            label="A screenshot — the fastest way in"
+            example="Your broker app's positions page; I'll read it"
+            onClick={() => photoInputRef.current?.click()}
+          />
+          <ExampleRow
+            icon={<QuoteIcon size={16} />}
+            label="A sentence"
+            example={"\"100 shares of VOO at $520 each\""}
+            onClick={() => prefillText("100 shares of VOO at $520 each")}
+          />
+          <ExampleRow
+            icon={<FileSpreadsheetIcon size={16} />}
+            label="A file"
+            example="CSV, PDF statement, portfolio export"
+            onClick={() => fileInputRef.current?.click()}
+          />
+          <ExampleRow
+            icon={<CameraIcon size={16} />}
+            label="A photo of paper"
+            example="Pension letter, deed, statement"
+            onClick={() => cameraInputRef.current?.click()}
+          />
+        </div>
+      </div>
+
+      {/* Bottom spacer before tab nav */}
+      <div style={{ height: "var(--space-5)" }} />
+
+      {/* Hidden file inputs */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileSelected(file);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,.pdf,.xlsx,.txt"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileSelected(file);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileSelected(file);
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }
+

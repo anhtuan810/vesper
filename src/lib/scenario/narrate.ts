@@ -1,13 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { validateNarration } from "@/lib/narrate/guardrail";
+import { CHAT_MODEL } from "@/lib/chat/agent-config";
 import type { ScenarioHandoff } from "@/lib/scenario/handoff";
 
 const anthropic = new Anthropic();
-
-// Deliberately pinned to Opus while chat runs on Sonnet (CHAT_MODEL): narration
-// must reproduce supplied figures verbatim under the guardrail, and this short,
-// low-max_tokens call is cheap enough to keep on the strongest model.
-const NARRATION_MODEL = "claude-opus-4-8";
 
 // Narrate an already-computed scenario. Claude only rephrases; every figure is
 // pre-formatted and supplied as the sole allowed set. After generation the
@@ -40,7 +36,7 @@ export async function narrateScenario(
 
   try {
     const res = await anthropic.messages.create({
-      model: NARRATION_MODEL,
+      model: CHAT_MODEL,
       max_tokens: 320,
       system,
       messages: [{ role: "user", content: parts.join("\n\n") }],

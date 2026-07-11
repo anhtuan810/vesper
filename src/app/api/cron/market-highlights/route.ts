@@ -112,50 +112,35 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // ── 2. Market highlights ────────────────────────────────────────────────
-      // Skip the paid Sonnet + web_search call when this user already received a
-      // market highlight within the last ~12h. The cron runs daily (24h apart), so
-      // the normal refresh always regenerates; this only short-circuits a same-day
-      // re-run/retry so it can't re-bill the whole user base. The per-title dedup
-      // below runs AFTER generation, so it guards duplicate rows, not duplicate
-      // spend — this pre-call gate is what guards spend.
-      const marketRecentCutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
-      const { data: recentMarket } = await supabase
-        .from("highlights").select("id").eq("user_id", userId).eq("type", "market")
-        .gt("created_at", marketRecentCutoff).limit(1);
+      // ── 2. Market highlights (unchanged) ────────────────────────────────────
+      const tradeableAssets = assets.filter((a) => TRADEABLE_TYPES.has(a.type));
+      const { highlights, inputTokens: sonnetIn, outputTokens: sonnetOut } =
+        await fetchMarketHighlights(tradeableAssets);
 
       let marketRowsInserted = 0;
-      let sonnetIn = 0;
-      let sonnetOut = 0;
-      if (!recentMarket || recentMarket.length === 0) {
-        const tradeableAssets = assets.filter((a) => TRADEABLE_TYPES.has(a.type));
-        const res = await fetchMarketHighlights(tradeableAssets);
-        sonnetIn = res.inputTokens;
-        sonnetOut = res.outputTokens;
-        for (const h of res.highlights) {
-          const { data: existing } = await supabase
-            .from("highlights").select("id").eq("user_id", userId).eq("type", "market")
-            .eq("title", h.title).gt("expires_at", now).maybeSingle();
-          if (existing) continue;
-          const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
-          const { error } = await supabase.from("highlights").insert({
-            user_id: userId, type: "market", title: h.title, detail: serializeMarketDetail(h),
-            expires_at: expiresAt, seen: false,
-          });
-          if (!error) marketRowsInserted++;
-          else console.error(`market: insert error for ${userId}:`, error.message);
-        }
+      for (const h of highlights) {
+        const { data: existing } = await supabase
+          .from("highlights").select("id").eq("user_id", userId).eq("type", "market")
+          .eq("title", h.title).gt("expires_at", now).maybeSingle();
+        if (existing) continue;
+        const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+        const { error } = await supabase.from("highlights").insert({
+          user_id: userId, type: "market", title: h.title, detail: serializeMarketDetail(h),
+          expires_at: expiresAt, seen: false,
+        });
+        if (!error) marketRowsInserted++;
+        else console.error(`market: insert error for ${userId}:`, error.message);
+      }
 
-        // Push at most one notification per user per run — the lead market
-        // highlight, only when something fresh was inserted. No-op when APNs env
-        // is unconfigured or the user has no registered devices.
-        if (marketRowsInserted > 0 && res.highlights[0]) {
-          await pushToUser(supabase, userId, {
-            title: res.highlights[0].title,
-            body: res.highlights[0].detail,
-            link: "/diary",
-          });
-        }
+      // Push at most one notification per user per run — the lead market
+      // highlight, only when something fresh was inserted. No-op when APNs env
+      // is unconfigured or the user has no registered devices.
+      if (marketRowsInserted > 0 && highlights[0]) {
+        await pushToUser(supabase, userId, {
+          title: highlights[0].title,
+          body: highlights[0].detail,
+          link: "/diary",
+        });
       }
 
       // ── Per-user log line ────────────────────────────────────────────────────

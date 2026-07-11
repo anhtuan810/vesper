@@ -8,14 +8,14 @@ import * as Sentry from "@sentry/nextjs";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { createServerSupabase } from "@/lib/supabase";
 import { formatMoney, setUsdRate, isSupportedCurrency, type DisplayCurrency } from "@/lib/money";
-import { computeCurrentBalance, type MortgageAssetInput } from "@/lib/mortgage";
 import { computeReadout, type ScenarioAsset, type Modification } from "@/lib/scenario/engine";
 import { assemblePresent } from "@/lib/scenario/present-assemble";
 import { assembleProject } from "@/lib/scenario/project-assemble";
 import { assembleCounterfactual } from "@/lib/scenario/counterfactual-assemble";
 import { hypotheticalBuyGrowth, buyPriceUsd } from "@/lib/scenario/hypothetical";
-import { fetchHistoricalSeries } from "@/lib/prices";
+import { fetchHistoricalSeries, getMonthClosingPrice } from "@/lib/prices";
 import { getHistoricalUsdRates } from "@/lib/fx";
+import { normalizeCryptoSymbol } from "@/lib/symbol-aliases";
 import { parseAcquisitionMonth } from "@/lib/acquisition-date";
 import { resolveScenarioAsset, resolveHeldAsset, type AssetRef } from "@/lib/scenario/resolve-asset";
 import { resolveMarketSymbol } from "@/lib/scenario/resolve-market-symbol";
@@ -28,6 +28,8 @@ import type { PricePoint } from "@/lib/scenario/counterfactual";
 import type { ScenarioResult } from "@/lib/scenario/result";
 
 type SupabaseClient = ReturnType<typeof createServerSupabase>;
+
+const TRADEABLE_TYPES = new Set(["stocks", "etf", "crypto", "gold"]);
 
 export interface ToolContext {
   supabase: SupabaseClient;
@@ -79,48 +81,44 @@ const CATEGORY_LABEL: Record<string, string> = { property: "Property", markets: 
 // "owned outright", so the details a class needs must be visible in the schema.
 // The schema stays open (additionalProperties is not closed) so the rarer write
 // fields it doesn't enumerate (value_delta, sell_date, …) still pass through.
-//
-// This one object is embedded in BOTH propose_mutation and commit_mutation, so
-// every description below is paid twice on every chat call — keep them terse
-// (the fuller behavioural rules live once, in AGENT_SYSTEM).
 const CHANGE_ITEM_SCHEMA = {
   type: "object",
-  description: "One portfolio change. `name` is required and never empty (a listed security's name may equal its ticker).",
+  description: "One portfolio change. Always include `name` — for a listed security it may equal the ticker (e.g. \"AAPL\"), but it must never be empty.",
   properties: {
     action: { type: "string", enum: ["add", "edit", "remove"] },
-    name: { type: "string", description: "REQUIRED, never empty: display name or ticker (e.g. \"Apple\", \"AAPL\", \"Bitcoin\")." },
+    name: { type: "string", description: "REQUIRED. The position's display name — a company/asset name or its ticker (e.g. \"Apple\", \"AAPL\", \"Bitcoin\"). Never empty." },
     new_name: { type: "string", description: "For a rename edit only." },
-    type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bonds", "pension", "real_estate", "other"], description: "Use \"stocks\" for a listed equity." },
-    symbol: { type: "string", description: "Market ticker (e.g. AAPL, BTC, VWCE.DE)." },
+    type: { type: "string", enum: ["stocks", "etf", "crypto", "gold", "cash", "bonds", "pension", "real_estate", "other"], description: "Asset type; use \"stocks\" for a listed equity, \"bonds\" for a bond." },
+    symbol: { type: "string", description: "Market ticker for a tradeable (e.g. AAPL, BTC, VWCE.DE)." },
     units: { type: "number", description: "Quantity held (shares / coins / oz)." },
-    value: { type: "number", description: "Current monetary value (value-mode add or set). For real_estate, current market value." },
+    value: { type: "number", description: "Monetary amount: the position's current value (a value-mode add or a set). For real_estate, the property's current market value." },
     currency: { type: "string", enum: ["EUR", "USD", "GBP"] },
-    buy_price: { type: "number", description: "Purchase price. For real_estate, price paid at acquisition." },
-    buy_date: { type: "string", description: "Acquisition date/month/year or relative phrase; omit if unknown." },
+    buy_price: { type: "number", description: "Purchase price. For real_estate, the price paid at acquisition (used to index an estimated current value when no value is given)." },
+    buy_date: { type: "string", description: "Acquisition date/month/year or a relative phrase; omit if unknown." },
     removal_reason: { type: "string", enum: ["sold", "mistake"] },
-    correction: { type: "boolean", description: "TRUE when fixing wrongly-entered data (typo, duplicate, wrong figure/date) rather than recording a real event — fixed silently, no journal entry, history redrawn. On an edit pass the corrected ABSOLUTE figure. A never-owned entry is a remove with removal_reason \"mistake\"." },
-    address: { type: "string", description: "Street address (real-estate add/edit)." },
+    correction: { type: "boolean", description: "TRUE when fixing data the user entered WRONG (wrong value/units/name/date, a typo, a duplicate) rather than recording a real event. Applied silently: the data is fixed, no journal entry is written, and the history graph is redrawn as if the corrected figure had always been true. On an edit, pass the corrected ABSOLUTE figure. A full remove of a never-owned entry uses removal_reason \"mistake\" instead." },
+    address: { type: "string", description: "Street address for a real-estate add/edit." },
     country: { type: "string" },
     // ── Real-estate / mortgage ──
-    mortgage_balance: { type: "number", description: "real_estate add: REQUIRED — outstanding balance in the property's currency; 0 ONLY when confirmed owned free and clear. Never omit (omitted records as owned outright)." },
-    mortgage_rate: { type: "number", description: "Annual mortgage rate in % (0 if interest-free). REQUIRED when mortgage_balance > 0. Also reused as a DC pension pot's growth assumption." },
-    monthly_payment: { type: "number", description: "Monthly mortgage payment. REQUIRED when mortgage_balance > 0." },
-    mortgage_type: { type: "string", enum: ["annuity", "linear", "interest_only"], description: "REQUIRED when mortgage_balance > 0." },
-    mortgage_start_date: { type: "string", description: "Mortgage start (year, year-month, or date)." },
-    mortgage_end_date: { type: "string", description: "Mortgage payoff date; capture it for interest_only." },
+    mortgage_balance: { type: "number", description: "real_estate ONLY, REQUIRED on a property add: the outstanding mortgage balance, in the property's currency. Set 0 ONLY when the user confirms the property is owned free and clear. NEVER omit this on a property add — an omitted balance is silently recorded as \"owned outright\", which is the wrong default when there is a mortgage." },
+    mortgage_rate: { type: "number", description: "Annual mortgage interest rate as a percent (e.g. 3.5 for 3.5%). REQUIRED on a property add whenever mortgage_balance > 0 (pass 0 for an interest-free loan). Also reused as a pension pot's annual growth assumption." },
+    monthly_payment: { type: "number", description: "Monthly mortgage payment, in the property's currency. REQUIRED on a property add whenever mortgage_balance > 0." },
+    mortgage_type: { type: "string", enum: ["annuity", "linear", "interest_only"], description: "Mortgage repayment structure. REQUIRED on a property add whenever mortgage_balance > 0." },
+    mortgage_start_date: { type: "string", description: "When the mortgage started (year, year-month, or full date)." },
+    mortgage_end_date: { type: "string", description: "When the mortgage is due to be repaid (year, year-month, or full date). For an interest_only mortgage this is what yields a payoff date, so capture it when known." },
     property_type: { type: "string", description: "e.g. apartment, house, land." },
-    size_sqm: { type: "number", description: "Floor area in m²." },
+    size_sqm: { type: "number", description: "Floor area in square metres." },
     // ── Pension ──
-    pension_kind: { type: "string", enum: ["dc", "db", "state"], description: "dc = owned pot, db = defined-benefit income, state = State pension income." },
-    annual_income: { type: "number", description: "db/state pension: annual income it pays." },
-    monthly_contribution: { type: "number", description: "dc pot: monthly amount paid in." },
-    access_age: { type: "integer", description: "Age the pension unlocks." },
-    pension_provider: { type: "string", description: "Provider or scheme name." },
+    pension_kind: { type: "string", enum: ["dc", "db", "state"], description: "Pension shape: dc = workplace/private pot (owned balance), db = company defined-benefit (income), state = State pension (income)." },
+    annual_income: { type: "number", description: "For a db/state pension: the annual income it will pay." },
+    monthly_contribution: { type: "number", description: "For a dc pension pot: monthly amount paid in." },
+    access_age: { type: "integer", description: "Age at which the pension can be accessed." },
+    pension_provider: { type: "string", description: "Pension provider or scheme name." },
     // ── Bond ──
-    coupon_rate: { type: "number", description: "Annual coupon %." },
-    maturity_date: { type: "string", description: "Maturity date." },
-    issuer: { type: "string", description: "Issuer." },
-    isin: { type: "string", description: "ISIN." },
+    coupon_rate: { type: "number", description: "Bond annual coupon rate as a percent." },
+    maturity_date: { type: "string", description: "Bond maturity date (year, year-month, or full date)." },
+    issuer: { type: "string", description: "Bond issuer." },
+    isin: { type: "string", description: "Bond ISIN." },
   },
   required: ["action", "name"],
 };
@@ -128,7 +126,7 @@ const CHANGE_ITEM_SCHEMA = {
 // ── Tool schemas (given to Claude) ─────────────────────────────────────────────
 export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
   { name: "get_net_worth", description: "The user's current net worth and top-line vitals. Use before relating any figure to their net worth.", input_schema: { type: "object", properties: {} } },
-  { name: "get_holdings", description: "List current holdings with per-position detail (name, type, value, symbol, units, acquisition date, cost basis, gain). Use for what/how much they hold, when they bought, what they paid, and per-position performance.", input_schema: { type: "object", properties: {} } },
+  { name: "get_holdings", description: "List the user's current holdings (name, category, value).", input_schema: { type: "object", properties: {} } },
   { name: "get_vitals", description: "Allocation by category, single-name concentration, and mortgage LTV.", input_schema: { type: "object", properties: {} } },
   {
     name: "present_scenario",
@@ -138,7 +136,7 @@ export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
       properties: {
         modifications: {
           type: "array",
-          description: "Value-based ops in the user's display currency. Each item is one of: {op:'sell'|'reduce', asset, amount} (shrinks a held position; sale proceeds are NOT credited anywhere — when the user means sell-and-keep-the-cash, pair it with an explicit {op:'add', name:'Cash', assetType:'cash', amount}), {op:'set', asset, value}, {op:'remove', asset}, {op:'add', name, amount, assetType?}, {op:'payMortgage', amount} (funds the paydown from the largest cash/pension pot; capped at that pot and the outstanding balance; requires both to exist). Any other op is rejected — never silently dropped.",
+          description: "Value-based ops in the user's display currency.",
           items: { type: "object" },
         },
       },
@@ -185,31 +183,19 @@ export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
   { name: "resolve_symbol", description: "Resolve a free-text asset name/ticker to a market symbol.", input_schema: { type: "object", properties: { hint: { type: "string" } }, required: ["hint"] } },
   {
     name: "propose_mutation",
-    description: "Resolve a portfolio change (add/edit/remove) into a confirmable proposal — does NOT write; surfaces confirm chips. Call before committing any stated completed action.",
+    description: "Resolve a portfolio change (add/edit/remove) into a confirmable proposal. Does NOT write — surfaces confirm chips. Call this for any stated completed action before committing.",
     input_schema: { type: "object", properties: { changes: { type: "array", items: CHANGE_ITEM_SCHEMA } }, required: ["changes"] },
   },
   {
     name: "commit_mutation",
-    description: "Apply portfolio changes to the database (a change with an empty `name` is dropped). ONLY call after explicit user confirmation of a prior propose_mutation — except a direct tradeable add / file import, which commits without a proposal.",
+    description: "Apply a portfolio change to the database. Every change MUST carry a non-empty `name` (a rowless name is dropped). ONLY call after the user has explicitly confirmed a prior propose_mutation — except a direct tradeable add / screenshot import, which commits without a proposal.",
     input_schema: { type: "object", properties: { changes: { type: "array", items: CHANGE_ITEM_SCHEMA }, contextNote: { type: "string" } }, required: ["changes"] },
-  },
-  {
-    name: "set_import_acquisition_date",
-    description: "After a file import, stamp the user's ONE batch acquisition-date answer (verbatim — year, month-year, date, relative phrase, or \"just track from now\") onto every imported position still lacking a date. Call exactly once; never issue per-position edits for this. Returns how many were dated — narrate from that.",
-    input_schema: { type: "object", properties: { date: { type: "string", description: "The user's acquisition-date answer, verbatim." } }, required: ["date"] },
   },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function seed(ctx: ToolContext) {
-  // Seed EVERY live rate, not just the display currency: formatMoney converts a
-  // holding's NATIVE currency (CHF, JPY, …) through its rate cache and falls
-  // back to hardcoded approximations for anything unseeded — which made
-  // get_holdings' per-position values drift from the net worth computed on the
-  // live rates.
-  for (const [cur, rate] of Object.entries(ctx.usdRates)) {
-    if (cur !== "USD" && rate) setUsdRate(cur, rate);
-  }
+  if (ctx.displayCurrency !== "USD" && ctx.usdRates[ctx.displayCurrency]) setUsdRate(ctx.displayCurrency, ctx.usdRates[ctx.displayCurrency]);
 }
 const fmt = (ctx: ToolContext) => (usd: number) => formatMoney(usd, "USD", ctx.displayCurrency);
 const dispRate = (ctx: ToolContext) => ctx.usdRates[ctx.displayCurrency] ?? 1;
@@ -224,10 +210,7 @@ function currentNetWorthUsd(ctx: ToolContext): number {
 // the answer to the user's total without a special rule.
 function netWorthFraming(ctx: ToolContext, m: (usd: number) => string) {
   const nwUsd = currentNetWorthUsd(ctx);
-  // Only the formatted string is narrated; the raw USD float was dead weight in
-  // every scenario tool_result (and a stray unformatted/USD number the model
-  // could echo for a EUR/GBP user). No consumer reads frame.netWorthUsd.
-  return { currentNetWorth: m(nwUsd) };
+  return { netWorthUsd: nwUsd, currentNetWorth: m(nwUsd) };
 }
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -266,67 +249,16 @@ export async function executeAgentTool(name: string, input: Record<string, unkno
     }
 
     case "get_holdings": {
-      // Full per-position detail, not just name/type/value: the model was
-      // previously handed only three fields, so it couldn't answer "how many
-      // shares", "when did I buy", "what did I pay", or "how has it done" — even
-      // though every one of those is on the loaded asset row. Surface units,
-      // ticker, acquisition date, cost basis and gain here so it actually knows
-      // the portfolio it's talking about.
-      const disp = ctx.displayCurrency;
-      const figures: string[] = [];
-      const holdings = ctx.currentAssets.map((a) => {
-        const cur = String(a.currency || "USD");
-        const valueNative = Number(a.value) || 0;
-        const units = typeof a.units === "number" && a.units > 0 ? a.units : null;
-        const buyPrice = typeof a.buy_price === "number" && a.buy_price > 0 ? a.buy_price : null;
-        // Cost basis = buy_price × units (native), only for a tradeable lot where
-        // both are known. Gain is current stored value minus that basis.
-        const costNative = buyPrice != null && units != null ? buyPrice * units : null;
-        const gainNative = costNative != null ? valueNative - costNative : null;
-        const gainPct = costNative != null && costNative > 0 ? (gainNative! / costNative) * 100 : null;
-
-        const valueStr = formatMoney(valueNative, cur, disp);
-        figures.push(valueStr);
-        const h: Record<string, unknown> = { name: String(a.name), type: String(a.type), value: valueStr };
-        if (a.symbol) h.symbol = String(a.symbol);
-        if (units != null) h.units = fmtUnits(units);
-        if (a.buy_date) h.acquired = String(a.buy_date).slice(0, 10);
-        if (costNative != null) {
-          const costStr = formatMoney(costNative, cur, disp);
-          h.costBasis = costStr;
-          figures.push(costStr);
-        }
-        if (gainNative != null) {
-          // Push the UNSIGNED amount to the allowlist — the narration guardrail
-          // extracts "€1,234" from the model's prose whether it wrote "+€1,234",
-          // "up €1,234" or "€1,234", so the signed display form would never match.
-          const gainAbs = formatMoney(Math.abs(gainNative), cur, disp);
-          h.gain = `${gainNative >= 0 ? "+" : "−"}${gainAbs}`;
-          figures.push(gainAbs);
-        }
-        if (gainPct != null) {
-          const gp = pct(gainPct);
-          h.gainPct = gp;
-          figures.push(gp);
-        }
-        return h;
-      });
-      return { forModel: { holdings, count: holdings.length }, figures };
+      const holdings = ctx.currentAssets.map((a) => ({ name: String(a.name), type: String(a.type), value: formatMoney(Number(a.value), String(a.currency || "USD"), ctx.displayCurrency) }));
+      return { forModel: { holdings, count: holdings.length }, figures: holdings.map((h) => h.value) };
     }
 
     case "get_vitals": {
       const r = computeReadout(ctx.currentAssets as unknown as ScenarioAsset[], ctx.usdRates, ctx.now);
       const allocation = r.allocationByCategory.map((s) => ({ category: CATEGORY_LABEL[s.category] ?? s.category, share: pct(s.pct) }));
-      // Every figure handed to the model MUST also be allowlisted — the narration
-      // guardrail rejects any money/percent token it wasn't given, and a reply
-      // quoting an un-allowlisted figure degrades to a bare "Here's what I found."
-      // Concentration/LTV were missing here (get_net_worth had them), which killed
-      // every diversification answer that mentioned the concentration figure.
-      const concentration = r.topSingleNameConcentrationPct != null ? pct(r.topSingleNameConcentrationPct) : null;
-      const ltv = r.leverage ? pct(r.leverage.ltvPct) : null;
       return {
-        forModel: { netWorth: m(r.netWorthUsd), allocation, singleNameConcentration: concentration, topSingleName: r.topSingleName, mortgageLtv: ltv },
-        figures: [m(r.netWorthUsd), ...allocation.map((a) => a.share), ...(concentration ? [concentration] : []), ...(ltv ? [ltv] : [])],
+        forModel: { netWorth: m(r.netWorthUsd), allocation, singleNameConcentration: r.topSingleNameConcentrationPct != null ? pct(r.topSingleNameConcentrationPct) : null, mortgageLtv: r.leverage ? pct(r.leverage.ltvPct) : null },
+        figures: [m(r.netWorthUsd), ...allocation.map((a) => a.share)],
       };
     }
 
@@ -357,8 +289,6 @@ export async function executeAgentTool(name: string, input: Record<string, unkno
       return proposeMutationTool(input, ctx);
     case "commit_mutation":
       return commitMutationTool(input, ctx);
-    case "set_import_acquisition_date":
-      return setImportAcquisitionDateTool(input, ctx);
 
     default:
       return { forModel: { error: `Unknown tool: ${name}` } };
@@ -371,20 +301,8 @@ async function presentTool(input: Record<string, unknown>, ctx: ToolContext, m: 
   const gate = await validateScenarioIntent({ kind: "present", modifications: rawMods }, assetRefs(ctx), { displayCurrency: ctx.displayCurrency, usdRates: ctx.usdRates, now: ctx.now });
   if ("clarify" in gate) return { forModel: { needsClarification: true, question: gate.clarify.question, options: gate.clarify.options } };
 
-  const { mods, dropped } = buildPresentMods(rawMods, ctx);
+  const mods = buildPresentMods(rawMods, ctx);
   if (mods.length === 0) return { forModel: { needsClarification: true, question: "Which positions should change, and by how much?" } };
-  // A PARTIAL translation must never compute: the result would be a plausible-
-  // looking scenario missing one of the user's legs ("sell Apple and buy VWCE"
-  // silently computing only the sell). Tell the model exactly what didn't
-  // translate so it re-issues with supported ops instead of narrating a wrong card.
-  if (dropped > 0) {
-    return {
-      forModel: {
-        needsClarification: true,
-        question: `${dropped} of the ${rawMods.length} requested modification(s) couldn't be applied (unsupported op, unresolved position, or a mortgage paydown with no mortgaged property / no cash-or-pension pot to fund it), so nothing was computed — a partial scenario would be wrong. Supported ops: sell/reduce {asset, amount}, set {asset, value}, remove {asset}, add {name, amount, assetType?}, payMortgage {amount}.`,
-      },
-    };
-  }
 
   const { comparison } = await assemblePresent(ctx.supabase, ctx.userId, mods);
   const c = comparison.current, s = comparison.scenario, d = comparison.deltas;
@@ -399,76 +317,57 @@ async function presentTool(input: Record<string, unknown>, ctx: ToolContext, m: 
   };
 }
 
-function buildPresentMods(rawMods: unknown[], ctx: ToolContext): { mods: Modification[]; dropped: number } {
+function buildPresentMods(rawMods: unknown[], ctx: ToolContext): Modification[] {
   const refs = assetRefs(ctx);
   const usdRates = ctx.usdRates;
-  const toUsd = (displayAmt: number): number =>
-    ctx.displayCurrency === "USD" ? displayAmt : displayAmt / (usdRates[ctx.displayCurrency] ?? 1);
-  const usdToNative = (usd: number, cur: string): number => (cur === "USD" ? usd : usd * (usdRates[cur] ?? 1));
-  const toNative = (displayAmt: number, cur: string): number => usdToNative(toUsd(displayAmt), cur);
+  const toNative = (displayAmt: number, cur: string): number => {
+    const usd = ctx.displayCurrency === "USD" ? displayAmt : displayAmt / (usdRates[ctx.displayCurrency] ?? 1);
+    return cur === "USD" ? usd : usd * (usdRates[cur] ?? 1);
+  };
   const fullById = new Map(ctx.currentAssets.map((a) => [String(a.id), a]));
   const mods: Modification[] = [];
-  // Every raw item that fails to translate is COUNTED, not skipped silently —
-  // the caller refuses to compute a partial scenario (one missing leg turns
-  // "rebalance" into "destroy €20k") and tells the model what didn't apply.
-  let dropped = 0;
   for (const raw of rawMods) {
-    if (!raw || typeof raw !== "object") { dropped++; continue; }
+    if (!raw || typeof raw !== "object") continue;
     const o = raw as Record<string, unknown>;
     const op = o.op;
     if (op === "add") {
       const name = str(o.name); const amount = num(o.amount);
-      if (!name || amount == null || amount <= 0) { dropped++; continue; }
+      if (!name || amount == null || amount <= 0) continue;
       const type = str(o.assetType) ?? str(o.type) ?? "etf";
       mods.push({ kind: "addByValue", name, type, currency: ctx.displayCurrency, nativeValue: amount });
       continue;
     }
     if (op === "payMortgage") {
       const amount = num(o.amount);
-      if (amount == null || amount <= 0) { dropped++; continue; }
+      if (amount == null || amount <= 0) continue;
+      const property = ctx.currentAssets.find((a) => a.type === "real_estate" && Number(a.mortgage_balance ?? 0) > 0);
+      if (!property) continue;
+      mods.push({ kind: "payDownMortgage", assetId: String(property.id), amount: toNative(amount, String(property.currency || "USD")) });
+      // Pick the LARGEST reserve to draw down — compared in USD, not raw native
+      // value, or a big number in a weak currency (¥1,000,000 ≈ €6k) wrongly beats
+      // a smaller one in a strong currency (€50k) and the scenario sources the
+      // paydown from a pot that can't cover it.
       const usdOf = (a: Record<string, unknown>) => {
         const cur = String(a.currency || "USD");
         if (cur === "USD") return Number(a.value);
         const rate = ctx.usdRates[cur];
         return rate ? Number(a.value) / rate : Number(a.value);
       };
-      // The engine amortizes the balance to as-of-now, so cap against the SAME
-      // figure it will use — the raw stored balance may be long since paid down.
-      const property = ctx.currentAssets.find(
-        (a) => a.type === "real_estate" && computeCurrentBalance(a as unknown as MortgageAssetInput, ctx.now) > 0,
-      );
-      // Pick the LARGEST reserve to draw down — compared in USD, not raw native
-      // value, or a big number in a weak currency (¥1,000,000 ≈ €6k) wrongly beats
-      // a smaller one in a strong currency (€50k) and the scenario sources the
-      // paydown from a pot that can't cover it.
       const cash = ctx.currentAssets.filter((a) => a.type === "cash" || a.type === "pension").sort((x, y) => usdOf(y) - usdOf(x))[0];
-      // BOTH legs or NEITHER: paying down a mortgage without debiting a pot (or
-      // debiting a pot for more than it holds / more than is owed) conjures or
-      // destroys net worth out of thin air. Clamp the effective amount to what
-      // the pot can fund AND what is actually outstanding; with no mortgaged
-      // property or no pot, the op cannot be modeled — count it dropped.
-      if (!property || !cash) { dropped++; continue; }
-      const propCur = String(property.currency || "USD");
-      const balanceNative = computeCurrentBalance(property as unknown as MortgageAssetInput, ctx.now);
-      const balanceUsd = propCur === "USD" ? balanceNative : balanceNative / (usdRates[propCur] ?? 1);
-      const effUsd = Math.min(toUsd(amount), balanceUsd, usdOf(cash));
-      if (effUsd <= 0) { dropped++; continue; }
-      mods.push({ kind: "payDownMortgage", assetId: String(property.id), amount: usdToNative(effUsd, String(property.currency || "USD")) });
-      mods.push({ kind: "setValue", assetId: String(cash.id), nativeValue: Math.max(0, Number(cash.value) - usdToNative(effUsd, String(cash.currency || "USD"))) });
+      if (cash) mods.push({ kind: "setValue", assetId: String(cash.id), nativeValue: Math.max(0, Number(cash.value) - toNative(amount, String(cash.currency || "USD"))) });
       continue;
     }
     const assetQ = str(o.asset);
-    if (!assetQ) { dropped++; continue; }
+    if (!assetQ) continue;
     const res = resolveHeldAsset(refs, assetQ);
-    if (res.kind !== "resolved") { dropped++; continue; }
+    if (res.kind !== "resolved") continue;
     const full = fullById.get(res.asset.id);
-    if (!full) { dropped++; continue; }
+    if (!full) continue;
     if (op === "remove") mods.push({ kind: "remove", assetId: res.asset.id });
-    else if (op === "set") { const v = num(o.value); if (v != null && v >= 0) mods.push({ kind: "setValue", assetId: res.asset.id, nativeValue: toNative(v, String(full.currency || "USD")) }); else { dropped++; } }
-    else if (op === "sell" || op === "reduce") { const amt = num(o.amount); if (amt != null && amt > 0) mods.push({ kind: "setValue", assetId: res.asset.id, nativeValue: Math.max(0, Number(full.value) - toNative(amt, String(full.currency || "USD"))) }); else { dropped++; } }
-    else { dropped++; } // unknown op — surfaced to the model, never silently ignored
+    else if (op === "set") { const v = num(o.value); if (v != null && v >= 0) mods.push({ kind: "setValue", assetId: res.asset.id, nativeValue: toNative(v, String(full.currency || "USD")) }); }
+    else if (op === "sell" || op === "reduce") { const amt = num(o.amount); if (amt != null && amt > 0) mods.push({ kind: "setValue", assetId: res.asset.id, nativeValue: Math.max(0, Number(full.value) - toNative(amt, String(full.currency || "USD"))) }); }
   }
-  return { mods, dropped };
+  return mods;
 }
 
 // ── future_projection ──────────────────────────────────────────────────────────
@@ -482,15 +381,13 @@ async function futureTool(input: Record<string, unknown>, ctx: ToolContext, m: (
     if (input.contribution && typeof input.contribution === "object") {
       const c = input.contribution as Record<string, unknown>;
       const amt = num(c.amount);
-      // "annual" is gate-sanctioned (validate-intent whitelists it), so honor it —
-      // mapping it to monthly overstated a yearly contribution's effect ~12×.
-      if (amt != null && amt > 0) body.contribution = { amount: toUsdAmt(amt), frequency: c.frequency === "yearly" || c.frequency === "annual" ? "annual" : "monthly" };
+      if (amt != null && amt > 0) body.contribution = { amount: toUsdAmt(amt), frequency: c.frequency === "yearly" ? "annual" : "monthly" };
     }
     if (num(input.horizonYears) != null) body.horizonYears = input.horizonYears;
   } else {
     if (num(input.target) != null) body.targetUsd = toUsdAmt(input.target as number);
     if (num(input.targetYear) != null) body.date = `${input.targetYear}-12-31`;
-    if (str(input.frequency)) body.frequency = input.frequency === "yearly" || input.frequency === "annual" ? "annual" : "monthly";
+    if (str(input.frequency)) body.frequency = input.frequency === "yearly" ? "annual" : "monthly";
   }
 
   const result = await assembleProject(ctx.supabase, ctx.userId, body);
@@ -577,12 +474,8 @@ async function hypotheticalBuyTool(input: Record<string, unknown>, ctx: ToolCont
 
   const priceSeries: PricePoint[] = priceRaw.map((p) => ({ date: p.date, price: p.price, currency: p.currency }));
   const earliest = priceSeries[0].date;
-  // The series starts at the first TRADING day ≥ the request, so a weekend or
-  // holiday request is always a few days before the first bar — that's not a
-  // clamp. Only a material gap means the history genuinely doesn't reach back
-  // to the requested date (asset younger than the ask).
-  const clamped = Date.parse(earliest) - Date.parse(requestedBuyDate) > 7 * 86400_000;
-  const effectiveBuy = requestedBuyDate < earliest ? earliest : requestedBuyDate;
+  const clamped = requestedBuyDate < earliest;
+  const effectiveBuy = clamped ? earliest : requestedBuyDate;
 
   let amountUsd: number;
   if (units != null) {
@@ -603,9 +496,8 @@ async function hypotheticalBuyTool(input: Record<string, unknown>, ctx: ToolCont
   const cardLabel = unitsStr != null ? `${unitsStr} ${label}` : `${moneyLabel} in ${label}`;
 
   const nwUsd = currentNetWorthUsd(ctx);
-  // With a zero/negative net worth the ratio is meaningless — omit it rather
-  // than hand the model a confident-looking "0.0%".
-  const vsNwStr = nwUsd > 0 ? pct((r.valueTodayUsd / nwUsd) * 100) : null;
+  const vsNw = nwUsd > 0 ? (r.valueTodayUsd / nwUsd) * 100 : 0;
+  const vsNwStr = pct(vsNw);
   const exceedsNetWorth = r.valueTodayUsd > nwUsd && nwUsd > 0;
 
   const card: ScenarioResult = {
@@ -629,7 +521,7 @@ async function hypotheticalBuyTool(input: Record<string, unknown>, ctx: ToolCont
       exceedsNetWorth,
       standaloneGrowth: true,
     },
-    figures: [moneyLabel, valueLabel, gainLabel, multStr, `${r.multiple.toFixed(1)}`, `${Math.round(r.multiple)}`, m(nwUsd), ...(vsNwStr != null ? [vsNwStr] : []), ...(unitsStr != null ? [unitsStr] : [])],
+    figures: [moneyLabel, valueLabel, gainLabel, multStr, `${r.multiple.toFixed(1)}`, `${Math.round(r.multiple)}`, m(nwUsd), vsNwStr, ...(unitsStr != null ? [unitsStr] : [])],
     card,
   };
 }
@@ -682,25 +574,6 @@ async function resolveRealEstateGeo(
   return { ok: true, changes: out, resolved };
 }
 
-// Irreversible-delete guard (mirrors the tag path in /api/chat): a
-// mistake/correction remove HARD-deletes the asset AND all its history,
-// unrecoverable. The agent loop carries no per-turn confirmation signal, so
-// downgrade it to "sold" (a recoverable soft-delete) and strip the correction
-// flag — the agent can never erase history on its own; a genuine
-// mistake-delete needs an explicit path. Applied in BOTH propose and commit so
-// the proposal the user confirms describes the removal that will actually be
-// written ("sold"), never an "erased from your history" that won't happen.
-// (An edit correction only rewrites the asset's own figure in place and stays
-// reversible, so it is left intact.)
-function downgradeMistakeRemovals(changes: Record<string, unknown>[]): void {
-  for (const change of changes) {
-    if (change.action === "remove" && (change.removal_reason === "mistake" || change.correction)) {
-      change.removal_reason = "sold";
-      change.correction = false;
-    }
-  }
-}
-
 // ── propose_mutation (no write) ─────────────────────────────────────────────────
 async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
   const changes = Array.isArray(input.changes) ? input.changes : [];
@@ -711,7 +584,6 @@ async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolCont
   // address for confirmation; ask naturally on an unresolvable address (no write).
   const geo = await resolveRealEstateGeo(changes, ctx.currentAssets);
   if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
-  downgradeMistakeRemovals(geo.changes);
 
   const light: CurrentAssetLight[] = ctx.currentAssets.map((a) => ({
     name: String(a.name), symbol: (a.symbol as string | null) ?? null, type: String(a.type),
@@ -754,18 +626,48 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
   const changes = geo.changes;
 
-  // Same irreversible-delete guard as propose_mutation (see downgradeMistakeRemovals).
-  downgradeMistakeRemovals(changes);
+  // Irreversible-delete guard (mirrors the tag path in /api/chat): a
+  // mistake/correction remove HARD-deletes the asset AND all its history,
+  // unrecoverable. The agent loop carries no per-turn confirmation signal, so
+  // downgrade it to "sold" (a recoverable soft-delete) and strip the correction
+  // flag — the agent can never erase history on its own; a genuine
+  // mistake-delete needs an explicit path. (An edit correction only rewrites the
+  // asset's own figure in place and stays reversible, so it is left intact.)
+  for (const change of changes) {
+    if (change.action === "remove" && (change.removal_reason === "mistake" || change.correction)) {
+      change.removal_reason = "sold";
+      change.correction = false;
+    }
+  }
 
-  // Cost basis is NOT filled here. applyPortfolioChanges derives buy_price
-  // itself (its resolvedPrices pass) from the FULLY RESOLVED symbol — alias
-  // (TL0.DE→TSLA), venue, and crypto normalization applied — in the same
-  // listing currency it stores the asset in. A tool-level pre-fill used to run
-  // first on the RAW model-emitted symbol and discard the quote's currency,
-  // which could store (e.g.) a Frankfurt EUR close as the basis of a USD-stored
-  // position and corrupt every gain figure; since the write path only derives a
-  // basis when buy_price is still unset, the pre-fill also suppressed the
-  // correct derivation. Leave basis derivation to the write path.
+  // Auto-fill cost basis: an "add" for a tradeable with a stated acquisition
+  // month/date but no stated price gets its buy_price filled from Yahoo's
+  // closing price for that month — silently. Never surfaced to the user (no
+  // "cost basis" annotation): this is a tracking app, not a tax tool, and the
+  // basis is not something the user was asked about. Only fires when the model
+  // didn't already capture a price; a fetch failure leaves buy_price unset.
+  for (const change of changes) {
+    if (change.action !== "add") continue;
+    if (!TRADEABLE_TYPES.has(String(change.type ?? ""))) continue;
+    const symbol = typeof change.symbol === "string" ? change.symbol : null;
+    if (!symbol) continue;
+    if (typeof change.buy_price === "number" && change.buy_price > 0) continue;
+    const buyDateRaw = typeof change.buy_date === "string" ? change.buy_date : null;
+    if (!buyDateRaw) continue;
+    const resolvedDate = parseAcquisitionMonth(buyDateRaw);
+    if (!resolvedDate) continue;
+
+    const lookupSymbol = normalizeCryptoSymbol(symbol, change.type as string | undefined);
+    try {
+      const monthClose = await getMonthClosingPrice(lookupSymbol, resolvedDate.slice(0, 7));
+      if (monthClose && monthClose.price > 0) {
+        change.buy_price = Math.round(monthClose.price * 100) / 100;
+        change.buy_price_source = "market";
+      }
+    } catch {
+      // Leave buy_price unset — the add proceeds without a cost basis.
+    }
+  }
 
   const validationError = validatePortfolioChanges(changes as never, ctx.currentAssets as never);
   if (validationError) return { forModel: { error: validationError } };
@@ -786,13 +688,6 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   // property add missing its mortgage decision, or a value-mode miss). Catch it
   // and hand the model the exact question as needsClarification, so it asks the
   // user for what's missing instead of reporting an opaque failure.
-  // Batch-import date signal, counted BEFORE the write: applyPortfolioChanges
-  // resolves buy_date phrases in place, turning an explicit "just track from
-  // now" answer into undefined — counting afterwards re-flagged exactly the rows
-  // whose date question the user had just answered, prompting the model to ask
-  // again (and the batch-stamp tool to then overwrite the declined date).
-  const undatedImportCount = changes.filter((c) => c.action === "add" && !c.buy_date).length;
-
   let commitResult;
   try {
     commitResult = await applyPortfolioChanges({
@@ -843,110 +738,14 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   // not retry); `couldNotRecord` carries the specific reason per failed row so
   // the model states WHY instead of an opaque "try again". f.reason is already a
   // user-facing sentence for the common ValueMode cases.
-  // Batch import still needs a date: a multi-row add committed with no acquisition
-  // date leaves those positions dated today until the user gives the batch date.
-  // Surface an explicit, in-context signal (the model's own tool memory is stripped
-  // from later turns) so on the date reply it calls set_import_acquisition_date
-  // instead of hallucinating that the positions are "already dated". Gated at ≥2 so
-  // a single tracked-from-now add doesn't get re-prompted. (Counted pre-write, above.)
-
   return {
     forModel: {
       committed: changed,
       ...(duplicateWarnings.length ? { alreadyInPortfolio: duplicateWarnings } : {}),
       ...(failures.length ? { couldNotRecord: failures.map((f) => (f.reason ? `${f.name} — ${f.reason}` : f.name)) } : {}),
       ...(nothingLanded && hasAdds ? { note: "Nothing was written and there were no per-row errors — the change rows were malformed (each add needs a non-empty name and a symbol). Rebuild the rows with an explicit name on each and commit once more." } : {}),
-      ...(changed && undatedImportCount >= 2 ? { awaitingAcquisitionDate: undatedImportCount, acquisitionDateHint: "These positions have no acquisition date yet and are currently dated today. Ask the user once for the batch's acquisition date, then call set_import_acquisition_date with their answer." } : {}),
       ...(fxWarnings.length ? { notes: fxWarnings } : {}),
     },
     commit: { changed, mutationMetas, analyticsEvent: hasAdds && portfolioWasEmpty ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
-  };
-}
-
-// ── set_import_acquisition_date (deterministic batch date-fill) ──────────────────
-// The import flow commits positions FIRST (dated today, since the acquisition date
-// isn't known yet), then asks the user for the batch date. Applying that date used
-// to rely on the model issuing a correct per-position EDIT for every row — a
-// skippable, error-prone second write that (per the audit) silently lost the date
-// whenever the model narrated completion without a tool call, echoed units on the
-// edit, re-added instead of editing, or hit a crypto-name mismatch. This tool
-// replaces that with ONE deterministic server-side operation: resolve the phrase
-// once, stamp every still-undated holding's buy_date, and back-stamp each original
-// "add" mutation's occurred_at (what the Journal and net-worth history key off), so
-// the whole class of failures disappears. It is idempotent (targets only undated
-// rows) and needs no migration.
-async function setImportAcquisitionDateTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
-  const raw = str(input.date);
-  if (!raw) {
-    return { forModel: { needsClarification: true, message: "What acquisition date should I use? A rough month or year is fine, or 'just track from now'." } };
-  }
-
-  // Three-state parse: an ISO date to apply, null for track-from-now (leave undated
-  // — that IS the recorded choice), or undefined for a phrase we couldn't read.
-  const parsed = parseAcquisitionMonth(raw);
-  if (parsed === undefined) {
-    return { forModel: { needsClarification: true, message: "I couldn't read that as a date — a year, a month and year, a phrase like '2 years ago', or 'just track from now' all work." } };
-  }
-  if (parsed === null) {
-    return { forModel: { trackFromNow: true, dated: 0 } };
-  }
-
-  // Holdings still lacking an acquisition date, scoped to rows CREATED RECENTLY —
-  // the import commit happened earlier in this same conversation, so the batch's
-  // rows are at most hours old. The scope matters: "track from now" stores
-  // buy_date = null as a deliberate long-lived state, so an unscoped
-  // "every undated holding" update would stamp the user's batch answer onto an
-  // unrelated position added months ago (and back-stamp its journal mutation),
-  // silently rewriting that position's entire history. Bulk-update in two
-  // queries (all share the same resolved date), not a per-row fan-out.
-  const importWindowStart = new Date(ctx.now.getTime() - 6 * 3600_000).toISOString();
-  const { data: undated, error: selErr } = await ctx.supabase
-    .from("assets")
-    .select("id, symbol, type")
-    .eq("user_id", ctx.userId)
-    .is("removed_at", null)
-    .is("buy_date", null)
-    .gte("created_at", importWindowStart);
-  if (selErr) {
-    Sentry.captureException(selErr, { tags: { tool: "set_import_acquisition_date" } });
-    return { forModel: { error: "Couldn't apply the date just now — try again in a moment." } };
-  }
-  const rows = undated ?? [];
-  if (rows.length === 0) {
-    return { forModel: { dated: 0, note: "No recently imported positions are awaiting an acquisition date." } };
-  }
-  const ids = rows.map((r) => String(r.id));
-
-  const { error: updErr } = await ctx.supabase.from("assets").update({ buy_date: parsed }).eq("user_id", ctx.userId).in("id", ids);
-  if (updErr) {
-    // Bail BEFORE back-stamping the mutations: half-applying (journal dated,
-    // asset row still undated) would leave the history inconsistent and the
-    // model claiming a date that never landed.
-    Sentry.captureException(updErr, { tags: { tool: "set_import_acquisition_date" } });
-    return { forModel: { error: "Couldn't apply the date just now — try again in a moment." } };
-  }
-  // Back-stamp each position's original acquisition ("add") mutation so the Journal
-  // entry and the net-worth history read the real acquisition date, not the import
-  // day. Returns the updated rows so the market-context background job can refresh
-  // them at the corrected date.
-  const { data: updatedMuts } = await ctx.supabase
-    .from("mutations")
-    .update({ occurred_at: parsed })
-    .eq("user_id", ctx.userId)
-    .eq("action", "add")
-    .in("asset_id", ids)
-    .select("id, symbol, asset_type");
-  const mutationMetas: MutationMeta[] = (updatedMuts ?? []).map((mm) => ({
-    id: String(mm.id),
-    symbol: (mm.symbol as string | null) ?? null,
-    occurredAt: parsed,
-    assetType: (mm.asset_type as string | null) ?? null,
-  }));
-
-  return {
-    forModel: { dated: rows.length, date: parsed },
-    // rebuildFrom = the resolved date → the agent loop's backfill redraws the
-    // net-worth history from acquisition forward. Not adds, so no first-asset metric.
-    commit: { changed: true, mutationMetas, analyticsEvent: null, needsBackfill: true, hasAdds: false, rebuildFrom: parsed },
   };
 }

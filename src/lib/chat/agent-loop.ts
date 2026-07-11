@@ -1,7 +1,6 @@
-// Server-side tool-calling chat loop — the only chat engine. Claude converses
-// over the recent thread and calls deterministic tools for every figure and every
-// write; the loop executes tools server-side and feeds results back until a final
-// text message.
+// Server-side tool-calling chat loop (flag-gated). Claude converses over the recent
+// thread and calls deterministic tools for every figure and every write; the loop
+// executes tools server-side and feeds results back until a final text message.
 // Reuses the existing rate limit, history window, image input, cards, and — for
 // writes — the proven mutation path. The big tag rulebook is gone.
 
@@ -13,6 +12,7 @@ import { getUsdRates } from "@/lib/fx";
 import { type DisplayCurrency } from "@/lib/money";
 import { validateMonetaryNarration } from "@/lib/narrate/guardrail";
 import { stripTags, timestampedPair } from "@/lib/chat-helpers";
+import { CHAT_DAILY_LIMIT } from "@/lib/constants";
 import { generateMarketContext } from "@/lib/market-context";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { writeSnapshot, backfillSnapshots } from "@/lib/snapshot";
@@ -50,7 +50,7 @@ AFTER commit_mutation returns, narrate from ITS result — never re-read the por
 
 BUYING MORE of a position the user ALREADY holds is an EDIT, never an add and never a no-op: commit an edit for that position with the NEW TOTAL units (their current units from get_holdings PLUS the amount bought), carrying buy_date if a date is given. Never just acknowledge — record it.
 
-FILE IMPORT — when the turn includes broker screenshot(s), a PDF statement, or an imported CSV/table: extract every real holding row and commit them in ONE commit_mutation call (one "add" per position). Multiple screenshots (or a multi-page statement) are usually the SAME portfolio scrolled — a ticker appearing more than once is ONE holding; de-duplicate by ticker and emit each unique position exactly once (prefer the row with the clearest quantity). SKIP options/derivatives (rows with Put, Call, or an expiry like "JUL 24 '26"), cash-sweep/settlement rows, and account-total/summary rows. A position already in the portfolio is a units update (edit), not a re-add. After committing, ask ONCE for the batch's acquisition date ("A rough month or year is fine, or 'just track from now'"). On the reply — whatever it is, including "track from now" — call set_import_acquisition_date with the user's answer VERBATIM. That one call stamps the date onto every imported position that still lacks one; do NOT enumerate positions or issue per-position edits for this, and NEVER end that turn with only an acknowledgment and no tool call. The positions were committed dated today until this runs, so never claim they are "already dated" — the date is not applied until set_import_acquisition_date returns, and you narrate from its result (e.g. "Dated all 19 to 2 years ago.").
+FILE IMPORT — when the turn includes broker screenshot(s), a PDF statement, or an imported CSV/table: extract every real holding row and commit them in ONE commit_mutation call (one "add" per position). Multiple screenshots (or a multi-page statement) are usually the SAME portfolio scrolled — a ticker appearing more than once is ONE holding; de-duplicate by ticker and emit each unique position exactly once (prefer the row with the clearest quantity). SKIP options/derivatives (rows with Put, Call, or an expiry like "JUL 24 '26"), cash-sweep/settlement rows, and account-total/summary rows. A position already in the portfolio is a units update (edit), not a re-add. After committing, ask ONCE for the batch's acquisition date ("A rough month or year is fine, or 'just track from now'"); on the reply, edit every held position that has no acquisition date yet to that date.
 
 RECORDING PROPERTY, PENSIONS, CASH & OTHER NON-TRADEABLE ASSETS — each of these classes has a set of details Volnar needs, and an incomplete one must NEVER be saved with a silent default. When the user names such an asset, first tell them plainly what you need for it — a short bulleted list of the fields — then collect them, asking for anything still missing ONE question at a time, before you propose_mutation. Never guess or default a required field. Route these through propose_mutation (which echoes every captured field back for the user to confirm) and, only after they confirm, commit_mutation. If a tool returns needsClarification, ask exactly what it asks and stop.
 - Property (real_estate): NEEDED — the address; its current value (for a Netherlands property the purchase price and date are enough — the system estimates today's value from them; for a property anywhere else, ask for the current value directly); and the mortgage. ALWAYS settle the mortgage question — pass mortgage_balance as the outstanding amount when there's a mortgage, or 0 ONLY when the user says it's owned free and clear; never assume owned outright. WHEN THERE IS A MORTGAGE (balance > 0), also collect the three fields the mortgage-free projection needs: the interest rate (mortgage_rate — pass 0 if it's interest-free), the monthly payment (monthly_payment), and the repayment type (mortgage_type: annuity, linear, or interest-only). For an interest-only mortgage also ask the end date (mortgage_end_date) — that's what gives it a payoff date. OPTIONAL — property type, size.
@@ -71,46 +71,12 @@ export interface AgentChatInput {
   csvText?: string;
   recentMessages: Array<{ role: string; content: string }>;
   currentAssets: Array<Record<string, unknown>>;
-  /** Compact summary of the user's recent recorded actions (adds/edits/removes),
-   *  derived from the mutations log. Gives the assistant memory of what it and the
-   *  user recently did — the tool calls themselves aren't in the text history. */
-  recentActivity?: string;
   displayCurrency: DisplayCurrency;
   used: number;
-  /** This user's daily chat allowance (the demo account runs tighter than a
-   *  regular user), so the returned `remaining` matches the enforced limit. */
-  dailyLimit: number;
   profile: Record<string, unknown>;
   userName?: string;
   fingerprint: string | null;
   isNewUser: boolean;
-  /** First-run onboarding: keep the assistant strictly on adding assets (no
-   *  scenarios, no general Q&A), so it can't wander out of the guided setup. */
-  onboarding?: boolean;
-  /** The asset type the user chose to add right now (real_estate | stocks | cash |
-   *  crypto | pension | gold | bonds | other), so the scope can name it. */
-  onboardingAsset?: string | null;
-}
-
-// Asset-type → human label for the onboarding scope block.
-const ONBOARDING_ASSET_LABELS: Record<string, string> = {
-  real_estate: "a property", stocks: "stocks or funds", etf: "stocks or funds",
-  brokerage: "stocks or funds", cash: "cash or savings", crypto: "crypto",
-  pension: "a pension", gold: "gold", bonds: "bonds", other: "another asset",
-};
-
-// Appended to AGENT_SYSTEM during first-run onboarding so the assistant stays on
-// rails: it does portfolio setup only, scoped to the asset the user chose, and
-// redirects anything off-topic instead of answering it.
-function onboardingScopeBlock(assetType?: string | null): string {
-  const label = (assetType && ONBOARDING_ASSET_LABELS[assetType]) || "your assets";
-  return `ONBOARDING MODE — STAY ON RAILS (this overrides anything above that would broaden your scope):
-The user is in first-run setup, adding their assets one at a time. Right now they are adding: ${label}.
-- Do ONLY portfolio setup: help them record assets, nothing else.
-- Do NOT run scenarios or projections, do NOT use any what-if/scenario tool, do NOT answer general questions about markets, the economy, companies, or how the app works, and do NOT offer analysis, opinions, or unsolicited commentary.
-- Focus on the asset they are adding (${label}): collect everything needed for it — through conversation or a screenshot — then confirm and save it. If they clearly switch to a different asset, help add that one instead.
-- If the user asks anything off-topic, reply in ONE short sentence: "Let's finish setting up your portfolio first — I can help with that once you're done." Then keep helping them add assets.
-- After an asset is saved, confirm it in one short line and invite them to add another or tap Done. Keep every reply short.`;
 }
 
 export interface AgentChatResult {
@@ -124,25 +90,6 @@ export interface AgentChatResult {
 
 function textFrom(content: Anthropic.Messages.ContentBlock[]): string {
   return content.filter((b) => b.type === "text").map((b) => (b.type === "text" ? b.text : "")).join("").trim();
-}
-
-// A turn can carry more than one commit-bearing tool call (a split import, or a
-// commit followed by set_import_acquisition_date). Merge their outcomes instead
-// of keeping only the last: a trailing all-duplicates batch (`changed: false`)
-// must not erase the successful batch's snapshot/backfill/market-context work.
-function mergeCommits(a: CommitOutcome | null, b: CommitOutcome): CommitOutcome {
-  if (!a) return b;
-  return {
-    changed: a.changed || b.changed,
-    mutationMetas: [...a.mutationMetas, ...b.mutationMetas],
-    analyticsEvent: a.analyticsEvent ?? b.analyticsEvent,
-    needsBackfill: a.needsBackfill || b.needsBackfill,
-    hasAdds: a.hasAdds || b.hasAdds,
-    rebuildFrom:
-      a.rebuildFrom == null ? b.rebuildFrom
-      : b.rebuildFrom == null ? a.rebuildFrom
-      : a.rebuildFrom < b.rebuildFrom ? a.rebuildFrom : b.rebuildFrom,
-  };
 }
 
 export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResult> {
@@ -170,16 +117,6 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   for (const pdf of input.pdfs ?? []) {
     userContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf.base64 } });
   }
-  // Working memory of what was recently recorded. The model's own tool calls are
-  // stripped from the text history it sees next turn, so without this it can't tell
-  // what it just did (the "already dated, nothing to do" hallucination). This is
-  // read-only context derived from the saved mutations — reference, don't re-apply.
-  if (input.recentActivity) {
-    userContent.push({
-      type: "text",
-      text: `[Recent portfolio activity already on record (most recent first) — these are already saved; reference them naturally and do NOT re-add or re-record them:\n${input.recentActivity}]`,
-    });
-  }
   const csvText = input.csvText ?? "";
   const hasImportFile = input.images.length > 0 || (input.pdfs?.length ?? 0) > 0 || csvText.length > 0;
   const baseText = input.message
@@ -188,22 +125,12 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
 
   const messages: Anthropic.Messages.MessageParam[] = [...history, { role: "user", content: userContent }];
 
-  // During first-run onboarding, append the scope block so the assistant does asset
-  // setup only (no scenarios / general Q&A) and stays on the chosen asset. Normal
-  // chat is untouched, so its cached system prefix is unchanged.
-  const systemPrompt = input.onboarding
-    ? `${AGENT_SYSTEM}\n\n${onboardingScopeBlock(input.onboardingAsset)}`
-    : AGENT_SYSTEM;
-
   // Accumulated across tool round-trips.
   const figures: string[] = [];
   let card: ScenarioResult | null = null;
   let chips: string[] | null = null;
   let commit: CommitOutcome | null = null;
   let finalText = "";
-  // True when the loop exhausted its round budget while the model still wanted
-  // tools — the turn is unfinished, not failed, and the reply must say so.
-  let stoppedAtRoundtripCap = true;
 
   for (let round = 0; round < AGENT_MAX_TOOL_ROUNDTRIPS; round++) {
     let resp: Anthropic.Messages.Message;
@@ -217,10 +144,10 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       // 1500). A big import (20+ rows, all fields) can approach 4000, so give it
       // headroom. Final-text rounds stay far under this — max_tokens is a ceiling,
       // not a target, so quiet rounds cost nothing extra.
-      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 8000, system: systemPrompt, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
+      resp = await anthropic.messages.create({ model: MODEL, max_tokens: 8000, system: AGENT_SYSTEM, tools: AGENT_TOOLS, messages, cache_control: { type: "ephemeral" } });
     } catch (err) {
       Sentry.captureException(err, { tags: { route: "agent-chat" } });
-      return { message: "Couldn't reach the assistant. Please try again.", remaining: input.dailyLimit - input.used };
+      return { message: "Couldn't reach the assistant. Please try again.", remaining: CHAT_DAILY_LIMIT - input.used };
     }
 
     messages.push({ role: "assistant", content: resp.content });
@@ -233,7 +160,6 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
     const toolUses = resp.content.filter((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
     if (toolUses.length === 0) {
       finalText = textFrom(resp.content);
-      stoppedAtRoundtripCap = false;
       break;
     }
 
@@ -249,20 +175,13 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       if (outcome.figures) figures.push(...outcome.figures);
       if (outcome.card) card = outcome.card;
       if (outcome.proposal) chips = outcome.proposal.chips;
-      if (outcome.commit) commit = mergeCommits(commit, outcome.commit);
+      if (outcome.commit) commit = outcome.commit;
       toolResults.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(outcome.forModel) });
     }
     messages.push({ role: "user", content: toolResults });
   }
 
-  // Round budget exhausted mid-task: hand off explicitly instead of failing
-  // silently — any work already done (including a commit) is saved, and the next
-  // turn resumes with the thread and recent-activity context intact.
-  if (stoppedAtRoundtripCap) {
-    finalText = "That needed more steps than one reply allows, so I paused partway. Say \"continue\" and I'll pick up where I left off.";
-  } else if (!finalText) {
-    finalText = "Here's what I found.";
-  }
+  if (!finalText) finalText = "Here's what I found.";
 
   // Numeric guardrail, defense-in-depth: if the prose asserts a MONEY/percent
   // figure no tool returned, drop the prose (the card, if any, carries the
@@ -325,22 +244,19 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   }
 
   // Persist the turn. tool_result stores the card so it rehydrates on reload.
-  // A failed insert silently loses the turn from history (the reply still
-  // returns live) — capture it so history gaps are diagnosable.
-  const { error: persistError } = await supabase.from("messages").insert(
+  await supabase.from("messages").insert(
     timestampedPair(
       { user_id: input.userId, role: "user", content: input.message || (hasImportFile ? "[file uploaded]" : "[screenshot uploaded]") },
       { user_id: input.userId, role: "assistant", content: finalText, suggested_replies: chips, tool_result: card ?? null },
     ),
   );
-  if (persistError) Sentry.captureException(persistError, { tags: { route: "agent-chat", step: "persist-turn" } });
 
   return {
     message: finalText,
     scenarioResult: card,
     suggested_replies: chips,
     assets: updatedAssets,
-    remaining: input.dailyLimit - input.used,
+    remaining: CHAT_DAILY_LIMIT - input.used,
     // A past-dated add triggers a background history rebuild (backfillSnapshots),
     // which is what makes the net-worth chart lag the reply. Signal it so the
     // client shows a "building" indicator and auto-refreshes when it lands.

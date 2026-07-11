@@ -47,12 +47,6 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
   const body = m.length === 0
     ? "Your portfolio held flat that day."
     : `Your portfolio ${portUp ? "gained" : "softened"} about ${money(imp.total)} that day.`;
-  // The story behind the move — one short, search-grounded clause of why the
-  // market moved that day. Sits between the headline and the € impact, so it
-  // reads "Ethereum fell 6,9% … <why>. Your portfolio softened …". Absent until
-  // generated (or when no confident cause was found), in which case the sentence
-  // is unchanged.
-  const story = move.story?.trim();
 
   return (
     <div style={{ background: "var(--accent-soft)", borderRadius: "var(--radius-md)", padding: "0 12px", margin: "6px 0" }}>
@@ -125,7 +119,7 @@ export function MobileMarketEntry({ move }: { move: DiaryMarketMove }) {
               margin: 0, fontVariationSettings: "'opsz' 16",
             }}
           >
-            {lead} {story ? `${story} ` : ""}{body}
+            {lead} {body}
           </p>
           {m.length > 0 && (
             <div style={{ marginTop: 8 }}>

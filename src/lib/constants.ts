@@ -18,11 +18,6 @@ export const CHAT_TTL_MS          = 24 * 60 * 60 * 1000; // 24 hours
 
 // ── Rate limits & pagination ───────────────────────────────────────────────────
 export const CHAT_DAILY_LIMIT       = 50;
-// Per-visitor demo sessions (demo_users rows) get a tighter chat allowance than
-// a paying user. Enforced through the same daily rate-limit bucket — a demo
-// session lives at most one hour (DEMO_SESSION_TTL_MS), so the daily counter IS
-// the session-lifetime cap in practice.
-export const DEMO_CHAT_DAILY_LIMIT  = 20;
 export const DIARY_DAILY_LIMIT      = 100;
 export const MESSAGES_DEFAULT_LIMIT = 20;
 export const MESSAGES_MAX_LIMIT     = 50;

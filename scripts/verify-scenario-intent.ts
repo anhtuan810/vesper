@@ -33,12 +33,6 @@ async function main() {
   check('"5y" → five years ago', resolveBuyDate("5y", CTX.now) === "2021-06-03", resolveBuyDate("5y", CTX.now));
   check("null → default 5 years ago", resolveBuyDate(null, CTX.now) === "2021-06-03");
   check('bare year "2020" → Jan 1', resolveBuyDate("2020", CTX.now) === "2020-01-01");
-  // Natural phrases must resolve (via parseAcquisitionMonth), not silently fall
-  // to the 5-years-ago default — that computed scenarios for a date the user
-  // never asked about.
-  check('ISO month "2020-05" → May 2020', resolveBuyDate("2020-05", CTX.now) === "2020-05-01", resolveBuyDate("2020-05", CTX.now));
-  check('"March 2020" → Mar 2020', resolveBuyDate("March 2020", CTX.now) === "2020-03-01", resolveBuyDate("March 2020", CTX.now));
-  check('garbage still → default 5 years ago', resolveBuyDate("whenever", CTX.now) === "2021-06-03");
 
   // ── Symbol resolver (pure local) ─────────────────────────────────────────
   console.log("Symbol resolver (local):");

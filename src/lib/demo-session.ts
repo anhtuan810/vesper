@@ -30,24 +30,15 @@ export const DEMO_VISITOR_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 
 type ServiceClient = ReturnType<typeof createServerSupabase>;
 
-export interface DemoSessionStatus {
-  /** True when userId has a demo_users row — a per-visitor demo account. */
-  isDemo: boolean;
-  /** True when that demo account's hour has elapsed. Always false for real users. */
-  expired: boolean;
-}
-
-// Looks up whether `userId` is a per-visitor demo account and whether its hour
-// has elapsed — one demo_users read, shared by the 403 gate and the demo chat
-// cap. Fails open ({ isDemo:false, expired:false }) on any lookup error so a
-// transient hiccup can never wall or down-limit a real user.
-export async function getDemoSessionStatus(
+// Returns a 403 { demoExpired: true } response when `userId` belongs to a demo
+// account whose hour has elapsed, or null when the request may proceed — i.e. the
+// user is not a demo account, or is still inside its hour. Fails open: a lookup
+// error returns null so a transient hiccup can never wall a real user.
+export async function demoExpiredGate(
   supabase: ServiceClient,
   userId: string,
   now: number = Date.now(),
-): Promise<DemoSessionStatus> {
-  const NOT_DEMO: DemoSessionStatus = { isDemo: false, expired: false };
-
+): Promise<NextResponse | null> {
   // Read created_at + visitor_id, but if the visitor_id column doesn't exist yet
   // (DEMO_ENABLED flipped on before the migration ran) the combined select errors —
   // retry on created_at alone so the gate degrades to the legacy per-user clock
@@ -57,13 +48,13 @@ export async function getDemoSessionStatus(
   const combined = await supabase
     .from("demo_users").select("created_at, visitor_id").eq("user_id", userId).maybeSingle();
   if (!combined.error) {
-    if (!combined.data) return NOT_DEMO; // no demo row → real user
+    if (!combined.data) return null; // no demo row → real user, proceed
     createdStr = (combined.data as { created_at: string }).created_at;
     visitorId = (combined.data as { visitor_id?: string | null }).visitor_id ?? null;
   } else {
     const basic = await supabase
       .from("demo_users").select("created_at").eq("user_id", userId).maybeSingle();
-    if (basic.error || !basic.data) return NOT_DEMO; // real user or a transient miss → fail open
+    if (basic.error || !basic.data) return null; // real user or a transient miss → fail open
     createdStr = (basic.data as { created_at: string }).created_at;
   }
 
@@ -82,68 +73,9 @@ export async function getDemoSessionStatus(
       if (!Number.isNaN(m)) startMs = m;
     }
   }
-  if (Number.isNaN(startMs)) return { isDemo: true, expired: false };
-  return { isDemo: true, expired: now - startMs > DEMO_SESSION_TTL_MS };
-}
-
-// Returns a 403 { demoExpired: true } response when `userId` belongs to a demo
-// account whose hour has elapsed, or null when the request may proceed — i.e. the
-// user is not a demo account, or is still inside its hour. Fails open: a lookup
-// error returns null so a transient hiccup can never wall a real user.
-export async function demoExpiredGate(
-  supabase: ServiceClient,
-  userId: string,
-  now: number = Date.now(),
-): Promise<NextResponse | null> {
-  const status = await getDemoSessionStatus(supabase, userId, now);
-  if (status.expired) {
+  if (Number.isNaN(startMs)) return null;
+  if (now - startMs > DEMO_SESSION_TTL_MS) {
     return NextResponse.json({ demoExpired: true }, { status: 403 });
   }
   return null;
-}
-
-// ── Per-IP cap on demo-session minting ────────────────────────────────────────
-// Every per-visitor demo entry creates a fresh anonymous account with its own
-// chat allowance, so unthrottled minting is an Anthropic-spend amplifier. Cap
-// entries per IP per hour, server-side, at both mint points (/demo on web,
-// POST /api/demo-session on native).
-
-export const DEMO_SESSION_IP_HOURLY_LIMIT = 3;
-
-// Client IP as the platform reports it. On Vercel the first x-forwarded-for
-// entry is set by the platform and can't be spoofed by the caller. Null when
-// no header is present (local dev) — the limiter then allows the mint.
-export function clientIpFrom(headers: { get(name: string): string | null }): string | null {
-  const xff = headers.get("x-forwarded-for");
-  const first = xff?.split(",")[0]?.trim();
-  if (first) return first;
-  const real = headers.get("x-real-ip")?.trim();
-  return real || null;
-}
-
-// True when this IP may mint another demo session this hour. Counts via the
-// demo_ip_limits table (see migration 20260711_demo_ip_limits.sql), keyed by
-// sha256(ip) — no raw IP is ever stored — and a fixed UTC hour bucket. Fails
-// OPEN: before the migration is applied (or on any transient error) the demo
-// keeps working unthrottled, matching how every hand-applied migration here
-// degrades. Old hour rows are pruned by the reap-demo cron.
-export async function demoMintAllowed(
-  supabase: ServiceClient,
-  ip: string | null,
-  now: number = Date.now(),
-): Promise<boolean> {
-  if (!ip) return true;
-  try {
-    const { createHash } = await import("node:crypto");
-    const ipHash = createHash("sha256").update(ip).digest("hex");
-    const hour = new Date(now).toISOString().slice(0, 13); // "2026-07-10T20" (UTC)
-    const { data, error } = await supabase.rpc("increment_demo_ip_limit", {
-      p_ip_hash: ipHash,
-      p_hour: hour,
-    });
-    if (error || typeof data !== "number") return true; // RPC missing / transient → fail open
-    return data <= DEMO_SESSION_IP_HOURLY_LIMIT;
-  } catch {
-    return true;
-  }
 }

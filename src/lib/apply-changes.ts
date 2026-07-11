@@ -53,7 +53,7 @@ type CurrentAsset = {
   pension_provider?: string | null;
 };
 
-export type PortfolioChange = {
+type PortfolioChange = {
   action: "add" | "edit" | "remove";
   name: string;
   new_name?: string;
@@ -394,26 +394,6 @@ export async function applyPortfolioChanges({
         : currentAssets.some((a) => a.name.trim().toLowerCase() === dupNameKey) || addedNamesThisBatch.has(dupNameKey);
 
       if (isDuplicate) {
-        // Date-fill promotion: a re-stated add can carry the acquisition date the
-        // model just collected (e.g. the import flow re-emitting a held position as
-        // an add rather than an edit). If that date is present and the EXISTING row
-        // still has none, don't discard it as a bare duplicate — stamp it onto the
-        // existing position (asset + its "add" mutation) so the stated date is never
-        // silently lost. Only applies to a pre-batch row (found in currentAssets);
-        // a within-batch repeat is left as a warning.
-        const existingDup = dupSymKey
-          ? currentAssets.find((a) => a.symbol && a.symbol.toLowerCase() === dupSymKey)
-          : currentAssets.find((a) => a.name.trim().toLowerCase() === dupNameKey);
-        if (change.buy_date && existingDup && !existingDup.buy_date) {
-          await supabase.from("assets")
-            .update({ buy_date: change.buy_date }).eq("id", existingDup.id).eq("user_id", userId);
-          await supabase.from("mutations")
-            .update({ occurred_at: change.buy_date })
-            .eq("user_id", userId).eq("asset_id", existingDup.id).eq("action", "add");
-          considerRebuild(change.buy_date);
-          changed = true;
-          continue;
-        }
         const id = effectiveSymbol ? effectiveSymbol.toUpperCase() : `"${resolvedAssetName}"`;
         duplicateWarnings.push(
           `${id} already exists in your portfolio. If you want to update the existing position, ask me to edit it — or give the new entry a different name to keep both.`
@@ -756,34 +736,10 @@ export async function applyPortfolioChanges({
       }
 
     } else if (action === "edit") {
-      // Match by name, by symbol, and — for crypto — by venue-normalized symbol.
-      // Crypto rows are stored under Yahoo's canonical name ("Bitcoin USD") and a
-      // normalized symbol ("BTC-USD"), so an edit keyed by the bare ticker/name the
-      // model extracted ("BTC", "Bitcoin") would otherwise match neither and throw
-      // "couldn't find it to edit" — silently blocking a crypto date-fill.
-      const nameLc = name.toLowerCase();
-      // resolveSymbol can return null (unknown ticker), so resolve once and guard
-      // before lowercasing — a raw .toLowerCase() on it fails strict null checks.
-      const resolvedChangeSym = typeof change.symbol === "string" && change.symbol.trim()
-        ? resolveSymbol(change.symbol)
-        : null;
-      const changeSym = resolvedChangeSym ? resolvedChangeSym.toLowerCase() : null;
-      const existing = currentAssets.find((a) => {
-        if (a.name.toLowerCase() === nameLc) return true;
-        const aSym = a.symbol ? a.symbol.toLowerCase() : null;
-        if (!aSym) return false;
-        if (aSym === nameLc || (changeSym && aSym === changeSym)) return true;
-        if (a.type === "crypto") {
-          // Normalize the incoming ticker (change.symbol, else the edit name) to the
-          // stored venue form ("BTC" → "BTC-USD"). Skip if neither resolves.
-          const cryptoBase = resolvedChangeSym ?? resolveSymbol(name);
-          if (cryptoBase) {
-            const norm = normalizeCryptoSymbol(cryptoBase, "crypto").toLowerCase();
-            if (aSym === norm) return true;
-          }
-        }
-        return false;
-      });
+      const existing = currentAssets.find(
+        (a) => a.name.toLowerCase() === name.toLowerCase() ||
+               (a.symbol && a.symbol.toLowerCase() === name.toLowerCase())
+      );
 
       if (existing) {
         // A real-estate edit changes value/mortgage shape, which ripples
@@ -936,12 +892,7 @@ export async function applyPortfolioChanges({
         // consistent with the new count, instead of keeping the old-count value
         // while units jump. Mirrors the value_delta path, which also sets both
         // units and value. A failed price lookup leaves the value untouched.
-        // Presence of a units value is NOT a change: an acquisition-date fill that
-        // echoes the holding's current count (same number, new buy_date) must not
-        // be misread as a re-acquisition — otherwise the buy_date/buy_price writes
-        // (below) and the add-mutation date back-stamp are silently skipped. Only a
-        // count that actually differs from the existing lot is a real unit change.
-        const editChangesUnits = typeof change.units === "number" && change.units !== (existing.units ?? null);
+        const editChangesUnits = typeof change.units === "number";
         if (
           editChangesUnits && isTradeable && existing.symbol &&
           change.value === undefined && !hasValueDelta
@@ -999,11 +950,6 @@ export async function applyPortfolioChanges({
         if (change.mortgage_rate !== undefined) updateData.mortgage_rate = change.mortgage_rate;
         if (change.monthly_payment !== undefined) updateData.monthly_payment = change.monthly_payment;
         if (change.mortgage_type !== undefined) updateData.mortgage_type = change.mortgage_type;
-        // The schema advertises both mortgage dates (end date explicitly asked for
-        // on interest-only), and the add path stores them — an edit stating "my
-        // mortgage ends in 2040" used to silently drop the field.
-        if (change.mortgage_start_date !== undefined) updateData.mortgage_start_date = change.mortgage_start_date || null;
-        if (change.mortgage_end_date !== undefined) updateData.mortgage_end_date = change.mortgage_end_date || null;
         if (change.coupon_rate !== undefined) updateData.coupon_rate = change.coupon_rate;
         if (change.maturity_date !== undefined) updateData.maturity_date = normalizeMaturityDate(change.maturity_date);
         if (change.issuer !== undefined) updateData.issuer = change.issuer;

@@ -85,16 +85,5 @@ export async function GET(req: NextRequest) {
     Sentry.captureException(err, { tags: { fn: "cron/reap-demo", step: "prune-visitors" } });
   }
 
-  // Prune spent demo-mint IP buckets (see demoMintAllowed). The window is one
-  // hour, so anything older than ~2 days is dead weight; `hour` is a UTC
-  // "YYYY-MM-DDTHH" string, so a lexicographic < works. Best-effort — the table
-  // may not exist yet (hand-applied migration) and that must not fail the run.
-  try {
-    const hourCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().slice(0, 13);
-    await supabase.from("demo_ip_limits").delete().lt("hour", hourCutoff);
-  } catch {
-    /* table missing (migration not applied) or transient — fine */
-  }
-
   return NextResponse.json({ ok: true, expired: uids.length, reaped, visitorsReaped });
 }

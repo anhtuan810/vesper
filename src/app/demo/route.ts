@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { seedDemoUser } from "@/lib/demo-seed";
-import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS, DEMO_VISITOR_COOKIE_TTL_MS, clientIpFrom, demoMintAllowed } from "@/lib/demo-session";
+import { DEMO_SESSION_TTL_MS, DEMO_SESSION_GRACE_MS, DEMO_VISITOR_COOKIE_TTL_MS } from "@/lib/demo-session";
 
 // Resolve the browser's trial start from the persistent `demo_visitor` cookie:
 // reuse the recorded first_seen, or record it now on the first entry. Returns the
@@ -98,15 +98,6 @@ export async function GET(request: NextRequest) {
   if (process.env.DEMO_ENABLED === "true") {
     try {
       const service = createServerSupabase();
-
-      // Minting guard: every entry creates a fresh anonymous account with its
-      // own chat allowance, so cap sessions per IP per hour BEFORE any account
-      // exists. The visitor cookie only binds honest browsers — this is the
-      // server-side stop for cookie-less minting. Fails open until the
-      // demo_ip_limits migration is applied.
-      if (!(await demoMintAllowed(service, clientIpFrom(request.headers)))) {
-        return redirectTo("/login?demo=busy");
-      }
 
       // The trial is anchored to the BROWSER (a persistent demo_visitor cookie that
       // survives sign-out), so re-entering the demo never resets the clock.

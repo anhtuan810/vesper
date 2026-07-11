@@ -74,27 +74,8 @@ console.log("Relative phrases resolve (the reported \"6 months ago\" bug):");
   check(`"last year" → ${monthsAgo(12)}`, parseAcquisitionMonth("last year") === monthsAgo(12), String(parseAcquisitionMonth("last year")));
   check(`"3 weeks ago" → ${daysAgo(21)}`, parseAcquisitionMonth("3 weeks ago") === daysAgo(21), String(parseAcquisitionMonth("3 weeks ago")));
   check(`"yesterday" → ${daysAgo(1)}`, parseAcquisitionMonth("yesterday") === daysAgo(1), String(parseAcquisitionMonth("yesterday")));
-  // Spelled-out numerals and unit abbreviations — a natural answer like "two years
-  // ago" or "6 mo ago" previously resolved to undefined and dropped the date.
-  check(`"two years ago" → ${monthsAgo(24)}`, parseAcquisitionMonth("two years ago") === monthsAgo(24), String(parseAcquisitionMonth("two years ago")));
-  check(`"three months ago" → ${monthsAgo(3)}`, parseAcquisitionMonth("three months ago") === monthsAgo(3), String(parseAcquisitionMonth("three months ago")));
-  check(`"several years ago" → ${monthsAgo(48)}`, parseAcquisitionMonth("several years ago") === monthsAgo(48), String(parseAcquisitionMonth("several years ago")));
-  check(`"3 yrs ago" → ${monthsAgo(36)}`, parseAcquisitionMonth("3 yrs ago") === monthsAgo(36), String(parseAcquisitionMonth("3 yrs ago")));
-  check(`"6 mo ago" → ${monthsAgo(6)}`, parseAcquisitionMonth("6 mo ago") === monthsAgo(6), String(parseAcquisitionMonth("6 mo ago")));
-  check(`"2 wks ago" → ${daysAgo(14)}`, parseAcquisitionMonth("2 wks ago") === daysAgo(14), String(parseAcquisitionMonth("2 wks ago")));
   // A relative phrase is always in the past — never a future date, never undefined.
   check('"in 6 months" (future) does NOT resolve', parseAcquisitionMonth("in 6 months") === undefined, String(parseAcquisitionMonth("in 6 months")));
-}
-
-console.log("Seasons and quarters resolve to a representative month (kept the year):");
-{
-  check('"spring 2020" → 2020-03-01', parseAcquisitionMonth("spring 2020") === "2020-03-01", String(parseAcquisitionMonth("spring 2020")));
-  check('"autumn 2019" → 2019-10-01', parseAcquisitionMonth("autumn 2019") === "2019-10-01", String(parseAcquisitionMonth("autumn 2019")));
-  check('"fall 2018" → 2018-10-01', parseAcquisitionMonth("fall 2018") === "2018-10-01", String(parseAcquisitionMonth("fall 2018")));
-  check('"winter 2017" → 2017-12-01', parseAcquisitionMonth("winter 2017") === "2017-12-01", String(parseAcquisitionMonth("winter 2017")));
-  check('"Q3 2021" → 2021-07-01', parseAcquisitionMonth("Q3 2021") === "2021-07-01", String(parseAcquisitionMonth("Q3 2021")));
-  check('"Q1 2020" → 2020-01-01', parseAcquisitionMonth("Q1 2020") === "2020-01-01", String(parseAcquisitionMonth("Q1 2020")));
-  check('"q4-2016" → 2016-10-01', parseAcquisitionMonth("q4-2016") === "2016-10-01", String(parseAcquisitionMonth("q4-2016")));
 }
 
 console.log("Track-from-now / no-date → null (omit the acquisition date):");

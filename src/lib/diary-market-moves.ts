@@ -52,10 +52,6 @@ export interface DiaryMarketMove {
   // among the largest by |impact| in its month and above the floor. Only used by
   // index swings — asset swings are always full rows, so they leave this false.
   expanded?: boolean;
-  // "The story behind" the swing — a removed feature (2026-07). The server no
-  // longer populates this, but the field stays on the API shape because shipped
-  // clients (and the two market-entry components) render it when present.
-  story?: string | null;
 }
 
 interface MoveRow {

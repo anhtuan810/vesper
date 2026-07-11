@@ -66,31 +66,6 @@ function mapDbMessages(
   });
 }
 
-// User-turn placeholders: what the client DISPLAYS for an attachment-only turn,
-// and what the server PERSISTS for one.
-const ATTACHMENT_PLACEHOLDERS = new Set([
-  "[file uploaded]", "[screenshot uploaded]",
-  "Screenshot uploaded", "Screenshots uploaded", "File uploaded", "Files uploaded",
-]);
-
-// True when a DB snapshot shows the pending turn answered: the thread tail is an
-// assistant reply and the final user row matches what was sent. Matching on the
-// TEXT (not on "the newest DB id changed") matters: live-sent turns never carry
-// DB ids, so an id captured from the last DB *load* can be several turns stale —
-// an id-inequality check then adopts a snapshot that predates the pending turn,
-// dropping the user's message mid-wait (the exact vanish-and-re-add regression).
-function threadHasReply(mapped: ChatMessage[], sentText: string | null): boolean {
-  if (mapped.length === 0 || mapped[mapped.length - 1].from !== "assistant") return false;
-  const lastUser = [...mapped].reverse().find((m) => m.from === "user");
-  if (!lastUser) return false;
-  const dbText = lastUser.text.trim();
-  if (!sentText || ATTACHMENT_PLACEHOLDERS.has(sentText.trim())) {
-    // Attachment-only turn — the server stores its own placeholder for it.
-    return ATTACHMENT_PLACEHOLDERS.has(dbText);
-  }
-  return dbText === sentText.trim();
-}
-
 interface ChatResponse {
   message?: string;
   error?: string;
@@ -109,10 +84,6 @@ interface ChatResponse {
   /** A past-dated add kicked off a background net-worth history rebuild; the
    * client shows a "building" indicator and auto-refreshes until it lands. */
   building?: boolean;
-  /** Demo session past its hour — the server walled the turn (403). */
-  demoExpired?: boolean;
-  /** Demo session spent its message allowance — the server refused the turn (429). */
-  demoLimitReached?: boolean;
 }
 
 const ROUND_AMOUNT: Record<DisplayCurrency, number> = {
@@ -245,16 +216,9 @@ interface Options {
   userId: string | undefined;
   onPortfolioUpdate?: () => void;
   onNewMessage?: () => void;
-  /** Extra fields merged into every /api/chat request body — read at send time, so
-   *  callers can attach live context (e.g. the onboarding scope). */
-  extraPayload?: () => Record<string, unknown>;
-  /** Start with an empty thread and don't load or persist history. Used by the
-   *  onboarding flow so it always opens clean (no old transcript), matching the
-   *  "no transcript restore" rule. Turns still save server-side via /api/chat. */
-  skipHistory?: boolean;
 }
 
-export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraPayload, skipHistory }: Options) {
+export function useChatSession({ userId, onPortfolioUpdate, onNewMessage }: Options) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -264,9 +228,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   // moment the reply lands or the wait ends.
   const [processingKind, setProcessingKind] = useState<ProcessingKind | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
-  // The demo session is over — either past its hour (403 demoExpired) or out of
-  // messages (429 demoLimitReached). The composer swaps to a quiet sign-up line.
-  const [demoEnded, setDemoEnded] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageData, setImageData] = useState<Array<{ base64: string; mediaType: string }>>([]);
   const [pdfData, setPdfData] = useState<Array<{ name: string; base64: string }>>([]);
@@ -297,14 +258,12 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   // Use refs for callbacks so send() doesn't recreate when parent re-renders
   const onPortfolioUpdateRef = useRef(onPortfolioUpdate);
   const onNewMessageRef = useRef(onNewMessage);
-  const extraPayloadRef = useRef(extraPayload);
   useEffect(() => { onPortfolioUpdateRef.current = onPortfolioUpdate; }, [onPortfolioUpdate]);
   useEffect(() => { onNewMessageRef.current = onNewMessage; }, [onNewMessage]);
-  useEffect(() => { extraPayloadRef.current = extraPayload; }, [extraPayload]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
-    if (!userId || skipHistory) return;
+    if (!userId) return;
 
     const key = chatHistoryCacheKey(userId);
     const controller = new AbortController();
@@ -328,12 +287,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
           if (stored.length > 0) {
             // Backfill stable keys for cache entries written before localId
             // existed, then advance the seq past restored ids so freshly-minted
-            // keys can't collide with them (a fresh page load resets the counter
-            // to 0, so without this the next send mints a duplicate "m1").
-            for (const m of stored) {
-              const n = m.localId?.match(/^m(\d+)$/);
-              if (n) localIdSeq = Math.max(localIdSeq, Number(n[1]));
-            }
+            // keys can't collide with them.
             cached = stored.map((m) => (m.localId ? m : { ...m, localId: nextLocalId() }));
             setMessages(cached);
           }
@@ -361,6 +315,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // last one we already have), then adopt the reconciled thread.
     const last = cached[cached.length - 1];
     const awaitingReply = cached.length > 0 && last?.from === "user";
+    const lastCommittedId = [...cached].reverse().find((m) => m.id)?.id ?? null;
 
     if (cached.length === 0) {
       // No usable cache — plain DB load.
@@ -377,9 +332,8 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         try { mapped = await fetchDb(); }
         catch (err) { if ((err as { name?: string })?.name === "AbortError") return; }
         if (cancelled) return;
-        // Committed = the DB snapshot contains OUR pending turn answered — never
-        // "some id changed" (see threadHasReply for why id comparison drops turns).
-        const committed = !!mapped && threadHasReply(mapped, last?.text ?? null);
+        const newestDbId = mapped ? ([...mapped].reverse().find((m) => m.id)?.id ?? null) : null;
+        const committed = !!mapped && mapped.length > 0 && newestDbId !== lastCommittedId;
         if (committed) {
           setMessages(mapped!);
           setLoading(false);
@@ -402,11 +356,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     }
 
     return () => { cancelled = true; controller.abort(); if (pollTimer) clearTimeout(pollTimer); };
-  }, [userId, skipHistory]);
+  }, [userId]);
 
   // Write only the latest CHAT_LOAD_LIMIT messages to localStorage — older paginated history stays out of the cache.
   useEffect(() => {
-    if (!userId || skipHistory) return;
+    if (!userId) return;
     // Never overwrite a good cache with an EMPTY thread. On the userId
     // undefined→defined commit (cold start, or a second session's first mount)
     // this effect runs in the same flush as the load effect while `messages` is
@@ -419,7 +373,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       const stripped = latest.map(({ id, localId, from, text, suggestedReplies, scenarioResult }) => ({ id, localId, from, text, suggestedReplies, scenarioResult }));
       localStorage.setItem(chatHistoryCacheKey(userId), JSON.stringify({ messages: stripped, ts: Date.now() }));
     } catch {}
-  }, [messages, userId, skipHistory]);
+  }, [messages, userId]);
 
   const loadMore = useCallback(async () => {
     if (!userId || loadMoreInFlight.current || !hasMore) return;
@@ -459,20 +413,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     setPdfData([]);
     setCsvData([]);
     setAttachmentError(null);
-  }, []);
-
-  // Clear the visible thread + composer. Used by onboarding to start each asset on a
-  // fresh, focused conversation (the server still has the full history, so the
-  // assistant keeps its context; only the local display resets).
-  const reset = useCallback(() => {
-    setMessages([]);
-    setInput("");
-    setImagePreviews([]);
-    setImageData([]);
-    setPdfData([]);
-    setCsvData([]);
-    setAttachmentError(null);
-    pendingScenarioRef.current = null;
   }, []);
 
   const removeImage = useCallback((index: number) => {
@@ -551,59 +491,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     pendingScenarioRef.current = data.scenarioPending ?? null;
   }, []);
 
-  // Shared timeout-reconcile for a thrown /api/chat fetch (client timeout, dropped
-  // connection, tab hidden mid-request). That is NOT a definitive failure — the
-  // server may still be finishing and persists the turn regardless — so the
-  // optimistic user message is never yanked; poll the saved thread until OUR
-  // pending turn shows an answer, then adopt it. A note never replaces the tail:
-  // ending on an assistant turn would stop the remount poll from re-detecting the
-  // pending turn, permanently hiding a reply that lands later.
-  const reconcilePendingTurn = useCallback((sentText: string | null) => {
-    const startedAt = Date.now();
-    const finish = () => { setLoading(false); sendInFlightRef.current = false; };
-    const adopt = (mapped: ChatMessage[]) => {
-      if (skipHistory) {
-        // Onboarding runs a clean, history-free thread — adopting the whole DB
-        // transcript would pull the user's old conversation into it. Append only
-        // the reply to the pending turn.
-        const lastUserIdx = mapped.map((m) => m.from).lastIndexOf("user");
-        setMessages((prev) => [...prev, ...mapped.slice(lastUserIdx + 1)]);
-      } else {
-        setMessages(mapped);
-      }
-    };
-    const reconcile = async () => {
-      if (!mountedRef.current) { finish(); return; } // left the tab — remount poll takes over
-      try {
-        const r = await apiFetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`);
-        const d = await r.json();
-        if (Array.isArray(d?.messages) && d.messages.length > 0) {
-          const mapped = mapDbMessages(d.messages);
-          if (threadHasReply(mapped, sentText)) {
-            adopt(mapped);
-            setThinking(false);
-            setProcessingKind(null);
-            finish();
-            return;
-          }
-        }
-      } catch {}
-      if (!mountedRef.current) { finish(); return; }
-      const elapsed = Date.now() - startedAt;
-      if (elapsed < CHAT_REPLY_WAIT_MS) {
-        setTimeout(reconcile, replyPollDelay(elapsed));
-      } else {
-        // Held the whole window without the reply committing. Stop the spinner but
-        // leave the user's message as the thread tail so any later visit resumes
-        // the poll and shows the reply whenever it finally commits.
-        setThinking(false);
-        setProcessingKind(null);
-        finish();
-      }
-    };
-    reconcile();
-  }, [skipHistory]);
-
   const send = useCallback(async () => {
     const text = input.trim();
     const hasAttachment = imageData.length > 0 || pdfData.length > 0 || csvData.length > 0;
@@ -678,7 +565,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, fromChip: false, ...(extraPayloadRef.current?.() ?? {}) }),
+        body: JSON.stringify({ ...payload, fromChip: false }),
         timeoutMs: 60000,
       });
       data = await res.json();
@@ -690,7 +577,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
         if (typeof data?.remaining === "number") setRemaining(data.remaining);
-        if (data?.demoExpired || data?.demoLimitReached) setDemoEnded(true);
         // Restore the composer so the user's text isn't lost and can be retried,
         // and drop the orphaned optimistic user bubble.
         setInput(text);
@@ -699,11 +585,52 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         return;
       }
     } catch {
-      // NEVER yank the message the user typed (deleting it here is exactly what
-      // made a question vanish on a tab switch and pushed users to re-ask — and
-      // re-add the same holding). Reconcile instead; see reconcilePendingTurn.
+      // A thrown fetch — a client-side timeout, a dropped connection, or the user
+      // leaving the tab mid-request — is NOT a definitive failure: the server may
+      // still be finishing and persists the turn regardless. So NEVER yank the
+      // message the user typed (deleting it here is exactly what made a question
+      // vanish on a tab switch and pushed users to re-ask — and re-add the same
+      // holding). Keep the message, keep the waiting state, and reconcile from the
+      // saved thread, the same way the remount path does: poll until the answer
+      // lands, then adopt it. A note only appears if it truly never arrives.
       reconciling = true;
-      reconcilePendingTurn(text || displayText);
+      const priorId = [...messagesRef.current].reverse().find((m) => m.id)?.id ?? null;
+      const startedAt = Date.now();
+      const finish = () => { setLoading(false); sendInFlightRef.current = false; };
+      const reconcile = async () => {
+        if (!mountedRef.current) { finish(); return; } // left the tab — remount poll takes over
+        try {
+          const r = await apiFetch(`/api/messages?limit=${CHAT_LOAD_LIMIT}`);
+          const d = await r.json();
+          if (Array.isArray(d?.messages) && d.messages.length > 0) {
+            const mapped = mapDbMessages(d.messages);
+            const newestId = [...mapped].reverse().find((m) => m.id)?.id ?? null;
+            if (newestId && newestId !== priorId) {
+              setMessages(mapped);
+              setThinking(false);
+              setProcessingKind(null);
+              finish();
+              return;
+            }
+          }
+        } catch {}
+        if (!mountedRef.current) { finish(); return; }
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < CHAT_REPLY_WAIT_MS) {
+          setTimeout(reconcile, replyPollDelay(elapsed));
+        } else {
+          // Held the whole window without the reply committing. Stop the spinner,
+          // but do NOT append an assistant "taking longer" note here: that ends the
+          // thread on an assistant turn, which stops the remount reconcile from ever
+          // re-detecting the pending user turn — permanently hiding a reply that
+          // lands later. Keep the user's message as the tail so any later visit
+          // resumes the poll and shows the reply whenever it finally commits.
+          setThinking(false);
+          setProcessingKind(null);
+          finish();
+        }
+      };
+      reconcile();
       return;
     } finally {
       // The reconcile path keeps the composer disabled until its poll resolves.
@@ -732,7 +659,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       else refreshAfterQuickCommit();
     }
     onNewMessageRef.current?.();
-  }, [input, imageData, imagePreviews, pdfData, csvData, loading, userId, remaining, clearImage, applyAssistantResponse, reconcilePendingTurn]);
+  }, [input, imageData, imagePreviews, pdfData, csvData, loading, userId, clearImage, applyAssistantResponse]);
 
   // Confirm a free-typed scenario ([Show me]): echo the pending intent back so the
   // route computes and renders the card directly, skipping Claude classification.
@@ -757,7 +684,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       data = await res.json();
       setThinking(false);
       if (!res.ok) {
-        if (data?.demoExpired || data?.demoLimitReached) setDemoEnded(true);
         setMessages((prev) => [...prev, { localId: nextLocalId(), from: "assistant", text: data.message || "Something went wrong. Please try again." }]);
         return;
       }
@@ -779,9 +705,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   // directly rather than asking to confirm.
   const sendText = useCallback(async (text: string) => {
     const trimmed = text.trim();
-    // Same gates as send(): chips stay tappable in the rendered thread after the
-    // daily limit / demo end, and firing anyway just burns a 429 error bubble.
-    if (!trimmed || loading || !userId || remaining === 0 || demoEnded) return;
+    if (!trimmed || loading || !userId) return;
 
     // [Show me] / [Change it] on a pending free-typed scenario.
     const pending = pendingScenarioRef.current;
@@ -808,14 +732,11 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // Only fetch + parse + non-ok handling live in the try/catch; success
     // side-effects run after so a throw there can't surface a connection error.
     let data: ChatResponse;
-    // Set when the catch hands off to the reconcile poll — the finally must then
-    // leave `loading` / the send-guard held until the poll resolves.
-    let reconciling = false;
     try {
       const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, fromChip: true, ...(extraPayloadRef.current?.() ?? {}) }),
+        body: JSON.stringify({ message: trimmed, fromChip: true }),
         timeoutMs: 60000,
       });
       data = await res.json();
@@ -826,7 +747,6 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
           ? "Session expired. Please refresh the page."
           : data.message || data.error || "Something went wrong. Please try again.";
         if (typeof data?.remaining === "number") setRemaining(data.remaining);
-        if (data?.demoExpired || data?.demoLimitReached) setDemoEnded(true);
         // Restore the composer so the chip text isn't lost, and drop the
         // orphaned optimistic user bubble.
         setInput(trimmed);
@@ -835,20 +755,19 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
         return;
       }
     } catch {
-      // Same rule as send(): a thrown fetch is NOT a definitive failure — a
-      // "Confirm and save" chip on a big import can run past the client timeout
-      // while the server finishes and persists the commit. Deleting the bubble
-      // and showing "Connection issue" hid a reply that actually landed and
-      // invited a duplicate confirm (a double-commit). Keep the message and
-      // reconcile from the saved thread instead.
-      reconciling = true;
-      reconcilePendingTurn(trimmed);
+      setThinking(false);
+      // Restore the composer so the chip text isn't lost, and drop the
+      // orphaned optimistic user bubble.
+      setInput(trimmed);
+      setMessages((prev) => prev.filter((m) => m.localId !== userMsg.localId));
+      setMessages((prev) => [
+        ...prev,
+        { localId: nextLocalId(), from: "assistant", text: "Connection issue. Please try again." },
+      ]);
       return;
     } finally {
-      if (!reconciling) {
-        setLoading(false);
-        sendInFlightRef.current = false;
-      }
+      setLoading(false);
+      sendInFlightRef.current = false;
     }
 
     // Success side-effects — outside the catch so a throw here can't render a
@@ -870,7 +789,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       else refreshAfterQuickCommit();
     }
     onNewMessageRef.current?.();
-  }, [loading, userId, remaining, demoEnded, applyAssistantResponse, sendScenarioConfirm, reconcilePendingTurn]);
+  }, [loading, userId, applyAssistantResponse, sendScenarioConfirm]);
 
   // Scenario-narration handoff: posts the summarising user turn + the
   // guardrailed assistant narration into this single thread. No portfolio
@@ -934,8 +853,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     pdfData,
     csvData,
     attachmentError,
-    demoEnded,
-    canSend: !loading && !demoEnded && !!(input.trim() || imageData.length || pdfData.length || csvData.length) && (remaining === null || remaining > 0),
+    canSend: !loading && !!(input.trim() || imageData.length || pdfData.length || csvData.length) && (remaining === null || remaining > 0),
     send,
     sendText,
     sendScenario,
@@ -948,6 +866,5 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     loadMore,
     hasMore,
     isLoadingMore,
-    reset,
   };
 }

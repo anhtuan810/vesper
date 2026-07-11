@@ -39,18 +39,14 @@ const usdRateCache: Record<string, number> = {
 };
 
 // Tracks when each rate was last written by a live fetch (not from fallback seed).
-const rateTimestamps = new Map<string, number>();
+const rateTimestamps = new Map<DisplayCurrency, number>();
 
 const FRESH_MS  = 60 * 60 * 1000; // 1h
 const STALE_MS  = FX_STALE_AFTER_MS;
 
 export type FxFreshness = "fresh" | "stale" | "unavailable";
 
-// Accepts ANY currency code — the cache is deliberately string-keyed so live
-// rates for non-display native currencies (CHF, JPY, CAD…) can replace the
-// bundled fallback approximations, keeping per-position figures consistent with
-// totals computed on live rates.
-export function setUsdRate(currency: string, rate: number): void {
+export function setUsdRate(currency: DisplayCurrency, rate: number): void {
   usdRateCache[currency] = rate;
   rateTimestamps.set(currency, Date.now());
 }
