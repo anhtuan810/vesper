@@ -34,3 +34,30 @@ export function validateMonetaryNarration(text: string, allowedFigures: string[]
   const allowed = new Set(allowedFigures.map(normFigure));
   return extractMonetaryNumbers(text).every((t) => allowed.has(t));
 }
+
+// Zero-cost tolerance for percent figures. The tools hand the model one-decimal
+// dot percents ("62.5%"); the two rewrites a model legitimately makes when
+// narrating — the correctly ROUNDED integer ("63%") and the comma-decimal twin
+// ("62,5%", the European style the rest of the reply is written in) — used to
+// count as fabrication and nuke the whole reply to a bare "Here's what I
+// found.". Same number, different spelling — admit both. Money amounts get NO
+// variants: a reformatted or rounded amount is a different figure and stays a
+// violation.
+export function withPercentTolerance(figures: string[]): string[] {
+  const out = new Set(figures);
+  for (const f of figures) {
+    const m = /^(\d+)\.(\d+)%$/.exec(f);
+    if (!m) continue;
+    out.add(`${m[1]},${m[2]}%`);
+    out.add(`${Math.round(Number(`${m[1]}.${m[2]}`))}%`);
+  }
+  return [...out];
+}
+
+/** The money/percent tokens in `text` that are NOT in the allowed set — the
+ *  exact violations (empty = narration passes), so a guardrail trip can be
+ *  logged with WHAT tripped it instead of a bare warning. */
+export function offendingMonetaryTokens(text: string, allowedFigures: string[]): string[] {
+  const allowed = new Set(allowedFigures.map(normFigure));
+  return extractMonetaryNumbers(text).filter((t) => !allowed.has(t));
+}

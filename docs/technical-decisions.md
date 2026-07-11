@@ -487,11 +487,15 @@ A full audit of the chat write/read path (the app's primary surface) and its UI.
 
 ## Automated Testing & Chat Behaviour Evals (2026-06)
 
-Three layers, mirroring how the chat works. Replaces the former "No tests" debt.
+Originally three layers; the two LIVE layers were **removed on 2026-07-11
+(owner decision — every run spent real Anthropic tokens)**. What remains is the
+hermetic per-commit layer. Do not recreate a live-API test — or anything that
+sends chat messages to a deployed app, whose server spends the production key —
+without the owner's explicit go-ahead; restoring the old evals means reverting
+their removal commit.
 
 - **Per-commit CI** (`.github/workflows/ci.yml`) — on every push to `main` and every PR: `npm run typecheck` (full `tsc --noEmit`) then `npm test`. `npm test` runs `scripts/run-tests.mjs`, which executes every `scripts/verify-*.ts` (pure, hermetic — no network / DB / LLM / secrets) and fails on any; new `verify-<name>.ts` files are picked up automatically. Covers acquisition-date parsing, chip sanitisation, tag extraction, the add/edit/remove + pension validators, net-worth-context presentation, plus the existing scenario / projection / cost-basis engines.
-- **Model eval** (`.github/workflows/chat-eval.yml`, **manual-trigger only**; no schedule, so it never spends tokens on its own). `scripts/eval-agent-chat.ts` (24 cases) runs the real agent loop against the real `CHAT_MODEL` with the production prompt + tool schemas and a stubbed tool executor, asserting the model's **decision only** (no DB / prices / auth) — which **tool calls** it makes (commit vs propose vs read vs scenario vs decline) — on robust safety invariants ("never silently mutate", "commit when complete") rather than brittle wording. (The tag flow's `eval-chat.ts` was deleted with the tag engine in the 2026-07 cost pass.) Needs the `ANTHROPIC_API_KEY` repo secret, skips cleanly without it, and stays off per-commit CI (token cost + non-determinism). Scenarios span batch list-adds, ambiguous listings/venues, single-add corner cases, edits/corrections/buy-more, removes, real estate, pension, cash/bonds, what-ifs, guardrails (advice boundary, no-live-prices, prompt injection, off-topic) and read-not-add traps.
-- **Demo read eval** (`scripts/eval-chat-demo.ts`, `.github/workflows/demo-eval.yml`) — **manual-trigger only**, **read-only**. Signs into the shared demo account (which reseeds the deterministic "Alex" portfolio), asks 8 questions through the real `/api/chat`, and asserts the answers contain the known seeded values (40 NVIDIA, 0.07 BTC, €26k cash, €34k pension, Amsterdam+Rotterdam, EUR, net worth ~€368k). Exercises the full path auth→DB→model→answer. Targets the **deployed** app (`APP_BASE_URL`, default `https://app.volnar.nl`; the server holds the demo creds + Anthropic key), so it **lags a fix until Vercel redeploys**. Uses ~8 of the shared demo account's 50 daily chat calls (the 20-message `DEMO_CHAT_DAILY_LIMIT` applies to per-visitor demo sessions, not this account) and **skips (never fails) on a 429**; only asks questions, never writes, so it cannot corrupt the shared account.
+- **Model eval + demo read eval — REMOVED (2026-07-11).** `scripts/eval-agent-chat.ts` (agent-loop decisions against the live `CHAT_MODEL`) and `scripts/eval-chat-demo.ts` (read-only Q&A through the deployed `/api/chat`), with their `chat-eval.yml`/`demo-eval.yml` manual workflows and `eval:agent`/`eval:demo` npm scripts. Both spent real Anthropic tokens per run — the model eval directly, the demo eval via the deployed server's key — and the owner has ruled out live-API testing entirely. Deleted in full; revert the removal commit only with the owner's explicit go-ahead.
 
 ## Mobile Foldable Vitals & Profile (2026-07)
 
@@ -1173,6 +1177,13 @@ pre-existing lint errors on `main`).
   those numbers — could you rephrase the question?" repeatedly. Now
   `validateMonetaryNarration` checks only money/percent tokens, and the no-card
   fallback is neutral, never an interrogative. See `narrate/guardrail.ts`.
+  **Update (2026-07-11):** the chat check now validates against
+  `withPercentTolerance(figures)` — each tool percent also admits its
+  comma-decimal twin and its correctly rounded integer ("62.5%" → "62,5%",
+  "63%"), the two legitimate same-number rewrites that still nuked whole replies
+  to a bare "Here's what I found."; money amounts remain verbatim-only, and the
+  Sentry event now carries the offending tokens so a trip is diagnosable
+  (`scripts/verify-guardrail-tolerance.ts` covers the contract).
 - **Post-add rebuild is visible and self-refreshing.** A past-dated add rebuilds the
   net-worth history (`backfillSnapshots`) and generates the new holdings' market
   notes in a background `after()` job, so the chart/journal lagged the reply and the

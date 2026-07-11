@@ -50,6 +50,14 @@
   user to complete, so applying it only ever gates genuinely-new signups; it never
   sends an existing user into onboarding.)
   See `docs/technical-decisions.md` → Supabase Tables for the schema of each.
+- **Live-API testing is REMOVED (2026-07-11, owner decision — cost).** Never run,
+  recreate, or wire up any test/eval that calls the real Anthropic API or sends
+  chat messages to a deployed app (whose server spends the production key). The
+  live evals (`scripts/eval-agent-chat.ts`, `scripts/eval-chat-demo.ts`, their
+  `chat-eval.yml`/`demo-eval.yml` workflows and `eval:agent`/`eval:demo` npm
+  scripts) were deleted; restoring them — or adding anything similar — needs the
+  owner's explicit go-ahead first. All routine verification is hermetic and free:
+  `npm test` (scripts/verify-*.ts), `npm run typecheck`, `eslint`, `next build`.
 - **The maintainer is non-technical and does not write or run code.** Claude makes
   all code changes, runs all commands (git, build, tests), and explains decisions
   in plain language rather than handing over steps to run.

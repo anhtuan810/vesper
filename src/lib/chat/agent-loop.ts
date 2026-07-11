@@ -11,7 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
 import { getUsdRates } from "@/lib/fx";
 import { type DisplayCurrency } from "@/lib/money";
-import { validateMonetaryNarration } from "@/lib/narrate/guardrail";
+import { offendingMonetaryTokens, withPercentTolerance } from "@/lib/narrate/guardrail";
 import { stripTags, timestampedPair } from "@/lib/chat-helpers";
 import { generateMarketContext } from "@/lib/market-context";
 import { mapWithConcurrency } from "@/lib/concurrency";
@@ -272,8 +272,13 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   // with a confusing "rephrase the question?" right after the user had answered.
   // Without a card there's nothing to fall back to, so use a neutral line, never
   // an interrogative that reads as a non-sequitur.
-  if (figures.length > 0 && !validateMonetaryNarration(finalText, figures)) {
-    Sentry.captureMessage("agent narration failed numeric guardrail", "warning");
+  // Percent figures are matched with tolerance (rounded integer / comma-decimal
+  // twins) — a legitimate "62.5% → 63%" rewrite must not erase the reply; money
+  // amounts still have to match a tool figure verbatim. The Sentry event carries
+  // the offending tokens, so a trip is diagnosable instead of a bare warning.
+  const offending = figures.length > 0 ? offendingMonetaryTokens(finalText, withPercentTolerance(figures)) : [];
+  if (offending.length > 0) {
+    Sentry.captureMessage("agent narration failed numeric guardrail", { level: "warning", extra: { offending } });
     finalText = card ? "Here are the figures from the calculation:" : "Here's what I found.";
   }
 
