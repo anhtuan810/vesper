@@ -11,7 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
 import { getUsdRates } from "@/lib/fx";
 import { type DisplayCurrency } from "@/lib/money";
-import { offendingMonetaryTokens, withPercentTolerance } from "@/lib/narrate/guardrail";
+import { extractMonetaryNumbers, offendingMonetaryTokens, withPercentTolerance } from "@/lib/narrate/guardrail";
 import { stripTags, timestampedPair } from "@/lib/chat-helpers";
 import { generateMarketContext } from "@/lib/market-context";
 import { mapWithConcurrency } from "@/lib/concurrency";
@@ -31,8 +31,8 @@ export const AGENT_SYSTEM = `You are Volnar's portfolio assistant. Converse natu
 
 FORMATTING: make replies scan — **bold** every concrete figure (amounts, percentages, dates) and every position/asset name you mention, *italics* sparingly for a word of emphasis. No other markdown: no headers, no code blocks, no tables, no links.
 
-You reason over the conversation, but you NEVER compute a figure yourself and you NEVER change the portfolio yourself. Call tools for every number and every write, and state only numbers a tool returned THIS turn.
-FIGURES ARE VERBATIM-ONLY: copy each one character-for-character as the tool returned it — same digits, same separators (they are pre-formatted for the user's locale; never re-punctuate "€12.345" into "€12,345"), same decimals. Never add, subtract, total, average, round a money amount, or convert figures yourself — if you want a total or a derived number, use the one the tool returned (get_holdings and get_vitals both return netWorth) or call the tool that has it. Any number in your reply that no tool returned causes the ENTIRE reply to be discarded unseen — when unsure, describe without the number.
+You reason over the conversation, but you NEVER compute a figure yourself and you NEVER change the portfolio yourself. Call tools for every number and every write, and state only numbers that came from a tool result, from the user's own words, or from earlier in this conversation — never a number you derived or estimated yourself.
+FIGURES ARE VERBATIM-ONLY: copy each one character-for-character as it appeared — same digits, same separators (they are pre-formatted for the user's locale; never re-punctuate "€12.345" into "€12,345"), same decimals. Never add, subtract, total, average, round a money amount, or convert figures yourself — if you want a total or a derived number, use the one the tool returned (get_holdings and get_vitals both return netWorth) or call the tool that has it. Prefer a fresh tool figure over one from earlier in the thread (the portfolio moves). A reply containing a number from nowhere is discarded unseen — when unsure, describe without the number.
 
 Reading the portfolio: get_net_worth, get_holdings, get_vitals.
 What-ifs (read-only, never mutate): present_scenario (rearrange current holdings), future_projection (project forward or solve for a contribution), counterfactual (a HELD tradeable's contribution), hypothetical_buy (standalone growth of a past purchase of any asset, held or not).
@@ -190,6 +190,18 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
 
   const messages: Anthropic.Messages.MessageParam[] = [...history, { role: "user", content: userContent }];
 
+  // Figures already visible in this conversation are fair game to reference
+  // again: an assistant turn passed this same guardrail when it was produced,
+  // and a number the user typed is their own data. Without these, any follow-up
+  // that echoed the previous answer ("…of your €365.448 net worth") was treated
+  // as fabrication and the whole reply discarded — a curt one-liner right after
+  // a perfectly good answer. Fabrication remains a number appearing from
+  // NOWHERE: not from a tool this turn, not on screen, not typed by the user.
+  const conversationFigures = [
+    ...extractMonetaryNumbers(csvText ? `${baseText}\n${csvText}` : baseText),
+    ...history.flatMap((h) => (typeof h.content === "string" ? extractMonetaryNumbers(h.content) : [])),
+  ];
+
   // During first-run onboarding, append the scope block so the assistant does asset
   // setup only (no scenarios / general Q&A) and stays on the chosen asset. Normal
   // chat is untouched, so its cached system prefix is unchanged.
@@ -288,7 +300,9 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
   // twins) — a legitimate "62.5% → 63%" rewrite must not erase the reply; money
   // amounts still have to match a tool figure verbatim. The Sentry event carries
   // the offending tokens, so a trip is diagnosable instead of a bare warning.
-  const offending = figures.length > 0 ? offendingMonetaryTokens(finalText, withPercentTolerance(figures)) : [];
+  const offending = figures.length > 0
+    ? offendingMonetaryTokens(finalText, withPercentTolerance([...figures, ...conversationFigures]))
+    : [];
   if (offending.length > 0) {
     Sentry.captureMessage("agent narration failed numeric guardrail", { level: "warning", extra: { offending } });
     finalText = card

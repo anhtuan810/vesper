@@ -18,6 +18,7 @@ import {
   withPercentTolerance,
   offendingMonetaryTokens,
   validateMonetaryNarration,
+  extractMonetaryNumbers,
 } from "../src/lib/narrate/guardrail";
 import { figureLines } from "../src/lib/chat/figure-fallback";
 import { formatMoney } from "../src/lib/money";
@@ -86,6 +87,29 @@ check(
   offendingMonetaryTokens("You have 18 positions, the oldest from 2 years ago.", allowed).length === 0,
 );
 check("clean reply reports no offenders", offendingMonetaryTokens("Nicely spread overall.", allowed).length === 0);
+
+// ── Cross-turn quoting: conversation-visible figures join the allowlist ──────
+// The agent loop seeds the allowed set with extractMonetaryNumbers over the
+// user's message and the recent thread, so a follow-up can echo the previous
+// answer's own numbers ("…of your €365.448 net worth") without being erased.
+const prevAnswer =
+  "**Property** makes up **68.4%** of your **€365.448** net worth, with **Reserves** at **16.4%**.";
+const conversationFigures = extractMonetaryNumbers(prevAnswer);
+const followUpReply = "Apple has added **€22.000** overall — a small slice next to your **€365.448** net worth.";
+const toolFigures = ["€22.000"];
+check(
+  "follow-up echoing the previous answer passes once conversation figures are seeded",
+  offendingMonetaryTokens(followUpReply, withPercentTolerance([...toolFigures, ...conversationFigures])).length === 0,
+);
+check(
+  "the same follow-up FAILS on tool figures alone (why the seeding exists)",
+  offendingMonetaryTokens(followUpReply, withPercentTolerance(toolFigures)).includes("€365.448"),
+);
+check(
+  "a from-nowhere number still offends even with conversation figures seeded",
+  offendingMonetaryTokens("Apple is **€99.999** of it.", withPercentTolerance([...toolFigures, ...conversationFigures]))
+    .includes("€99.999"),
+);
 
 // ── Verified-figure fallback renderer ────────────────────────────────────────
 const vitals = {

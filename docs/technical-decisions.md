@@ -1194,9 +1194,14 @@ pre-existing lint errors on `main`).
   otherwise; (5) when the guardrail still trips (or the model returns no text),
   the reply falls back to **deterministic verified-figure lines** rendered from
   the last read tool's result (`src/lib/chat/figure-fallback.ts`) — never again
-  a bare "Here's what I found." with nothing behind it. The Sentry event now
-  carries the offending tokens so any future trip names its cause.
-  (`scripts/verify-guardrail-tolerance.ts` covers the whole contract.)
+  a bare "Here's what I found." with nothing behind it; (6) **conversation-
+  visible figures join the allowlist** — numbers the user typed this turn or
+  that appear in the recent thread (assistant turns passed this same guardrail
+  when produced), so a follow-up can echo the previous answer ("…of your
+  €365.448 net worth") without being erased; fabrication remains a number from
+  NOWHERE. The Sentry event now carries the offending tokens so any future
+  trip names its cause. (`scripts/verify-guardrail-tolerance.ts` covers the
+  whole contract.)
 - **Post-add rebuild is visible and self-refreshing.** A past-dated add rebuilds the
   net-worth history (`backfillSnapshots`) and generates the new holdings' market
   notes in a background `after()` job, so the chart/journal lagged the reply and the
