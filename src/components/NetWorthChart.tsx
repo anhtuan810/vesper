@@ -7,7 +7,7 @@ import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } f
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
-import { computeNiceLevels, timeFractions, nearestIndexForFraction } from "@/lib/networth-axis";
+import { computeNiceLevels, timeFractions, nearestIndexForFraction, thinMarkerDots } from "@/lib/networth-axis";
 
 export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -179,6 +179,13 @@ const CHART_PAD_BOTTOM = 8;  // same — prevents clipping when current value is
 // Finger travel (px) below which a touch counts as a tap, not a scrub — a tap
 // on a decision dot commits it; a drag reads the value along the line.
 const TAP_SLOP = 8;
+// Minimum on-screen gap (viewBox px) between two rendered journal dots. On a
+// long range (the default "All" spans the whole multi-year history) a burst of
+// recent entries — e.g. a run of market swings all inside the last few weeks —
+// otherwise collapses onto the same handful of pixels at the right edge and
+// piles into one unreadable, untappable smudge. Denser-than-this dots are
+// thinned (see markerDots) so each rendered marker stays legible and tappable.
+const MARKER_MIN_GAP = 7;
 
 function buildPath(
   values: number[], W: number, H: number, yMin: number, yMax: number, xs: number[]
@@ -528,9 +535,13 @@ export function NetWorthChart(props: Props) {
         dots.push({ id: mk.id, x: xs[best], y: projectY(values[best]), kind: mk.kind ?? "you", title: mk.title, sub: mk.sub, value: mk.value, net: values[best] });
       }
     }
-    return dots;
+    // De-cluster: a crowd of near-coincident entries (a run of recent market
+    // swings piling onto the right edge of the long "All" view) collapses into
+    // one unreadable, untappable smudge otherwise. Thin to a minimum on-screen
+    // gap so each rendered marker stays legible — see thinMarkerDots.
+    return thinMarkerDots(dots, props.selectedMarkerId, MARKER_MIN_GAP);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markerMode, values, displaySeries, props.markers, xs, H, niceMin, niceMax]);
+  }, [markerMode, values, displaySeries, props.markers, props.selectedMarkerId, xs, H, niceMin, niceMax]);
 
   // The marker nearest the pointer's x — used so hovering anywhere along the line
   // previews the closest entry (dots can be dense), not only exact dot hits.

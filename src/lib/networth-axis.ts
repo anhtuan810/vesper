@@ -107,6 +107,47 @@ export function timeFractions(dates: string[]): number[] {
   });
 }
 
+// ── Journal-marker de-clustering ─────────────────────────────────────────────
+//
+// The chart plots one dot per journal entry at its date's x. On a long range
+// (the default "All" spans the whole multi-year history) a burst of recent
+// entries — e.g. a run of market swings all inside the last few weeks — collapses
+// onto the same handful of pixels at the right edge and piles into a single
+// unreadable, untappable smudge. This is why recent market events looked
+// "missing" on the Overview graph even though the journal listed them all.
+//
+// Thin the dots to a minimum on-screen gap so each rendered marker stays legible
+// and tappable. Kept in priority order — the selected entry (never dropped, so
+// its guide/halo always renders), then the user's own decisions, then market
+// swings — and, within a tier, first-listed wins (the caller lists market swings
+// newest-first, so the most recent survive). Dropped entries stay in the journal
+// and spread apart on shorter ranges. Time-true: a kept dot stays at its real x
+// (never nudged off its date); occluded neighbours are simply omitted. The
+// returned subset preserves the input order for a stable render/z-stack.
+//
+// Pure + exported so scripts/verify-marker-declutter.ts can exercise it without React.
+export function thinMarkerDots<T extends { id: string; x: number; kind: "you" | "market" }>(
+  dots: T[],
+  selectedId: string | null | undefined,
+  minGap: number,
+): T[] {
+  if (dots.length < 2) return dots;
+  const priority = (d: T) => (d.id === selectedId ? 0 : d.kind === "you" ? 1 : 2);
+  // Stable by (priority, original index) — decide keeps highest-priority first,
+  // ties broken by input order, independent of the engine's sort stability.
+  const ordered = dots
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => priority(a.d) - priority(b.d) || a.i - b.i);
+  const keptX: number[] = [];
+  const keptIds = new Set<string>();
+  for (const { d } of ordered) {
+    if (keptX.some((x) => Math.abs(x - d.x) < minGap)) continue;
+    keptX.push(d.x);
+    keptIds.add(d.id);
+  }
+  return dots.filter((d) => keptIds.has(d.id));
+}
+
 // Nearest point index for a pointer at x fraction `f` (0..1) over time-true
 // positions — the scrub/tap inverse of timeFractions. Positions are sorted
 // ascending, so a linear scan with early exit is O(k) to the answer.
