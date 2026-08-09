@@ -114,6 +114,11 @@ interface Props {
   // Whether the Liquid-only view is active — gates the intraday 1D pill (enabled
   // only here, never by trackingSinceDate).
   liquidOnly?: boolean;
+  // Provisional "building" curve: a rough client-side estimate shown right after
+  // a back-dated asset is added, until the accurate server reconstruction lands
+  // (see PortfolioTab / networth-estimate.ts). Renders as a single dashed line
+  // (no stacked bands — its points carry only totals) so it reads as an estimate.
+  estimated?: boolean;
   // Journal markers: a dot per entry drawn on the line at its date. When provided
   // (desktop Overview only) the chart enters a two-layer selection mode — moving
   // the pointer PREVIEWS the nearest entry (a small box appears next to it),
@@ -294,7 +299,7 @@ export function buildSeries(raw: SnapshotPoint[], currentNet: number, todayBreak
 }
 
 export function NetWorthChart(props: Props) {
-  const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate, lineOnly, liquidOnly } = props;
+  const { range, onRangeChange, series, loading, valuesSettled, realPointCount, trackingSinceDate, lineOnly, liquidOnly, estimated } = props;
   // Strip the live tip (last point = today's netTotal) until values are fully settled,
   // so the chart doesn't redraw as netTotal steps through intermediate states.
   // Memoized so the slice doesn't mint a new reference on every scrub re-render
@@ -433,8 +438,10 @@ export function NetWorthChart(props: Props) {
     [converted, lineOnly],
   );
   // True whenever the chart should render as a single zoomed line + gradient
-  // (Liquid, or a single-band net worth) rather than a 0-anchored stacked area.
-  const renderAsLine = lineOnly || singleBand;
+  // (Liquid, a single-band net worth, or the provisional "estimated" curve —
+  // whose points carry only totals, no per-band breakdown) rather than a
+  // 0-anchored stacked area.
+  const renderAsLine = lineOnly || singleBand || !!estimated;
 
   // Y domain fits the visible (range-clipped) series — recomputed on every range
   // switch. The chart no longer prints a y-axis label column, so the domain no
@@ -862,6 +869,9 @@ export function NetWorthChart(props: Props) {
                 strokeWidth={1.75}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                // A provisional estimate reads as a dashed, slightly faded line so
+                // it's visibly not the settled history.
+                {...(estimated ? { strokeDasharray: "5 4", strokeOpacity: 0.75 } : {})}
                 {...(props.revealLine ? { pathLength: 1, className: "nw-line-draw" } : {})}
               />
               {/* Static end-point marker — hidden while scrubbing a non-last point,

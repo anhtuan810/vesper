@@ -10,6 +10,7 @@ import { parseBuyYear, normalizeIndex } from "@/lib/property-estimate";
 import { effectivePropertyCountry } from "@/lib/country-currency";
 import { getCachedPriceSeries } from "@/lib/price-history-cache";
 import { getCachedHistoricalUsdRates } from "@/lib/fx-history-cache";
+import { clampHistoryStart } from "@/lib/networth-estimate";
 
 export async function writeSnapshot(userId: string): Promise<void> {
   try {
@@ -824,10 +825,18 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     const assetDates = assets.map((a) => (a.created_at as string).slice(0, 10));
     const allDates = [...datedDates, ...assetDates].filter(Boolean);
     if (allDates.length === 0) return "skip:no-dated-history";
-    const earliest = allDates.sort()[0];
+    const rawEarliest = allDates.sort()[0];
 
     const todayStr = new Date().toISOString().slice(0, 10);
-    if (earliest >= todayStr) return "skip:earliest-not-before-today:" + earliest;
+    if (rawEarliest >= todayStr) return "skip:earliest-not-before-today:" + rawEarliest;
+
+    // Clamp the reconstruction to at most MAX_HISTORY_YEARS (30) back — the
+    // longest a mortgage runs. A legitimately old holding still gets a full
+    // lifetime, but a data-entry typo (a house "bought" in 1850, an occurred_at
+    // off by a millennium) can't generate centuries of monthly rows. Mirrors the
+    // client estimate's floor so the provisional and the real curve agree on how
+    // far back the axis goes.
+    const earliest = clampHistoryStart(rawEarliest, todayStr);
 
     // Per-asset acquisition date — the "add" mutation's occurred_at (= buy_date
     // when stated). This is the basis non-tradeable types backfill flat from;

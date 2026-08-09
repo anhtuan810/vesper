@@ -28,6 +28,8 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { firstSnapshotDate } from "@/lib/networth-history";
+import { buildProvisionalTotals, type PendingRamp } from "@/lib/networth-estimate";
+import { usePortfolioBuilding } from "@/lib/portfolio-build";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_COLOR, CATEGORY_ORDER, ALL_CATEGORIES,
 } from "@/lib/categories";
@@ -432,7 +434,105 @@ export function PortfolioTab({
   // Phase B series; net worth → unchanged.
   const heroTotal = liquidOnly ? liquidTotal : netTotal;
   const heroSeriesActive = !liquidOnly ? heroSeries : isIntraday ? intradaySeries : liquidSeries;
-  const chartSeriesActive = !liquidOnly ? series : isIntraday ? intradaySeries : liquidSeries;
+
+  // True while a back-dated add's history reconstruction is in flight (set by the
+  // chat/add flow via watchPortfolioBuild) — the precise window to show the
+  // estimated curve in.
+  const building = usePortfolioBuilding();
+
+  // ── Provisional "building" history ──────────────────────────────────────────
+  // Right after a back-dated asset is added, today's total already includes it
+  // but the stored history points don't yet — the accurate reconstruction
+  // (backfillSnapshots) runs in the background — so the raw net-worth line shows
+  // a flat stretch then a spike into today. Detect the un-historized value per
+  // asset type (today's live equity minus what the latest snapshot already
+  // carries for that type) and, while it's material, show an ESTIMATED curve that
+  // ramps each such asset back across the existing history. It self-clears the
+  // instant the reconstruction lands (the excess collapses to ~0, so this returns
+  // null and the real series takes over). See src/lib/networth-estimate.ts.
+  const provisionalSeries = useMemo<SnapshotPoint[] | null>(() => {
+    if (liquidOnly) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const realClipped = clipToRange(fullSnapshots, range).filter((p) => p.date !== today);
+    // A cold start (no real history to lift) stays with the existing
+    // "Building your history…" card rather than a fabricated line.
+    if (realClipped.length === 0) return null;
+    const latest = realClipped[realClipped.length - 1];
+
+    // Group the user's back-dated holdings by type, then take each type's
+    // un-historized excess (live equity − what the latest snapshot carries).
+    const equityDisplay = (a: LiveAsset): number => {
+      const eq = a.type === "real_estate" ? Math.max(0, a.value - computeCurrentBalance(a)) : a.value;
+      return toDisplay(eq, a.currency || "USD", displayCurrency) ?? 0;
+    };
+    const byType = new Map<string, LiveAsset[]>();
+    for (const a of netWorthAssets) {
+      if (!a.buy_date || a.buy_date >= today) continue;
+      const group = byType.get(a.type);
+      if (group) group.push(a);
+      else byType.set(a.type, [a]);
+    }
+    const ramps: PendingRamp[] = [];
+    for (const [type, group] of byType) {
+      const liveEquity = todayBreakdown[type] ?? 0;
+      const histDisplay = toDisplay(latest.breakdown?.[type] ?? 0, "USD", displayCurrency) ?? 0;
+      const excess = liveEquity - histDisplay;
+      // Ignore normal market drift — only a genuinely un-historized holding
+      // (a just-added back-dated asset) clears both floors.
+      if (excess < 1000 || excess < netTotal * 0.02) continue;
+      const groupCur = group.reduce((s, a) => s + equityDisplay(a), 0);
+      if (groupCur <= 0) continue;
+      for (const a of group) {
+        const buyDate = a.buy_date!.length === 7 ? `${a.buy_date}-01` : a.buy_date!;
+        ramps.push({
+          excess: excess * (equityDisplay(a) / groupCur),
+          asset: {
+            buyDate,
+            buyPrice: toDisplay(a.buy_price ?? a.value, a.currency || "USD", displayCurrency) ?? 0,
+            currentValue: toDisplay(a.value, a.currency || "USD", displayCurrency) ?? 0,
+            mortgage: a.type === "real_estate" && a.mortgage_balance
+              ? {
+                  balance: toDisplay(a.mortgage_balance, a.currency || "USD", displayCurrency) ?? 0,
+                  recordedAt: a.mortgage_balance_recorded_at ?? null,
+                  rate: a.mortgage_rate ?? null,
+                  monthlyPayment: toDisplay(a.monthly_payment ?? 0, a.currency || "USD", displayCurrency) ?? 0,
+                  type: a.mortgage_type ?? null,
+                }
+              : null,
+          },
+        });
+      }
+    }
+    if (ramps.length === 0) return null;
+
+    // Only actually show the estimate when a reconstruction is genuinely in
+    // flight (`building`, set by the chat/add flow) OR when the gap is far too
+    // large to be a market move (a manual add of a big back-dated asset, where
+    // no building flag is raised). This keeps a normal up/down day — which also
+    // makes today's live total exceed yesterday's snapshot — from ever drawing a
+    // dashed "estimated" line.
+    const totalExcess = ramps.reduce((s, r) => s + r.excess, 0);
+    if (!building && totalExcess <= netTotal * 0.10) return null;
+
+    const liveRates = buildLiveRates();
+    const realDisplay = realClipped.map((p) => ({ date: p.date, total: convertPointToDisplay(p, displayCurrency, liveRates) }));
+    const provisional = buildProvisionalTotals(realDisplay, ramps, today);
+    // Wrap for the chart: a display-tagged native_breakdown makes the chart's
+    // per-point conversion an identity (same trick as liquidSeries). Then append
+    // today's live tip so the ramp lands exactly on the current value.
+    const out: SnapshotPoint[] = provisional.map((pt) => ({
+      date: pt.date,
+      total_value: pt.total,
+      native_breakdown: { [displayCurrency]: pt.total },
+    }));
+    out.push({ date: today, total_value: netTotal, native_breakdown: { [displayCurrency]: netTotal } });
+    return out;
+  }, [liquidOnly, fullSnapshots, range, netWorthAssets, todayBreakdown, netTotal, displayCurrency, building]);
+
+  const showProvisional = !liquidOnly && !isIntraday && provisionalSeries != null;
+  const chartSeriesActive = liquidOnly
+    ? (isIntraday ? intradaySeries : liquidSeries)
+    : (showProvisional ? provisionalSeries! : series);
 
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
@@ -718,12 +818,21 @@ export function PortfolioTab({
               historyPending={historyPending}
               lineOnly={liquidOnly}
               liquidOnly={liquidOnly}
-              markers={isIntraday ? undefined : markers}
+              estimated={showProvisional}
+              // Decision dots can't sit on an estimated line (its points aren't
+              // real snapshots and can't be rewound into) — hide them until the
+              // reconstruction lands and the real curve returns.
+              markers={isIntraday || showProvisional ? undefined : markers}
               selectedMarkerId={activeMarkerId}
               onMarkerClick={onMarkerClick}
               onNow={exitToNow}
               revealLine={reveal}
             />
+            {showProvisional && (
+              <p style={{ margin: "6px 2px 0", fontFamily: "var(--font-numeric)", fontSize: "var(--fs-micro)", color: "var(--text-faint)", lineHeight: 1.3 }}>
+                Estimated — building your full history from your records…
+              </p>
+            )}
           </div>
         )}
       </div>

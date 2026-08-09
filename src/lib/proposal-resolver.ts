@@ -7,7 +7,7 @@ import { getUsdRates } from "./fx";
 import { estimatePropertyValue } from "./property-estimate-resolve";
 import { validatePensionChange, buildPensionEcho } from "./pension-intake";
 import { validateRealEstateChange } from "./real-estate-intake";
-import { parseAcquisitionMonth } from "./acquisition-date";
+import { parseAcquisitionMonth, checkAcquisitionDate } from "./acquisition-date";
 
 export type ProposalChange = {
   action: "add" | "edit" | "remove";
@@ -214,6 +214,17 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
         ? `Add ${name}\n${parts.map((p) => `- ${p}`).join("\n")}`
         : `Add ${name}`;
 
+      // A purchase date that's in the future or wildly old is almost always a
+      // typo (a mistyped year). Flag it right in the confirm block so the user
+      // can catch it before saving — the existing "Confirm and save" chip then
+      // doubles as the confirmation, so a genuine (rare) old date still saves in
+      // one step with no loop. The 30-year graph clamp already bounds any
+      // history it would build; this just prevents a silently-wrong date.
+      const dateCheck = checkAcquisitionDate(typeof proposal.buy_date === "string" ? proposal.buy_date : null);
+      const dateWarn = dateCheck.ok
+        ? ""
+        : `\n\n⚠ The purchase date (${proposal.buy_date}) looks ${dateCheck.reason === "future" ? "like it's in the future" : "unusually far in the past"} — please confirm it's right, or correct the year before saving.`;
+
       // Indicative current value: a logged purchase (price + date) but no stated
       // value. The figure is computed by the deterministic estimate engine — the
       // model never produces it. Falls through silently when unavailable so the
@@ -223,11 +234,11 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
         const est = await estimatePropertyValue({ address, country, buyPrice, buyDate: proposal.buy_date });
         if (est.available && est.currentEstimate != null) {
           const since = est.clamped ? "1995" : String(proposal.buy_date).slice(0, 4);
-          return `${base}\n\nCurrent value: about ${money(est.currentEstimate)} — indicative, based on ${est.regionName} price trends since ${since}, not an appraisal. Confirm, or give your own figure.`;
+          return `${base}\n\nCurrent value: about ${money(est.currentEstimate)} — indicative, based on ${est.regionName} price trends since ${since}, not an appraisal. Confirm, or give your own figure.${dateWarn}`;
         }
       }
 
-      return base;
+      return base + dateWarn;
     }
 
     // Simple value-based classes (cash / savings, bonds, other) — plus a typeless

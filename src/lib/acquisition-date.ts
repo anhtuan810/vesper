@@ -212,3 +212,37 @@ export function parseAcquisitionMonth(raw: string | null | undefined): string | 
 export function isTrackFromNow(raw: string | null | undefined): boolean {
   return raw != null && TRACK_FROM_NOW.test(raw.trim());
 }
+
+// Beyond this age a stated purchase date is almost certainly a data-entry
+// mistake (a mistyped year like 1014, a wrong century) rather than a real
+// long-held asset, so the add flow asks the user to confirm it. Deliberately
+// generous — a genuine decades-old inheritance (say 1975) still saves without a
+// prompt; only clearly-wrong dates are questioned. The graph itself never
+// reconstructs further than MAX_HISTORY_YEARS regardless (networth-estimate.ts).
+export const MAX_PLAUSIBLE_AGE_YEARS = 100;
+
+export type DateImplausibility = "future" | "too_old";
+
+/**
+ * Judges an ALREADY-RESOLVED acquisition date (YYYY-MM-DD or YYYY-MM) for
+ * data-entry plausibility — the complement to parseAcquisitionMonth, which turns
+ * a phrase into a date. Returns { ok: false, reason } for a date the add flow
+ * should ask the user to confirm before saving: one in the future, or older than
+ * MAX_PLAUSIBLE_AGE_YEARS. Unparseable input is treated as ok (not this
+ * function's job to reject — parseAcquisitionMonth already gates recognition).
+ */
+export function checkAcquisitionDate(
+  date: string | null | undefined,
+  todayStr: string = new Date().toISOString().slice(0, 10),
+): { ok: boolean; reason?: DateImplausibility } {
+  if (!date) return { ok: true };
+  const iso = date.length === 7 ? `${date}-01` : date;
+  const t = Date.parse(iso.length > 10 ? iso : `${iso}T12:00:00Z`);
+  if (!Number.isFinite(t)) return { ok: true };
+  const today = Date.parse(`${todayStr}T12:00:00Z`);
+  if (t > today) return { ok: false, reason: "future" };
+  const floor = new Date(`${todayStr}T12:00:00Z`);
+  floor.setUTCFullYear(floor.getUTCFullYear() - MAX_PLAUSIBLE_AGE_YEARS);
+  if (t < floor.getTime()) return { ok: false, reason: "too_old" };
+  return { ok: true };
+}

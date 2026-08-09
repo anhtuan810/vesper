@@ -7,7 +7,7 @@
 // a future month must never resolve (no held-since-the-future positions, and no
 // fabricated "historical" price from the nearest available close).
 
-import { parseAcquisitionMonth, isTrackFromNow } from "../src/lib/acquisition-date";
+import { parseAcquisitionMonth, isTrackFromNow, checkAcquisitionDate, MAX_PLAUSIBLE_AGE_YEARS } from "../src/lib/acquisition-date";
 
 let failures = 0;
 function check(label: string, cond: boolean, detail = "") {
@@ -123,6 +123,26 @@ console.log("Future months never resolve (no held-since-the-future positions):")
   // The current month is allowed (it is not in the future).
   const nowMonth = new Date().toISOString().slice(0, 7);
   check(`current month "${nowMonth}-15" allowed`, parseAcquisitionMonth(`${nowMonth}-15`) === `${nowMonth}-15`, String(parseAcquisitionMonth(`${nowMonth}-15`)));
+}
+
+console.log("\nPlausibility check — when the add flow should ask to confirm a date:");
+{
+  const TODAY = "2026-08-09";
+  check("a normal recent date is ok", checkAcquisitionDate("2014-08-01", TODAY).ok);
+  check("a month-precision date is ok", checkAcquisitionDate("2014-08", TODAY).ok);
+  check("a decades-old but real date (1975) still saves without a prompt", checkAcquisitionDate("1975-06-01", TODAY).ok);
+  check("today is ok", checkAcquisitionDate(TODAY, TODAY).ok);
+  const future = checkAcquisitionDate("2027-01-01", TODAY);
+  check("a future date is flagged", !future.ok && future.reason === "future", JSON.stringify(future));
+  const typo = checkAcquisitionDate("1014-08-01", TODAY);
+  check("a mistyped year (1014) is flagged too_old", !typo.ok && typo.reason === "too_old", JSON.stringify(typo));
+  check("a wrong-century date (1850) is flagged", !checkAcquisitionDate("1850-01-01", TODAY).ok);
+  check(`the cutoff is ${MAX_PLAUSIBLE_AGE_YEARS}y`, MAX_PLAUSIBLE_AGE_YEARS === 100);
+  check("just inside the window is ok", checkAcquisitionDate("1930-01-01", TODAY).ok);
+  check("just outside the window is flagged", !checkAcquisitionDate("1920-01-01", TODAY).ok);
+  // Degenerate input isn't this function's job to reject (parse gate handles recognition).
+  check("null → ok", checkAcquisitionDate(null, TODAY).ok);
+  check("garbage → ok", checkAcquisitionDate("not-a-date", TODAY).ok);
 }
 
 console.log(failures === 0 ? "\nAll acquisition-date checks passed." : `\n${failures} check(s) failed.`);
