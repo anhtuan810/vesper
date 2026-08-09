@@ -35,7 +35,13 @@ export async function GET(req: NextRequest) {
   // here also fills the chart.
   const backfillStatus = await backfillSnapshots(user.id);
 
-  const afterRes = await supabase.from("snapshots").select("date").eq("user_id", user.id);
+  // Ordered, so `earliest`/`latest` below read straight off the ends — this
+  // query runs AFTER the rebuild, on purpose: reporting the pre-rebuild `snaps`
+  // dates here was a real bug (not just cosmetic) — the one field a caller most
+  // wants to trust to confirm a rebuild worked was reporting last request's
+  // stale state, which read as "earliest is still 2017" on a run that had just
+  // corrected it to 2023.
+  const afterRes = await supabase.from("snapshots").select("date").eq("user_id", user.id).order("date", { ascending: true });
   const after = afterRes.data ?? [];
   const historicalAfter = after.filter((s) => s.date < today).length;
 
@@ -53,10 +59,13 @@ export async function GET(req: NextRequest) {
       earliestMutationDate: earliestMutation,
       snapshots: {
         totalBefore: snaps.length,
+        totalAfter: after.length,
         historicalBefore,
         historicalAfter,
-        earliest: snaps[0]?.date ?? null,
-        latest: snaps[snaps.length - 1]?.date ?? null,
+        // Both post-rebuild — this is the CURRENT state, matching what the
+        // chart will show on reload, not what it looked like before this request.
+        earliest: after[0]?.date ?? null,
+        latest: after[after.length - 1]?.date ?? null,
       },
     },
     { headers: { "Cache-Control": "no-store" } },
