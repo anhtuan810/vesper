@@ -1114,9 +1114,38 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       if (row) rows.push(row);
     }
 
+    // THE INVARIANT: no snapshot may predate `earliest` — the first date the
+    // CURRENT book reaches. Every row from here forward is recomputed from that
+    // book, so a row older than it cannot be recomputed and cannot be right: it
+    // is residue of a holding that has since been ERASED (a hard-deleted
+    // "mistake"). Nothing else can produce one — a *sold* asset keeps its row, so
+    // it keeps its dates inside `earliest`.
+    //
+    // This is what the "removed the house and the graph broke" report was. The
+    // rebuild's delete window is clamped up to `earliest` (see rebuildStart
+    // below) so it only ever deletes what it can replace — which meant removing
+    // the OLDEST holding stranded every year it alone occupied. Those rows
+    // survived verbatim, still carrying their property band, and the freshly
+    // rebuilt markets-only history began years later: a multi-year house-shaped
+    // hump ending in a cliff, with no asset anywhere in the book to explain it.
+    // Sweeping them here fixes both the removal that causes it and any account
+    // already carrying the residue (see the cron's self-heal gate). Gated on a
+    // non-empty recompute, so a transient all-null valuation can never turn this
+    // into "delete the history and write nothing".
+    if (rows.length > 0) {
+      const { error: sweepError } = await supabase
+        .from("snapshots")
+        .delete()
+        .eq("user_id", userId)
+        .lt("date", earliest);
+      if (sweepError) throw sweepError;
+    }
+
     if (rebuildFrom) {
       // Rebuild range is [rebuildFrom, todayStr) — today's row belongs to the
-      // live cron (writeSnapshot), never touched here.
+      // live cron (writeSnapshot), never touched here. Clamped up to `earliest`
+      // so the delete never outruns the recompute; the window BELOW `earliest`
+      // is the sweep's job, not this branch's.
       const rebuildStart = rebuildFrom < earliest ? earliest : rebuildFrom;
 
       // Pre-existing rows in the rebuild range may include dates the standard
@@ -1189,4 +1218,43 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     });
     return "error:" + (err instanceof Error ? err.message : String(err));
   }
+}
+
+// The earliest date the user's CURRENT book can justify a snapshot for — the
+// same inputs backfillSnapshots derives `earliest` from (dated mutations, asset
+// created_at), plus each asset's stated buy_date. Including buy_date can only
+// pull the floor EARLIER than the rebuild's own `earliest`, which is the safe
+// direction: a floor that is too early merely fails to notice residue (the next
+// rebuild sweeps it anyway), whereas a floor that is too late would report
+// healthy history as residue and re-rebuild it every single day.
+//
+// Read-only. Returns null when there is nothing to date the book from (no
+// assets, no dated mutations) — callers must treat that as "can't tell", never
+// as "everything is residue".
+export async function bookFloorDate(userId: string): Promise<string | null> {
+  const supabase = createServerSupabase();
+  const [assetsRes, mutationRes] = await Promise.all([
+    supabase.from("assets").select("created_at, buy_date").eq("user_id", userId),
+    supabase
+      .from("mutations")
+      .select("occurred_at")
+      .eq("user_id", userId)
+      .not("occurred_at", "is", null)
+      .order("occurred_at", { ascending: true })
+      .limit(1),
+  ]);
+  if (assetsRes.error) throw assetsRes.error;
+  if (mutationRes.error) throw mutationRes.error;
+
+  const candidates: string[] = [];
+  for (const a of assetsRes.data ?? []) {
+    if (a.created_at) candidates.push((a.created_at as string).slice(0, 10));
+    const buy = normalizeBuyDate(a.buy_date as string | null);
+    if (buy) candidates.push(buy);
+  }
+  for (const m of mutationRes.data ?? []) {
+    if (m.occurred_at) candidates.push((m.occurred_at as string).slice(0, 10));
+  }
+  if (candidates.length === 0) return null;
+  return candidates.sort()[0];
 }

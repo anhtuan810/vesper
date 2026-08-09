@@ -106,6 +106,58 @@ console.log("\nReconcile — REMOVE the house (subtract its stored trajectory, n
   check("no point stays inflated by the removed house", series.every((p) => p.total < 250_000), String(Math.round(series[series.length - 1].total)));
 }
 
+console.log("\nReconcile — REMOVE the holding that WAS the early history (trim, don't flatline):");
+{
+  // The reported bug, in miniature: the house was bought years before anything
+  // else, so the early points are house-only. Removing it empties them out. They
+  // must be DROPPED (the rebuild writes no row for a date worth nothing), not
+  // flattened to the floor and dragged across the chart as a multi-year tail.
+  const houseOnlyEarly: ReconcilePoint[] = [
+    { date: "2017-02-01", total: houseEquityAt("2017-02-01"), byType: { real_estate: houseEquityAt("2017-02-01") } },
+    { date: "2020-02-01", total: houseEquityAt("2020-02-01"), byType: { real_estate: houseEquityAt("2020-02-01") } },
+    { date: "2024-08-01", total: 230_000 + houseEquityAt("2024-08-01"), byType: { markets: 230_000, real_estate: houseEquityAt("2024-08-01") } },
+    { date: "2026-02-01", total: 236_000 + houseEquityAt("2026-02-01"), byType: { markets: 236_000, real_estate: houseEquityAt("2026-02-01") } },
+  ];
+  const series = reconcileHistoryToHoldings(houseOnlyEarly, [], [{ type: "real_estate", fraction: 1 }], TODAY);
+  check("house-only years are dropped, not flattened", series.length === 2, `kept ${series.map((p) => p.date).join(", ")}`);
+  check("the line now starts where the remaining book starts", series[0]?.date === "2024-08-01", String(series[0]?.date));
+  check("what's kept is the markets trajectory", near(series[0].total, 230_000, 1) && near(series[1].total, 236_000, 1));
+}
+
+console.log("\nReconcile — trimming never eats a real history:");
+{
+  // Same removal, but the markets were always there too — nothing is hollowed
+  // out, so every point survives (this is the ordinary mid-life removal).
+  const series = reconcileHistoryToHoldings(withHouse, [], [{ type: "real_estate", fraction: 1 }], TODAY);
+  check("no point is dropped when each retains real value", series.length === withHouse.length);
+
+  // A genuine "started small and grew" story is NOT an artifact: the early
+  // points are small because the user was small, and no removal touches them.
+  const grewFromLittle: ReconcilePoint[] = [
+    { date: "2019-01-01", total: 800, byType: { markets: 800 } },
+    { date: "2022-01-01", total: 60_000, byType: { markets: 60_000 } },
+    { date: "2026-02-01", total: 236_000, byType: { markets: 236_000 } },
+  ];
+  const untouchedGrowth = reconcileHistoryToHoldings(grewFromLittle, [{ asset: house, excess: 370_000 }], [], TODAY);
+  check("an addition-only reconcile keeps every point", untouchedGrowth.length === grewFromLittle.length);
+
+  // Even WITH a removal, a leading point only goes if the removal is what
+  // emptied it — here the removed type never touched 2019, so it stays.
+  const withUnrelatedRemoval = reconcileHistoryToHoldings(grewFromLittle, [], [{ type: "real_estate", fraction: 1 }], TODAY);
+  check("a leading point untouched by the removal is kept", withUnrelatedRemoval.length === grewFromLittle.length,
+    `kept ${withUnrelatedRemoval.length}`);
+}
+
+console.log("\nReconcile — everything removed → still a drawable series:");
+{
+  const allGone: ReconcilePoint[] = [
+    { date: "2024-08-01", total: 100_000, byType: { real_estate: 100_000 } },
+    { date: "2026-02-01", total: 120_000, byType: { real_estate: 120_000 } },
+  ];
+  const series = reconcileHistoryToHoldings(allGone, [], [{ type: "real_estate", fraction: 1 }], TODAY);
+  check("never trims to empty (the last point always survives)", series.length >= 1, `len=${series.length}`);
+}
+
 console.log("\nReconcile — partial reduction (sold half the house):");
 {
   const removals: Removal[] = [{ type: "real_estate", fraction: 0.5 }];

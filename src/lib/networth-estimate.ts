@@ -143,7 +143,10 @@ export interface Removal {
 //     asset's own curve scaled to land on the live value at today.
 //   • REMOVALS/REDUCTIONS (a holding still in history) SUBTRACT that type's own
 //     stored trajectory (`byType[type] × fraction`) — so it fades out of the past
-//     exactly as it will once the rebuild lands, with no cliff at today.
+//     exactly as it will once the rebuild lands, with no cliff at today. Leading
+//     points the subtraction empties out are DROPPED rather than flattened to the
+//     floor (see trimHollowedLead), matching the rebuild, which writes no row for
+//     a date the remaining book was worth nothing on.
 // `points` are ascending, display currency, EXCLUDING today's live tip (the
 // caller appends that, and it already reflects the current book).
 export function reconcileHistoryToHoldings(
@@ -161,9 +164,46 @@ export function reconcileHistoryToHoldings(
     }
     return sum;
   };
-  return points.map((p) => {
+  const out = points.map((p) => {
     let sub = 0;
     for (const r of removals) sub += r.fraction * (p.byType[r.type] ?? 0);
     return { date: p.date, total: Math.max(0, p.total + rampAdd(p.date) - sub) };
   });
+  return removals.length > 0 ? trimHollowedLead(out, points) : out;
+}
+
+// A point is "hollowed out" when what's left of it after the removal is this
+// small a share of the series' own peak — i.e. the removed holding was
+// essentially all there was on that date. Not a round zero, because the stored
+// total and the subtracted trajectory come from different vintages, so a fully
+// removed holding leaves a little rounding dust behind rather than exactly 0.
+const HOLLOW_SHARE = 0.01;
+
+// Drop the LEADING run of points THE REMOVAL emptied out.
+//
+// Removing a holding subtracts its trajectory from every stored point — which is
+// right in the middle of the history, but at the start it can take a point down
+// to nothing, because for those years the removed holding WAS the portfolio. The
+// server never writes such a point (computeRow emits nothing for a zero total),
+// so leaving them here made the provisional line disagree with the rebuild in
+// the most visible way possible: a flat multi-year tail dragged in from the
+// removed asset's purchase date, ending in a wall where the rest of the book
+// begins. Trimming them starts the line where the remaining book starts, which
+// is what the rebuild will land on.
+//
+// A point only qualifies if the removal is what emptied it — it has to have been
+// ABOVE the floor before and below it after. A user who genuinely started with
+// €800 and grew to €200k has a leading point that's tiny for real, and it stays:
+// that's their story, not an artifact, and no removal touched it.
+//
+// Leading only — an interior point that reconciles to nothing is a real gap in a
+// real history, not an artifact, and the line should keep spanning it. The last
+// point is never trimmed, so a series can't collapse to nothing.
+function trimHollowedLead(after: SimplePoint[], before: ReconcilePoint[]): SimplePoint[] {
+  const peak = after.reduce((m, p) => Math.max(m, p.total), 0);
+  if (peak <= 0) return after;
+  const floor = peak * HOLLOW_SHARE;
+  let start = 0;
+  while (start < after.length - 1 && after[start].total <= floor && before[start].total > floor) start++;
+  return start === 0 ? after : after.slice(start);
 }
