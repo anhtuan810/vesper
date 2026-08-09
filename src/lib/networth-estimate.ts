@@ -109,63 +109,61 @@ export interface PendingRamp {
   excess: number;
 }
 
-// First-of-month dates from `start` up to (but excluding) `before`, ascending.
-function monthlyGrid(start: string, before: string): string[] {
-  const out: string[] = [];
-  const d = new Date(start + "T00:00:00Z");
-  d.setUTCDate(1);
-  const end = new Date(before + "T00:00:00Z");
-  while (d < end) {
-    out.push(d.toISOString().slice(0, 10));
-    d.setUTCMonth(d.getUTCMonth() + 1);
-  }
-  return out;
+// One historical point for reconciliation: its stored net-worth total AND its
+// per-asset-type split, BOTH in the same (display) currency. `byType` keys are
+// asset types (real_estate, stocks, etf, crypto, cash, …), same as a snapshot's
+// breakdown.
+export interface ReconcilePoint {
+  date: string;
+  total: number;
+  byType: Record<string, number>;
 }
 
-// Build a provisional net-worth series (one currency) by folding the pending
-// assets' estimated value into the real history. `realPoints` are the existing
-// snapshot totals in the SAME currency, ascending by date, EXCLUDING today's
-// live tip. Returns points ascending by date; the caller appends today's live
-// value (which already equals real + full excess, so the ramp lands on it with
-// no spike).
+// A holding that was removed (or reduced) since the stored history was built but
+// is still baked into it. `fraction` is how much of that type's stored value to
+// strip at each point (1 = fully removed, 0.5 = halved).
+export interface Removal {
+  type: string;
+  fraction: number;
+}
+
+// Reconcile stored history to the CURRENT set of holdings while the authoritative
+// server reconstruction is still in flight.
 //
-// Each pending asset contributes `excess × (estimateValueAt(date) /
-// estimateValueAt(today))` — its own curve shape, scaled so today's addition is
-// exactly `excess`. A zero-valued-today asset contributes nothing.
-//
-// Two modes, chosen by whether there's real history to lean on:
-//   • Has history → LIFT each existing point by the ramp. This is honest: the
-//     asset genuinely existed then, so net worth really was higher. It removes
-//     the spike within the tracked window without fabricating any market past.
-//     The deep pre-history extension is left to the server reconstruction, which
-//     extends the axis (with real market + CBS shape) when it lands — trying to
-//     synthesize it here only manufactures a cliff where the market base begins.
-//   • No history (the added asset is the account's first past-dated holding) →
-//     synthesize monthly points back to its buy date (clamped to the 30-year
-//     floor). There's no market base here, so no cliff to create.
-export function buildProvisionalTotals(
-  realPoints: SimplePoint[],
-  pending: PendingRamp[],
+// This is the structural fix for a whole family of transient artifacts. Any
+// holdings change (add, remove, mistake-delete, quantity edit) leaves the stored
+// snapshots describing the OLD book while today's live tip describes the NEW one;
+// drawing the raw join between them produces a spike (on add) or a cliff (on
+// remove) at today, until backfillSnapshots rewrites the history. Rather than
+// patch each direction separately, reconcile the displayed line to what the user
+// holds NOW — which is exactly what the reconstruction will produce, so the later
+// swap is seamless:
+//   • ADDITIONS (a back-dated asset not yet in history) are RAMPED up from their
+//     buy date — `excess × estimateValueAt(date)/estimateValueAt(today)`, the
+//     asset's own curve scaled to land on the live value at today.
+//   • REMOVALS/REDUCTIONS (a holding still in history) SUBTRACT that type's own
+//     stored trajectory (`byType[type] × fraction`) — so it fades out of the past
+//     exactly as it will once the rebuild lands, with no cliff at today.
+// `points` are ascending, display currency, EXCLUDING today's live tip (the
+// caller appends that, and it already reflects the current book).
+export function reconcileHistoryToHoldings(
+  points: ReconcilePoint[],
+  additions: PendingRamp[],
+  removals: Removal[],
   todayStr: string,
 ): SimplePoint[] {
-  const live = pending.filter((p) => p.excess > 0 && estimateValueAt(p.asset, todayStr, todayStr) > 0);
-  if (live.length === 0) return realPoints.slice();
-
-  const added = (date: string): number => {
+  const live = additions.filter((r) => r.excess > 0 && estimateValueAt(r.asset, todayStr, todayStr) > 0);
+  const rampAdd = (date: string): number => {
     let sum = 0;
-    for (const { asset, excess } of live) {
-      const todayVal = estimateValueAt(asset, todayStr, todayStr);
-      if (todayVal <= 0) continue;
-      sum += excess * (estimateValueAt(asset, date, todayStr) / todayVal);
+    for (const r of live) {
+      const todayVal = estimateValueAt(r.asset, todayStr, todayStr);
+      if (todayVal > 0) sum += r.excess * (estimateValueAt(r.asset, date, todayStr) / todayVal);
     }
     return sum;
   };
-
-  if (realPoints.length > 0) {
-    return realPoints.map((p) => ({ date: p.date, total: p.total + added(p.date) }));
-  }
-
-  const earliestBuy = live.reduce((m, p) => (p.asset.buyDate < m ? p.asset.buyDate : m), live[0].asset.buyDate);
-  const clampedStart = clampHistoryStart(earliestBuy, todayStr);
-  return monthlyGrid(clampedStart, todayStr).map((d) => ({ date: d, total: added(d) }));
+  return points.map((p) => {
+    let sub = 0;
+    for (const r of removals) sub += r.fraction * (p.byType[r.type] ?? 0);
+    return { date: p.date, total: Math.max(0, p.total + rampAdd(p.date) - sub) };
+  });
 }

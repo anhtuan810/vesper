@@ -564,27 +564,38 @@ full chart/detail. Rules that make it work:
   breakdown card. Multi-band portfolios are unchanged (0-anchored stack). Explicit
   Liquid (`lineOnly`) is unaffected; `liquidOnly` still gates the intraday 1D pill
   alone. Verified in `verify-networth-axis.ts`.
-- **Instant estimated history for a back-dated add (2026-08).** Adding an asset
-  with a past purchase date (a house bought years ago) makes today's total jump
-  while the stored snapshot points still exclude it — the accurate reconstruction
-  (`backfillSnapshots`) runs in the background — so the raw line showed a flat
-  stretch then a spike into today, exactly when a user checks the graph right
-  after adding. `PortfolioTab` now fills that gap on the client: while a rebuild
-  is in flight (`usePortfolioBuilding`) or the gap is too large to be a market
-  move (>10% in one step, covering manual adds that raise no build flag), it
-  detects the un-historized value per asset type (today's live equity minus what
-  the latest snapshot carries for that type — so normal daily market moves never
-  trigger it) and LIFTS the existing history by a rough ramp of each such asset's
-  value (`src/lib/networth-estimate.ts`: linear buy_price→current, property net of
-  mortgage via the pure `mortgage.ts` schedule). The chart renders it as a dashed,
-  zoomed `estimated` line (no bands — the provisional points carry only totals)
-  captioned "Estimated — building your full history…", and the hero shares the
-  same series so its "since inception" delta measures from the lifted baseline
-  (not counting the new asset as a gain). It self-clears the instant the rebuild
-  lands (the excess collapses to ~0). The estimate is deliberately rough, never
-  persisted, and never a figure the user acts on. Cold-start accounts (no history
-  to lift) keep the existing "Building your history…" card. Verified in
-  `verify-networth-estimate.ts`.
+- **Reconcile the graph to current holdings during a rebuild (2026-08).** The
+  root cause of a recurring family of transient artifacts — a spike when a
+  back-dated asset is added, a cliff when one is removed (a mistake-delete),
+  wrong deltas on a quantity edit — is structural: ANY holdings change leaves the
+  stored snapshots describing the OLD book while today's live tip describes the
+  NEW one, and the raw join between them is drawn until `backfillSnapshots`
+  rewrites the history in the background. Rather than patch each direction,
+  `PortfolioTab` reconciles the displayed line to what the user holds NOW — which
+  is exactly what the rebuild will produce, so the later swap is seamless. It
+  compares each asset type's live equity (`todayBreakdown`) to what the latest
+  snapshot carries, then (`reconcileHistoryToHoldings` in
+  `src/lib/networth-estimate.ts`): **ADDITIONS** (a back-dated holding not yet in
+  history) are RAMPED up from the buy date — the asset's own curve (linear
+  buy_price→current, property net of mortgage via the pure `mortgage.ts` schedule)
+  scaled to land on the live value at today; **REMOVALS/REDUCTIONS** (a holding
+  still baked into history) SUBTRACT that type's own stored trajectory
+  (`breakdown[type] × fraction`), so it fades out of the past with no cliff. It
+  only engages while a rebuild is in flight (`usePortfolioBuilding`) or when the
+  per-type mismatch is far larger than any market move could be (>10% in one
+  step — covers manual add/remove that raise no build flag), so a normal up/down
+  day never draws it. The chart shows it as a dashed, zoomed `estimated` line (no
+  bands — the reconciled points carry only totals) captioned "Estimated —
+  building your full history…", and the hero shares the same series so its "since
+  inception" delta measures from the reconciled baseline. Self-clears the instant
+  the rebuild lands (every per-type delta collapses to ~0 → returns null → the
+  real series takes over). Deliberately rough, never persisted, never a figure the
+  user acts on; cold-start accounts (no history to reconcile) keep the existing
+  "Building your history…" card. Both directions verified in
+  `verify-networth-estimate.ts`. **Known gap:** this lives in `PortfolioTab`
+  (mobile); the desktop `OverviewContent` chart doesn't yet reconcile, so it can
+  still show the raw spike/cliff during a rebuild — factor the reconciliation into
+  a shared hook when desktop needs it.
 - **History is clamped to 30 years back (2026-08).** Both the client estimate
   (`clampHistoryStart`, `MAX_HISTORY_YEARS`) and `backfillSnapshots` cap the
   reconstruction start at 30 years before today — the longest a mortgage runs. A

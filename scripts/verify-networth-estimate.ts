@@ -12,11 +12,12 @@ import {
   estimateValueAt,
   rampFraction,
   clampHistoryStart,
-  buildProvisionalTotals,
+  reconcileHistoryToHoldings,
   MAX_HISTORY_YEARS,
   type EstimableAsset,
   type PendingRamp,
-  type SimplePoint,
+  type Removal,
+  type ReconcilePoint,
 } from "../src/lib/networth-estimate";
 
 let failures = 0;
@@ -64,46 +65,64 @@ check("a 40-year-old date clamps to 30y before today", clampHistoryStart("1986-0
   clampHistoryStart("1986-01-01", TODAY));
 check("a recent date is left untouched", clampHistoryStart("2022-03-01", TODAY) === "2022-03-01");
 
-console.log("\nProvisional series — has existing history (lift mode):");
-// Real markets history: two years of ~230–236k, monthly-ish. Excess = the house
-// equity not yet in history (its full 370k, since history has no property).
-const real: SimplePoint[] = [
-  { date: "2024-08-01", total: 230_000 },
-  { date: "2025-02-01", total: 234_000 },
-  { date: "2026-02-01", total: 236_000 },
+// The screenshot history: ~230–236k of markets, monthly-ish. Once the house is
+// added, its equity is also baked into each stored point's real_estate bucket —
+// so a REMOVAL test can strip it back out. byType holds the per-type split.
+const houseEquityAt = (date: string) => Math.round(estimateValueAt(house, date, TODAY));
+const withHouse: ReconcilePoint[] = [
+  { date: "2024-08-01", total: 230_000 + houseEquityAt("2024-08-01"), byType: { markets: 230_000, real_estate: houseEquityAt("2024-08-01") } },
+  { date: "2025-02-01", total: 234_000 + houseEquityAt("2025-02-01"), byType: { markets: 234_000, real_estate: houseEquityAt("2025-02-01") } },
+  { date: "2026-02-01", total: 236_000 + houseEquityAt("2026-02-01"), byType: { markets: 236_000, real_estate: houseEquityAt("2026-02-01") } },
 ];
-const pending: PendingRamp[] = [{ asset: house, excess: 370_000 }];
-const series = buildProvisionalTotals(real, pending, TODAY);
+const marketsOnly: ReconcilePoint[] = [
+  { date: "2024-08-01", total: 230_000, byType: { markets: 230_000 } },
+  { date: "2025-02-01", total: 234_000, byType: { markets: 234_000 } },
+  { date: "2026-02-01", total: 236_000, byType: { markets: 236_000 } },
+];
 
-check("keeps the same points as the real history (lifts, doesn't extend)", series.length === real.length);
-check("series is ascending by date", series.every((p, i) => i === 0 || p.date >= series[i - 1].date));
-check("every real point is lifted by the ramped house equity", series.every((p, i) => p.total > real[i].total));
-check("earliest lifted point sits well above the raw market base (no spike at the left edge)",
-  series[0].total > 400_000, String(Math.round(series[0].total)));
-// The step from the last provisional point to today's live value (real + full
-// excess) must be gentle — that gap is exactly the spike we're removing.
-const liveToday = 236_000 + 370_000;
-const stepIntoToday = Math.abs(liveToday - series[series.length - 1].total);
-check("no spike from the last point into today's live value (step < 30k)", stepIntoToday < 30_000,
-  `step=${Math.round(stepIntoToday)}`);
-let maxJump = 0;
-for (let i = 1; i < series.length; i++) maxJump = Math.max(maxJump, Math.abs(series[i].total - series[i - 1].total));
-check("no cliff between adjacent points (max step < 30k)", maxJump < 30_000, `maxJump=${Math.round(maxJump)}`);
+console.log("\nReconcile — ADD a back-dated house (lift, no spike):");
+{
+  // History has no house yet; the ramp lifts each point so the line lands on the
+  // live total (236k markets + 370k house) with no spike into today.
+  const ramps: PendingRamp[] = [{ asset: house, excess: 370_000 }];
+  const series = reconcileHistoryToHoldings(marketsOnly, ramps, [], TODAY);
+  check("keeps the same points (lifts, doesn't extend)", series.length === marketsOnly.length);
+  check("every point is lifted by the ramped house equity", series.every((p, i) => p.total > marketsOnly[i].total));
+  check("earliest lifted point sits well above the raw market base (no left-edge spike)", series[0].total > 400_000, String(Math.round(series[0].total)));
+  const stepIntoToday = Math.abs((236_000 + 370_000) - series[series.length - 1].total);
+  check("gentle step into today's live value (< 30k)", stepIntoToday < 30_000, `step=${Math.round(stepIntoToday)}`);
+}
 
-console.log("\nProvisional series — cold start, no history (extend mode):");
-const cold = buildProvisionalTotals([], pending, TODAY);
-check("synthesizes points back toward the buy date", cold.length > 12 && cold[0].date < "2016-01-01",
-  `${cold.length} pts, starts ${cold[0]?.date}`);
-check("never earlier than the 30-year floor", cold[0].date >= clampHistoryStart(house.buyDate, TODAY));
-check("ramps upward (older < newer)", cold[0].total < cold[cold.length - 1].total);
-check("lands near full excess by the last point (≈ today's added equity)",
-  near(cold[cold.length - 1].total, 370_000, 15_000), String(Math.round(cold[cold.length - 1].total)));
+console.log("\nReconcile — REMOVE the house (subtract its stored trajectory, no drop):");
+{
+  // The house is fully removed; the stored history still carries it. Subtract
+  // real_estate entirely so the line drops uniformly to the markets-only level
+  // and meets today's live markets total (236k) with no cliff.
+  const removals: Removal[] = [{ type: "real_estate", fraction: 1 }];
+  const series = reconcileHistoryToHoldings(withHouse, [], removals, TODAY);
+  check("recovers the markets-only trajectory", series.every((p, i) => near(p.total, marketsOnly[i].total, 1)));
+  const stepIntoToday = Math.abs(236_000 - series[series.length - 1].total);
+  check("no drop from the last point into today's live value (< 5k)", stepIntoToday < 5_000, `step=${Math.round(stepIntoToday)}`);
+  check("no point stays inflated by the removed house", series.every((p) => p.total < 250_000), String(Math.round(series[series.length - 1].total)));
+}
 
-console.log("\nNo pending → passthrough:");
-const untouched = buildProvisionalTotals(real, [], TODAY);
-check("returns the real points unchanged", untouched.length === real.length && untouched.every((p, i) => p.total === real[i].total));
-const zeroExcess = buildProvisionalTotals(real, [{ asset: house, excess: 0 }], TODAY);
-check("zero-excess asset contributes nothing", zeroExcess.length === real.length && zeroExcess.every((p, i) => p.total === real[i].total));
+console.log("\nReconcile — partial reduction (sold half the house):");
+{
+  const removals: Removal[] = [{ type: "real_estate", fraction: 0.5 }];
+  const series = reconcileHistoryToHoldings(withHouse, [], removals, TODAY);
+  // Each point loses half its stored house equity — between markets-only and full.
+  check("lands between full and markets-only", series.every((p, i) => p.total > marketsOnly[i].total && p.total < withHouse[i].total));
+}
+
+console.log("\nReconcile — no change → passthrough:");
+{
+  const untouched = reconcileHistoryToHoldings(marketsOnly, [], [], TODAY);
+  check("returns the points unchanged", untouched.length === marketsOnly.length && untouched.every((p, i) => p.total === marketsOnly[i].total));
+  const zeroExcess = reconcileHistoryToHoldings(marketsOnly, [{ asset: house, excess: 0 }], [], TODAY);
+  check("zero-excess addition contributes nothing", zeroExcess.every((p, i) => p.total === marketsOnly[i].total));
+  const missingType = reconcileHistoryToHoldings(marketsOnly, [], [{ type: "crypto", fraction: 1 }], TODAY);
+  check("removing a type absent from history is a no-op", missingType.every((p, i) => p.total === marketsOnly[i].total));
+}
 
 console.log(`\n${failures === 0 ? "All checks passed." : `${failures} check(s) FAILED.`}`);
 process.exit(failures === 0 ? 0 : 1);
