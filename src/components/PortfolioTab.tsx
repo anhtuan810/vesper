@@ -29,6 +29,7 @@ import { isIncomePension } from "@/lib/pension";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
 import { firstSnapshotDate, clipToRange } from "@/lib/networth-history";
 import { useReconciledNetWorthSeries } from "@/hooks/useReconciledNetWorthSeries";
+import { usePortfolioRevision } from "@/lib/portfolio-revision";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_COLOR, CATEGORY_ORDER, ALL_CATEGORIES,
 } from "@/lib/categories";
@@ -208,6 +209,29 @@ export function PortfolioTab({
       if (timer) clearTimeout(timer);
     };
   }, [hasPastAcquisition]);
+
+  // Refetch the stored history whenever a mutation lands anywhere (chat save,
+  // asset restore — bumpPortfolioRevision's callers). Without this, fullSnapshots
+  // was fetched ONCE at mount and never again for an account that already had
+  // history — hasPastAcquisition (the effect above's only trigger) stays true
+  // across a SECOND add/remove, so it never re-fires. That meant a completed
+  // background rebuild (backfillSnapshots) had no way to actually reach the
+  // chart: the reconciled/estimated line (useReconciledNetWorthSeries) kept
+  // comparing live holdings against a frozen, pre-mutation snapshot forever —
+  // reading as "stuck on the dashed estimate," when the real cause was that
+  // fresher data was never even requested. watchPortfolioBuild already bumps
+  // this revision on every poll tick specifically so surfaces refetch — this is
+  // that promised refetch, previously missing for the net-worth chart.
+  const revision = usePortfolioRevision();
+  useEffect(() => {
+    if (revision === 0) return; // 0 = no mutation yet this session; initial load above already ran
+    const controller = new AbortController();
+    apiFetch(`/api/snapshots?range=All`, { signal: controller.signal })
+      .then((r) => r.json())
+      .then((body) => setFullSnapshots(body.data ?? []))
+      .catch((err) => { if (err.name !== "AbortError") console.error("Snapshots refetch failed:", err); });
+    return () => controller.abort();
+  }, [revision]);
 
   useEffect(() => {
     // A range switch is a fresh look at the window — return to the default

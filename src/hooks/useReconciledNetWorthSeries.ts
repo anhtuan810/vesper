@@ -23,7 +23,7 @@
 // the latest snapshot (e.g. property under desktop's "exclude property" lens)
 // simply never enters the per-type delta scan, so it's naturally excluded.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SnapshotPoint, Range } from "@/components/NetWorthChart";
 import { convertPointToDisplay, buildLiveRates } from "@/components/NetWorthChart";
 import { clipToRange } from "@/lib/networth-history";
@@ -32,6 +32,19 @@ import { toDisplay, type DisplayCurrency } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { usePortfolioBuilding } from "@/lib/portfolio-build";
 import { reconcileHistoryToHoldings, type PendingRamp, type Removal, type ReconcilePoint } from "@/lib/networth-estimate";
+
+// Hard ceiling on how long a mismatch may keep the estimate on screen, no
+// matter the cause. `building` already has its own ~90s ceiling (see
+// usePortfolioBuilding/watchPortfolioBuild), but the size-based fallback below
+// it (for a manual add/remove, which raises no `building` signal at all) has
+// none — so a mismatch that never resolves (a stalled/failed backfill, or a
+// genuinely permanent difference the reconstruction won't erase, e.g. a
+// same-day disposal recorded as "sold" rather than a hard-deleted mistake)
+// would otherwise show the dashed estimate forever, masking the real stored
+// data indefinitely. Past this ceiling, trust the real series even if it's
+// momentarily less "clean" than the estimate — an eventually-correcting truth
+// beats a placeholder that never lets go.
+const MAX_ESTIMATE_MS = 3 * 60_000;
 
 export interface ReconciledNetWorthSeries {
   // The reconciled, chart-ready series (today's live tip already appended), or
@@ -73,7 +86,12 @@ export function useReconciledNetWorthSeries(opts: UseReconciledNetWorthSeriesOpt
   // in regardless of mismatch size.
   const building = usePortfolioBuilding();
 
-  const series = useMemo<SnapshotPoint[] | null>(() => {
+  // Pure candidate computation — no refs, no Date.now(), no side effects, so it
+  // stays safe under React's render-must-be-pure rule (a useMemo body may only
+  // read its inputs). The MAX_ESTIMATE_MS ceiling is a WALL-CLOCK concern, which
+  // by definition can't be decided during render — it's applied below, in an
+  // effect, using an ordinary setTimeout.
+  const candidate = useMemo<SnapshotPoint[] | null>(() => {
     if (disabled) return null;
     const today = new Date().toISOString().slice(0, 10);
     const realClipped = clipToRange(fullSnapshots, range).filter((p) => p.date !== today);
@@ -164,5 +182,27 @@ export function useReconciledNetWorthSeries(opts: UseReconciledNetWorthSeriesOpt
     return out;
   }, [disabled, fullSnapshots, range, netWorthAssets, todayBreakdown, liveTotal, displayCurrency, building]);
 
+  const isEstimating = candidate != null;
+
+  // Ceiling: once an estimating episode has run CONTINUOUSLY for MAX_ESTIMATE_MS,
+  // stop showing it and trust the real series instead — see MAX_ESTIMATE_MS for
+  // why (a stalled/failed backfill, or a mismatch the reconstruction was never
+  // going to erase, e.g. a genuine "sold" disposal's history is intentionally
+  // preserved, not a lag artifact). An ordinary setTimeout, not a render-time
+  // Date.now() comparison: the timer is keyed on `isEstimating` (a boolean), not
+  // on `candidate` itself, so it survives `candidate` recomputing with new
+  // (but still-mismatched) values every time live prices tick — it only resets
+  // when estimating genuinely STARTS or STOPS.
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    if (!isEstimating) {
+      setExpired(false); // eslint-disable-line react-hooks/set-state-in-effect -- resets the ceiling for the NEXT episode; mirrors the (pre-existing, project-wide) pattern of clearing derived UI state when its trigger condition ends
+      return;
+    }
+    const timer = setTimeout(() => setExpired(true), MAX_ESTIMATE_MS);
+    return () => clearTimeout(timer);
+  }, [isEstimating]);
+
+  const series = expired ? null : candidate;
   return { series, estimated: series != null };
 }

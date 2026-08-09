@@ -694,24 +694,21 @@ async function resolveRealEstateGeo(
   return { ok: true, changes: out, resolved };
 }
 
-// Irreversible-delete guard (mirrors the tag path in /api/chat): a
-// mistake/correction remove HARD-deletes the asset AND all its history,
-// unrecoverable. The agent loop carries no per-turn confirmation signal, so
-// downgrade it to "sold" (a recoverable soft-delete) and strip the correction
-// flag — the agent can never erase history on its own; a genuine
-// mistake-delete needs an explicit path. Applied in BOTH propose and commit so
-// the proposal the user confirms describes the removal that will actually be
-// written ("sold"), never an "erased from your history" that won't happen.
+// A mistake/correction remove HARD-deletes the asset AND all its history,
+// unrecoverable — chosen deliberately (2026-08) so "remove as a mistake"
+// actually does what the assistant tells the user it does. This used to be
+// silently downgraded to "sold" (a recoverable soft-delete) with NO warning to
+// the user, on the theory that the agent loop has no per-turn confirmation
+// signal tying a specific commit to a specific prior proposal — but that
+// theory is inconsistent: every OTHER mutation (a large purchase, an edit)
+// commits through the exact same propose_mutation → user clicks "Confirm and
+// save" → commit_mutation sequence with the exact same lack of a stronger
+// signal, and those are trusted. Silently doing something other than what was
+// proposed and confirmed is a worse bug than trusting the existing gate: the
+// user read "erased from your history" (resolveProposal's mistake-branch text,
+// see proposal-resolver.ts) and clicked confirm — that IS the confirmation.
 // (An edit correction only rewrites the asset's own figure in place and stays
-// reversible, so it is left intact.)
-function downgradeMistakeRemovals(changes: Record<string, unknown>[]): void {
-  for (const change of changes) {
-    if (change.action === "remove" && (change.removal_reason === "mistake" || change.correction)) {
-      change.removal_reason = "sold";
-      change.correction = false;
-    }
-  }
-}
+// reversible regardless — untouched by this.)
 
 // ── propose_mutation (no write) ─────────────────────────────────────────────────
 async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
@@ -723,7 +720,6 @@ async function proposeMutationTool(input: Record<string, unknown>, ctx: ToolCont
   // address for confirmation; ask naturally on an unresolvable address (no write).
   const geo = await resolveRealEstateGeo(changes, ctx.currentAssets);
   if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
-  downgradeMistakeRemovals(geo.changes);
 
   const light: CurrentAssetLight[] = ctx.currentAssets.map((a) => ({
     name: String(a.name), symbol: (a.symbol as string | null) ?? null, type: String(a.type),
@@ -779,9 +775,6 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   const geo = await resolveRealEstateGeo(rawChanges, ctx.currentAssets);
   if (!geo.ok) return { forModel: { needsClarification: true, message: geo.message } };
   const changes = geo.changes;
-
-  // Same irreversible-delete guard as propose_mutation (see downgradeMistakeRemovals).
-  downgradeMistakeRemovals(changes);
 
   // Cost basis is NOT filled here. applyPortfolioChanges derives buy_price
   // itself (its resolvedPrices pass) from the FULLY RESOLVED symbol — alias

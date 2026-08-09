@@ -496,12 +496,12 @@ Commercialized with cross-platform subscriptions: sign in once, subscribe from a
 A full audit of the chat write/read path (the app's primary surface) and its UI. All fixes are live; the behaviours are guarded by the test suite in the next section.
 
 - **Net worth in the display currency (hero-number bug)**: `buildDynamicContext` previously handed the model only `net worth ~$X USD-equivalent` and told it to render in the display currency, so the model did the FX itself and **overstated net worth for EUR/GBP users** (the seeded demo account reported ~€419k vs the deterministic ~€368k). The context line now carries net worth **already converted to the display currency** (`total * usdRates[displayCurrency]`) and instructs the model to quote it directly — no model-side FX on the headline. Locked by `scripts/verify-dynamic-context.ts`.
-- **Irreversible-delete server gate**: a remove with `removal_reason:"mistake"` hard-deletes the asset **and** its mutations (unrecoverable). The model is told to route every remove through propose→confirm; as a server backstop `/api/chat` now downgrades any unconfirmed bare `<changes>` `"mistake"` remove to a recoverable `"sold"` soft-delete. The destructive path is honoured only on a confirmation turn.
+- **Irreversible-delete: propose→confirm is the gate, not a silent downgrade (2026-08).** A remove with `removal_reason:"mistake"` hard-deletes the asset **and** its mutations (unrecoverable) — the model is told to route every remove through `propose_mutation` (which surfaces the honest preview: "erased from your history") → the user clicks "Confirm and save" → only then `commit_mutation`. This paragraph used to describe (and an interim implementation actually built) a server backstop that silently downgraded `"mistake"` to a recoverable `"sold"` on the theory that "the agent loop has no per-turn confirmation signal" — but that implementation (`downgradeMistakeRemovals` in `agent-tools.ts`) downgraded **every** commit unconditionally, confirmed or not, which doesn't even match its own stated goal (in the current tool-calling architecture `commit_mutation` is a distinct tool the model is instructed to call ONLY after confirmation — there is no reachable "unconfirmed commit" the downgrade was actually protecting against) — and it left the user told one thing ("no trace in history") while the system silently did another (kept the row, both mutations, and the asset's history contribution), which is how a mistake-deleted asset kept showing up in the graph and Journal. Removed 2026-08: the propose→confirm→commit sequence is the same gate already trusted for every other mutation (a large purchase, an edit) with the identical "no stronger per-turn signal" property, so singling out delete for a silent, undocumented downgrade was inconsistent, not extra-safe. (The **old, pre-2026-07 "tag chat" engine** this paragraph originally described — free-form `<changes>` XML the model could emit on any turn, confirmed or not, needing a genuine text-turn-classification backstop — was removed entirely in the 2026-07 cost pass; `claude.ts` is now just the shared advice-boundary/disclaimer text, and `src/lib/chat/agent-loop.ts` + `agent-tools.ts` is the only chat backend. The confirmation-signal concern doesn't map onto the current two-tool architecture the same way it did onto free-form tag emission.)
 - **Data corrections leave no trace (generic)**: the app distinguishes a *correction* (the stored data was WRONG) from a real *event* (bought/sold/appreciated). A correction fixes the data and records **nothing** — no Journal row, no bump in the net-worth graph — because the graph is rebuilt from the mutation log, so a correction rewrites that log rather than appending to it. It is generic across action and field:
   - **Remove correction** (`removal_reason:"mistake"`, or `correction:true` on a remove): the holding never belonged, so erase it and every trace. The erase is **DB-driven** rather than scoped to `currentAssets`: it queries every asset row under the name/symbol *whatever its `removed_at` state*, deletes all their mutations (plus any orphan mutation matched by name/symbol with a null `asset_id`), hard-deletes the rows, and rebuilds history from the earliest date the holding touched. This fixes the case a user hit in practice — they first removed a mistakenly-added position as `"sold"` (a soft-delete that keeps the row + writes a remove mutation), then asked to erase it entirely; because `currentAssets` excludes `removed_at` rows the old code matched nothing, reported a phantom "done", and left the Journal entries and graph footprint intact. When nothing matches the name at all, the commit throws a user-facing "couldn't find it" message instead of claiming success.
   - **Edit correction** (`correction:true` on an edit): a wrong value / unit count / name / date. The asset row is updated in place and, instead of inserting the usual `edit` mutation ("Recorded a new valuation" — the visible trace the user complained about), the acquisition (`add`) mutation is **rewritten** so its `after_units`/`after_value`/`asset_name`/`occurred_at` reflect the corrected figure. History is then rebuilt from acquisition, so every graph point that showed the wrong number is redrawn with the right one and no step/bump is introduced. (Common single-add case; a position with genuine intervening buy/sell mutations should use explicit transactions or a full mistake-removal rather than an absolute correction.)
   - **Model routing**: correction language ("that's wrong", "should be X not Y", "typo", "I never owned that", the "Replace the previous one" disambiguation chip) makes the model set `correction:true` (edit) or `removal_reason:"mistake"` (full removal). The proposal preview says the earlier figure "won't be logged or shown in your history."
-  - **Safety**: an irreversible erase (mistake/correction remove) is honoured only on a confirmation turn; an unconfirmed one is downgraded to a recoverable `"sold"` soft-delete in both the `/api/chat` tag path and the agent-tools path. (`apply-changes.ts` edit + remove branches; `proposal-resolver.ts`; `claude.ts`; `agent-tools.ts`.)
+  - **Safety is the propose→confirm gate itself** (see above) — there is no additional downgrade layer. An edit correction stays reversible regardless (it rewrites the asset's own figure in place; nothing is deleted), so it was never part of this concern. (`apply-changes.ts` edit + remove branches; `proposal-resolver.ts`; `agent-tools.ts`.)
 - **Write atomicity (add path)**: asset insert and its `add` mutation are separate calls. If the mutation insert fails, the orphaned asset is now **rolled back** (`apply-changes.ts`) instead of leaving a holding with no acquisition anchor (which corrupted history rebuild and the Diary). Edit-mutation failures are surfaced for monitoring. (Multi-row batches stay per-row best-effort by design; see debt below.)
 - **Historical-price guards** (`prices.ts`, `acquisition-date.ts`): the buy-date match is bounded to the ±4-day request window — a pre-IPO / sparse / future date no longer fabricates a price from the nearest close; `Invalid Date` returns null explicitly; the date parser rejects future months.
 - **Currency default**: cash / bonds / other / pension adds with no stated currency now default to the user's **display currency**, not USD (`displayCurrency` threaded into `applyPortfolioChanges`).
@@ -631,6 +631,45 @@ full chart/detail. Rules that make it work:
   range-growth badge (`rangeBadge`) also reads the reconciled series, not the raw
   one — it would otherwise reproduce the exact bug in the growth number instead
   of the line.
+- **Fixed: the chart never actually asked for the rebuilt history (2026-08).**
+  `PortfolioTab`/`OverviewContent` each fetched `/api/snapshots?range=All` into
+  their own local `fullSnapshots` state exactly ONCE, keyed only on
+  `hasPastAcquisition` (a boolean that's already `true` for anyone with existing
+  back-dated history and stays `true` across every later add/remove — so for any
+  account past its first back-dated holding, this effect never re-fires). Nothing
+  else refetched it. `watchPortfolioBuild`'s comment already promised "bumping the
+  shared revision each tick so mounted surfaces refetch" (`bumpPortfolioRevision`,
+  `usePortfolioRevision`) — `netWorthAssets`/`todayBreakdown` (via `useAssets`)
+  correctly listened for it, but the stored HISTORY never did. The practical
+  symptom: after a holdings change on an established account, the reconciled
+  "estimated" line (previous bullet) would compare live holdings against a
+  snapshot **frozen at page-load** — a completed background rebuild had no way to
+  reach the chart, so `estimated` mode looked "stuck" indefinitely (only a full
+  page reload picked up the fresh data). Fixed by adding a second effect in both
+  components: `usePortfolioRevision()` + refetch `/api/snapshots?range=All`
+  whenever the revision advances (`revision === 0` = no mutation yet this
+  session → skip, the mount-time fetch already covers it) — the refetch
+  `watchPortfolioBuild`'s comment always described but that never existed for
+  this specific state.
+- **Estimate ceiling: an episode can't run forever (2026-08).**
+  `useReconciledNetWorthSeries` also caps how long ANY estimating episode may
+  continue, independent of the fix above — a defensive backstop, not a
+  substitute for it (the fix above is what makes the NORMAL case converge
+  quickly; this is for when it still doesn't: a stalled/failed background
+  rebuild, or a mismatch the reconstruction was never going to erase at all,
+  e.g. a same-day disposal recorded as `"sold"` rather than a hard-deleted
+  mistake — see "Irreversible-delete" above — whose history-preserving semantics
+  make the live-vs-stored gap permanent, not temporary). Implemented as an
+  ordinary `setTimeout(MAX_ESTIMATE_MS)` in a `useEffect` keyed on a boolean
+  ("is an estimate currently showing", not the series reference itself, so a
+  live-price tick recomputing the estimate doesn't reset the clock), not a
+  render-time `Date.now()`/ref read — `useMemo` bodies must stay pure (no refs,
+  no wall-clock reads) under the project's `eslint-plugin-react-hooks` rules;
+  the pure candidate computation and the wall-clock ceiling decision are two
+  separate pieces for exactly this reason. Past `MAX_ESTIMATE_MS` (3 minutes),
+  the hook returns the real stored series even if it's momentarily less "clean"
+  than the estimate — an eventually-correcting truth beats a placeholder that
+  never lets go.
 - **History is clamped to 30 years back (2026-08).** Both the client estimate
   (`clampHistoryStart`, `MAX_HISTORY_YEARS`) and `backfillSnapshots` cap the
   reconstruction start at 30 years before today — the longest a mortgage runs. A
