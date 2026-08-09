@@ -67,10 +67,7 @@ export async function POST(req: NextRequest) {
     // the dashboard fills in progressively, exactly like the chat add path.
     if (result.changed) {
       after(() => writeSnapshot(user.id));
-      if (result.rebuildFrom) {
-        const from = result.rebuildFrom;
-        after(() => backfillSnapshots(user.id, from));
-      }
+      if (result.touchesHistory) after(() => backfillSnapshots(user.id));
       after(() => generateMarketSwings(user.id));
     }
 

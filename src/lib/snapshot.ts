@@ -753,24 +753,20 @@ export async function reconstructHoldingsAt(userId: string, date: string): Promi
 // acquisition and sale dates). Target dates come from a CALENDAR-anchored
 // lattice (see targetSnapshotDates) so every run hits the same dates.
 //
-// Two modes:
-//   - Standard pass (no rebuildFrom): upsert the sparse lattice, OVERWRITING on
-//     conflict. Idempotent and self-healing — a re-run corrects any stale row
-//     rather than skipping it. today's row is excluded (the live cron owns it).
-//   - Rebuild (rebuildFrom set): adding/removing/editing a dated asset changes
-//     what every row from that date forward should contain. The range
-//     [rebuildFrom, today) — lattice dates AND any pre-existing rows in range —
-//     is recomputed and atomically replaced (delete + insert). Rows before the
-//     range are left intact (older missing ones are insert-only backfilled).
+// ONE mode: rebuild the whole thing. Every run recomputes the user's entire
+// reconstructed history from the book as it stands right now and atomically
+// replaces everything before today (delete + insert; today's row belongs to
+// writeSnapshot). There is no "from this date forward" variant, and there
+// shouldn't be — see the long note at the write site for why scoping the write
+// bought nothing and cost the removed-house bug. This means the function is
+// fully idempotent, and a run degraded by a market-data outage is completely
+// corrected by the next run whenever it happens.
 //
-// Both modes abort BEFORE any write if a currently-held tradeable's price
-// history failed to load, so a transient market-data outage can never replace
-// good rows with collapsed ones.
-// Returns a short status string describing what happened — "ok:standard:120",
-// "ok:rebuild:40", or a "skip:…"/"error:…" reason. Callers that just want the
-// side effect can ignore it; the /api/debug/snapshot-status route surfaces it so
-// a stuck (single-dot) chart can be diagnosed without server-log access.
-export async function backfillSnapshots(userId: string, rebuildFrom?: string | null): Promise<string> {
+// Returns a short status string describing what happened — "ok:rebuild:120" or
+// a "skip:…"/"error:…" reason. Callers that just want the side effect can ignore
+// it; the /api/debug/snapshot-status route surfaces it so a stuck (single-dot)
+// chart can be diagnosed without server-log access.
+export async function backfillSnapshots(userId: string): Promise<string> {
   try {
     const supabase = createServerSupabase();
 
@@ -778,7 +774,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
     // (demo-seed's SNAPSHOT_ANCHORS tell the persona's five-year story); a
     // mutation-timeline reconstruction cannot reproduce it — early dates only
     // contain what the seeded timeline says existed then — so a visitor's chat
-    // edit (rebuildFrom) or a stray standard pass would replace the authored
+    // edit or a stray pass would replace the authored
     // curve with a collapsed one. The next demo entry reseeds anyway.
     // Two layers, because a single corrupting pass costs a whole demo session:
     // (1) the shared demo account is recognised by env id with NO db read (race-
@@ -941,7 +937,7 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       Sentry.captureMessage("backfillSnapshots: valuing held symbols at cost basis — price history unavailable", {
         level: "warning",
         tags: { fn: "backfillSnapshots" },
-        extra: { user_id: userId, missingHeld, rebuildFrom: rebuildFrom ?? null },
+        extra: { user_id: userId, missingHeld },
       });
     }
 
@@ -1108,109 +1104,79 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
       return null;
     };
 
+    // ── Rebuild EVERYTHING, every time ────────────────────────────────────
+    //
+    // There is one path, and it replaces the user's whole reconstructed history
+    // on every run. There used to be two — a "standard" pass that upserted the
+    // lattice, and a partial pass that rewrote only [rebuildFrom, today) — and
+    // the partial one is where the removed-house bug lived: its delete window
+    // was clamped so it never outran what it could replace, which left the
+    // window BELOW the current book's earliest date with no owner at all.
+    //
+    // Scoping the write bought nothing. Every expensive input above is scoped by
+    // `earliest`, not by the caller's date: each symbol's price history
+    // (getPriceSeriesCached from earliestHeldBySymbol), the multi-year FX series,
+    // the property samplers, the mortgage points, the date lattice, and the
+    // per-date computeRow loop all run in full regardless. `rebuildFrom` only
+    // ever split rows that were ALREADY computed, seconds before, into "write"
+    // and "leave alone". It saved a few hundred row-writes and cost an entire
+    // class of bug.
+    //
+    // Replacing the whole range also makes recovery unconditional: a run that
+    // valued a position at cost basis because Yahoo was down (see missingHeld)
+    // is fully corrected by the NEXT run, whatever date that run was triggered
+    // from. Under partial rebuilds a degraded slice could sit there forever,
+    // because nothing was ever going to rebuild that particular range again.
     const rows: SnapshotRow[] = [];
     for (const date of dates) {
       const row = computeRow(date);
       if (row) rows.push(row);
     }
 
-    // THE INVARIANT: no snapshot may predate `earliest` — the first date the
-    // CURRENT book reaches. Every row from here forward is recomputed from that
-    // book, so a row older than it cannot be recomputed and cannot be right: it
-    // is residue of a holding that has since been ERASED (a hard-deleted
-    // "mistake"). Nothing else can produce one — a *sold* asset keeps its row, so
-    // it keeps its dates inside `earliest`.
-    //
-    // This is what the "removed the house and the graph broke" report was. The
-    // rebuild's delete window is clamped up to `earliest` (see rebuildStart
-    // below) so it only ever deletes what it can replace — which meant removing
-    // the OLDEST holding stranded every year it alone occupied. Those rows
-    // survived verbatim, still carrying their property band, and the freshly
-    // rebuilt markets-only history began years later: a multi-year house-shaped
-    // hump ending in a cliff, with no asset anywhere in the book to explain it.
-    // Sweeping them here fixes both the removal that causes it and any account
-    // already carrying the residue (see the cron's self-heal gate). Gated on a
-    // non-empty recompute, so a transient all-null valuation can never turn this
-    // into "delete the history and write nothing".
-    if (rows.length > 0) {
-      const { error: sweepError } = await supabase
-        .from("snapshots")
-        .delete()
-        .eq("user_id", userId)
-        .lt("date", earliest);
-      if (sweepError) throw sweepError;
+    // Dates the sparse lattice doesn't target but that already have a row —
+    // daily-cron rows from before the cadence thinned out, mostly. Recompute
+    // them rather than let the delete below drop them: they're real granularity
+    // the user can see on the chart.
+    const { data: existingSnaps, error: existErr } = await supabase
+      .from("snapshots")
+      .select("date")
+      .eq("user_id", userId)
+      .lt("date", todayStr);
+    if (existErr) throw existErr;
+
+    const targetSet = new Set(dates);
+    const extraRows: SnapshotRow[] = [];
+    for (const s of existingSnaps ?? []) {
+      const d = s.date as string;
+      // A pre-existing row OLDER than `earliest` is residue of a holding that
+      // has since been erased (a hard-deleted "mistake") — computeRow can't
+      // reproduce it because nothing on the book reaches that far back. Skipping
+      // it here is what lets the delete take it away for good.
+      if (d < earliest || targetSet.has(d)) continue;
+      const row = computeRow(d);
+      if (row) extraRows.push(row);
     }
 
-    if (rebuildFrom) {
-      // Rebuild range is [rebuildFrom, todayStr) — today's row belongs to the
-      // live cron (writeSnapshot), never touched here. Clamped up to `earliest`
-      // so the delete never outruns the recompute; the window BELOW `earliest`
-      // is the sweep's job, not this branch's.
-      const rebuildStart = rebuildFrom < earliest ? earliest : rebuildFrom;
+    const allRows = [...rows, ...extraRows];
 
-      // Pre-existing rows in the rebuild range may include dates the standard
-      // sparse `dates` set doesn't cover (e.g. older daily-cron rows) — those
-      // need recomputing too, or they'd survive the delete... no, they'd be
-      // deleted and never reinserted, silently losing granularity.
-      const { data: existingSnaps, error: existErr } = await supabase
-        .from("snapshots")
-        .select("date")
-        .eq("user_id", userId)
-        .gte("date", rebuildStart)
-        .lt("date", todayStr);
-      if (existErr) throw existErr;
+    // Never wipe good history to replace it with nothing: if the recompute came
+    // back empty (a transient all-null valuation, a data quirk), leave what's
+    // stored alone for a later run to correct. The delete and the insert only
+    // ever happen together.
+    if (allRows.length === 0) return "skip:no-rows-computed:earliest=" + earliest;
 
-      const targetSet = new Set(dates);
-      const extraRows: SnapshotRow[] = [];
-      for (const s of existingSnaps ?? []) {
-        const d = s.date as string;
-        if (targetSet.has(d)) continue;
-        const row = computeRow(d);
-        if (row) extraRows.push(row);
-      }
+    // Everything before today. Today's row belongs to writeSnapshot (the live
+    // cron) and is never touched here.
+    const { error: delError } = await supabase
+      .from("snapshots")
+      .delete()
+      .eq("user_id", userId)
+      .lt("date", todayStr);
+    if (delError) throw delError;
 
-      const carryRows = rows.filter((r) => r.date < rebuildStart);
-      const rebuildRows = [...rows.filter((r) => r.date >= rebuildStart), ...extraRows];
-
-      if (carryRows.length > 0) {
-        const { error } = await supabase.from("snapshots").upsert(carryRows, {
-          onConflict: "user_id,date",
-          ignoreDuplicates: true,
-        });
-        if (error) throw error;
-      }
-
-      // Never wipe good history to replace it with nothing: if the recompute
-      // produced zero rows for this range (a transient all-null valuation, or a
-      // data quirk), skip the destructive delete and leave existing rows intact
-      // for a later run to correct. The delete + insert only happen together.
-      if (rebuildRows.length === 0) return "skip:rebuild-empty:from=" + rebuildStart;
-
-      const { error: delError } = await supabase
-        .from("snapshots")
-        .delete()
-        .eq("user_id", userId)
-        .gte("date", rebuildStart)
-        .lt("date", todayStr);
-      if (delError) throw delError;
-
-      const { error: insError } = await supabase.from("snapshots").insert(rebuildRows);
-      if (insError) throw insError;
-      return "ok:rebuild:" + rebuildRows.length + ":from=" + rebuildStart;
-    }
-
-    if (rows.length === 0) return "skip:no-rows-computed:earliest=" + earliest;
-
-    // Overwrite on conflict (not ignoreDuplicates): every row is recomputed
-    // from the current asset set, so re-running this pass HEALS a stale vintage
-    // rather than leaving it in place to interleave with fresh rows. today's
-    // row is never in `dates` (filtered < todayStr), so the live cron's row is
-    // never disturbed.
-    const { error: upsertError } = await supabase.from("snapshots").upsert(rows, {
-      onConflict: "user_id,date",
-    });
-    if (upsertError) throw upsertError;
-    return "ok:standard:" + rows.length;
+    const { error: insError } = await supabase.from("snapshots").insert(allRows);
+    if (insError) throw insError;
+    return "ok:rebuild:" + allRows.length + ":from=" + earliest;
   } catch (err) {
     Sentry.captureException(err, {
       tags: { fn: "backfillSnapshots" },
@@ -1225,8 +1191,9 @@ export async function backfillSnapshots(userId: string, rebuildFrom?: string | n
 // created_at), plus each asset's stated buy_date. Including buy_date can only
 // pull the floor EARLIER than the rebuild's own `earliest`, which is the safe
 // direction: a floor that is too early merely fails to notice residue (the next
-// rebuild sweeps it anyway), whereas a floor that is too late would report
-// healthy history as residue and re-rebuild it every single day.
+// rebuild clears it anyway, since every rebuild replaces the entire history),
+// whereas a floor that is too late would report healthy history as residue and
+// re-rebuild it every single day.
 //
 // Read-only. Returns null when there is nothing to date the book from (no
 // assets, no dated mutations) — callers must treat that as "can't tell", never

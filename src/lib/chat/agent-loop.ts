@@ -144,10 +144,6 @@ function mergeCommits(a: CommitOutcome | null, b: CommitOutcome): CommitOutcome 
     analyticsEvent: a.analyticsEvent ?? b.analyticsEvent,
     needsBackfill: a.needsBackfill || b.needsBackfill,
     hasAdds: a.hasAdds || b.hasAdds,
-    rebuildFrom:
-      a.rebuildFrom == null ? b.rebuildFrom
-      : b.rebuildFrom == null ? a.rebuildFrom
-      : a.rebuildFrom < b.rebuildFrom ? a.rebuildFrom : b.rebuildFrom,
   };
 }
 
@@ -370,7 +366,7 @@ export async function runAgentChat(input: AgentChatInput): Promise<AgentChatResu
       });
     }
     after(async () => { try { await writeSnapshot(input.userId); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-snapshot" } }); } });
-    if (commit.needsBackfill) after(async () => { try { await backfillSnapshots(input.userId, commit.rebuildFrom); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-backfill" } }); } });
+    if (commit.needsBackfill) after(async () => { try { await backfillSnapshots(input.userId); } catch (err) { Sentry.captureException(err, { tags: { background: "agent-backfill" } }); } });
     // Holdings changed → recompute the user's market-swing entries in the background.
     after(() => generateMarketSwings(input.userId));
     after(async () => {

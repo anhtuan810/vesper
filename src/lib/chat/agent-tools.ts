@@ -45,13 +45,12 @@ export interface CommitOutcome {
   changed: boolean;
   mutationMetas: MutationMeta[];
   analyticsEvent: string | null;
+  // True when this batch changed something dated in the PAST, so the
+  // reconstructed history has to be rebuilt. backfillSnapshots always rebuilds
+  // the whole history, so this is the only question worth carrying — there is no
+  // "from when" to pass along.
   needsBackfill: boolean;
   hasAdds: boolean;
-  // Earliest acquisition date among this batch's adds/removes — every snapshot
-  // row from this date forward must be rebuilt to include/exclude the asset
-  // (upsert-skip would otherwise leave stale rows behind it). Null when no
-  // change in the batch actually altered the historical asset set.
-  rebuildFrom: string | null;
 }
 
 export interface ToolOutcome {
@@ -799,8 +798,8 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
   const portfolioWasEmpty = ctx.currentAssets.length === 0;
 
   // applyPortfolioChanges resolves every date and writes every mutation, so it
-  // is the single source of truth for which historical rows changed. It returns
-  // `rebuildFrom` (earliest affected date, or null) — no caller-side re-derivation.
+  // is the single source of truth for whether historical rows changed. It returns
+  // `touchesHistory` — no caller-side re-derivation.
   // A single-row commit rethrows a ValueModeError (an unmet intake gate — e.g. a
   // property add missing its mortgage decision, or a value-mode miss). Catch it
   // and hand the model the exact question as needsClarification, so it asks the
@@ -831,7 +830,7 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
     }
     throw err;
   }
-  const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, rebuildFrom } = commitResult;
+  const { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, touchesHistory } = commitResult;
 
   // A change landed → refresh the in-context portfolio so any follow-up read in
   // THIS same turn (get_holdings / get_net_worth / get_vitals, or the model
@@ -878,7 +877,7 @@ async function commitMutationTool(input: Record<string, unknown>, ctx: ToolConte
       ...(changed && undatedImportCount >= 2 ? { awaitingAcquisitionDate: undatedImportCount, acquisitionDateHint: "These positions have no acquisition date yet and are currently dated today. Ask the user once for the batch's acquisition date, then call set_import_acquisition_date with their answer." } : {}),
       ...(fxWarnings.length ? { notes: fxWarnings } : {}),
     },
-    commit: { changed, mutationMetas, analyticsEvent: hasAdds && portfolioWasEmpty ? "first_asset_added" : null, needsBackfill: rebuildFrom != null, hasAdds, rebuildFrom },
+    commit: { changed, mutationMetas, analyticsEvent: hasAdds && portfolioWasEmpty ? "first_asset_added" : null, needsBackfill: touchesHistory, hasAdds },
   };
 }
 
@@ -1011,8 +1010,9 @@ async function setImportAcquisitionDateTool(input: Record<string, unknown>, ctx:
 
   return {
     forModel: { dated: rows.length, date: parsed },
-    // rebuildFrom = the resolved date → the agent loop's backfill redraws the
-    // net-worth history from acquisition forward. Not adds, so no first-asset metric.
-    commit: { changed: true, mutationMetas, analyticsEvent: null, needsBackfill: true, hasAdds: false, rebuildFrom: parsed },
+    // Stamping an acquisition date moves these rows into the past → the agent
+    // loop's backfill redraws the net-worth history. Not adds, so no
+    // first-asset metric.
+    commit: { changed: true, mutationMetas, analyticsEvent: null, needsBackfill: true, hasAdds: false },
   };
 }

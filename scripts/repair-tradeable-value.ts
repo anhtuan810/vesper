@@ -11,8 +11,9 @@
 //   1. Finds the affected AAPL asset (value=734125, buy_price=73.41,
 //      buy_price_source=NULL, created 2026-06-10) and corrects `assets.value`
 //      to units x latest market price.
-//   2. Rebuilds the 2026-06-10 snapshot row at market price via
-//      backfillSnapshots(userId, "2026-06-10").
+//   2. Rebuilds the reconstructed history at market price via
+//      backfillSnapshots(userId) (as of 2026-08 this always rebuilds the whole
+//      history; it used to be scoped to "2026-06-10" forward).
 //   3. Re-runs writeSnapshot(userId) so today's row (2026-06-11) is recomputed
 //      at market price under the fixed writeSnapshot.
 //
@@ -64,8 +65,8 @@ async function main() {
       .eq("id", asset.id);
     if (updateError) throw updateError;
 
-    console.log(`Rebuilding 2026-06-10 snapshot for user ${userId}...`);
-    await backfillSnapshots(userId, "2026-06-10");
+    console.log(`Rebuilding snapshot history for user ${userId}...`);
+    await backfillSnapshots(userId);
 
     console.log(`Recomputing today's snapshot for user ${userId}...`);
     await writeSnapshot(userId);

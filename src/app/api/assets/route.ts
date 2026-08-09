@@ -118,11 +118,11 @@ export async function POST(req: NextRequest) {
       .single();
 
     after(() => writeSnapshot(user.id));
-    // A past acquisition date means every snapshot row from that date forward must
-    // be (re)built to include this holding — the same rebuild the chat path runs.
-    // Without it, restoring a years-old position leaves the graph a single dot.
+    // A past acquisition date means the reconstructed history has to be rebuilt
+    // to include this holding — the same rebuild the chat path runs. Without it,
+    // restoring a years-old position leaves the graph a single dot.
     if (buyDate && buyDate < todayStr) {
-      after(() => backfillSnapshots(user.id, buyDate));
+      after(() => backfillSnapshots(user.id));
     }
     // Logging an asset (esp. one bought long ago) can surface new historical
     // market swings — regenerate them in the background so the user never waits.

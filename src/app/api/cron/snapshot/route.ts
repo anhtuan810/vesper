@@ -28,12 +28,14 @@ export async function GET(req: NextRequest) {
       //      transient outage, a deploy predating the fix).
       //  (2) The OLDEST snapshot predates everything the current book can date
       //      itself from. Those rows are residue of an erased holding — remove a
-      //      house that was your oldest asset and, before the sweep in
-      //      backfillSnapshots, the years it alone occupied survived as stale
-      //      points ending in a cliff. Nothing recomputes them, so nothing else
-      //      would ever clear them; a standard pass now sweeps them on the way
-      //      past. bookFloorDate returns null when the book can't be dated at all
-      //      — never treated as "it's all residue".
+      //      house that was your oldest asset and, back when backfillSnapshots
+      //      rebuilt only a scoped range, the years it alone occupied survived
+      //      as stale points ending in a cliff. Rebuilding the WHOLE history
+      //      (which is now the only mode) makes that impossible going forward;
+      //      this condition is what gets one rebuild to run for an account still
+      //      carrying the residue, and it stops firing once it has. bookFloorDate
+      //      returns null when the book can't be dated at all — never treated as
+      //      "it's all residue".
       try {
         const [{ data: oldest }, floor] = await Promise.all([
           supabase

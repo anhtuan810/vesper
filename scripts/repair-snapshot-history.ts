@@ -17,9 +17,10 @@
 //
 // This script repairs rows ALREADY written before the fix: for each affected
 // user it forces a full clean rebuild of [earliest, today) — delete + recompute
-// from the current asset set — then refreshes today's live row. Passing a very
-// early rebuildFrom makes backfillSnapshots clamp rebuildStart to the user's
-// real earliest date, so the entire history is rebuilt consistently.
+// from the current asset set — then refreshes today's live row. As of 2026-08
+// that is simply what backfillSnapshots does on every run (it has no partial
+// mode any more), so this script is now just "do it now, for everyone" rather
+// than a special repair mode.
 //
 // Run:  npx tsx scripts/repair-snapshot-history.ts [userId]
 //   - with a userId: repair just that user.
@@ -31,13 +32,9 @@
 import { createServerSupabase } from "../src/lib/supabase";
 import { backfillSnapshots, writeSnapshot } from "../src/lib/snapshot";
 
-// Earlier than any real acquisition — backfillSnapshots clamps the rebuild
-// start to the user's own earliest date, so this means "rebuild everything".
-const FROM_BEGINNING = "2000-01-01";
-
 async function repairUser(userId: string): Promise<void> {
   // Full clean rebuild of all historical rows, then refresh today's live row.
-  await backfillSnapshots(userId, FROM_BEGINNING);
+  await backfillSnapshots(userId);
   await writeSnapshot(userId);
 }
 

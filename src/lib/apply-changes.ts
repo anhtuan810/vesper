@@ -205,7 +205,7 @@ export async function applyPortfolioChanges({
   // estate still derives from country. Defaults to USD when not provided (keeps
   // the agent-loop caller, which doesn't pass it, byte-identical to before).
   displayCurrency?: string;
-}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string; clarification?: boolean }[]; rebuildFrom: string | null }> {
+}): Promise<{ changed: boolean; duplicateWarnings: string[]; fxWarnings: string[]; mutationMetas: MutationMeta[]; failures: { name: string; reason: string; clarification?: boolean }[]; touchesHistory: boolean }> {
   const fallbackCurrency = displayCurrency ?? "USD";
   // Fetch FX rates once for running-total USD conversion (metadata only — not used for storage).
   const usdRates = await getUsdRates();
@@ -235,19 +235,21 @@ export async function applyPortfolioChanges({
   const addedNamesThisBatch = new Set<string>();
   let changed = false;
 
-  // Earliest date from which historical snapshot rows must be rebuilt (not
-  // upsert-skipped) so they actually include/exclude the asset this turn
-  // touched. Computed HERE — the one place that resolves every date and writes
-  // every mutation — so the two callers (chat route + agent loop) don't each
-  // re-derive it from drifting heuristics. null = no historical rows changed
-  // (e.g. an add/sale dated today; writeSnapshot owns today's row).
+  // Did this turn touch anything DATED IN THE PAST — i.e. does the reconstructed
+  // history need rebuilding at all? Computed HERE — the one place that resolves
+  // every date and writes every mutation — so the two callers (chat route +
+  // agent loop) don't each re-derive it from drifting heuristics.
+  //
+  // A boolean, not a date. backfillSnapshots always rebuilds a user's entire
+  // history (see the note at its write site), so "from when" is not a question
+  // anyone needs answered; the only thing worth knowing is whether to bother.
+  // False for a change dated today — writeSnapshot owns today's row.
   const todayStr = new Date().toISOString().slice(0, 10);
-  let rebuildFrom: string | null = null;
+  let touchesHistory = false;
   const considerRebuild = (d: string | null | undefined) => {
     if (!d) return;
-    const day = d.slice(0, 10);
-    if (day >= todayStr) return; // today's row is owned by writeSnapshot
-    if (rebuildFrom === null || day < rebuildFrom) rebuildFrom = day;
+    if (d.slice(0, 10) >= todayStr) return; // today's row is owned by writeSnapshot
+    touchesHistory = true;
   };
 
   // Collapse duplicate ADD rows up front, before any network resolution: a broker
@@ -1439,5 +1441,5 @@ export async function applyPortfolioChanges({
     }
   }
 
-  return { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, rebuildFrom };
+  return { changed, duplicateWarnings, fxWarnings, mutationMetas, failures, touchesHistory };
 }
