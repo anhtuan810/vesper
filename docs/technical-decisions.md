@@ -564,6 +564,39 @@ full chart/detail. Rules that make it work:
   breakdown card. Multi-band portfolios are unchanged (0-anchored stack). Explicit
   Liquid (`lineOnly`) is unaffected; `liquidOnly` still gates the intraday 1D pill
   alone. Verified in `verify-networth-axis.ts`.
+- **Instant estimated history for a back-dated add (2026-08).** Adding an asset
+  with a past purchase date (a house bought years ago) makes today's total jump
+  while the stored snapshot points still exclude it — the accurate reconstruction
+  (`backfillSnapshots`) runs in the background — so the raw line showed a flat
+  stretch then a spike into today, exactly when a user checks the graph right
+  after adding. `PortfolioTab` now fills that gap on the client: while a rebuild
+  is in flight (`usePortfolioBuilding`) or the gap is too large to be a market
+  move (>10% in one step, covering manual adds that raise no build flag), it
+  detects the un-historized value per asset type (today's live equity minus what
+  the latest snapshot carries for that type — so normal daily market moves never
+  trigger it) and LIFTS the existing history by a rough ramp of each such asset's
+  value (`src/lib/networth-estimate.ts`: linear buy_price→current, property net of
+  mortgage via the pure `mortgage.ts` schedule). The chart renders it as a dashed,
+  zoomed `estimated` line (no bands — the provisional points carry only totals)
+  captioned "Estimated — building your full history…", and the hero shares the
+  same series so its "since inception" delta measures from the lifted baseline
+  (not counting the new asset as a gain). It self-clears the instant the rebuild
+  lands (the excess collapses to ~0). The estimate is deliberately rough, never
+  persisted, and never a figure the user acts on. Cold-start accounts (no history
+  to lift) keep the existing "Building your history…" card. Verified in
+  `verify-networth-estimate.ts`.
+- **History is clamped to 30 years back (2026-08).** Both the client estimate
+  (`clampHistoryStart`, `MAX_HISTORY_YEARS`) and `backfillSnapshots` cap the
+  reconstruction start at 30 years before today — the longest a mortgage runs. A
+  legitimately old holding still shows a full lifetime; a data-entry typo (a house
+  "bought" in 1850, an `occurred_at` off by a millennium) can't generate centuries
+  of monthly rows.
+- **Suspicious purchase dates are confirmed, not silently dropped (2026-08).**
+  `checkAcquisitionDate` (`src/lib/acquisition-date.ts`) flags a future or
+  wildly-old (>100y) purchase date; the chat proposal (`proposal-resolver.ts`)
+  surfaces it inside the existing "Confirm and save" block, so the user can catch a
+  mistyped year before saving. It's additive (no validation loop) — a genuine old
+  date still saves in one step. Verified in `verify-acquisition-date.ts`.
 - **Scrub is a held gesture, never a parked state.** While held, the hero shows
   the point's value + dateline and the chart shows a breakdown-only card
   (asset-class values; no date/total header — the hero carries those). Release,

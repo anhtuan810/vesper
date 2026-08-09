@@ -429,11 +429,11 @@ export function PortfolioTab({
     }));
   }, [intraday, liquidAssets, displayCurrency]);
 
-  // Active total/series for the hero + chart. Liquid-only 1D → intraday combined
-  // line (netTotal stays the live liquid total for continuity); liquid daily →
-  // Phase B series; net worth → unchanged.
+  // Active total for the hero. Liquid-only → live liquid total; net worth →
+  // netTotal. (heroSeriesActive is set below, after the provisional series so the
+  // hero can share it — otherwise its "since inception" delta would treat a
+  // just-added back-dated asset as a gain during the building window.)
   const heroTotal = liquidOnly ? liquidTotal : netTotal;
-  const heroSeriesActive = !liquidOnly ? heroSeries : isIntraday ? intradaySeries : liquidSeries;
 
   // True while a back-dated add's history reconstruction is in flight (set by the
   // chat/add flow via watchPortfolioBuild) — the precise window to show the
@@ -533,6 +533,13 @@ export function PortfolioTab({
   const chartSeriesActive = liquidOnly
     ? (isIntraday ? intradaySeries : liquidSeries)
     : (showProvisional ? provisionalSeries! : series);
+  // The hero shares the provisional series while a rebuild is in flight, so its
+  // "since inception" delta measures from the lifted (asset-included) baseline
+  // instead of counting the just-added back-dated asset as a gain. Its points
+  // carry display-currency totals, matching heroSeries' convention.
+  const heroSeriesActive = liquidOnly
+    ? (isIntraday ? intradaySeries : liquidSeries)
+    : (showProvisional ? provisionalSeries! : heroSeries);
 
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);
 
