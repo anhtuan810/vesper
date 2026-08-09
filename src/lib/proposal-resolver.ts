@@ -233,7 +233,12 @@ export async function resolveProposal(proposal: ProposalChange, currentAssets: C
         const country = typeof proposal.country === "string" ? proposal.country : null;
         const est = await estimatePropertyValue({ address, country, buyPrice, buyDate: proposal.buy_date });
         if (est.available && est.currentEstimate != null) {
-          const since = est.clamped ? "1995" : String(proposal.buy_date).slice(0, 4);
+          // "since" reflects the ACTUAL index series used — CBS starts ~1995, but a
+          // national (Eurostat) series' start year varies per country, so this is
+          // never hardcoded to a fixed year.
+          const since = est.clamped && est.seriesStartYear != null
+            ? String(est.seriesStartYear)
+            : String(proposal.buy_date).slice(0, 4);
           return `${base}\n\nCurrent value: about ${money(est.currentEstimate)} — indicative, based on ${est.regionName} price trends since ${since}, not an appraisal. Confirm, or give your own figure.${dateWarn}`;
         }
       }

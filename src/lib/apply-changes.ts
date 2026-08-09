@@ -627,13 +627,18 @@ export async function applyPortfolioChanges({
         });
         if (est.available && est.currentEstimate != null) {
           resolvedValue = est.currentEstimate;
-          valueProvenance = `Initial value set from indicative regional estimate (${est.regionName}, ${est.asOfPeriod}${est.clamped ? ", indexed from 1995" : ""}).`;
+          // "indexed from {year}" reflects the ACTUAL series used — CBS regional
+          // starts ~1995, but the national (Eurostat) tier's start year varies per
+          // country, so this is never hardcoded.
+          const indexedFrom = est.clamped && est.seriesStartYear != null ? `, indexed from ${est.seriesStartYear}` : "";
+          valueProvenance = `Initial value set from indicative estimate (${est.regionName}, ${est.asOfPeriod}${indexedFrom}).`;
         }
       }
 
       // Safety net: a property must never be stored at 0. If no value was given and
-      // the indicative estimate was unavailable (e.g. a non-NL property, which CBS
-      // cannot estimate, or a CBS miss), resolvedValue is still 0 here. Skip the
+      // the indicative estimate was unavailable (no logged purchase price/date, or
+      // neither the regional nor the national index has data for this property's
+      // country/period), resolvedValue is still 0 here. Skip the
       // insert and ask for the current value rather than committing a EUR 0 asset.
       // No asset row and no mutation are written for the skipped add. For a single
       // add this surfaces the message to the user; in a multi-row batch it is

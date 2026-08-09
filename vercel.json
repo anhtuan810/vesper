@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/reap-demo",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/warm-price-index",
+      "schedule": "0 4 1 * *"
     }
   ]
 }

@@ -40,7 +40,14 @@
   daily-close cache — apply in production; until then the first-add graph/journal rebuild
   re-fetches each symbol's full history from Yahoo every time, which is just slower),
   `fx_rate_history` (global per-date FX-rate cache — apply in production; until then the
-  same rebuild re-fetches the multi-year Frankfurter series every time, which is just slower).
+  same rebuild re-fetches the multi-year Frankfurter series every time, which is just slower),
+  `national_price_index` (global per-country house-price index cache, seeded monthly by
+  `/api/cron/warm-price-index` — apply in production, AND add that path + a monthly
+  schedule to the Vercel cron config if not already deployed. Until the migration is
+  applied and the cron has run once, every property's history reconstruction falls back
+  to its pre-existing behavior — NL via live CBS, every other country linear — exactly
+  as before this feature existed; nothing breaks, non-NL countries just don't get the
+  new shaped curve/indicative value yet).
   (`market_stories` belonged to the removed story feature — do not apply it; if the
   table already exists it is orphaned and safe to drop, see the bullet above.)
   `users_onboarding_completed_at` (adds the `users.onboarding_completed_at` flag that

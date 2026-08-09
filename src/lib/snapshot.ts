@@ -7,10 +7,11 @@ import { YAHOO_FINANCE_BASE_URL } from "@/lib/constants";
 import { resolveRegion } from "@/lib/property-region";
 import { getRegionIndex } from "@/lib/cbs-pbk";
 import { parseBuyYear, normalizeIndex } from "@/lib/property-estimate";
-import { effectivePropertyCountry } from "@/lib/country-currency";
+import { effectivePropertyCountry, countryNameToCode } from "@/lib/country-currency";
 import { getCachedPriceSeries } from "@/lib/price-history-cache";
 import { getCachedHistoricalUsdRates } from "@/lib/fx-history-cache";
 import { clampHistoryStart } from "@/lib/networth-estimate";
+import { getNationalIndex } from "@/lib/national-price-index";
 
 export async function writeSnapshot(userId: string): Promise<void> {
   try {
@@ -410,24 +411,44 @@ async function buildRealEstateProgressSamplers(assets: any[], todayStr: string):
 
         const linearT = (date: string) => (fractionalYear(date) - buyFy) / (todayFy - buyFy);
 
+        // A progress sampler from a yearly index series (CBS regional or national):
+        // fit a monotone-cubic through the index, then report the fraction of the
+        // buy→today move reached by each date. Null when the series is too short or
+        // flat, so the caller falls back to linear.
+        const shapeFromPoints = (points: { year: number; index: number }[]): ((date: string) => number) | null => {
+          const cps: XY[] = normalizeIndex(points).map((p) => ({ x: p.year + 0.5, y: p.index }));
+          if (cps.length < 2) return null;
+          const S = monotoneCubic(cps);
+          const sBuy = S(buyFy);
+          const denom = S(todayFy) - sBuy;
+          if (Math.abs(denom) <= 1e-9) return null;
+          return (date: string) => (S(fractionalYear(date)) - sBuy) / denom;
+        };
+
         let shapeT: ((date: string) => number) | null = null;
-        if (a.address && isNL(effectivePropertyCountry(a.country as string | null, a.address as string | null))) {
+        const country = effectivePropertyCountry(a.country as string | null, a.address as string | null);
+
+        // Tier 1 — NL regional (CBS), the finest shape, when the address resolves.
+        if (a.address && isNL(country)) {
           const region = await resolveRegion(a.address as string);
           if (region) {
             const idx = await getRegionIndex(region.gemeente, region.province);
-            if (idx && idx.points.length >= 2) {
-              const cps: XY[] = normalizeIndex(idx.points).map((p) => ({ x: p.year + 0.5, y: p.index }));
-              if (cps.length >= 2) {
-                const S = monotoneCubic(cps);
-                const sBuy = S(buyFy);
-                const denom = S(todayFy) - sBuy;
-                if (Math.abs(denom) > 1e-9) {
-                  shapeT = (date: string) => (S(fractionalYear(date)) - sBuy) / denom;
-                }
-              }
-            }
+            if (idx && idx.points.length >= 2) shapeT = shapeFromPoints(idx.points);
           }
         }
+
+        // Tier 2 — national index (any country, incl. NL if CBS missed): a single
+        // pre-seeded series keyed by country, no geocoding, no live fetch. Gives
+        // every country a market-shaped line instead of a straight one.
+        if (!shapeT) {
+          const iso2 = countryNameToCode(country);
+          if (iso2) {
+            const nat = await getNationalIndex(iso2);
+            if (nat && nat.length >= 2) shapeT = shapeFromPoints(nat);
+          }
+        }
+
+        // Tier 3 — linear between the two anchors, when no index is available.
         realEstateT.set(a.id as string, shapeT ?? linearT);
       }),
   );

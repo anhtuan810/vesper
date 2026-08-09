@@ -34,7 +34,7 @@
   - `/api/assets` — POST only, undo-restore of a just-deleted asset (logs a "Restored after delete" mutation)
   - `/api/mutations` — GET the user's recent mutations
   - `/api/users/me` — GET user preferences (`name, avatar_url, display_currency, theme, fingerprint, profile`); PATCH to update preferences (theme, display_currency, profile)
-  - `DELETE /api/users/me` — permanent account deletion; explicit per-table delete loop over the user-scoped tables (`messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots, scenarios`, all keyed by `user_id`), then the `users` row, then the auth user. `rate_limits` relies on its `ON DELETE CASCADE`; the global reference/cache tables (`fx_rates`, `fx_rate_history`, `market_moves`, `price_history`, `price_index_cache`) are not user-scoped and are intentionally untouched
+  - `DELETE /api/users/me` — permanent account deletion; explicit per-table delete loop over the user-scoped tables (`messages, highlights, goals, snapshots, mutations, assets, diary_summaries, vital_snapshots, scenarios`, all keyed by `user_id`), then the `users` row, then the auth user. `rate_limits` relies on its `ON DELETE CASCADE`; the global reference/cache tables (`fx_rates`, `fx_rate_history`, `market_moves`, `price_history`, `price_index_cache`, `national_price_index`) are not user-scoped and are intentionally untouched
   - `/api/logo` — server-side logo proxy
   - `/api/backfill` — per-user, session-authenticated (`getAuthUser`) price backfill plus a `rename-tickers` job; rate-limited to once per 30 days per user. Client-invoked, not cron.
 - **Routes removed in the migration**: `PATCH /api/assets/[id]` and `DELETE /api/assets/[id]` (Decision 8, PR 4); `PATCH /api/mutations/[id]` (Decision 1, PR 5). All asset and diary modifications now flow through `/api/chat`.
@@ -130,6 +130,11 @@ Regional CBS PBK index-series cache (migration `20260606_price_index_cache.sql`)
 - `region_code text PRIMARY KEY`, `points jsonb` (yearly `{year, index}` series), `as_of_period text`, `fetched_at timestamptz`.
 - Written only via the service role by `/api/property-estimate`; refreshed when `fetched_at` is older than ~30 days. Reads/writes are best-effort — a missing row degrades to a live CBS fetch.
 - Replaced the dropped `woz_cache` table (the WOZ integration was removed entirely).
+
+### national_price_index
+Global per-country house-price index cache (migration `20260809_national_price_index.sql`, see "National Price Index" above). **Country-keyed, NOT user-keyed** — shared across all users and intentionally untouched by account deletion.
+- `country text PRIMARY KEY` (ISO-2), `points jsonb` (yearly `{year, index}` series, Eurostat `prc_hpi_a`), `as_of_year int`, `fetched_at timestamptz`.
+- Written only via the service role by the monthly `/api/cron/warm-price-index` cron — never on a user request path. Reads are best-effort — a missing row (table not yet migrated, cron not yet run, country not covered) degrades to the linear property-history fallback, never an error.
 
 ### entitlements
 Cross-platform subscription entitlement (migration `20260618_subscriptions.sql`). **The single source of truth for paid access**, keyed to the user account, not a device or platform — so a purchase on any platform grants access on all of them.
@@ -258,9 +263,9 @@ Users onboard by attaching what they already have: broker screenshots, a CSV exp
 
 **Rationale:** WOZ requires per-municipality scraping/lookups with no stable free API and lags ~1–2 years; the CBS PBK is a single free official OData series, base 2020 = 100, from 1995, regionally broken down — enough for an *indicative* (not appraisal) value with one well-defined source.
 
-**Method (no LLM):** `currentValue = buy_price × (index_now / index_buyYear)`. The figure is computed server-side and is server-authoritative — the model never produces it. Purchases before 1995 clamp to the 1995 baseline (`clamped`). Output is always wrapped so it never throws — any miss returns `{ available: false }`.
+**Method (no LLM):** `currentValue = buy_price × (index_now / index_buyYear)`. The figure is computed server-side and is server-authoritative — the model never produces it. A purchase before the index's own first year clamps to that year (`clamped`; `seriesStartYear` carries which year — see "National Price Index" below, this is no longer hardcoded to 1995). Output is always wrapped so it never throws — any miss returns `{ available: false }`.
 
-**Region:** address → gemeente + province via PDOK Locatieserver; index region is the province, or the city for the G4 (Amsterdam, Rotterdam, 's-Gravenhage, Utrecht). **NL-only.**
+**Region:** address → gemeente + province via PDOK Locatieserver; index region is the province, or the city for the G4 (Amsterdam, Rotterdam, 's-Gravenhage, Utrecht). **NL-only** — this is Tier 1 of two; see "National Price Index" below for every other country.
 
 **Country gate (2026-07-06):** the NL check keys on `effectivePropertyCountry(country, address)` (`src/lib/country-currency.ts`), not the stored `country` column alone — it falls back to the country named in the canonical address. A property whose `country` was never populated (e.g. added by address alone) still qualifies for the indicative value and the CBS snapshot reconstruction by its address, with no data backfill. Applied in `EstimatedValueChart` (client gate), `/api/property-estimate` (server gate), `estimatePropertyValue` (add-flow), and `snapshot.ts` (history reconstruction).
 
@@ -275,18 +280,39 @@ Users onboard by attaching what they already have: broker screenshots, a CSV exp
 
 **Files:** `src/lib/cbs-pbk.ts`, `src/lib/property-estimate.ts`, `src/lib/property-region.ts`, `src/lib/property-estimate-resolve.ts`, `src/app/api/property-estimate/route.ts`, `src/components/asset-detail/EstimatedValueChart.tsx`.
 
+## National Price Index — Every Country, No Live Fetch (2026-08)
+
+**Problem this replaces:** before this, only NL properties got a shaped history curve (via CBS) or an indicative value — every other country fell straight to **linear** interpolation and `{ available: false }`. Separately, the NL path itself was slow: `resolveRegion` (PDOK geocode) and CBS's region-key resolution both ran live, per property, inside the reconstruction's critical path, with only a warm-instance memo protecting them — empty on the cold serverless starts the background rebuild (`after()`) usually runs on. That's why a property-heavy rebuild was slow and why the spike/cliff window (see "Reconcile the graph to current holdings" above) was long enough to notice.
+
+**Decision:** add a **national** tier — one house-price index per COUNTRY (Eurostat `prc_hpi_a`, annual House Price Index, all dwellings, 2015=100) — pre-seeded into a global table by a monthly cron, so the reconstruction's read path is a single local DB lookup keyed by the property's country. **No geocoding, no live external fetch, ever, on the hot path.**
+
+**Tiering — best-available wins, NL keeps its finer regional data:**
+1. **NL regional (CBS)** — unchanged, still the finest shape when the address resolves.
+2. **National (Eurostat, every country incl. NL as a fallback)** — replaces the old "everyone else: linear". Keyed by `country` only (`countryNameToCode(effectivePropertyCountry(...))`) — no address, no geocoding.
+3. **Linear** — the honest floor when no index is available for the country/date at all (unchanged as the ultimate fallback; unreachable for NL/covered countries in practice now).
+
+Applied identically in both consumers that valued property before: the snapshot reconstruction's shape sampler (`buildRealEstateProgressSamplers` in `snapshot.ts`) and the add-flow's indicative value (`estimatePropertyValue` in `property-estimate-resolve.ts`).
+
+**Trade-off, accepted deliberately (UX over precision — house prices are indicative regardless of source):** a non-NL property's history curve follows its *country's* market shape, not a regional one. Given the number is already labelled "indicative, not an appraisal", this is judged worth it for the latency and coverage win; NL is unaffected (CBS is checked first and, when it resolves, wins outright).
+
+**Why this is deploy-safe with no ordering dependency:** every failure mode (migration not yet applied, cron never run, Eurostat down, a country the dataset doesn't cover, a malformed payload) degrades silently to the next tier down — worst case, today's linear behavior. `parseEurostatHpi` never throws; `getNationalIndex` returns `null` on any read failure; `seedNationalPriceIndex` is best-effort and only logs on failure, never blocks the cron. Nothing regresses if this ships before the migration is applied or before the first cron run — property history just stays exactly as it is today until the seed lands.
+
+**Caching:** `national_price_index` (see Supabase Tables), one row per ISO-2 country, refreshed monthly (`/api/cron/warm-price-index`, `0 4 1 * *`). A warm-instance memo (`nationalIndexMemo`) additionally spares repeat DB reads within one rebuild/instance, mirroring the existing CBS/PDOK memos.
+
+**Files:** `src/lib/national-price-index.ts` (`parseEurostatHpi`, `getNationalIndex`, `seedNationalPriceIndex`), `src/app/api/cron/warm-price-index/route.ts`, `src/lib/snapshot.ts`, `src/lib/property-estimate-resolve.ts`. Verified in `verify-national-price-index.ts` (pure JSON-stat parsing against a hand-built fixture shaped like the real Eurostat response — aggregate-geo exclusion, sparse cells, the EL→GR/UK→GB code quirks, malformed payloads). The live Eurostat fetch itself can only be confirmed by the first production cron run (this sandbox's egress is policy-restricted to a host allowlist that excludes `ec.europa.eu`).
+
 ## Property Reconstruction (Snapshot History)
 
-**Decision:** historical net worth snapshots reconstruct each property's value with a **two-anchor, shape-from-CBS** approach rather than a flat or linear assumption.
+**Decision:** historical net worth snapshots reconstruct each property's value with a **two-anchor, shape-from-index** approach rather than a flat or linear assumption.
 
 - **Anchors**: the curve passes exactly through `buy_price` at `buy_date` and the asset's current `value` at today. These two points are fixed; nothing else can move them.
-- **Shape**: between the anchors, the curve follows the **shape** of the CBS regional price index (PBK), fit at fractional-year (month) precision via **monotone-cubic (Fritsch-Carlson / PCHIP) interpolation** — smooth, no overshoot. CBS supplies shape only; the fit is rescaled so both anchors hold exactly.
-- **Fallback**: if the CBS region can't be resolved or fewer than 2 index points exist, the value is interpolated **linearly in time** between the two anchors instead.
+- **Shape**: between the anchors, the curve follows the **shape** of a house-price index — CBS regional (NL, when it resolves) or the national index (every country, see "National Price Index" above) — fit at fractional-year (month) precision via **monotone-cubic (Fritsch-Carlson / PCHIP) interpolation** — smooth, no overshoot. The index supplies shape only; the fit is rescaled so both anchors hold exactly.
+- **Fallback**: if neither index tier is available (region can't be resolved AND the country isn't in the national dataset, or either series has fewer than 2 points), the value is interpolated **linearly in time** between the two anchors instead.
 - **Acquisition guard**: a property contributes nothing to snapshots dated before its `buy_date`.
 - **Mortgage balance**: a smooth historical balance curve is built via `projectMortgage` (the same projection `MortgageBlock` uses), sampled at fractional-month resolution from `mortgage_start_date` (or `buy_date`) to today, clamped to `[0, grossValue]`. Falls back to `computeCurrentBalance` when `projectMortgage` can't build a schedule.
 - **Rebuild trigger**: editing a property's mortgage or value triggers a snapshot rebuild from that property's acquisition date forward, keeping historical equity consistent with the latest inputs.
 
-**Files:** `src/lib/snapshot.ts` (`monotoneCubic`, `realEstateT`, `realEstateBalanceAt`), `src/lib/mortgage.ts`, `src/lib/cbs-pbk.ts`, `src/lib/property-region.ts`, `src/lib/property-estimate.ts`.
+**Files:** `src/lib/snapshot.ts` (`monotoneCubic`, `realEstateT`, `realEstateBalanceAt`), `src/lib/mortgage.ts`, `src/lib/cbs-pbk.ts`, `src/lib/national-price-index.ts`, `src/lib/property-region.ts`, `src/lib/property-estimate.ts`.
 
 ## Portfolio Calculation Rules
 
@@ -676,8 +702,12 @@ what they owned and reflect on why they decided. Model:
 - **Latency architecture** (the demo lives on this gesture):
   - Warm-instance memos (module scope, success-only): full price series per
     symbol (12h TTL, refetched if earlier coverage needed), PDOK
-    `resolveRegion` per address, CBS `getRegionIndex` per region. After the
-    first rewind on a warm instance, any other date needs zero external calls.
+    `resolveRegion` per address, CBS `getRegionIndex` per region, national
+    `getNationalIndex` per country (see "National Price Index"). The national
+    tier reads a pre-seeded global table (no external call at all, warm or
+    cold instance alike); only the NL-regional CBS/PDOK pair still depends on
+    a warm instance to avoid a live external round-trip. After the first
+    rewind on a warm instance, any other date needs zero external calls.
   - Inside one reconstruction: the two Supabase reads go out together; the
     property half and the price half run concurrently.
   - **Client prefetch**: `PortfolioTab` reconstructs the 8 newest entry days in
