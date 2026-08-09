@@ -1393,6 +1393,60 @@ pre-existing lint errors on `main`).
   navigation so the remount poll can take over.
 - Process note: per CLAUDE.md, developed and pushed directly on `main`.
 
+## Session log — 2026-08-09 (net-worth graph → property history → chat delete)
+
+Started from a screenshot of the net-worth graph reading as a flat line for a
+single-asset-class account, and widened over the session into three connected
+tracks — see the dedicated sections above for full technical detail on each;
+this is the narrative of how one report led to the next.
+
+- **The flat line → the spike/cliff → the reconciliation.** The graph's first
+  fix (zoom a single-asset-class portfolio like the Liquid line) surfaced a
+  second, worse problem the owner caught immediately from a real add/remove:
+  adding or removing a holding drew a raw spike or cliff at today, because the
+  stored history described the OLD book against a live tip describing the NEW
+  one. Patched once for "add," the owner pushed back — "why has this never
+  been stable" — which was the right question: the fix generalized into one
+  reconciliation (`reconcileHistoryToHoldings` / `useReconciledNetWorthSeries`)
+  that ramps additions and subtracts removals against what's actually held
+  now, then was extracted so the desktop Overview got the identical fix
+  instead of a second copy of the bug.
+- **"Why does the rebuild take so long" → the national price index.** A
+  structural question about NL property reconstruction latency (live
+  PDOK/CBS calls in the hot path) led to asking the same question for every
+  OTHER country — which had no shaped history at all, just a straight line.
+  Landed on a bundled/pre-seeded national index (Eurostat, one monthly cron)
+  as the highest-leverage fix: instant for every country, not just NL,
+  accepting a documented precision trade-off the owner signed off on
+  explicitly ("house price is indicative anyway").
+- **"Remove the house, mistake" → the chat hard-delete reversal.** Testing the
+  reconciliation surfaced three real bugs at once: the removed asset still
+  showed in the graph, still showed in the journal, and the dashed estimate
+  never resolved. Root-caused (not patched blind) to two separate,
+  independent bugs: (1) a silent, unconditional downgrade of every chat
+  "mistake" removal to a recoverable "sold," so the assistant's "erased… no
+  trace" promise was never true — reversed, on the owner's explicit call,
+  since the existing hard-delete implementation was already complete and the
+  downgrade's own rationale didn't hold up under inspection; (2) a genuinely
+  separate, pre-existing bug where the net-worth chart's stored history was
+  fetched once at mount and never again for any account past its first
+  back-dated holding — `watchPortfolioBuild`'s revision-bump mechanism
+  existed and worked for `netWorthAssets`, but nothing had ever wired the
+  chart's own history fetch to it. Fixed both; added a defensive time
+  ceiling on top so a future stuck estimate degrades to real (if imperfect)
+  data instead of never resolving.
+- **Deploy model.** All seven commits are server-side or `src/`-only — no new
+  native plugin, permission, or iOS config — so none of it needs a new App
+  Store binary; the client-side pieces (chart/chat UI) ship via
+  `npm run ota:release`, the server-side pieces (national index, snapshot
+  reconstruction) are live on `main` already. Two items were still pending
+  the owner's action as of this session's end: the `national_price_index`
+  migration applied to production Supabase, and either the OTA GitHub Actions
+  secrets or a manual `npm run ota:release` run (the workflow failed twice on
+  the same missing secrets, confirmed by re-running it) — both fail safe
+  (existing behaviour) until resolved, nothing regresses by shipping first.
+- Process note: per CLAUDE.md, developed and pushed directly on `main`, no PRs.
+
 ## Known Technical Debt
 
 - **Historical mutations have currency-implicit-EUR values**. Rows logged before the native-storage migration have `before_value`/`after_value` stored as EUR-equivalent even when the position was non-EUR priced. Cannot be backfilled retroactively without historical FX rates per `occurred_at`. Acceptable for MVP; post-migration rows are correct (native currency matching `currency` column).
@@ -1409,7 +1463,7 @@ pre-existing lint errors on `main`).
 - **Safari OAuth on localhost** is broken (ITP). Production unaffected.
 - **PDF upload capped at ~3 MB inline** (`CHAT_PDF_MAX_MB`) by Vercel's ~4.5 MB serverless body limit — a full multi-page statement over that gets a "send the holdings page as a screenshot" message. Routing uploads through Supabase Storage (client uploads, server fetches by key) would lift the ceiling; deferred until users hit it.
 - **HEIC images fail to decode client-side**. `compressImageFile` uses a canvas, which can't decode HEIC in most webviews, so a raw HEIC lands on the "Couldn't read that image" path. iOS usually transcodes to JPEG for web pickers and broker *screenshots* are PNG, so this is an edge case — a graceful failure, not a crash. A HEIC→JPEG decode step would close it.
-- **Post-add "building" indicator is mobile-only** (2026-07-06). The chip renders on the mobile net-worth hero (`NetWorthHero`); the desktop Overview (`OverviewContent`) auto-refreshes on the same `bumpPortfolioRevision()` ticks but shows no chip. The chat-thread line appears on both. Deferred — the primary surface is iOS.
+- **Post-add "building" indicator is mobile-only** (2026-07-06). The chip renders on the mobile net-worth hero (`NetWorthHero`) only; the chat-thread line appears on both. **Correction (2026-08-09):** this entry originally claimed the desktop Overview "auto-refreshes on the same `bumpPortfolioRevision()` ticks" — that was never true; `OverviewContent`'s stored-history fetch wasn't wired to the revision signal at all until the fix in "Fixed: the chart never actually asked for the rebuilt history" above. It's wired now, so desktop DOES refresh correctly today — it's specifically the visible chip (an indicator, not the underlying data) that remains mobile-only. Deferred — the primary surface is iOS.
 - **No server-side de-duplication of adds** (2026-07-06). Keeping the user's message on an interrupted send (see "Session log — 2026-07-06") removes the main reason people re-ask, but a user who does re-add the same holding still gets two positions — the commit path accepts both. A dedupe guard on commit (same symbol/name + recent occurred_at) would be the belt-and-suspenders follow-up.
 - **Zero-asset nav lock is CSS + tab-hiding, not a server gate** (2026-07-10). With an empty portfolio the tab bars/chat rail are hidden, but a typed URL (`/vitals`, `/chat`) still loads — those pages just show their own empty states. Server-gating app pages on "has data" was deliberately NOT done (the onboarding gate is on the flag, never on data); accepted.
 - **Onboarding gating is web-only** (2026-07-10). The native (Capacitor) build ships no middleware and its released binary predates the flow, so iOS users — new or existing — never see the gate or the guided setup. A client-side guard in a future binary would be the native counterpart.
