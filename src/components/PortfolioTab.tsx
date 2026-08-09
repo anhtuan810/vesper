@@ -27,31 +27,12 @@ import { toDisplay, formatMoney } from "@/lib/money";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
-import { firstSnapshotDate } from "@/lib/networth-history";
-import { reconcileHistoryToHoldings, type PendingRamp, type Removal, type ReconcilePoint } from "@/lib/networth-estimate";
-import { usePortfolioBuilding } from "@/lib/portfolio-build";
+import { firstSnapshotDate, clipToRange } from "@/lib/networth-history";
+import { useReconciledNetWorthSeries } from "@/hooks/useReconciledNetWorthSeries";
 import {
   CATEGORY_MAP, CATEGORY_LABEL, CATEGORY_COLOR, CATEGORY_ORDER, ALL_CATEGORIES,
 } from "@/lib/categories";
 import { apiFetch } from "@/lib/api";
-
-// Clips the FULL snapshot history to a range's display window: every real row
-// at or after `windowStart`, plus the single most recent row strictly BEFORE
-// it as a left anchor — so the line always starts at the window edge and a
-// bounded range never collapses to fewer than 2 points whenever the full
-// history actually spans it (sparse monthly-cadence history still draws a
-// continuous clipped line). "All" has no window start — pass the full series.
-function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
-  const windowStart = rangeStartDate(range);
-  if (windowStart == null) return full;
-  let anchor: SnapshotPoint | null = null;
-  const within: SnapshotPoint[] = [];
-  for (const p of full) {
-    if (p.date < windowStart) anchor = p;
-    else within.push(p);
-  }
-  return anchor ? [anchor, ...within] : within;
-}
 
 // "Liquid only" view — combined public-markets + crypto. These types are
 // unlevered, so display value == value (no mortgage/equity-floor logic).
@@ -435,122 +416,29 @@ export function PortfolioTab({
   // just-added back-dated asset as a gain during the building window.)
   const heroTotal = liquidOnly ? liquidTotal : netTotal;
 
-  // True while a back-dated add's history reconstruction is in flight (set by the
-  // chat/add flow via watchPortfolioBuild) — the precise window to show the
-  // estimated curve in.
-  const building = usePortfolioBuilding();
-
   // ── Reconciled "building" history ────────────────────────────────────────────
-  // ANY holdings change (add, remove, mistake-delete, quantity edit) leaves the
-  // stored snapshots describing the OLD book while today's live tip describes the
-  // NEW one — so the raw line spikes (on add) or drops off a cliff (on remove) at
-  // today, until the background reconstruction (backfillSnapshots) rewrites the
-  // history. Instead of patching each direction, reconcile the displayed line to
-  // what the user holds NOW (exactly what the rebuild will produce, so the swap is
-  // seamless): compare each asset type's live equity to what the latest snapshot
-  // carries, RAMP UP a just-added back-dated asset, and SUBTRACT a removed one's
-  // stored trajectory. Self-clears the instant the rebuild lands (every delta
-  // collapses to ~0, so this returns null and the real series takes over).
-  // See reconcileHistoryToHoldings in src/lib/networth-estimate.ts.
-  const provisionalSeries = useMemo<SnapshotPoint[] | null>(() => {
-    if (liquidOnly) return null;
-    const today = new Date().toISOString().slice(0, 10);
-    const realClipped = clipToRange(fullSnapshots, range).filter((p) => p.date !== today);
-    // A cold start (no history to reconcile against) stays with the existing
-    // "Building your history…" card rather than a fabricated line.
-    if (realClipped.length === 0) return null;
-    const latest = realClipped[realClipped.length - 1];
-    const toDisp = (usd: number) => toDisplay(usd, "USD", displayCurrency) ?? 0;
-    const equityDisplay = (a: LiveAsset): number => {
-      const eq = a.type === "real_estate" ? Math.max(0, a.value - computeCurrentBalance(a)) : a.value;
-      return toDisplay(eq, a.currency || "USD", displayCurrency) ?? 0;
-    };
+  // Fills the gap between a holdings change and the background reconstruction
+  // landing — see useReconciledNetWorthSeries for the full rationale (spike on
+  // add, cliff on remove, both fixed by reconciling the displayed line to what's
+  // held NOW). liquidOnly is a wholly different valuation (no property, no
+  // per-type breakdown), so it's excluded rather than reconciled.
+  const { series: provisionalSeries, estimated: showProvisional } = useReconciledNetWorthSeries({
+    disabled: liquidOnly,
+    fullSnapshots,
+    range,
+    netWorthAssets,
+    todayBreakdown,
+    liveTotal: netTotal,
+    displayCurrency,
+  });
 
-    // Current back-dated holdings by type — the shape source for add-ramps.
-    const backDatedByType = new Map<string, LiveAsset[]>();
-    for (const a of netWorthAssets) {
-      if (!a.buy_date || a.buy_date >= today) continue;
-      const group = backDatedByType.get(a.type);
-      if (group) group.push(a);
-      else backDatedByType.set(a.type, [a]);
-    }
-
-    // Per-type disagreement between the current book and the latest snapshot.
-    const ADD_FLOOR = Math.max(1000, netTotal * 0.02);
-    const types = new Set<string>([...Object.keys(todayBreakdown), ...Object.keys(latest.breakdown ?? {})]);
-    const additions: PendingRamp[] = [];
-    const removals: Removal[] = [];
-    let maxAbsDelta = 0;
-    for (const type of types) {
-      const live = todayBreakdown[type] ?? 0;
-      const hist = toDisp(latest.breakdown?.[type] ?? 0);
-      const delta = live - hist;
-      if (Math.abs(delta) > maxAbsDelta) maxAbsDelta = Math.abs(delta);
-      if (delta > ADD_FLOOR) {
-        // Under-represented: a just-added back-dated holding not yet in history.
-        const group = backDatedByType.get(type) ?? [];
-        const groupCur = group.reduce((s, a) => s + equityDisplay(a), 0);
-        if (groupCur <= 0) continue;
-        for (const a of group) {
-          const buyDate = a.buy_date!.length === 7 ? `${a.buy_date}-01` : a.buy_date!;
-          additions.push({
-            excess: delta * (equityDisplay(a) / groupCur),
-            asset: {
-              buyDate,
-              buyPrice: toDisplay(a.buy_price ?? a.value, a.currency || "USD", displayCurrency) ?? 0,
-              currentValue: toDisplay(a.value, a.currency || "USD", displayCurrency) ?? 0,
-              mortgage: a.type === "real_estate" && a.mortgage_balance
-                ? {
-                    balance: toDisplay(a.mortgage_balance, a.currency || "USD", displayCurrency) ?? 0,
-                    recordedAt: a.mortgage_balance_recorded_at ?? null,
-                    rate: a.mortgage_rate ?? null,
-                    monthlyPayment: toDisplay(a.monthly_payment ?? 0, a.currency || "USD", displayCurrency) ?? 0,
-                    type: a.mortgage_type ?? null,
-                  }
-                : null,
-            },
-          });
-        }
-      } else if (-delta > ADD_FLOOR && hist > 0) {
-        // Over-represented: a removed/reduced holding still baked into history.
-        removals.push({ type, fraction: Math.min(1, -delta / hist) });
-      }
-    }
-    if (additions.length === 0 && removals.length === 0) return null;
-
-    // Only reconcile during a genuine rebuild window (`building`, set by the
-    // chat/add flow) OR when the mismatch is far larger than any market move
-    // could explain (covers a manual add/remove that raises no build flag). A
-    // normal up/down day never qualifies, so it can never draw a dashed line.
-    if (!building && maxAbsDelta <= netTotal * 0.10) return null;
-
-    const liveRates = buildLiveRates();
-    const points: ReconcilePoint[] = realClipped.map((p) => {
-      const byType: Record<string, number> = {};
-      for (const [t, usd] of Object.entries(p.breakdown ?? {})) byType[t] = toDisp(usd);
-      return { date: p.date, total: convertPointToDisplay(p, displayCurrency, liveRates), byType };
-    });
-    const reconciled = reconcileHistoryToHoldings(points, additions, removals, today);
-    // Wrap for the chart: a display-tagged native_breakdown makes the chart's
-    // per-point conversion an identity (same trick as liquidSeries). Then append
-    // today's live tip so the line lands exactly on the current value.
-    const out: SnapshotPoint[] = reconciled.map((pt) => ({
-      date: pt.date,
-      total_value: pt.total,
-      native_breakdown: { [displayCurrency]: pt.total },
-    }));
-    out.push({ date: today, total_value: netTotal, native_breakdown: { [displayCurrency]: netTotal } });
-    return out;
-  }, [liquidOnly, fullSnapshots, range, netWorthAssets, todayBreakdown, netTotal, displayCurrency, building]);
-
-  const showProvisional = !liquidOnly && !isIntraday && provisionalSeries != null;
   const chartSeriesActive = liquidOnly
     ? (isIntraday ? intradaySeries : liquidSeries)
     : (showProvisional ? provisionalSeries! : series);
-  // The hero shares the provisional series while a rebuild is in flight, so its
-  // "since inception" delta measures from the lifted (asset-included) baseline
-  // instead of counting the just-added back-dated asset as a gain. Its points
-  // carry display-currency totals, matching heroSeries' convention.
+  // The hero shares the reconciled series while a rebuild is in flight, so its
+  // "since inception" delta measures from the reconciled baseline instead of
+  // counting a just-added back-dated asset as a gain. Its points carry
+  // display-currency totals, matching heroSeries' convention.
   const heroSeriesActive = liquidOnly
     ? (isIntraday ? intradaySeries : liquidSeries)
     : (showProvisional ? provisionalSeries! : heroSeries);

@@ -3,6 +3,9 @@
 // Used by the net-worth chart, the period delta, and the long-range projection —
 // the same gate, three callers (justifies a shared, tiny module).
 
+import type { SnapshotPoint, Range } from "@/components/NetWorthChart";
+import { rangeStartDate } from "@/components/NetWorthChart";
+
 export interface SnapshotLike {
   date: string; // YYYY-MM-DD
   total_value: number;
@@ -22,4 +25,26 @@ export function firstSnapshotDate(snapshots: SnapshotLike[]): string | null {
 export function hasSufficientHistory(snapshots: SnapshotLike[], windowStart: string): boolean {
   const first = firstSnapshotDate(snapshots);
   return first != null && first <= windowStart;
+}
+
+// Clips the FULL snapshot history to a range's display window: every real row
+// at or after `windowStart`, plus the single most recent row strictly BEFORE it
+// as a left anchor — so the line always starts at the window edge and a bounded
+// range never collapses to fewer than 2 points whenever the full history
+// actually spans it (sparse monthly-cadence history still draws a continuous
+// clipped line). "All" has no window start — pass the full series.
+//
+// Shared by the mobile Overview (PortfolioTab), the desktop Overview
+// (OverviewContent), and useReconciledNetWorthSeries — was duplicated
+// byte-for-byte across the first two before being extracted here.
+export function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
+  const windowStart = rangeStartDate(range);
+  if (windowStart == null) return full;
+  let anchor: SnapshotPoint | null = null;
+  const within: SnapshotPoint[] = [];
+  for (const p of full) {
+    if (p.date < windowStart) anchor = p;
+    else within.push(p);
+  }
+  return anchor ? [anchor, ...within] : within;
 }

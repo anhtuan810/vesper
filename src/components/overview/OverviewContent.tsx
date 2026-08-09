@@ -22,7 +22,8 @@ import { computeCurrentBalance } from "@/lib/mortgage";
 import { isIncomePension } from "@/lib/pension";
 import { displayName, STARTING_POSITION_CTX, unitNoun } from "@/lib/diary-utils";
 import { pctChange, displayTicker } from "@/lib/utils";
-import { firstSnapshotDate } from "@/lib/networth-history";
+import { firstSnapshotDate, clipToRange } from "@/lib/networth-history";
+import { useReconciledNetWorthSeries } from "@/hooks/useReconciledNetWorthSeries";
 import { useDiaryMarketMoves } from "@/hooks/useDiaryMarketMoves";
 import type { DiaryMarketMove } from "@/lib/diary-market-moves";
 import type { VerdictData } from "@/lib/scenario/decision-verdict";
@@ -35,20 +36,6 @@ import type {
   ConcentrationValue, LiquidityPostureValue, LeverageValue,
   DrawdownValue, CashRealYieldValue, RealGrowthValue, VitalKey,
 } from "@/lib/vitals";
-
-// Same range-clipping the desktop dashboard uses (see PortfolioTab): keep every
-// row in the window plus the latest row before it as a left anchor.
-function clipToRange(full: SnapshotPoint[], range: Range): SnapshotPoint[] {
-  const windowStart = rangeStartDate(range);
-  if (windowStart == null) return full;
-  let anchor: SnapshotPoint | null = null;
-  const within: SnapshotPoint[] = [];
-  for (const p of full) {
-    if (p.date < windowStart) anchor = p;
-    else within.push(p);
-  }
-  return anchor ? [anchor, ...within] : within;
-}
 
 // Category accent (matches the chart bands + the mockup's class colours).
 const CAT_DOT: Record<string, string> = {
@@ -440,15 +427,43 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
   const liveNet = effectiveInclude ? netTotal : netTotal - propertyEquity;
 
   // ── Net-worth chart series (lens-aware) ────────────────────────────────────
-  const series = useMemo(() => {
+  // base/tipBreakdown are the property lens applied to the raw history — shared
+  // by `series` below AND the reconciliation hook, so a holding the lens
+  // excludes (property, under "exclude property") never enters reconciliation
+  // either: its type simply never appears in either breakdown.
+  const lensedBase = useMemo(() => {
+    if (effectiveInclude) return fullSnapshots;
     const liveRates = buildLiveRates();
-    const base = effectiveInclude ? fullSnapshots : fullSnapshots.map((p) => stripPropertyPoint(p, displayCurrency, liveRates));
-    const tipBreakdown = effectiveInclude
-      ? todayBreakdown
-      : Object.fromEntries(Object.entries(todayBreakdown).filter(([k]) => k !== "real_estate"));
-    return buildSeries(clipToRange(base, range), liveNet, tipBreakdown);
-  }, [fullSnapshots, range, liveNet, todayBreakdown, effectiveInclude, displayCurrency]);
+    return fullSnapshots.map((p) => stripPropertyPoint(p, displayCurrency, liveRates));
+  }, [fullSnapshots, effectiveInclude, displayCurrency]);
+  const lensedBreakdown = useMemo(
+    () => (effectiveInclude ? todayBreakdown : Object.fromEntries(Object.entries(todayBreakdown).filter(([k]) => k !== "real_estate"))),
+    [todayBreakdown, effectiveInclude],
+  );
+  const series = useMemo(
+    () => buildSeries(clipToRange(lensedBase, range), liveNet, lensedBreakdown),
+    [lensedBase, range, liveNet, lensedBreakdown],
+  );
   const trackingSinceDate = firstSnapshotDate(fullSnapshots);
+
+  // ── Reconciled "building" history ────────────────────────────────────────────
+  // Fills the gap between a holdings change and the background reconstruction
+  // landing — see useReconciledNetWorthSeries for the full rationale (spike on
+  // add, cliff on remove, both fixed by reconciling the displayed line to what's
+  // held NOW). Was mobile-only (PortfolioTab); desktop showed the raw
+  // spike/cliff during that window until this.
+  const { series: provisionalSeries, estimated: showProvisional } = useReconciledNetWorthSeries({
+    fullSnapshots: lensedBase,
+    range,
+    netWorthAssets,
+    todayBreakdown: lensedBreakdown,
+    liveTotal: liveNet,
+    displayCurrency,
+  });
+  // The chart AND the range-growth badge below share this — otherwise the badge
+  // would repeat the exact bug this fixes (reading the un-reconciled series and
+  // showing a just-added/removed holding as a gain/loss).
+  const chartSeriesActive = showProvisional ? provisionalSeries! : series;
 
   // ── Decision journal (mutations) ───────────────────────────────────────────
   const sortedMutations = useMemo(
@@ -671,13 +686,17 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
 
   // Growth over the SELECTED range (so it changes with the 1W/1M/1Y/All pills):
   // from the start of the visible window to the live net worth, on the same lens.
+  // Reads chartSeriesActive (not the raw `series`) so a holdings change mid-rebuild
+  // measures from the reconciled baseline — otherwise this would repeat the exact
+  // spike/cliff bug the reconciliation fixes, just in the growth badge instead of
+  // the line.
   const rangeBadge = useMemo(() => {
-    if (series.length < 2) return null;
+    if (chartSeriesActive.length < 2) return null;
     // series[0] may be a pre-window ANCHOR (the last point before the window,
     // kept so the chart line enters from the left). Measure from the first point
     // INSIDE the window, else the % spans more time than the range label claims.
     const windowStart = rangeStartDate(range);
-    const startPoint = windowStart ? series.find((p) => p.date >= windowStart) ?? series[series.length - 1] : series[0];
+    const startPoint = windowStart ? chartSeriesActive.find((p) => p.date >= windowStart) ?? chartSeriesActive[chartSeriesActive.length - 1] : chartSeriesActive[0];
     const startVal = convertPointToDisplay(startPoint, displayCurrency, buildLiveRates());
     if (!startVal || startVal <= 0) return null;
     const delta = liveNet - startVal;
@@ -686,7 +705,7 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
     // Lead with the money moved (investors think in €, not just %), % muted after.
     const pctStr = Math.abs(pct).toLocaleString("nl-NL", { maximumFractionDigits: 1 });
     return `${dn ? "▼" : "▲"} ${formatMoney(Math.abs(delta), displayCurrency, displayCurrency)} · ${dn ? "−" : "+"}${pctStr}% ${rangeLabel(range, startPoint.date)}`;
-  }, [series, liveNet, displayCurrency, range]);
+  }, [chartSeriesActive, liveNet, displayCurrency, range]);
 
   // In entry mode the headline shows the value AS OF the selected date; this
   // surfaces that framing plus how the portfolio has moved to today, so a
@@ -838,13 +857,17 @@ export function OverviewContent({ assets, netTotal, initialSnapshots, valuesSett
           <NetWorthChart
             range={range}
             onRangeChange={handleRangeChange}
-            series={series}
+            series={chartSeriesActive}
             loading={loading}
             valuesSettled={valuesSettled}
             realPointCount={fullSnapshots.length}
             trackingSinceDate={trackingSinceDate}
             historyPending={historyPending}
-            markers={markers}
+            estimated={showProvisional}
+            // Decision dots can't sit on a reconciled line (its points aren't
+            // real snapshots and can't be rewound into) — hide them until the
+            // reconstruction lands and the real curve returns.
+            markers={showProvisional ? undefined : markers}
             selectedMarkerId={highlightMarkerId}
             onMarkerClick={setSelectedId}
             revealLine={reveal}

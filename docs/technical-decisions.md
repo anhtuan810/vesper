@@ -618,10 +618,19 @@ full chart/detail. Rules that make it work:
   real series takes over). Deliberately rough, never persisted, never a figure the
   user acts on; cold-start accounts (no history to reconcile) keep the existing
   "Building your history…" card. Both directions verified in
-  `verify-networth-estimate.ts`. **Known gap:** this lives in `PortfolioTab`
-  (mobile); the desktop `OverviewContent` chart doesn't yet reconcile, so it can
-  still show the raw spike/cliff during a rebuild — factor the reconciliation into
-  a shared hook when desktop needs it.
+  `verify-networth-estimate.ts`. **Shared across both Overviews (2026-08):** the
+  reconciliation logic (and the `clipToRange` window-clip it depends on) was
+  extracted into `useReconciledNetWorthSeries` (`src/hooks/`) and
+  `clipToRange` (`src/lib/networth-history.ts`) so the desktop `OverviewContent`
+  chart gets the identical fix, not a second copy — it was mobile-only
+  (`PortfolioTab`) at first and showed the raw spike/cliff during a rebuild until
+  this. The hook is lens-agnostic: each caller passes its ALREADY lens-filtered
+  base history / breakdown / total (mobile's Liquid toggle, desktop's
+  include/exclude-property toggle), so a type the lens excludes never enters
+  reconciliation — it simply never appears in either breakdown. Desktop's
+  range-growth badge (`rangeBadge`) also reads the reconciled series, not the raw
+  one — it would otherwise reproduce the exact bug in the growth number instead
+  of the line.
 - **History is clamped to 30 years back (2026-08).** Both the client estimate
   (`clampHistoryStart`, `MAX_HISTORY_YEARS`) and `backfillSnapshots` cap the
   reconstruction start at 30 years before today — the longest a mortgage runs. A
