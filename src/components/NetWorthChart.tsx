@@ -7,7 +7,7 @@ import { getUsdRate, SUPPORTED_CURRENCIES, formatMoney, type DisplayCurrency } f
 import { convertCurrency } from "@/lib/currency-convert";
 import { formatDate } from "@/lib/utils";
 import { categoryBreakdown, CATEGORY_COLOR, CATEGORY_LABEL_SHORT, STACK_ORDER, type Category } from "@/lib/categories";
-import { computeNiceLevels, timeFractions, nearestIndexForFraction, thinMarkerDots } from "@/lib/networth-axis";
+import { computeNiceLevels, timeFractions, nearestIndexForFraction, thinMarkerDots, isEffectivelySingleBand } from "@/lib/networth-axis";
 
 export const RANGES = ["1D", "1W", "1M", "3M", "1Y", "3Y", "All"] as const;
 export type Range = (typeof RANGES)[number];
@@ -414,23 +414,46 @@ export function NetWorthChart(props: Props) {
   const markerMode = !!props.markers && props.markers.length > 0 && interactive;
   const currentValue = converted.length > 0 ? converted[converted.length - 1].total_value : null;
 
+  // Per-point category split — hoisted above the y-domain so the single-band
+  // decision below can read it, and reused by stackBounds so the split isn't
+  // computed twice.
+  const categoryProportions = useMemo(() => computeCategoryProportions(converted), [converted]);
+
+  // A net-worth chart whose value is (essentially) ONE asset class — e.g. a
+  // portfolio that's all public markets — has no lower bands to protect, so the
+  // 0-baseline that keeps a MULTI-band stack readable would only squash the line
+  // into a flat strip near the top (the reported "flat line"). In that case draw
+  // it like the Liquid line: zoomed to the data band with a single gradient fill.
+  // Multi-band portfolios keep the 0-anchor — their bands can't float above a
+  // lifted floor without collapsing (see computeYAxisDomain /
+  // scripts/verify-networth-axis.ts). Never applies in explicit lineOnly (Liquid)
+  // mode, which already zooms.
+  const singleBand = useMemo(
+    () => !lineOnly && isEffectivelySingleBand(converted.map((p) => categoryBreakdown(p.breakdown))),
+    [converted, lineOnly],
+  );
+  // True whenever the chart should render as a single zoomed line + gradient
+  // (Liquid, or a single-band net worth) rather than a 0-anchored stacked area.
+  const renderAsLine = lineOnly || singleBand;
+
   // Y domain fits the visible (range-clipped) series — recomputed on every range
   // switch. The chart no longer prints a y-axis label column, so the domain no
-  // longer needs "nice" round levels: it just frames the data tightly. Liquid
-  // (lineOnly) zooms to a padded data band like a price chart; the stacked area
-  // still anchors at 0 (bands can't float) but takes only a slim top pad, so the
-  // composition fills the plot instead of sitting under a 0→600K headroom.
+  // longer needs "nice" round levels: it just frames the data tightly. A single
+  // zoomed line (renderAsLine — Liquid, or a single-band net worth) zooms to a
+  // padded data band like a price chart; a multi-band stacked area still anchors
+  // at 0 (bands can't float) but takes only a slim top pad, so the composition
+  // fills the plot instead of sitting under a 0→600K headroom.
   const { niceMin, niceMax } = useMemo(() => {
     const dataMin = values.length >= 2 ? Math.min(...values) : 0;
     const dataMax = values.length >= 2 ? Math.max(...values) : 1;
-    if (lineOnly) {
+    if (renderAsLine) {
       const pad = Math.max((dataMax - dataMin) * 0.08, 1);
       const nice = computeNiceLevels(dataMin - pad, dataMax + pad);
       return { niceMin: nice.niceMin, niceMax: nice.niceMax };
     }
     const pad = Math.max(dataMax * 0.08, 1);
     return { niceMin: 0, niceMax: dataMax + pad };
-  }, [values, lineOnly]);
+  }, [values, renderAsLine]);
 
   const drawW = W - CHART_PAD_RIGHT;
   const projectY = makeProjectY(H, niceMin, niceMax);
@@ -448,11 +471,12 @@ export function NetWorthChart(props: Props) {
     [values, W, H, niceMin, niceMax, xs],
   );
 
-  // Gradient area under the line — lineOnly (Liquid) mode only. Same top
-  // boundary (x positions + projected y) as `line`, then down to the plot
-  // baseline (y = H) and closed, so the fill fades from the line to nothing.
+  // Gradient area under the line — single zoomed line (renderAsLine: Liquid, or
+  // a single-band net worth) only. Same top boundary (x positions + projected y)
+  // as `line`, then down to the plot baseline (y = H) and closed, so the fill
+  // fades from the line to nothing.
   const areaPath = useMemo(() => {
-    if (!lineOnly || values.length < 2) return "";
+    if (!renderAsLine || values.length < 2) return "";
     let d = `M ${xs[0].toFixed(2)} ${projectY(values[0]).toFixed(2)}`;
     for (let i = 1; i < values.length; i++) d += ` L ${xs[i].toFixed(2)} ${projectY(values[i]).toFixed(2)}`;
     d += ` L ${xs[values.length - 1].toFixed(2)} ${H.toFixed(2)}`;
@@ -460,22 +484,22 @@ export function NetWorthChart(props: Props) {
     return d;
     // projectY is a fresh closure each render; its inputs are H/niceMin/niceMax.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, xs, H, niceMin, niceMax, lineOnly]);
+  }, [values, xs, H, niceMin, niceMax, renderAsLine]);
 
   // Per-category stacked bands — each point's segments sum exactly to
   // `values[i]` (the displayed total), so the top of the stack equals the
-  // net-worth line at every point in any display currency.
-  const { categoryProportions, stackBounds } = useMemo(() => {
-    const proportions = computeCategoryProportions(converted);
+  // net-worth line at every point in any display currency. Uses the hoisted
+  // categoryProportions (computed above for the single-band decision).
+  const stackBounds = useMemo(() => {
     const bounds = {} as Record<Category, { lower: number[]; upper: number[] }>;
     const cumulative = new Array(values.length).fill(0);
     for (const c of STACK_ORDER) {
       const lower = cumulative.slice();
-      for (let i = 0; i < values.length; i++) cumulative[i] += values[i] * proportions[i][c];
+      for (let i = 0; i < values.length; i++) cumulative[i] += values[i] * categoryProportions[i][c];
       bounds[c] = { lower, upper: cumulative.slice() };
     }
-    return { categoryProportions: proportions, stackBounds: bounds };
-  }, [converted, values]);
+    return bounds;
+  }, [categoryProportions, values]);
 
   // Band path strings, precomputed for the same reason as `line` above.
   const bandPaths = useMemo(() => {
@@ -705,8 +729,10 @@ export function NetWorthChart(props: Props) {
   // cursor near the chart's right edge so it never overflows. Breakdown-only
   // annotation — the hero already surfaces the date and total on hover.
   const TOOLTIP_WIDTH = 168;
-  // Liquid (lineOnly) points carry no real breakdown — header-only tooltip.
-  const tooltipSegments = !lineOnly && selectedIndex !== null
+  // A single zoomed line (Liquid, or a single-band net worth) shows no
+  // breakdown card — Liquid points carry no real breakdown, and a single-band
+  // net worth would only repeat its one class, which the hero total already says.
+  const tooltipSegments = !renderAsLine && selectedIndex !== null
     ? [...STACK_ORDER].reverse()
         .map((c) => ({ category: c, value: values[selectedIndex] * categoryProportions[selectedIndex][c] }))
         .filter((s) => Math.abs(s.value) >= 0.5)
@@ -793,8 +819,9 @@ export function NetWorthChart(props: Props) {
             >
               {/* Stacked asset-class bands — bottom (property) to top (reserves),
                   painted under the net-worth line so the trajectory reads identically.
-                  Suppressed in lineOnly mode, which shows a single combined line. */}
-              {!lineOnly && STACK_ORDER.map((c) => (
+                  Suppressed when the chart renders as a single zoomed line (Liquid,
+                  or a single-band net worth), which shows one combined line + fill. */}
+              {!renderAsLine && STACK_ORDER.map((c) => (
                 <g key={c}>
                   <path
                     d={bandPaths[c].area}
@@ -810,10 +837,11 @@ export function NetWorthChart(props: Props) {
                   />
                 </g>
               ))}
-              {/* Soft gradient fill beneath the line — Liquid (lineOnly) mode
-                  only; follows the up/down strokeColor and fades to nothing at
-                  the baseline. Rendered behind the line. */}
-              {lineOnly && (
+              {/* Soft gradient fill beneath the line — single zoomed line
+                  (Liquid, or a single-band net worth) only; follows the up/down
+                  strokeColor and fades to nothing at the baseline. Rendered
+                  behind the line. */}
+              {renderAsLine && (
                 <>
                   <defs>
                     <linearGradient id="liquid-area-grad" x1="0" y1="0" x2="0" y2="1">

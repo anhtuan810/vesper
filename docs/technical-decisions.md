@@ -551,6 +551,19 @@ full chart/detail. Rules that make it work:
   a sparse-then-daily history no longer distorts. ONE shared `xs` array drives
   the line, bands, edges, markers, scrub and guide; `calcIndex` inverts the same
   mapping so the cursor lands under the finger.
+- **Single-band net worth zooms like Liquid (2026-08).** The net-worth chart is a
+  stacked area anchored at a 0 baseline so the four asset-class bands stay readable
+  (a data-fitted floor clips every band below it — the collapse `verify-networth-axis.ts`
+  guards). But a portfolio that's effectively ONE asset class (e.g. all public
+  markets) has no lower bands to protect, and the 0-anchor then squashes its
+  trajectory into a flat strip near the top. So when `isEffectivelySingleBand`
+  (`src/lib/networth-axis.ts`) finds only one asset class present across the visible
+  window — empty/pre-breakdown rows ignored, sub-1% slivers treated as dust — the
+  chart sets `renderAsLine` and draws it exactly like the Liquid line: y-axis zoomed
+  to a padded data band, one gradient fill under the line, no stacked bands and no
+  breakdown card. Multi-band portfolios are unchanged (0-anchored stack). Explicit
+  Liquid (`lineOnly`) is unaffected; `liquidOnly` still gates the intraday 1D pill
+  alone. Verified in `verify-networth-axis.ts`.
 - **Scrub is a held gesture, never a parked state.** While held, the hero shows
   the point's value + dateline and the chart shows a breakdown-only card
   (asset-class values; no date/total header — the hero carries those). Release,

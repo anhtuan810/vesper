@@ -76,6 +76,36 @@ export function computeYAxisDomain(dataMin: number, dataMax: number): NiceLevels
   return computeNiceLevels(lo < 0 ? lo - pad : 0, hi + pad);
 }
 
+// Whether the net-worth stacked area is, across the visible window, effectively
+// ONE asset class — in which case there are no lower bands to protect, so the
+// 0-baseline (which keeps a multi-band stack readable, see computeYAxisDomain)
+// would only squash the line into a flat strip near the top. The chart then
+// zooms to the data band like the Liquid line instead.
+//
+// Takes each point's per-category value map (property/markets/crypto/reserves,
+// absent = 0). Points with no real value (an empty/pre-breakdown row) are
+// SKIPPED, not counted — otherwise the reserves fallback those rows carry would
+// masquerade as a second band and force the flat 0-anchor back on a genuinely
+// single-asset-class portfolio. A category counts as present only if it exceeds
+// `eps` of that point's total (default 1%), so rounding dust or a trivial sliver
+// doesn't defeat the zoom. Returns true only when exactly one band is present.
+//
+// Pure + exported so scripts/verify-networth-axis.ts can exercise it without React.
+export function isEffectivelySingleBand(
+  categoryValuesPerPoint: Array<Record<string, number>>,
+  eps = 0.01,
+): boolean {
+  const present = new Set<string>();
+  for (const cv of categoryValuesPerPoint) {
+    let sum = 0;
+    for (const k in cv) if (cv[k] > 0) sum += cv[k];
+    if (sum <= 0) continue; // empty / pre-breakdown row — ignore, don't miscount
+    for (const k in cv) if (cv[k] / sum > eps) present.add(k);
+    if (present.size > 1) return false;
+  }
+  return present.size === 1;
+}
+
 // ── Time-true x positions ────────────────────────────────────────────────────
 //
 // X fractions (0..1) for a date-ordered series: each point sits at its date's

@@ -12,7 +12,7 @@
 // the OLD floor, then proves the shipped 0-anchored domain keeps every band in
 // view.
 
-import { computeYAxisDomain, computeNiceLevels, timeFractions, nearestIndexForFraction } from "../src/lib/networth-axis";
+import { computeYAxisDomain, computeNiceLevels, timeFractions, nearestIndexForFraction, isEffectivelySingleBand } from "../src/lib/networth-axis";
 import { categoryBreakdown, STACK_ORDER, type Category } from "../src/lib/categories";
 
 let failures = 0;
@@ -120,6 +120,52 @@ console.log("\nGenuinely negative net worth still includes the 0 baseline:");
 const neg = computeYAxisDomain(-40_000, 120_000);
 check("0 within [niceMin, niceMax]", neg.niceMin <= 0 && neg.niceMax >= 0,
   `[${neg.niceMin}, ${neg.niceMax}]`);
+
+// ── Single-band detection (zoom vs 0-anchor) ─────────────────────────────────
+//
+// A net worth made of ONE asset class has no lower bands to protect, so the
+// chart zooms to the data band like the Liquid line instead of squashing the
+// trajectory against a 0 floor (the reported "flat line"). A genuine multi-band
+// stack keeps the 0-anchor tested above.
+console.log("\nSingle-band detection (zoom vs 0-anchor):");
+const marketsOnly = [110_000, 132_000, 121_000, 145_000].map((v) => ({
+  property: 0, markets: v, crypto: 0, reserves: 0,
+}));
+check("all-one-class portfolio → single band (zoom the line)", isEffectivelySingleBand(marketsOnly));
+
+// The €389K screenshot breakdown (property/markets/crypto/reserves) — a real
+// multi-band stack must NOT zoom (that's the clip-collapse bug above).
+check("multi-band portfolio → NOT single band (keep 0-anchor)",
+  !isEffectivelySingleBand([cat]));
+
+// Empty / pre-breakdown rows (all-zero) are ignored, not miscounted as a
+// second "reserves" band — otherwise an all-markets account with old history
+// would be forced back to the flat 0-anchor.
+check("empty-breakdown points are ignored, not counted",
+  isEffectivelySingleBand([
+    { property: 0, markets: 0, crypto: 0, reserves: 0 },
+    { property: 0, markets: 90_000, crypto: 0, reserves: 0 },
+    { property: 0, markets: 95_000, crypto: 0, reserves: 0 },
+  ]));
+
+// A sub-1% sliver is dust — it shouldn't defeat the zoom.
+check("a <1% sliver still reads as single band",
+  isEffectivelySingleBand([{ property: 0, markets: 100_000, crypto: 0, reserves: 500 }]));
+
+// Two genuinely present bands (≥1% each) keep the composition (0-anchor).
+check("two real bands (≥1% each) → NOT single band",
+  !isEffectivelySingleBand([{ property: 0, markets: 90_000, crypto: 0, reserves: 10_000 }]));
+
+// A window that STARTS single-class then gains a second class (e.g. bought a
+// house) is multi-band — the new band must stay visible.
+check("becomes multi-band mid-window → NOT single band",
+  !isEffectivelySingleBand([
+    { property: 0, markets: 100_000, crypto: 0, reserves: 0 },
+    { property: 200_000, markets: 100_000, crypto: 0, reserves: 0 },
+  ]));
+
+check("no data → not single band (falls back to default 0-anchor)",
+  !isEffectivelySingleBand([]));
 
 console.log(`\n${failures === 0 ? "All checks passed." : `${failures} check(s) FAILED.`}`);
 // ── Time-true x positions (timeFractions / nearestIndexForFraction) ─────────
