@@ -8,6 +8,7 @@
 // optimistic unlock after a purchase/restore (the webhook makes it authoritative).
 
 import { Capacitor } from "@capacitor/core";
+import * as Sentry from "@sentry/nextjs";
 import { isNative, getPlatform } from "@/lib/platform";
 import {
   Purchases as PurchasesSDK,
@@ -107,6 +108,24 @@ let sdkConfigured = false;
 let identifiedFor: string | null = null;
 let configurePromise: Promise<void> | null = null;
 
+// Apple Ads (AdServices) attribution. Hands RevenueCat the install's attribution
+// token so the customer record carries the App Store install source; the data
+// lives in RevenueCat only, nothing about it is stored here or in Supabase.
+//
+// Strictly best-effort: it is iOS 14.3+ only (and a no-op/failure on Android and
+// older iOS), so it must never block or fail configuration. Callers fire it off
+// without awaiting — this never rejects, it reports and swallows instead.
+async function enableAdServicesAttribution(
+  Purchases: ReturnType<typeof loadPurchases>,
+): Promise<void> {
+  try {
+    await Purchases.enableAdServicesAttributionTokenCollection();
+  } catch (e) {
+    console.error("[rc] enableAdServicesAttributionTokenCollection FAILED", e);
+    Sentry.captureException(e, { tags: { area: "revenuecat-adservices-attribution" } });
+  }
+}
+
 async function doIdentify(appUserId: string): Promise<void> {
   try {
     // Bound the whole native init (load + configure/logIn) in one timeout so no
@@ -119,6 +138,12 @@ async function doIdentify(appUserId: string): Promise<void> {
           // also identifies them immediately (no separate logIn needed).
           await Purchases.configure({ apiKey: platformApiKey(), appUserID: appUserId });
           sdkConfigured = true;
+          // Start attribution-token collection as soon as the SDK is configured.
+          // Deliberately NOT awaited: it sits inside the withTimeout-bounded
+          // configure path, so awaiting it would let a slow AdServices call eat
+          // the paywall's budget (or, on failure, delay the resolution callers
+          // block on) for something purely informational.
+          void enableAdServicesAttribution(Purchases);
         } else {
           // Already configured — a different account signed in without an app
           // restart. Switch users the supported way.
