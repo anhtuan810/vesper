@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { track } from "@vercel/analytics";
 import { VolnarLogo } from "@/components/VolnarLogo";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { useSignOut } from "@/lib/hooks";
@@ -106,7 +107,9 @@ export function DemoExpiryWall() {
         Your demo session has ended. Create an account to continue, with 7 days free.
       </p>
       <button
-        onClick={signOut}
+        // Demo funnel. This wall only renders when isDemo, so the event can
+        // only come from the demo path.
+        onClick={() => { track("demo_signup_click", { placement: "expiry_wall" }); signOut(); }}
         style={{
           padding: "var(--space-4) var(--space-5)",
           borderRadius: "var(--radius-lg)",

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { useUser, useSignOut, useTheme } from "@/lib/hooks";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { createBrowserSupabase } from "@/lib/supabase";
@@ -158,7 +159,8 @@ export function DesktopSettings() {
         {isDemo ? (
           <>
             <div className="st-acct">You’re exploring a live demo account. Start your own subscription to track your real portfolio.</div>
-            <button className="st-signout accent" onClick={signOut}>Start your subscription</button>
+            {/* Demo funnel — this branch only renders on a demo account. */}
+            <button className="st-signout accent" onClick={() => { track("demo_signup_click", { placement: "desktop_settings" }); signOut(); }}>Start your subscription</button>
           </>
         ) : (
           <>

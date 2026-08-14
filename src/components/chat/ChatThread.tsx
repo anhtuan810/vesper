@@ -8,6 +8,7 @@ import {
   useEffect,
   useCallback,
 } from "react";
+import { track } from "@vercel/analytics";
 import { FormatText } from "@/components/FormatText";
 import { ProjectionChart } from "@/components/scenario/cards/ProjectionChart";
 import { ScenarioResultCard } from "@/components/scenario/cards/ScenarioResultCard";
@@ -334,7 +335,9 @@ export const ChatThread = forwardRef<ChatThreadHandle, ChatThreadProps>(
       >
         Demo session ended.{" "}
         <button
-          onClick={signOut}
+          // Demo funnel. The notice only renders behind the demo wall, and the
+          // isDemo check keeps the event off any non-demo account for good.
+          onClick={() => { if (isDemo) track("demo_signup_click", { placement: "chat_wall" }); signOut(); }}
           style={{
             background: "none",
             border: "none",

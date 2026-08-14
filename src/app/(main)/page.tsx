@@ -9,7 +9,8 @@ import { PortfolioTab } from "@/components/PortfolioTab";
 import { OverviewContent } from "@/components/overview/OverviewContent";
 import { PortfolioEmptyState } from "@/components/PortfolioEmptyState";
 import { useIsDesktop } from "@/lib/hooks/useIsDesktop";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSubscription } from "@/components/SubscriptionProvider";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { computeCurrentBalance } from "@/lib/mortgage";
 import { toUsdClient, toDisplay } from "@/lib/money";
 import type { LiveAsset, Mutation } from "@/lib/supabase";
@@ -28,6 +29,7 @@ export default function Dashboard() {
     refreshPrices, refetchAssets, lastUpdated, priceHealth, pricesLoaded,
   } = useAssets(user?.id);
   const { currency: displayCurrency, loaded: currencyLoaded } = useDisplayCurrencyState();
+  const { data: subscription, loading: subscriptionLoading } = useSubscription();
   const valuesSettled = pricesLoaded && currencyLoaded;
   const [chatOpen, setChatOpen] = useState(false);
   const [mutations, setMutations] = useState<Mutation[]>([]);
@@ -39,6 +41,24 @@ export default function Dashboard() {
       track("signup");
     }
   }, []);
+
+  // Demo funnel — start of the session. /demo redirects here with `?demo=1` only
+  // once it has actually minted and seeded the session (a failed or rate-limited
+  // entry lands on /login instead), so this counts real starts rather than route
+  // mounts. The param is read and stripped on the first run and the decision is
+  // held until the entitlement resolves, so the event fires ONLY on a demo
+  // account — a signed-in user who hand-types `/?demo=1` resolves to isDemo
+  // false and is never counted. Fires at most once per entry; no PII.
+  const demoEntryRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (demoEntryRef.current === null) {
+      demoEntryRef.current = new URLSearchParams(window.location.search).has("demo");
+      if (demoEntryRef.current) window.history.replaceState({}, "", "/");
+    }
+    if (!demoEntryRef.current || subscriptionLoading) return;
+    demoEntryRef.current = false;
+    if (subscription?.isDemo) track("demo_started");
+  }, [subscriptionLoading, subscription?.isDemo]);
 
   useEffect(() => {
     if (!user) return;

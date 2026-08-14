@@ -59,7 +59,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const redirectTo = (path: string) => NextResponse.redirect(new URL(path, request.url));
-  const response = redirectTo("/");
+  // `?demo=1` is the demo-funnel start marker for analytics. Only the SUCCESS
+  // paths return this `response` (every failure — rate-limited mint, used-up
+  // trial, sign-in error — builds its own redirect to /login), so the param is
+  // proof that a demo session was actually created and seeded. The dashboard
+  // consumes it, strips it, and fires `demo_started` once. It carries nothing
+  // about the visitor.
+  const response = redirectTo("/?demo=1");
 
   // Signal the client (the pre-hydration purge script in layout.tsx) that this
   // entry reseeded the demo account, so it clears any chat/figure caches a

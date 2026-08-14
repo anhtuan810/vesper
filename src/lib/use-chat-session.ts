@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { track } from "@vercel/analytics";
+import { useSubscription } from "@/components/SubscriptionProvider";
 import { formatMoney, type DisplayCurrency } from "@/lib/money";
 import { invalidateAssetsCache, invalidateInsightCache, invalidateVitalsCache } from "@/lib/hooks";
 import { bumpPortfolioRevision } from "@/lib/portfolio-revision";
@@ -342,6 +343,23 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
   useEffect(() => { extraPayloadRef.current = extraPayload; }, [extraPayload]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
+  // Demo funnel — one event per chat turn a DEMO visitor sends, carrying the
+  // turn's 1-based index so drop-off per turn is visible (the demo session is
+  // capped at DEMO_CHAT_DAILY_LIMIT turns, so the index tops out there). Read
+  // through a ref so the send callbacks don't re-create when the entitlement
+  // resolves. Inert for every real account — a signed-in user is never isDemo.
+  const { data: subscription } = useSubscription();
+  const isDemoRef = useRef(false);
+  useEffect(() => { isDemoRef.current = !!subscription?.isDemo; }, [subscription?.isDemo]);
+  // Derived from the thread rather than a plain counter, so a reload mid-demo
+  // (the cached history is restored) continues the sequence instead of
+  // restarting at 1. Called BEFORE the turn's own bubble is appended, hence +1.
+  const trackDemoMessageSent = useCallback(() => {
+    if (!isDemoRef.current) return;
+    const index = messagesRef.current.filter((m) => m.from === "user").length + 1;
+    track("demo_message_sent", { message_index: index });
+  }, []);
+
   useEffect(() => {
     if (!userId || skipHistory) return;
 
@@ -675,6 +693,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // Synchronous double-send guard (see sendInFlightRef).
     if (sendInFlightRef.current) return;
     sendInFlightRef.current = true;
+    trackDemoMessageSent();
 
     const attachmentCount = imageData.length + pdfData.length + csvData.length;
     const displayText = text || (
@@ -812,7 +831,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       else refreshAfterQuickCommit();
     }
     onNewMessageRef.current?.();
-  }, [input, imageData, imagePreviews, pdfData, csvData, loading, userId, remaining, clearImage, applyAssistantResponse, reconcilePendingTurn]);
+  }, [input, imageData, imagePreviews, pdfData, csvData, loading, userId, remaining, clearImage, applyAssistantResponse, reconcilePendingTurn, trackDemoMessageSent]);
 
   // Confirm a free-typed scenario ([Show me]): echo the pending intent back so the
   // route computes and renders the card directly, skipping Claude classification.
@@ -821,6 +840,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // Synchronous double-send guard (see sendInFlightRef).
     if (sendInFlightRef.current) return;
     sendInFlightRef.current = true;
+    trackDemoMessageSent();
     setLoading(true);
     setThinking(true);
 
@@ -852,7 +872,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
 
     applyAssistantResponse(data);
     onNewMessageRef.current?.();
-  }, [loading, userId, applyAssistantResponse]);
+  }, [loading, userId, applyAssistantResponse, trackDemoMessageSent]);
 
   // Send a specific text string without going through the input state — used by
   // suggestion chips. Chip taps are flagged (fromChip) so scenario intents compute
@@ -879,6 +899,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // Synchronous double-send guard (see sendInFlightRef).
     if (sendInFlightRef.current) return;
     sendInFlightRef.current = true;
+    trackDemoMessageSent();
 
     const userMsg: ChatMessage = { localId: nextLocalId(), from: "user", text: trimmed };
     setLoading(true);
@@ -964,7 +985,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
       else refreshAfterQuickCommit();
     }
     onNewMessageRef.current?.();
-  }, [loading, userId, remaining, demoEnded, applyAssistantResponse, sendScenarioConfirm, reconcilePendingTurn]);
+  }, [loading, userId, remaining, demoEnded, applyAssistantResponse, sendScenarioConfirm, reconcilePendingTurn, trackDemoMessageSent]);
 
   // Scenario-narration handoff: posts the summarising user turn + the
   // guardrailed assistant narration into this single thread. No portfolio
@@ -977,6 +998,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     // Synchronous double-send guard (see sendInFlightRef).
     if (sendInFlightRef.current) return;
     sendInFlightRef.current = true;
+    trackDemoMessageSent();
 
     setLoading(true);
     setThinking(true);
@@ -1020,7 +1042,7 @@ export function useChatSession({ userId, onPortfolioUpdate, onNewMessage, extraP
     setMessages((prev) => [...prev, ...newMsgs]);
     if (typeof data.remaining === "number") setRemaining(data.remaining);
     onNewMessageRef.current?.();
-  }, [loading, userId, remaining, demoEnded]);
+  }, [loading, userId, remaining, demoEnded, trackDemoMessageSent]);
 
   return {
     messages,

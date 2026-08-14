@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { useSubscription } from "@/components/SubscriptionProvider";
 import { useSignOut } from "@/lib/hooks";
 import { readDemoExpiry } from "@/components/DemoExpiryWall";
@@ -112,7 +113,10 @@ export function DemoBanner() {
         <button
           type="button"
           className="demo-banner-link"
-          onClick={signOut}
+          // Demo funnel — this whole component is inert unless isDemo, so the
+          // event can only come from the demo path. signOut awaits a server
+          // round-trip before navigating, so the beacon has time to leave.
+          onClick={() => { track("demo_signup_click", { placement: "banner" }); signOut(); }}
           style={{
             fontFamily: "var(--font-ui)",
             fontSize: "var(--fs-body)",
